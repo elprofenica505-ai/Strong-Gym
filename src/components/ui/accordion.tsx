@@ -24,12 +24,12 @@ export function Accordion({ items, className }: { items: AccordionItem[]; classN
                 type="button"
                 onClick={() => setOpen(isOpen ? null : index)}
                 aria-expanded={isOpen}
-                className="flex w-full items-start justify-between gap-4 px-5 py-4 text-left transition-colors hover:bg-white/[0.03] sm:px-6 sm:py-5"
+                className="flex w-full items-start justify-between gap-4 px-5 py-4 text-left transition-colors hover:bg-cloud sm:px-6 sm:py-5"
               >
                 <span
                   className={cn(
                     "text-[0.9375rem] font-semibold leading-snug transition-colors sm:text-base",
-                    isOpen ? "text-volt" : "text-chalk",
+                    isOpen ? "text-brand" : "text-ink",
                   )}
                 >
                   {item.q}
@@ -37,7 +37,7 @@ export function Accordion({ items, className }: { items: AccordionItem[]; classN
                 <ChevronDown
                   className={cn(
                     "mt-0.5 size-5 shrink-0 text-fog transition-transform duration-300",
-                    isOpen && "rotate-180 text-volt",
+                    isOpen && "rotate-180 text-brand",
                   )}
                   aria-hidden="true"
                 />

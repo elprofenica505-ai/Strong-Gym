@@ -4,15 +4,28 @@ import { demoClasses, demoCoaches } from "./demo-content";
 
 /**
  * ============================================================
- *  Grilla semanal de clases (modo demo)
+ *  Grilla semanal de clases — STRONG FITNESS GYM
  * ============================================================
- *  El gimnasio repite la misma grilla todas las semanas.
- *  Acá está definida como plantilla: día (0 = lunes) y horario
- *  local del gym. Las fechas reales se calculan según la semana
- *  que el usuario esté mirando, así la web nunca queda "vieja".
+ *  FUENTE DE VERDAD de los horarios. De acá sale el SQL:
+ *  después de tocar WEEKLY_TEMPLATE hay que correr
+ *      node scripts/build-sql.mjs
+ *  y se regeneran 00001_schema.sql y supabase/SETUP.sql.
  *
- *  Cuando conectes Supabase, esta grilla se reemplaza por la
- *  tabla `sessions` (ver supabase/migrations/00003_sessions.sql).
+ *  Clases con cupo y reserva:
+ *    · Boxeo — martes, miércoles y jueves, tres sesiones al día
+ *      (06:00, 17:30 y 20:00), para todas las edades.
+ *
+ *  NO van en la grilla:
+ *    · Pesas y máquinas → acceso libre dentro del horario de
+ *      atención (lunes a viernes 06:00–21:00, sábado 08:00–12:00
+ *      y 13:00–18:00). No se reserva.
+ *    · Zumba y bailoterapia → el gimnasio todavía no confirmó los
+ *      horarios fijos. Hasta que los pase, se consulta por
+ *      WhatsApp. No inventamos horarios.
+ *
+ *  El gimnasio CIERRA LOS DOMINGOS: el día 6 va vacío a propósito.
+ *  Total: 9 clases por semana (36 en 4 semanas).
+ * ============================================================
  */
 
 interface Slot {
@@ -23,86 +36,38 @@ interface Slot {
 }
 
 const WEEKLY_TEMPLATE: Record<number, Slot[]> = {
-  // Lunes
-  0: [
-    { time: "06:00", slug: "funcional" },
-    { time: "07:00", slug: "spinning" },
-    { time: "08:30", slug: "stretching" },
-    { time: "10:00", slug: "zumba" },
-    { time: "17:00", slug: "funcional" },
-    { time: "18:00", slug: "spinning" },
-    { time: "19:00", slug: "cross-training" },
-    { time: "20:00", slug: "boxeo" },
-  ],
+  // Lunes — sala abierta, sin clases dirigidas
+  0: [],
   // Martes
   1: [
-    { time: "06:00", slug: "funcional" },
-    { time: "07:00", slug: "hiit" },
-    { time: "09:00", slug: "pilates" },
-    { time: "12:30", slug: "spinning" },
-    { time: "17:30", slug: "funcional" },
-    { time: "18:30", slug: "boxeo" },
-    { time: "19:30", slug: "cross-training" },
-    { time: "20:30", slug: "stretching" },
+    { time: "06:00", slug: "boxeo" },
+    { time: "17:30", slug: "boxeo" },
+    { time: "20:00", slug: "boxeo" },
   ],
   // Miércoles
   2: [
-    { time: "06:00", slug: "cross-training" },
-    { time: "07:00", slug: "spinning" },
-    { time: "10:00", slug: "zumba" },
-    { time: "12:30", slug: "hiit" },
-    { time: "17:00", slug: "funcional" },
-    { time: "18:00", slug: "pilates" },
-    { time: "19:00", slug: "spinning" },
+    { time: "06:00", slug: "boxeo" },
+    { time: "17:30", slug: "boxeo" },
     { time: "20:00", slug: "boxeo" },
   ],
   // Jueves
   3: [
-    { time: "06:00", slug: "funcional" },
-    { time: "07:00", slug: "spinning" },
-    { time: "10:30", slug: "stretching" },
-    { time: "12:30", slug: "hiit" },
-    { time: "17:30", slug: "funcional" },
-    { time: "18:30", slug: "cross-training" },
-    { time: "19:30", slug: "boxeo" },
-    { time: "20:30", slug: "yoga" },
-  ],
-  // Viernes
-  4: [
-    { time: "06:00", slug: "funcional" },
-    { time: "07:00", slug: "spinning" },
-    { time: "08:30", slug: "yoga" },
-    { time: "10:00", slug: "zumba" },
-    { time: "17:00", slug: "funcional" },
-    { time: "18:00", slug: "spinning" },
-    { time: "19:00", slug: "cross-training" },
+    { time: "06:00", slug: "boxeo" },
+    { time: "17:30", slug: "boxeo" },
     { time: "20:00", slug: "boxeo" },
   ],
-  // Sábado
-  5: [
-    { time: "08:00", slug: "funcional" },
-    { time: "09:00", slug: "spinning" },
-    { time: "10:00", slug: "cross-training" },
-    { time: "11:00", slug: "stretching" },
-    { time: "12:00", slug: "zumba" },
-  ],
-  // Domingo
-  6: [
-    { time: "09:30", slug: "yoga" },
-    { time: "11:00", slug: "stretching" },
-  ],
+  // Viernes — sala abierta, sin clases dirigidas
+  4: [],
+  // Sábado — sala abierta, sin clases dirigidas
+  5: [],
+  // Domingo — CERRADO
+  6: [],
 };
 
 const ROOMS: Record<string, string> = {
-  funcional: "Salón A",
-  "cross-training": "Salón A",
-  boxeo: "Ring",
-  spinning: "Sala Cycling",
-  hiit: "Salón B",
-  zumba: "Salón B",
-  pilates: "Salón Zen",
-  yoga: "Salón Zen",
-  stretching: "Salón Zen",
+  boxeo: "Área de boxeo",
+  musculacion: "Sala de máquinas",
+  zumba: "Salón de clases",
 };
 
 const classesBySlug = new Map<string, GymClass>(demoClasses.map((c) => [c.slug, c]));

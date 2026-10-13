@@ -1,7 +1,7 @@
-import Image from "next/image";
 import { Check } from "lucide-react";
 import type { ReactNode } from "react";
 import { Reveal } from "@/components/ui/reveal";
+import { GymPhoto } from "@/components/ui/gym-photo";
 
 /**
  * Layout de dos columnas para las páginas de login y registro:
@@ -24,7 +24,7 @@ export function AuthShell({
     <section className="relative pt-12 pb-16 sm:pt-16 lg:pt-20">
       <div className="absolute inset-0 bg-grid opacity-40" aria-hidden="true" />
       <div
-        className="absolute -top-24 right-1/4 size-80 rounded-full bg-volt/8 blur-3xl"
+        className="absolute -top-24 right-1/4 size-80 rounded-full bg-brand/8 blur-3xl"
         aria-hidden="true"
       />
 
@@ -33,7 +33,7 @@ export function AuthShell({
           {/* Formulario */}
           <Reveal className="mx-auto w-full max-w-md lg:mx-0">
             <span className="eyebrow">
-              <span className="h-px w-6 bg-volt" aria-hidden="true" />
+              <span className="h-px w-6 bg-brand" aria-hidden="true" />
               {eyebrow}
             </span>
 
@@ -49,17 +49,16 @@ export function AuthShell({
           {/* Panel lateral (sólo en pantallas grandes) */}
           <Reveal
             delay={120}
-            className="relative hidden overflow-hidden rounded-3xl border border-line lg:block"
+            className="relative hidden overflow-hidden rounded-3xl border border-line bg-night lg:block"
           >
             <div className="relative aspect-4/5 w-full">
-              <Image
-                src="/images/studio.jpg"
+              <GymPhoto
+                src="/images/sala1.jpg"
                 alt=""
-                fill
                 sizes="(max-width: 1024px) 0px, 45vw"
                 className="object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-void via-void/60 to-void/20" />
+              <div className="absolute inset-0 bg-gradient-to-t from-night via-night/75 to-night/15" />
             </div>
 
             <div className="absolute inset-x-0 bottom-0 p-8">
@@ -67,11 +66,11 @@ export function AuthShell({
                 {bullets.map((bullet) => (
                   <li key={bullet} className="flex items-start gap-3">
                     <Check
-                      className="mt-0.5 size-4 shrink-0 text-volt"
+                      className="mt-0.5 size-4 shrink-0 text-brand"
                       strokeWidth={2.75}
                       aria-hidden="true"
                     />
-                    <span className="text-[0.875rem] leading-snug text-chalk">{bullet}</span>
+                    <span className="text-[0.875rem] leading-snug text-white">{bullet}</span>
                   </li>
                 ))}
               </ul>

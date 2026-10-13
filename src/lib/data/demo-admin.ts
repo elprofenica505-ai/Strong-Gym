@@ -1,4 +1,3 @@
-import { siteConfig } from "@/config/site";
 import { getWeekRange, gymNow } from "@/lib/schedule";
 import type { ContactMessage } from "@/lib/types";
 import type { AdminBookingRow, AdminClassRow } from "@/components/admin/admin-panel";
@@ -45,7 +44,9 @@ function emailFor(first: string, last: string): string {
       .replace(/[\u0300-\u036f]/g, "")
       .toLowerCase();
 
-  return `${clean(first)}.${clean(last)}@${siteConfig.domain}`;
+  // example.com es el dominio reservado para ejemplos: deja claro que
+  // estos socios son de prueba y no corresponden a personas reales.
+  return `${clean(first)}.${clean(last)}@example.com`;
 }
 
 export function demoAdminBookings(): AdminBookingRow[] {

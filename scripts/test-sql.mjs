@@ -90,14 +90,42 @@ const counts = await db.query(`
     (select count(*) from public.sessions) as sesiones
 `);
 console.log("  ", counts.rows[0]);
-check("9 disciplinas", Number(counts.rows[0].clases) === 9);
-check("6 profes", Number(counts.rows[0].profes) === 6);
-check("4 planes", Number(counts.rows[0].planes) === 4);
+check("3 disciplinas (pesas, boxeo, zumba)", Number(counts.rows[0].clases) === 3);
+check("sin entrenadores cargados todavía", Number(counts.rows[0].profes) === 0);
+check("3 planes", Number(counts.rows[0].planes) === 3);
 check(
-  "188 clases programadas (47 por semana × 4)",
-  Number(counts.rows[0].sesiones) === 188,
+  "36 clases programadas (9 por semana × 4)",
+  Number(counts.rows[0].sesiones) === 36,
   `${counts.rows[0].sesiones} sesiones`,
 );
+check(
+  "el plan de boxeo cuesta 20 y los otros dos quedan a consultar",
+  Number(
+    (await db.query(`select count(*)::int as n from public.plans where price is null`)).rows[0].n,
+  ) === 2 &&
+    Number(
+      (await db.query(`select price from public.plans where id = 'pln_boxeo'`)).rows[0].price,
+    ) === 20,
+);
+check(
+  "ningún domingo tiene clases (el gimnasio cierra)",
+  Number(
+    (
+      await db.query(
+        `select count(*)::int as n from public.sessions
+          where extract(isodow from starts_at at time zone 'America/Managua') = 7`,
+      )
+    ).rows[0].n,
+  ) === 0,
+);
+
+// El martes de esta semana, que es cuando empieza la grilla de boxeo.
+const hoy = new Date();
+const lunes = new Date(Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()));
+lunes.setUTCDate(lunes.getUTCDate() - ((lunes.getUTCDay() + 6) % 7));
+const martes = new Date(lunes);
+martes.setUTCDate(martes.getUTCDate() + 1);
+const martesISO = martes.toISOString().slice(0, 10);
 
 const tzCheck = await db.query(`
   select
@@ -105,28 +133,39 @@ const tzCheck = await db.query(`
     to_char(starts_at at time zone 'America/Managua', 'YYYY-MM-DD HH24:MI') as local,
     extract(isodow from starts_at at time zone 'America/Managua') as dia
   from public.sessions
-  where class_id = 'cls_funcional'
+  where class_id = 'cls_boxeo'
   order by starts_at
   limit 1
 `);
 check(
-  "la primera clase de funcional es lunes 06:00 en Managua",
-  tzCheck.rows[0].local === "2026-10-12 06:00",
+  "la primera clase de boxeo es martes 06:00 en Managua",
+  tzCheck.rows[0].local === `${martesISO} 06:00`,
   `hora local = ${tzCheck.rows[0].local}, en UTC = ${tzCheck.rows[0].utc}`,
 );
 check(
   "y en UTC son las 12:00 (Managua = UTC-6)",
-  tzCheck.rows[0].utc === "2026-10-12 12:00",
+  tzCheck.rows[0].utc === `${martesISO} 12:00`,
   tzCheck.rows[0].utc,
 );
-check("cae en lunes (no se corrió de día)", Number(tzCheck.rows[0].dia) === 1, `isodow = ${tzCheck.rows[0].dia}`);
+check("cae en martes (no se corrió de día)", Number(tzCheck.rows[0].dia) === 2, `isodow = ${tzCheck.rows[0].dia}`);
+check(
+  "los tres horarios del día son 06:00, 17:30 y 20:00",
+  JSON.stringify(
+    (
+      await db.query(
+        `select distinct to_char(starts_at at time zone 'America/Managua', 'HH24:MI') as h
+           from public.sessions order by h`,
+      )
+    ).rows.map((r) => r.h),
+  ) === JSON.stringify(["06:00", "17:30", "20:00"]),
+);
 
 console.log("\n▶ Idempotencia: correr el seed dos veces no debe duplicar");
 await db.exec(readFileSync(`${REPO}/supabase/migrations/00002_seed.sql`, "utf8"));
 const after = await db.query(`select
   (select count(*) from public.classes) as clases,
   (select count(*) from public.sessions) as sesiones`);
-check("las disciplinas siguen siendo 9", Number(after.rows[0].clases) === 9);
+check("las disciplinas siguen siendo 3", Number(after.rows[0].clases) === 3);
 check(
   "las clases programadas no se duplicaron",
   Number(after.rows[0].sesiones) === Number(counts.rows[0].sesiones),
@@ -248,7 +287,7 @@ await db.exec(`delete from auth.current_user;`);
 // Una clase que arranca en 1 hora, en una disciplina sin cupo lleno
 await db.exec(`
   insert into public.sessions (id, class_id, coach_id, starts_at, ends_at, capacity, room)
-  values ('ses_prueba_tarde', 'cls_yoga', null, now() + interval '1 hour', now() + interval '2 hours', 20, 'Salón Zen')
+  values ('ses_prueba_tarde', 'cls_zumba', null, now() + interval '1 hour', now() + interval '2 hours', 20, 'Salón de clases')
 `);
 await loginAs(userB);
 const lateBooking = await db.query(`select public.book_session('ses_prueba_tarde') as r`);
@@ -322,6 +361,202 @@ console.log("\n▶ Cerrar clases pasadas (ausentes)");
 const closed = await db.query(`select public.close_past_sessions() as n`);
 check("la función corre sin errores", typeof closed.rows[0].n === "number", `${closed.rows[0].n} marcadas`);
 
+
+/* ------------------------------------------------------------
+   La migración 00003 sobre una base que YA estaba en uso
+   ------------------------------------------------------------
+   Este es el caso real del gimnasio: el proyecto de Supabase ya
+   tenía cargados los datos de ejemplo (9 disciplinas, 6 profes,
+   4 planes) y además socios registrados con reservas hechas.
+
+   Acá reconstruimos ese estado anterior y le aplicamos la
+   migración, para confirmar dos cosas:
+     · que deja los datos reales del gimnasio, y
+     · que NO le borra nada a los socios.
+   ------------------------------------------------------------ */
+
+console.log("\n▶ Migración 00003 sobre una base que ya estaba en uso");
+
+try {
+  const vieja = new PGlite();
+  await vieja.exec(STUBS);
+  await vieja.exec(readFileSync(`${REPO}/supabase/migrations/00001_schema.sql`, "utf8"));
+
+  // --- Reconstruimos cómo estaba la base antes de esta migración ---
+  await vieja.exec(`
+    -- Antes el precio era obligatorio y había un verde lima por defecto
+    update public.plans set price = 0 where price is null;
+    alter table public.plans alter column price set not null;
+    alter table public.plans alter column price set default 0;
+
+    insert into public.classes
+      (id, slug, name_es, name_en, description_es, description_en,
+       intensity, duration_min, capacity, color, sort_order)
+    values
+      ('cls_funcional', 'funcional', 'Funcional', 'Functional', 'x', 'x', 'high', 50, 20, '#cbf73f', 1),
+      ('cls_spinning',  'spinning',  'Spinning',  'Spinning',   'x', 'x', 'high', 45, 24, '#cbf73f', 2),
+      ('cls_yoga',      'yoga',      'Yoga',      'Yoga',       'x', 'x', 'low',  60, 18, '#cbf73f', 3),
+      ('cls_boxeo',     'boxeo',     'Boxeo',     'Boxing',     'x', 'x', 'high', 60, 20, '#cbf73f', 4);
+
+    insert into public.coaches
+      (id, slug, name, role_es, role_en, specialties, initials, color, sort_order)
+    values
+      ('cch_diego', 'diego', 'Diego Falso', 'Coach', 'Coach', array['funcional','boxeo'], 'DF', '#cbf73f', 1),
+      ('cch_sofia', 'sofia', 'Sofía Falsa', 'Coach', 'Coach', array['yoga'],              'SF', '#cbf73f', 2);
+
+    insert into public.plans
+      (id, slug, name_es, name_en, tagline_es, tagline_en, price, period,
+       features_es, features_en, is_popular, sort_order)
+    values
+      ('pln_basico', 'basico', 'Básico', 'Basic', 'x', 'x', 25, 'month', array['x'], array['x'], false, 1),
+      ('pln_full',   'full',   'Full',   'Full',  'x', 'x', 39, 'month', array['x'], array['x'], true,  2);
+  `);
+
+  // Clases viejas: una ya pasada, dos futuras (a una se anota un socio)
+  await vieja.exec(`
+    insert into public.sessions (id, class_id, starts_at, ends_at, capacity, room) values
+      ('ses_pasada',  'cls_spinning',  now() - interval '10 days', now() - interval '10 days' + interval '45 min', 24, 'Sala Cycling'),
+      ('ses_futura',  'cls_yoga',      now() + interval '3 days',  now() + interval '3 days'  + interval '60 min', 18, 'Salón Zen'),
+      ('ses_ocupada', 'cls_funcional', now() + interval '4 days',  now() + interval '4 days'  + interval '50 min', 20, 'Salón A');
+  `);
+
+  const socio = (
+    await vieja.query(
+      `insert into auth.users (email, raw_user_meta_data)
+       values ('socia@example.com', '{"full_name":"Socia Real"}'::jsonb) returning id`,
+    )
+  ).rows[0].id;
+  await vieja.query(`update public.profiles set plan_id = 'pln_full' where id = $1`, [socio]);
+  await vieja.query(
+    `insert into public.bookings (session_id, user_id) values ('ses_ocupada', $1)`,
+    [socio],
+  );
+  await vieja.exec(`
+    insert into public.messages (name, email, message)
+    values ('Andrea Solís', 'andrea.solis@example.com', 'consulta de ejemplo'),
+           ('Clienta Real', 'real@example.com', 'hola, quiero info de boxeo');
+  `);
+
+  // --- Y ahora corremos la migración ---
+  await vieja.exec(readFileSync(`${REPO}/supabase/migrations/00003_datos_reales.sql`, "utf8"));
+  console.log("  ✅ 00003_datos_reales.sql se ejecutó sin errores");
+
+  const r = async (sql) => (await vieja.query(sql)).rows[0];
+
+  const GRILLA = `
+    select count(*) as n
+      from public.sessions s
+      join public.classes c on c.id = s.class_id
+     where c.is_active
+       and s.status = 'scheduled'
+       and s.starts_at >= date_trunc('week', now())`;
+
+  const estado = await r(`
+    select
+      (select count(*) from public.classes where is_active) as activas,
+      (select count(*) from public.coaches)                 as profes,
+      (select count(*) from public.plans)                   as planes,
+      (${GRILLA})                                           as grilla
+  `);
+  check("quedan 3 disciplinas activas", Number(estado.activas) === 3, `${estado.activas}`);
+  check("se fueron los entrenadores inventados", Number(estado.profes) === 0, `${estado.profes}`);
+  check("quedan 3 planes", Number(estado.planes) === 3, `${estado.planes}`);
+  check("quedó cargada la grilla nueva de 4 semanas", Number(estado.grilla) === 36, `${estado.grilla}`);
+
+  check(
+    "ya no hay rastro del verde lima",
+    Number((await r(`select count(*) as n from public.classes where color = '#cbf73f'`)).n) === 0,
+  );
+  check(
+    "el plan de boxeo cuesta 20 y los otros dos quedan a consultar",
+    Number((await r(`select price from public.plans where id = 'pln_boxeo'`)).price) === 20 &&
+      Number((await r(`select count(*) as n from public.plans where price is null`)).n) === 2,
+  );
+  check(
+    "los planes viejos ya no están",
+    Number(
+      (await r(`select count(*) as n from public.plans where id in ('pln_basico','pln_full')`)).n,
+    ) === 0,
+  );
+
+  /* --- Lo importante: que no se haya perdido nada de los socios --- */
+  check(
+    "la cuenta de la socia sigue ahí",
+    Number((await r(`select count(*) as n from public.profiles where id = '${socio}'`)).n) === 1,
+  );
+  check(
+    "su reserva sigue ahí",
+    Number(
+      (await r(`select count(*) as n from public.bookings where user_id = '${socio}'`)).n,
+    ) === 1,
+  );
+  check(
+    "la clase que tenía reservada no se borró, se canceló",
+    (await r(`select status::text as s from public.sessions where id = 'ses_ocupada'`)).s ===
+      "cancelled",
+  );
+  check(
+    "la clase ya pasada quedó intacta (es historial)",
+    Number((await r(`select count(*) as n from public.sessions where id = 'ses_pasada'`)).n) === 1,
+  );
+  check(
+    "la clase futura a la que nadie se anotó se borró",
+    Number((await r(`select count(*) as n from public.sessions where id = 'ses_futura'`)).n) === 0,
+  );
+  check(
+    "la disciplina con historial queda guardada pero desactivada",
+    (await r(`select is_active from public.classes where id = 'cls_spinning'`)).is_active === false,
+  );
+  check(
+    "la disciplina sin historial sí se borra",
+    Number((await r(`select count(*) as n from public.classes where id = 'cls_yoga'`)).n) === 0,
+  );
+  check(
+    "a la socia le quedó el plan vacío, no uno inexistente",
+    (await r(`select plan_id from public.profiles where id = '${socio}'`)).plan_id === null,
+  );
+  check(
+    "se borró la consulta de ejemplo pero no la de una clienta real",
+    Number((await r(`select count(*) as n from public.messages`)).n) === 1 &&
+      (await r(`select email from public.messages`)).email === "real@example.com",
+  );
+
+  /* --- Correrla dos veces tiene que dar lo mismo --- */
+  await vieja.exec(readFileSync(`${REPO}/supabase/migrations/00003_datos_reales.sql`, "utf8"));
+  const repetida = await r(`
+    select
+      (select count(*) from public.classes where is_active) as activas,
+      (select count(*) from public.plans)                   as planes,
+      (select count(*) from public.bookings)                as reservas,
+      (${GRILLA})                                           as grilla
+  `);
+  check(
+    "correrla de nuevo no cambia nada ni duplica clases",
+    Number(repetida.activas) === 3 &&
+      Number(repetida.planes) === 3 &&
+      Number(repetida.reservas) === 1 &&
+      Number(repetida.grilla) === 36,
+    JSON.stringify(repetida),
+  );
+
+  /* --- Y el socio puede seguir reservando --- */
+  await vieja.exec(`insert into auth.current_user values ('${socio}')`);
+  const nueva = await vieja.query(
+    `select public.book_session(
+       (select id from public.sessions
+         where starts_at > now() + interval '1 day' and status = 'scheduled'
+         order by starts_at limit 1)) as r`,
+  );
+  check(
+    "después de migrar se puede reservar una clase nueva",
+    nueva.rows[0].r?.status === "confirmed",
+    JSON.stringify(nueva.rows[0].r),
+  );
+} catch (error) {
+  check("00003_datos_reales.sql se ejecuta sin errores", false, String(error.message ?? error).slice(0, 160));
+}
+
+
 /* ------------------------------------------------------------
    El archivo único que se pega en Supabase
    ------------------------------------------------------------
@@ -355,10 +590,10 @@ try {
       )
     ).rows[0].n === 8,
   );
-  check("carga 9 disciplinas", Number(resumen.clases) === 9);
-  check("carga 6 profes", Number(resumen.profes) === 6);
-  check("carga 4 planes", Number(resumen.planes) === 4);
-  check("carga 188 clases (4 semanas)", Number(resumen.sesiones) === 188, `${resumen.sesiones}`);
+  check("carga 3 disciplinas", Number(resumen.clases) === 3);
+  check("no inventa entrenadores", Number(resumen.profes) === 0);
+  check("carga 3 planes", Number(resumen.planes) === 3);
+  check("carga 36 clases (4 semanas)", Number(resumen.sesiones) === 36, `${resumen.sesiones}`);
 
   const funciones = (
     await unico.query(`

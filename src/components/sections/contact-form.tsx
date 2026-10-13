@@ -62,12 +62,12 @@ export function ContactForm() {
 
   if (state === "sent") {
     return (
-      <div className="flex h-full min-h-80 flex-col items-center justify-center gap-4 rounded-2xl border border-volt/35 bg-volt/[0.06] p-10 text-center">
-        <span className="grid size-14 place-items-center rounded-full bg-volt text-ink">
+      <div className="flex h-full min-h-80 flex-col items-center justify-center gap-4 rounded-2xl border border-brand/35 bg-brand/[0.06] p-10 text-center">
+        <span className="grid size-14 place-items-center rounded-full bg-brand text-onbrand">
           <CheckCircle2 className="size-7" aria-hidden="true" />
         </span>
 
-        <p className="max-w-sm text-[0.9375rem] leading-relaxed text-chalk">
+        <p className="max-w-sm text-[0.9375rem] leading-relaxed text-ink">
           {dict.contact.success}
         </p>
 
@@ -143,7 +143,7 @@ export function ContactForm() {
       </div>
 
       {state === "error" ? (
-        <p className="mt-4 rounded-xl border border-flame/40 bg-flame/10 px-4 py-3 text-[0.8125rem] text-flame">
+        <p className="mt-4 rounded-xl border border-alert/40 bg-alert/10 px-4 py-3 text-[0.8125rem] text-alert">
           {dict.contact.error}
         </p>
       ) : null}

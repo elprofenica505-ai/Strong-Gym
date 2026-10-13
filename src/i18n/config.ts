@@ -48,6 +48,6 @@ export function detectLocale(acceptLanguage: string | null): Locale {
 
 /** Fechas y números en el formato correcto para cada idioma. */
 export const intlLocale: Record<Locale, string> = {
-  es: "es-AR",
+  es: "es-NI",
   en: "en-US",
 };

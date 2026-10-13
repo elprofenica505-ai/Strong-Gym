@@ -61,19 +61,25 @@ git push
    (o `Ctrl + Enter`). Tiene que decir *Success*.
 
 Ese único archivo crea las tablas, las reglas de seguridad, las funciones de reserva,
-las disciplinas, los profes, los planes y **las clases de las próximas 4 semanas**.
+las disciplinas, los planes y **las clases de las próximas 4 semanas**.
 
 > **Si algo sale mal, volvé a correrlo**: está escrito para no duplicar datos.
 > ¿Preferís el detalle? Son dos archivos: `supabase/migrations/00001_schema.sql`
 > (estructura) y `00002_seed.sql` (contenido). `SETUP.sql` es exactamente los dos
 > juntos, en orden.
 
+> ### ⚠️ ¿Ya habías corrido una versión anterior del SQL?
+> No uses `SETUP.sql`. Pegá **`supabase/ACTUALIZAR.sql`**: reemplaza los datos de
+> ejemplo por los reales y corrige la grilla de clases **sin borrar cuentas ni
+> reservas**. También se puede correr más de una vez sin problema.
+
 ### Verificar
 
 En el menú lateral → **Table Editor** deberías ver las tablas:
 `bookings`, `classes`, `coaches`, `messages`, `plans`, `profiles`, `sessions`, `subscribers`.
 
-En `sessions` tendría que haber **188 clases** (4 semanas × 47 por semana).
+En `sessions` tendría que haber **36 clases** (4 semanas × 9 por semana: boxeo
+los martes, miércoles y jueves a las 06:00, 17:30 y 20:00).
 ¿Está vacía? Corré esto en el SQL Editor:
 
 ```sql

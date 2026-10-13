@@ -11,6 +11,7 @@ import {
   User as UserIcon,
   X,
 } from "lucide-react";
+import { isOpenAt, siteConfig } from "@/config/site";
 import { useApp } from "@/components/providers/app-provider";
 import { useDictionary } from "@/components/providers/dictionary-provider";
 import { ButtonLink } from "@/components/ui/button";
@@ -25,6 +26,16 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [abierto, setAbierto] = useState<boolean | null>(null);
+
+  /* ¿Está abierto ahora? Se calcula en el navegador para no quedar
+     pegado al momento en que se generó la página. */
+  useEffect(() => {
+    const revisar = () => setAbierto(isOpenAt(new Date()));
+    revisar();
+    const id = window.setInterval(revisar, 60_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   /* Sombra/desenfoque cuando el usuario baja */
   useEffect(() => {
@@ -66,10 +77,8 @@ export function SiteHeader() {
     <>
       <header
         className={cn(
-          "sticky top-0 z-50 transition-all duration-300",
-          scrolled
-            ? "border-b border-line/80 bg-void/95 backdrop-blur-xl"
-            : "border-b border-transparent",
+          "sticky top-0 z-50 border-b bg-paper/95 backdrop-blur-xl transition-all duration-300",
+          scrolled ? "border-line shadow-[0_1px_20px_rgba(12,12,14,0.07)]" : "border-line-soft",
         )}
       >
         <div className="container-x">
@@ -85,19 +94,39 @@ export function SiteHeader() {
                   className={cn(
                     "relative rounded-full px-3.5 py-2 text-[0.8125rem] font-medium transition-colors",
                     isActive(link)
-                      ? "text-volt"
-                      : "text-mist hover:bg-white/5 hover:text-chalk",
+                      ? "text-brand"
+                      : "text-mist hover:bg-cloud hover:text-ink",
                   )}
                 >
                   {link.label}
                   {isActive(link) ? (
-                    <span className="absolute inset-x-3.5 -bottom-0.5 h-px bg-volt" aria-hidden="true" />
+                    <span className="absolute inset-x-3.5 -bottom-0.5 h-px bg-brand" aria-hidden="true" />
                   ) : null}
                 </Link>
               ))}
             </nav>
 
             <div className="flex items-center gap-2">
+              {abierto !== null ? (
+                <span
+                  className={cn(
+                    "hidden items-center gap-1.5 rounded-full border px-3 py-1.5 text-[0.6875rem] font-semibold tracking-[0.08em] uppercase xl:inline-flex",
+                    abierto
+                      ? "border-ok/25 bg-ok/8 text-ok"
+                      : "border-line bg-cloud text-fog",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "size-1.5 rounded-full",
+                      abierto ? "animate-pulse bg-ok" : "bg-fog",
+                    )}
+                    aria-hidden="true"
+                  />
+                  {abierto ? dict.contact.openNow : dict.contact.closedNow}
+                </span>
+              ) : null}
+
               <div className="hidden sm:block">
                 <LanguageSwitcher locale={locale} label={dict.nav.language} />
               </div>
@@ -114,12 +143,12 @@ export function SiteHeader() {
                     onClick={() => setAccountOpen((v) => !v)}
                     aria-expanded={accountOpen}
                     aria-haspopup="menu"
-                    className="flex items-center gap-2 rounded-full border border-line bg-card py-1 pr-3 pl-1 transition-colors hover:border-white/25"
+                    className="flex items-center gap-2 rounded-full border border-line bg-card py-1 pr-3 pl-1 transition-colors hover:border-brand/40"
                   >
-                    <span className="grid size-8 place-items-center rounded-full bg-volt text-[0.6875rem] font-bold text-ink">
+                    <span className="grid size-8 place-items-center rounded-full bg-brand text-[0.6875rem] font-bold text-onbrand">
                       {initials(user.fullName)}
                     </span>
-                    <span className="max-w-24 truncate text-[0.8125rem] font-medium text-chalk">
+                    <span className="max-w-24 truncate text-[0.8125rem] font-medium text-ink">
                       {user.fullName.split(" ")[0]}
                     </span>
                   </button>
@@ -137,7 +166,7 @@ export function SiteHeader() {
                         className="absolute right-0 z-20 mt-2 w-56 overflow-hidden rounded-2xl border border-line bg-card p-1.5 shadow-2xl"
                       >
                         <div className="px-3 py-2">
-                          <p className="truncate text-[0.8125rem] font-semibold text-chalk">
+                          <p className="truncate text-[0.8125rem] font-semibold text-ink">
                             {user.fullName}
                           </p>
                           <p className="truncate text-[0.75rem] text-fog">{user.email}</p>
@@ -146,7 +175,7 @@ export function SiteHeader() {
                         <Link
                           href={`/${locale}/mi-cuenta`}
                           role="menuitem"
-                          className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-[0.8125rem] text-mist transition-colors hover:bg-white/5 hover:text-chalk"
+                          className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-[0.8125rem] text-mist transition-colors hover:bg-cloud hover:text-ink"
                         >
                           <UserIcon className="size-4" aria-hidden="true" />
                           {dict.nav.account}
@@ -155,7 +184,7 @@ export function SiteHeader() {
                           <Link
                             href={`/${locale}/panel`}
                             role="menuitem"
-                            className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-[0.8125rem] text-mist transition-colors hover:bg-white/5 hover:text-chalk"
+                            className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-[0.8125rem] text-mist transition-colors hover:bg-cloud hover:text-ink"
                           >
                             <LayoutDashboard className="size-4" aria-hidden="true" />
                             {dict.nav.admin}
@@ -168,7 +197,7 @@ export function SiteHeader() {
                             void signOut();
                             toast(dict.nav.logout, "info");
                           }}
-                          className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[0.8125rem] text-mist transition-colors hover:bg-white/5 hover:text-chalk"
+                          className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[0.8125rem] text-mist transition-colors hover:bg-cloud hover:text-ink"
                         >
                           <LogOut className="size-4" aria-hidden="true" />
                           {dict.nav.logout}
@@ -202,7 +231,7 @@ export function SiteHeader() {
                 type="button"
                 onClick={() => setOpen(true)}
                 aria-label={dict.nav.menu}
-                className="grid size-10 place-items-center rounded-full border border-line bg-card text-chalk transition-colors hover:border-white/25 lg:hidden"
+                className="grid size-10 place-items-center rounded-full border border-line bg-card text-ink transition-colors hover:border-brand/40 lg:hidden"
               >
                 <Menu className="size-5" aria-hidden="true" />
               </button>
@@ -221,7 +250,7 @@ export function SiteHeader() {
       >
         <div
           className={cn(
-            "absolute inset-0 bg-void/95 backdrop-blur-xl transition-opacity duration-300",
+            "absolute inset-0 bg-paper/95 backdrop-blur-xl transition-opacity duration-300",
             open ? "opacity-100" : "opacity-0",
           )}
           onClick={() => setOpen(false)}
@@ -229,7 +258,7 @@ export function SiteHeader() {
 
         <div
           className={cn(
-            "absolute inset-y-0 right-0 flex w-full max-w-sm flex-col border-l border-line bg-coal transition-transform duration-300 ease-out",
+            "absolute inset-y-0 right-0 flex w-full max-w-sm flex-col border-l border-line bg-cloud transition-transform duration-300 ease-out",
             open ? "translate-x-0" : "translate-x-full",
           )}
         >
@@ -239,7 +268,7 @@ export function SiteHeader() {
               type="button"
               onClick={() => setOpen(false)}
               aria-label={dict.nav.close}
-              className="grid size-10 place-items-center rounded-full border border-line bg-card text-chalk"
+              className="grid size-10 place-items-center rounded-full border border-line bg-card text-ink"
             >
               <X className="size-5" aria-hidden="true" />
             </button>
@@ -250,11 +279,11 @@ export function SiteHeader() {
               <div className="mb-5 h-16 animate-pulse rounded-2xl border border-line bg-card" />
             ) : user ? (
               <div className="mb-5 flex items-center gap-3 rounded-2xl border border-line bg-card p-3">
-                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-volt text-[0.75rem] font-bold text-ink">
+                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand text-[0.75rem] font-bold text-onbrand">
                   {initials(user.fullName)}
                 </span>
                 <div className="min-w-0">
-                  <p className="truncate text-[0.875rem] font-semibold text-chalk">
+                  <p className="truncate text-[0.875rem] font-semibold text-ink">
                     {user.fullName}
                   </p>
                   <p className="truncate text-[0.75rem] text-fog">{user.email}</p>
@@ -271,8 +300,8 @@ export function SiteHeader() {
                   className={cn(
                     "flex items-center justify-between rounded-xl px-4 py-3.5 text-base font-medium transition-colors",
                     isActive(link)
-                      ? "bg-volt/10 text-volt"
-                      : "text-mist hover:bg-white/5 hover:text-chalk",
+                      ? "bg-brand/10 text-brand"
+                      : "text-mist hover:bg-cloud hover:text-ink",
                   )}
                 >
                   {link.label}
@@ -284,7 +313,7 @@ export function SiteHeader() {
                   <Link
                     href={`/${locale}/mi-cuenta`}
                     onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-base font-medium text-mist transition-colors hover:bg-white/5 hover:text-chalk"
+                    className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-base font-medium text-mist transition-colors hover:bg-cloud hover:text-ink"
                   >
                     <UserIcon className="size-4.5" aria-hidden="true" />
                     {dict.nav.account}
@@ -293,7 +322,7 @@ export function SiteHeader() {
                     <Link
                       href={`/${locale}/panel`}
                       onClick={() => setOpen(false)}
-                      className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-base font-medium text-mist transition-colors hover:bg-white/5 hover:text-chalk"
+                      className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-base font-medium text-mist transition-colors hover:bg-cloud hover:text-ink"
                     >
                       <LayoutDashboard className="size-4.5" aria-hidden="true" />
                       {dict.nav.admin}
@@ -322,7 +351,7 @@ export function SiteHeader() {
                     void signOut();
                     setOpen(false);
                   }}
-                  className="inline-flex h-13 items-center justify-center gap-2 rounded-full border border-line bg-card text-[0.9375rem] font-semibold text-mist transition-colors hover:border-white/25 hover:text-chalk"
+                  className="inline-flex h-13 items-center justify-center gap-2 rounded-full border border-line bg-card text-[0.9375rem] font-semibold text-mist transition-colors hover:border-brand/40 hover:text-ink"
                 >
                   <LogOut className="size-4.5" aria-hidden="true" />
                   {dict.nav.logout}

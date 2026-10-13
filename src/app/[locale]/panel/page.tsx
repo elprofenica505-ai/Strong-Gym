@@ -56,7 +56,7 @@ export default async function AdminPage({ params }: { params: Promise<{ locale: 
   if (!demo && !isStaff) {
     return (
       <section className="container-x flex min-h-[70vh] flex-col items-center justify-center py-24 text-center">
-        <span className="grid size-14 place-items-center rounded-full border border-flame/40 bg-flame/10 text-flame">
+        <span className="grid size-14 place-items-center rounded-full border border-alert/40 bg-alert/10 text-alert">
           <ShieldAlert className="size-6" aria-hidden="true" />
         </span>
 
@@ -143,10 +143,10 @@ export default async function AdminPage({ params }: { params: Promise<{ locale: 
 
   return (
     <>
-      <section className="relative overflow-hidden border-b border-line bg-coal pt-12 pb-10 sm:pt-16 sm:pb-12 lg:pt-20">
+      <section className="relative overflow-hidden border-b border-line bg-cloud pt-12 pb-10 sm:pt-16 sm:pb-12 lg:pt-20">
         <div className="absolute inset-0 bg-grid opacity-50" aria-hidden="true" />
         <div
-          className="absolute -top-24 left-1/4 size-80 rounded-full bg-volt/8 blur-3xl"
+          className="absolute -top-24 left-1/4 size-80 rounded-full bg-brand/8 blur-3xl"
           aria-hidden="true"
         />
 
@@ -160,12 +160,12 @@ export default async function AdminPage({ params }: { params: Promise<{ locale: 
           <p className="mt-4 text-[0.8125rem] text-fog">
             {user ? (
               <>
-                {user.fullName} · <span className="font-mono text-volt">{user.role}</span>
+                {user.fullName} · <span className="font-mono text-brand">{user.role}</span>
               </>
             ) : (
               <>
                 {dict.demo.title} ·{" "}
-                <Link href={`/${locale}/ingresar`} className="text-volt hover:opacity-80">
+                <Link href={`/${locale}/ingresar`} className="text-brand hover:opacity-80">
                   {dict.nav.login}
                 </Link>
               </>

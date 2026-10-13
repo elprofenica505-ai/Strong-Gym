@@ -76,10 +76,10 @@ export default async function SchedulePage({
       />
 
       {/* Cabecera de la página */}
-      <section className="relative overflow-hidden border-b border-line bg-coal pt-12 pb-12 sm:pt-16 sm:pb-14 lg:pt-20">
+      <section className="relative overflow-hidden border-b border-line bg-cloud pt-12 pb-12 sm:pt-16 sm:pb-14 lg:pt-20">
         <div className="absolute inset-0 bg-grid opacity-50" aria-hidden="true" />
         <div
-          className="absolute -top-32 left-1/3 size-96 rounded-full bg-volt/8 blur-3xl"
+          className="absolute -top-32 left-1/3 size-96 rounded-full bg-brand/8 blur-3xl"
           aria-hidden="true"
         />
 
@@ -96,7 +96,7 @@ export default async function SchedulePage({
                 key={index}
                 className="flex items-start gap-3 rounded-xl border border-line bg-card/70 p-4"
               >
-                <Icon className="mt-0.5 size-4 shrink-0 text-volt" aria-hidden="true" />
+                <Icon className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden="true" />
                 <p className="text-[0.75rem] leading-relaxed text-fog">{text}</p>
               </div>
             ))}
@@ -111,7 +111,7 @@ export default async function SchedulePage({
 
           {/* Nota de política de cancelación */}
           <div className="mt-8 flex items-start gap-3 rounded-2xl border border-line bg-card/60 p-5">
-            <Info className="mt-0.5 size-4 shrink-0 text-volt" aria-hidden="true" />
+            <Info className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden="true" />
             <p className="text-[0.8125rem] leading-relaxed text-fog">
               {locale === "es"
                 ? `Las reservas se abren con 7 días de anticipación. Cada socio puede tener hasta 3 reservas activas al mismo tiempo y cancelar sin costo hasta ${siteConfig.cancellationWindowHours} horas antes del inicio.`

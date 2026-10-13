@@ -47,7 +47,7 @@ export function LanguageSwitcher({
           {label}
         </span>
 
-        <div className="flex gap-1 rounded-full bg-void p-1">
+        <div className="flex gap-1 rounded-full bg-paper p-1">
           {locales.map((code) => (
             <button
               key={code}
@@ -57,7 +57,7 @@ export function LanguageSwitcher({
               aria-current={code === locale ? "true" : undefined}
               className={cn(
                 "min-w-11 rounded-full px-3 py-1.5 text-[0.75rem] font-bold tracking-wide transition-colors",
-                code === locale ? "bg-volt text-ink" : "text-fog hover:text-chalk",
+                code === locale ? "bg-brand text-onbrand" : "text-fog hover:text-ink",
               )}
             >
               {localeShort[code]}
@@ -80,7 +80,7 @@ export function LanguageSwitcher({
           aria-current={code === locale ? "true" : undefined}
           className={cn(
             "rounded-full px-2.5 py-1 text-[0.6875rem] font-bold tracking-wider transition-colors",
-            code === locale ? "bg-volt text-ink" : "text-fog hover:text-chalk",
+            code === locale ? "bg-brand text-onbrand" : "text-fog hover:text-ink",
           )}
         >
           {localeShort[code]}

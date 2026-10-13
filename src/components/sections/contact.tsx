@@ -1,36 +1,53 @@
-import { Clock, Mail, MapPin, Phone } from "lucide-react";
+import { Clock, Mail, MapPin, Navigation, Phone } from "lucide-react";
 import { getDictionary } from "@/i18n/dictionaries";
 import type { Locale } from "@/i18n/config";
-import { mapsEmbedUrl, mapsLink, siteConfig, whatsappLink } from "@/config/site";
+import {
+  fullAddress,
+  mapsEmbedUrl,
+  mapsLink,
+  openingHoursSummary,
+  siteConfig,
+  whatsappLink,
+} from "@/config/site";
 import { Section, SectionHeading } from "@/components/ui/section";
 import { Reveal } from "@/components/ui/reveal";
+import { ButtonLink } from "@/components/ui/button";
 import { ContactForm } from "./contact-form";
 
 export function Contact({ locale }: { locale: Locale }) {
   const dict = getDictionary(locale);
+  const hours = openingHoursSummary(locale);
 
   const details = [
     {
+      key: "address",
       Icon: MapPin,
       label: dict.contact.addressLabel,
-      value: `${siteConfig.address.street}, ${siteConfig.address.city}`,
+      value: fullAddress(),
       href: mapsLink(),
       external: true,
     },
     {
+      key: "phone",
       Icon: Phone,
       label: dict.contact.phoneLabel,
-      value: siteConfig.phone,
+      value: siteConfig.phoneIntl,
       href: whatsappLink(),
       external: true,
     },
-    {
-      Icon: Mail,
-      label: dict.contact.emailLabel,
-      value: siteConfig.contactEmail,
-      href: `mailto:${siteConfig.contactEmail}`,
-      external: false,
-    },
+    // El email sólo aparece cuando el gimnasio tenga uno.
+    ...(siteConfig.contactEmail
+      ? [
+          {
+            key: "email",
+            Icon: Mail,
+            label: dict.contact.emailLabel,
+            value: siteConfig.contactEmail,
+            href: `mailto:${siteConfig.contactEmail}`,
+            external: false,
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -46,9 +63,9 @@ export function Contact({ locale }: { locale: Locale }) {
         <div className="flex flex-col gap-5 lg:col-span-5">
           <Reveal className="rounded-2xl border border-line bg-card p-6">
             <ul className="flex flex-col gap-5">
-              {details.map(({ Icon, label, value, href, external }) => (
-                <li key={label} className="flex gap-4">
-                  <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-line bg-void text-volt">
+              {details.map(({ key, Icon, label, value, href, external }) => (
+                <li key={key} className="flex gap-4">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand">
                     <Icon className="size-4.5" aria-hidden="true" />
                   </span>
                   <span className="min-w-0">
@@ -58,7 +75,7 @@ export function Contact({ locale }: { locale: Locale }) {
                     <a
                       href={href}
                       {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                      className="mt-1 block text-[0.9375rem] leading-snug text-chalk transition-colors hover:text-volt"
+                      className="mt-1 block text-[0.9375rem] leading-snug text-ink transition-colors hover:text-brand"
                     >
                       {value}
                     </a>
@@ -66,35 +83,57 @@ export function Contact({ locale }: { locale: Locale }) {
                 </li>
               ))}
 
+              {/* Horario real: dos tramos el sábado y domingo cerrado */}
               <li className="flex gap-4">
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-line bg-void text-volt">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand">
                   <Clock className="size-4.5" aria-hidden="true" />
                 </span>
-                <span className="min-w-0">
+                <span className="min-w-0 flex-1">
                   <span className="block text-[0.6875rem] font-semibold tracking-[0.14em] text-fog uppercase">
                     {dict.contact.hoursLabel}
                   </span>
-                  <span className="mt-1 block text-[0.875rem] leading-relaxed text-chalk">
-                    {dict.contact.hours.map((entry) => (
-                      <span key={entry.day} className="block">
-                        <span className="text-fog">{entry.day}:</span> {entry.time}
-                      </span>
+                  <dl className="mt-1.5 flex flex-col gap-1 text-[0.875rem] leading-relaxed">
+                    {hours.map((row) => (
+                      <div key={row.days} className="flex flex-wrap justify-between gap-x-3">
+                        <dt className="text-fog">{row.days}</dt>
+                        <dd
+                          className={
+                            row.hours === dict.contact.closed
+                              ? "font-semibold text-brand"
+                              : "font-medium text-ink tabular-nums"
+                          }
+                        >
+                          {row.hours}
+                        </dd>
+                      </div>
                     ))}
-                  </span>
+                  </dl>
                 </span>
               </li>
             </ul>
+
+            <ButtonLink
+              href={mapsLink()}
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="outline"
+              size="md"
+              className="mt-6 w-full"
+            >
+              <Navigation className="size-4" aria-hidden="true" />
+              {dict.cta.directions}
+            </ButtonLink>
           </Reveal>
 
           {/* Mapa */}
           <Reveal delay={100} className="flex-1">
-            <div className="h-full min-h-56 overflow-hidden rounded-2xl border border-line bg-card">
+            <div className="h-full min-h-56 overflow-hidden rounded-2xl border border-line bg-cloud">
               <iframe
                 title={dict.contact.mapTitle}
                 src={mapsEmbedUrl()}
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
-                className="size-full min-h-56 grayscale-[0.65] contrast-110 transition-all duration-500 hover:grayscale-0"
+                className="size-full min-h-56"
               />
             </div>
           </Reveal>

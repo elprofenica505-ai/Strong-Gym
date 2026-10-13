@@ -47,7 +47,8 @@ export interface Plan {
   name_en: string;
   tagline_es: string;
   tagline_en: string;
-  price: number;
+  /** Precio en USD. `null` = todavía no publicado: la web muestra "Consultar". */
+  price: number | null;
   /** Cada cuánto se paga: "month" | "week" | "session" */
   period: "month" | "week" | "session";
   features_es: string[];

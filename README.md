@@ -138,10 +138,12 @@ src/
 └── proxy.ts                   # redirección de idioma + refresco de sesión
 
 supabase/
-├── SETUP.sql                  # 👈 los dos de abajo en un solo archivo (pegar y listo)
+├── SETUP.sql                  # 👈 instalación desde cero (pegar y listo)
+├── ACTUALIZAR.sql             # 👈 poner al día una base que ya está en uso
 └── migrations/
     ├── 00001_schema.sql       # tablas, permisos y funciones de reserva
-    └── 00002_seed.sql         # disciplinas, profes, planes y clases de ejemplo
+    ├── 00002_seed.sql         # disciplinas, planes y clases
+    └── 00003_datos_reales.sql # datos reales sobre una base ya cargada
 
 scripts/
 ├── build-sql.mjs              # mantiene la grilla de clases sincronizada
@@ -184,13 +186,15 @@ clave en uno y te olvidás en el otro, el `npm run build` te avisa.
 
 ### 4. Fotos
 
-Reemplazá los archivos de `public/images/` manteniendo los nombres
-(`hero.jpg`, `studio.jpg`, `weights.jpg`, `functional.jpg`, `lockers.jpg`).
+Reemplazá los archivos de `public/images/` manteniendo los nombres:
+`fachada.jpg` (portada), `sala1.jpg`, `sala2.jpg`, `pesas.jpg`, `abs.jpg`,
+`pantorrilla.jpg`, `triceps.jpg` (galería), `boxeo.jpg` y `sacos.jpg` (boxeo),
+`grupo.jpg`, `pareja1.jpg`, `cambio.jpg` (comunidad) y `supl1.jpg` (suplementos).
 
 ### 5. Colores
 
-`src/app/globals.css`, en el bloque `@theme`. El color de acento es `--color-volt`
-(lima `#cbf73f`).
+`src/app/globals.css`, en el bloque `@theme`. El color de la marca es
+`--color-brand` (rojo `#d81a22`), sobre blanco y negro.
 
 ---
 

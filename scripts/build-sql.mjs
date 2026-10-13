@@ -3,15 +3,19 @@
  * ============================================================
  *  Genera el SQL de Supabase a partir del código de la web
  * ============================================================
- *  Hace dos cosas:
+ *  Hace tres cosas:
  *
- *   1. Copia la grilla semanal de clases desde
- *      `src/lib/data/demo-sessions.ts` al archivo
- *      `supabase/migrations/00002_seed.sql`, así el calendario
- *      de la web y el de la base de datos son siempre iguales.
+ *   1. Copia la grilla semanal de clases y los nombres de las salas
+ *      desde `src/lib/data/demo-sessions.ts` a las migraciones
+ *      00001 y 00003, así el calendario de la web y el de la base
+ *      de datos son siempre iguales.
  *
- *   2. Junta las migraciones en `supabase/SETUP.sql`, un único
- *      archivo para pegar de una sola vez en el SQL Editor.
+ *   2. Junta las migraciones de instalación en `supabase/SETUP.sql`,
+ *      un único archivo para pegar de una sola vez en el SQL Editor
+ *      cuando el proyecto de Supabase está vacío.
+ *
+ *   3. Arma `supabase/ACTUALIZAR.sql` para quien ya corrió el SETUP
+ *      anterior y sólo necesita ponerse al día.
  *
  *  Uso:
  *    node scripts/build-sql.mjs          # regenera los archivos
@@ -28,11 +32,15 @@ const CHECK_ONLY = process.argv.includes("--check");
 const DEMO_SESSIONS = join(ROOT, "src/lib/data/demo-sessions.ts");
 const SEED = join(ROOT, "supabase/migrations/00002_seed.sql");
 const SCHEMA = join(ROOT, "supabase/migrations/00001_schema.sql");
+const UPDATE_MIGRATION = join(ROOT, "supabase/migrations/00003_datos_reales.sql");
 const SETUP = join(ROOT, "supabase/SETUP.sql");
+const UPDATE = join(ROOT, "supabase/ACTUALIZAR.sql");
 
 const MARCAS = {
   inicio: "-- >>> PLANTILLA SEMANAL (generada por scripts/build-sql.mjs — no editar a mano) >>>",
   fin: "-- <<< PLANTILLA SEMANAL <<<",
+  salasInicio: "-- >>> SALAS >>>",
+  salasFin: "-- <<< SALAS <<<",
 };
 
 const DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
@@ -56,19 +64,45 @@ function leerPlantilla() {
     const slots = [...coincidencia[2].matchAll(/time:\s*"(\d{2}:\d{2})",\s*slug:\s*"([a-z-]+)"/g)].map(
       (slot) => ({ time: slot[1], slug: slot[2] }),
     );
-    if (slots.length === 0) continue;
+    // Un día puede quedar vacío a propósito: el gimnasio cierra los
+    // domingos y hay días sin clases dirigidas (sólo sala abierta).
     dias.push({ dia: numeroDia, slots });
   }
 
   if (dias.length !== 7) {
-    throw new Error(`Esperaba 7 días en la plantilla y encontré ${dias.length}`);
+    throw new Error(`Esperaba los 7 días (0 a 6) en la plantilla y encontré ${dias.length}`);
   }
 
-  return dias.sort((a, b) => a.dia - b.dia);
+  dias.sort((a, b) => a.dia - b.dia);
+
+  const faltantes = dias.map((d, i) => (d.dia === i ? null : i)).filter((d) => d !== null);
+  if (faltantes.length > 0) {
+    throw new Error(`La plantilla tiene que ir de 0 a 6. Días mal numerados: ${faltantes}`);
+  }
+
+  if (dias.every((d) => d.slots.length === 0)) {
+    throw new Error("La plantilla quedó sin ninguna clase: revisá WEEKLY_TEMPLATE");
+  }
+
+  return dias;
+}
+
+function leerSalas() {
+  const codigo = readFileSync(DEMO_SESSIONS, "utf8");
+  const bloque = codigo.match(/const ROOMS[^{]*\{([\s\S]*?)\n\};/);
+  if (!bloque) throw new Error("No encontré ROOMS en demo-sessions.ts");
+
+  const salas = [...bloque[1].matchAll(/([a-z-]+):\s*"([^"]+)"/g)].map((s) => ({
+    slug: s[1],
+    sala: s[2],
+  }));
+
+  if (salas.length === 0) throw new Error("ROOMS quedó vacío en demo-sessions.ts");
+  return salas;
 }
 
 /* ------------------------------------------------------------
-   2. Armar el bloque SQL
+   2. Armar los bloques SQL
    ------------------------------------------------------------ */
 
 function bloqueSQL(plantilla) {
@@ -78,10 +112,18 @@ function bloqueSQL(plantilla) {
     "      -- día (0 = lunes), hora local del gimnasio, disciplina",
   ];
 
-  // El último horario del último día va sin coma; el resto la lleva.
-  const ultimoDia = plantilla[plantilla.length - 1].dia;
+  // Los días sin clases dirigidas (y el domingo, que está cerrado)
+  // no generan filas: sólo se dejan anotados como comentario.
+  const conClases = plantilla.filter((d) => d.slots.length > 0);
+  const ultimoDia = conClases[conClases.length - 1].dia;
 
   for (const { dia, slots } of plantilla) {
+    if (slots.length === 0) {
+      const motivo = dia === 6 ? "CERRADO" : "sin clases dirigidas (sala abierta)";
+      lineas.push(`      -- ${ORDEN_DIAS[dia]}: ${motivo}`);
+      continue;
+    }
+
     lineas.push(`      -- ${ORDEN_DIAS[dia]}`);
 
     slots.forEach((slot, i) => {
@@ -95,37 +137,58 @@ function bloqueSQL(plantilla) {
   return lineas.join("\n");
 }
 
+function bloqueSalas(salas) {
+  const escapar = (t) => t.replace(/'/g, "''");
+  return [
+    MARCAS.salasInicio,
+    ...salas.map(({ slug, sala }) => `        when '${slug}' then '${escapar(sala)}'`),
+    MARCAS.salasFin,
+  ].join("\n");
+}
+
+/** Reemplaza el texto entre dos marcas dentro de un archivo SQL. */
+function reemplazarBloque(texto, inicio, fin, contenido, archivo) {
+  const i = texto.indexOf(inicio);
+  const f = texto.indexOf(fin);
+  if (i === -1 || f === -1) {
+    throw new Error(`Faltan las marcas ${inicio} / ${fin} en ${archivo}`);
+  }
+  return texto.slice(0, i) + contenido + texto.slice(f + fin.length);
+}
+
 /* ------------------------------------------------------------
    3. Escribir los archivos
    ------------------------------------------------------------ */
 
 const plantilla = leerPlantilla();
+const salas = leerSalas();
 const cantidadSemanal = plantilla.reduce((total, dia) => total + dia.slots.length, 0);
+const SEMANAS = 4;
 
 const cambios = [];
 
-/* --- 3a. El bloque de la plantilla dentro del esquema --- */
-const schemaOriginal = readFileSync(SCHEMA, "utf8");
-const iInicio = schemaOriginal.indexOf(MARCAS.inicio);
-const iFin = schemaOriginal.indexOf(MARCAS.fin);
-
-if (iInicio === -1 || iFin === -1) {
-  throw new Error("Faltan las marcas de la plantilla semanal en 00001_schema.sql");
+/* --- 3a. La grilla y las salas dentro de cada migración --- */
+//  00001 crea la función desde cero (instalación nueva) y 00003 la
+//  vuelve a crear con la grilla corregida (base ya en uso). Las dos
+//  tienen que decir exactamente lo mismo.
+function sincronizar(archivo) {
+  const original = readFileSync(archivo, "utf8");
+  let texto = reemplazarBloque(original, MARCAS.inicio, MARCAS.fin, bloqueSQL(plantilla), archivo);
+  texto = reemplazarBloque(texto, MARCAS.salasInicio, MARCAS.salasFin, bloqueSalas(salas), archivo);
+  if (texto !== original) cambios.push([archivo, texto]);
+  return texto;
 }
 
-const schemaNuevo =
-  schemaOriginal.slice(0, iInicio) +
-  bloqueSQL(plantilla) +
-  schemaOriginal.slice(iFin + MARCAS.fin.length);
+const schemaNuevo = sincronizar(SCHEMA);
+const migracionNueva = sincronizar(UPDATE_MIGRATION);
 
-if (schemaNuevo !== schemaOriginal) {
-  cambios.push([SCHEMA, schemaNuevo]);
-}
-
-/* --- 3b. SETUP.sql con todo junto --- */
+/* --- 3b. SETUP.sql: instalación desde cero --- */
 const cabecera = `-- ============================================================
---  STRONG GYM — CONFIGURACIÓN COMPLETA DE SUPABASE
+--  STRONG FITNESS GYM — CONFIGURACIÓN COMPLETA DE SUPABASE
 -- ============================================================
+--
+--  ESTE ARCHIVO ES PARA UN PROYECTO NUEVO Y VACÍO.
+--  Si ya corriste una versión anterior, usá supabase/ACTUALIZAR.sql.
 --
 --  CÓMO USARLO
 --    1. Entrá a tu proyecto en https://supabase.com
@@ -137,8 +200,8 @@ const cabecera = `-- ===========================================================
 --    · Las tablas (socios, clases, reservas, consultas, novedades)
 --    · Las reglas de seguridad: cada socio sólo ve sus propias reservas
 --    · Las funciones de reservar y cancelar, sin sobreventa de cupos
---    · El contenido inicial: disciplinas, profes, planes
---    · Las clases de las próximas 4 semanas (${cantidadSemanal} por semana)
+--    · El contenido real: disciplinas, planes y la grilla de clases
+--    · Las clases de las próximas ${SEMANAS} semanas (${cantidadSemanal} por semana)
 --
 --  Es seguro correrlo más de una vez: no duplica datos.
 --
@@ -158,21 +221,50 @@ const setupNuevo =
   "-- ############################################################\n\n" +
   schemaNuevo.trimStart() +
   "\n\n\n-- ############################################################\n" +
-  "-- #  PARTE 2 de 2 — DATOS INICIALES (disciplinas, profes, clases)\n" +
+  "-- #  PARTE 2 de 2 — DATOS (disciplinas, planes, clases)\n" +
   "-- #  Original: supabase/migrations/00002_seed.sql\n" +
   "-- ############################################################\n\n" +
   readFileSync(SEED, "utf8").trimStart();
 
-let setupOriginal = "";
-try {
-  setupOriginal = readFileSync(SETUP, "utf8");
-} catch {
-  // todavía no existe
+/* --- 3c. ACTUALIZAR.sql: para una base que ya está en uso --- */
+const actualizarNuevo =
+  `-- ============================================================
+--  STRONG FITNESS GYM — PONER LA BASE AL DÍA
+-- ============================================================
+--
+--  ESTE ARCHIVO ES PARA UN PROYECTO QUE YA ESTÁ FUNCIONANDO.
+--  Reemplaza los datos de ejemplo de la primera carga por los
+--  datos reales del gimnasio y corrige la grilla de clases.
+--
+--  CÓMO USARLO (se hace todo desde el celular)
+--    1. Entrá a https://supabase.com y abrí tu proyecto
+--    2. Menú → "SQL Editor" → "New query"
+--    3. Copiá TODO este archivo, pegalo y tocá "Run"
+--    4. Al final del archivo hay una consulta para comprobar
+--       que quedó bien
+--
+--  NO BORRA CUENTAS NI RESERVAS. Es seguro correrlo más de una vez.
+--
+--  ARCHIVO GENERADO — no lo edites a mano.
+--  El original es supabase/migrations/00003_datos_reales.sql.
+--  Para regenerarlo:  node scripts/build-sql.mjs
+-- ============================================================
+
+
+` + migracionNueva.trimStart();
+
+function sincronizarGenerado(archivo, contenido) {
+  let anterior = "";
+  try {
+    anterior = readFileSync(archivo, "utf8");
+  } catch {
+    // todavía no existe
+  }
+  if (contenido !== anterior) cambios.push([archivo, contenido]);
 }
 
-if (setupNuevo !== setupOriginal) {
-  cambios.push([SETUP, setupNuevo]);
-}
+sincronizarGenerado(SETUP, setupNuevo);
+sincronizarGenerado(UPDATE, actualizarNuevo);
 
 /* ------------------------------------------------------------
    4. Guardar o avisar

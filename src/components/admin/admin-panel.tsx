@@ -126,7 +126,7 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
   return (
     <div className="flex flex-col gap-6">
       {isDemo ? (
-        <p className="rounded-xl border border-volt/30 bg-volt/[0.06] px-4 py-3 text-[0.75rem] leading-relaxed text-mist">
+        <p className="rounded-xl border border-brand/30 bg-brand/[0.06] px-4 py-3 text-[0.75rem] leading-relaxed text-mist">
           {dict.admin.demoNotice}
         </p>
       ) : null}
@@ -145,7 +145,7 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
             onClick={() => setTab(id)}
             className={cn(
               "flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-[0.8125rem] font-medium transition-colors",
-              tab === id ? "bg-volt text-ink" : "text-mist hover:bg-white/5 hover:text-chalk",
+              tab === id ? "bg-brand text-onbrand" : "text-mist hover:bg-cloud hover:text-ink",
             )}
           >
             <Icon className="size-4" aria-hidden="true" />
@@ -154,7 +154,7 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
               <span
                 className={cn(
                   "rounded-full px-1.5 py-0.5 text-[0.625rem] font-bold",
-                  tab === id ? "bg-ink/15 text-ink" : "bg-flame/20 text-flame",
+                  tab === id ? "bg-onbrand/15 text-onbrand" : "bg-alert/20 text-alert",
                 )}
               >
                 {badge}
@@ -173,11 +173,11 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
                 key={label}
                 className="flex items-center gap-4 rounded-2xl border border-line bg-card p-5"
               >
-                <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-line bg-void text-volt">
+                <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-line bg-paper text-brand">
                   <Icon className="size-5" aria-hidden="true" />
                 </span>
                 <div>
-                  <p className="display-xl text-[1.75rem] leading-none text-chalk">{value}</p>
+                  <p className="display-xl text-[1.75rem] leading-none text-ink">{value}</p>
                   <p className="mt-1 text-[0.75rem] leading-snug text-fog">{label}</p>
                 </div>
               </div>
@@ -187,8 +187,8 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
           <div className="grid gap-5 lg:grid-cols-2">
             {/* Próximas clases de hoy */}
             <div className="rounded-2xl border border-line bg-card p-5">
-              <h2 className="mb-4 flex items-center gap-2 text-[0.9375rem] font-semibold text-chalk">
-                <CalendarDays className="size-4 text-volt" aria-hidden="true" />
+              <h2 className="mb-4 flex items-center gap-2 text-[0.9375rem] font-semibold text-ink">
+                <CalendarDays className="size-4 text-brand" aria-hidden="true" />
                 {dict.nav.schedule} · {formatLongDate(now, locale)}
               </h2>
 
@@ -225,8 +225,8 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
 
             {/* Ocupación por clase */}
             <div className="rounded-2xl border border-line bg-card p-5">
-              <h2 className="mb-4 flex items-center gap-2 text-[0.9375rem] font-semibold text-chalk">
-                <TrendingUp className="size-4 text-volt" aria-hidden="true" />
+              <h2 className="mb-4 flex items-center gap-2 text-[0.9375rem] font-semibold text-ink">
+                <TrendingUp className="size-4 text-brand" aria-hidden="true" />
                 {dict.admin.stats.occupancy}
               </h2>
 
@@ -240,7 +240,7 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
                       <span className="w-28 shrink-0 truncate text-[0.75rem] text-mist">
                         {gymClass.name}
                       </span>
-                      <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-void">
+                      <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-paper">
                         <span
                           className="block h-full rounded-full"
                           style={{ width: `${load}%`, backgroundColor: gymClass.color }}
@@ -269,7 +269,7 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
             <div className="overflow-x-auto">
               <table className="w-full min-w-[46rem] border-collapse text-left">
                 <thead>
-                  <tr className="border-b border-line bg-void/40">
+                  <tr className="border-b border-line bg-paper/40">
                     {[
                       dict.admin.table.member,
                       dict.admin.table.class,
@@ -293,9 +293,9 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
                     const status = bookingStatuses[booking.id] ?? booking.status;
 
                     return (
-                      <tr key={booking.id} className="transition-colors hover:bg-white/[0.02]">
+                      <tr key={booking.id} className="transition-colors hover:bg-cloud">
                         <td className="px-5 py-3.5">
-                          <span className="block text-[0.8125rem] font-medium text-chalk">
+                          <span className="block text-[0.8125rem] font-medium text-ink">
                             {booking.memberName}
                           </span>
                           <span className="block text-[0.6875rem] text-fog">
@@ -339,7 +339,7 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
                               }
                               title={dict.admin.actions.markAttended}
                               aria-label={dict.admin.actions.markAttended}
-                              className="grid size-8 place-items-center rounded-lg border border-line text-fog transition-colors hover:border-volt/60 hover:text-volt"
+                              className="grid size-8 place-items-center rounded-lg border border-line text-fog transition-colors hover:border-brand/60 hover:text-brand"
                             >
                               <Check className="size-3.5" aria-hidden="true" />
                             </button>
@@ -351,7 +351,7 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
                               }
                               title={dict.admin.actions.markNoShow}
                               aria-label={dict.admin.actions.markNoShow}
-                              className="grid size-8 place-items-center rounded-lg border border-line text-fog transition-colors hover:border-flame/60 hover:text-flame"
+                              className="grid size-8 place-items-center rounded-lg border border-line text-fog transition-colors hover:border-alert/60 hover:text-alert"
                             >
                               <ShieldAlert className="size-3.5" aria-hidden="true" />
                             </button>
@@ -363,7 +363,7 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
                               }
                               title={dict.admin.actions.cancelBooking}
                               aria-label={dict.admin.actions.cancelBooking}
-                              className="grid size-8 place-items-center rounded-lg border border-line text-fog transition-colors hover:border-flame/60 hover:text-flame"
+                              className="grid size-8 place-items-center rounded-lg border border-line text-fog transition-colors hover:border-alert/60 hover:text-alert"
                             >
                               <X className="size-3.5" aria-hidden="true" />
                             </button>
@@ -395,14 +395,14 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
                   key={message.id}
                   className={cn(
                     "rounded-2xl border bg-card p-5 transition-colors",
-                    isRead ? "border-line" : "border-volt/35",
+                    isRead ? "border-line" : "border-brand/35",
                   )}
                 >
                   <header className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-[0.875rem] font-semibold text-chalk">{message.name}</p>
+                      <p className="text-[0.875rem] font-semibold text-ink">{message.name}</p>
                       <p className="mt-0.5 flex flex-wrap items-center gap-x-3 text-[0.75rem] text-fog">
-                        <a href={`mailto:${message.email}`} className="hover:text-volt">
+                        <a href={`mailto:${message.email}`} className="hover:text-brand">
                           {message.email}
                         </a>
                         {message.phone ? <span>{message.phone}</span> : null}
@@ -423,8 +423,8 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
                         className={cn(
                           "rounded-full border px-3 py-1.5 text-[0.6875rem] font-semibold transition-colors",
                           isRead
-                            ? "border-line text-fog hover:text-chalk"
-                            : "border-volt/50 text-volt hover:bg-volt/10",
+                            ? "border-line text-fog hover:text-ink"
+                            : "border-brand/50 text-brand hover:bg-brand/10",
                         )}
                       >
                         {dict.admin.actions.markRead}
@@ -453,7 +453,7 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
                 key={gymClass.id}
                 className={cn(
                   "rounded-2xl border bg-card p-5 transition-colors",
-                  active ? "border-line" : "border-flame/30 opacity-70",
+                  active ? "border-line" : "border-alert/30 opacity-70",
                 )}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -467,14 +467,14 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
                     aria-pressed={active}
                     className={cn(
                       "relative h-6 w-11 shrink-0 rounded-full border transition-colors",
-                      active ? "border-volt/60 bg-volt/25" : "border-line bg-void",
+                      active ? "border-brand/60 bg-brand/25" : "border-line bg-paper",
                     )}
                     aria-label={dict.admin.actions.toggleClass}
                   >
                     <span
                       className={cn(
                         "absolute top-0.5 size-4.5 rounded-full transition-all",
-                        active ? "left-5.5 bg-volt" : "left-0.5 bg-fog",
+                        active ? "left-5.5 bg-brand" : "left-0.5 bg-fog",
                       )}
                     />
                   </button>
@@ -485,7 +485,7 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
                     <dt className="text-[0.625rem] tracking-wide text-fog uppercase">
                       {dict.admin.table.spots}
                     </dt>
-                    <dd className="mt-0.5 text-[0.875rem] font-semibold text-chalk">
+                    <dd className="mt-0.5 text-[0.875rem] font-semibold text-ink">
                       {gymClass.capacity}
                     </dd>
                   </div>
@@ -493,7 +493,7 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
                     <dt className="text-[0.625rem] tracking-wide text-fog uppercase">
                       {dict.classes.duration}
                     </dt>
-                    <dd className="mt-0.5 text-[0.875rem] font-semibold text-chalk">
+                    <dd className="mt-0.5 text-[0.875rem] font-semibold text-ink">
                       {gymClass.duration}
                     </dd>
                   </div>
@@ -501,7 +501,7 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
                     <dt className="text-[0.625rem] tracking-wide text-fog uppercase">
                       {dict.schedule.week}
                     </dt>
-                    <dd className="mt-0.5 text-[0.875rem] font-semibold text-chalk">
+                    <dd className="mt-0.5 text-[0.875rem] font-semibold text-ink">
                       {gymClass.sessionsThisWeek}
                     </dd>
                   </div>
@@ -535,14 +535,14 @@ function StatusPill({
   const map: Record<string, { label: string; className: string }> = {
     confirmed: {
       label: dict.account.confirmed,
-      className: "border-volt/40 text-volt bg-volt/10",
+      className: "border-brand/40 text-brand bg-brand/10",
     },
     attended: {
       label: dict.account.attended,
       className: "border-emerald-400/40 text-emerald-300 bg-emerald-400/10",
     },
-    no_show: { label: dict.account.noShow, className: "border-flame/40 text-flame bg-flame/10" },
-    cancelled: { label: dict.account.cancelled, className: "border-line text-fog bg-void/40" },
+    no_show: { label: dict.account.noShow, className: "border-alert/40 text-alert bg-alert/10" },
+    cancelled: { label: dict.account.cancelled, className: "border-line text-fog bg-paper/40" },
   };
 
   const entry = map[status] ?? map.confirmed;

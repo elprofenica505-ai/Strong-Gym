@@ -10,6 +10,10 @@ export async function Coaches({ locale }: { locale: Locale }) {
   const dict = getDictionary(locale);
   const coaches = await getCoaches();
 
+  // Sin entrenadores cargados no mostramos la sección: preferimos
+  // que falte a inventar nombres de personas.
+  if (coaches.length === 0) return null;
+
   return (
     <Section id="profes" className="border-b border-line">
       <SectionHeading
@@ -25,7 +29,7 @@ export async function Coaches({ locale }: { locale: Locale }) {
 
           return (
             <Reveal key={coach.id} delay={index * 60} className="h-full">
-              <article className="group flex h-full flex-col rounded-2xl border border-line bg-card p-6 transition-all duration-300 hover:-translate-y-1 hover:border-white/20">
+              <article className="group flex h-full flex-col rounded-2xl border border-line bg-card p-6 transition-all duration-300 hover:-translate-y-1 hover:border-brand/40">
                 <div className="flex items-center gap-4">
                   {/* Avatar con iniciales */}
                   <span
@@ -41,7 +45,7 @@ export async function Coaches({ locale }: { locale: Locale }) {
                   </span>
 
                   <div className="min-w-0">
-                    <h3 className="truncate text-[1.0625rem] font-semibold text-chalk">
+                    <h3 className="truncate text-[1.0625rem] font-semibold text-ink">
                       {coach.name}
                     </h3>
                     <p className="mt-0.5 text-[0.75rem] leading-snug" style={{ color: coach.color }}>
@@ -64,15 +68,17 @@ export async function Coaches({ locale }: { locale: Locale }) {
                     ))}
                   </div>
 
-                  <a
-                    href={siteConfig.social.instagram}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`Instagram de ${coach.name}`}
-                    className="grid size-9 shrink-0 place-items-center rounded-full border border-line text-fog transition-colors hover:border-volt/60 hover:text-volt"
-                  >
-                    <InstagramIcon className="size-4" />
-                  </a>
+                  {siteConfig.social.instagram ? (
+                    <a
+                      href={siteConfig.social.instagram}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Instagram de ${coach.name}`}
+                      className="grid size-9 shrink-0 place-items-center rounded-full border border-line text-fog transition-colors hover:border-brand/60 hover:text-brand"
+                    >
+                      <InstagramIcon className="size-4" />
+                    </a>
+                  ) : null}
                 </div>
               </article>
             </Reveal>

@@ -73,8 +73,8 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
   /* ---------- Pantalla de "revisá tu correo" ---------- */
   if (confirmationEmail) {
     return (
-      <div className="flex flex-col items-center gap-4 rounded-2xl border border-volt/35 bg-volt/[0.06] p-8 text-center">
-        <span className="grid size-14 place-items-center rounded-full bg-volt text-ink">
+      <div className="flex flex-col items-center gap-4 rounded-2xl border border-brand/35 bg-brand/[0.06] p-8 text-center">
+        <span className="grid size-14 place-items-center rounded-full bg-brand text-onbrand">
           <CheckCircle2 className="size-7" aria-hidden="true" />
         </span>
 
@@ -86,7 +86,7 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
 
         <Link
           href={`/${locale}/ingresar`}
-          className="text-[0.8125rem] font-semibold text-volt transition-opacity hover:opacity-80"
+          className="text-[0.8125rem] font-semibold text-brand transition-opacity hover:opacity-80"
         >
           {dict.auth.goLogin}
         </Link>
@@ -102,11 +102,11 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
     >
       {error ? (
         <div
-          className="flex items-start gap-2.5 rounded-xl border border-flame/40 bg-flame/10 px-4 py-3"
+          className="flex items-start gap-2.5 rounded-xl border border-alert/40 bg-alert/10 px-4 py-3"
           role="alert"
         >
-          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-flame" aria-hidden="true" />
-          <p className="text-[0.8125rem] leading-snug text-flame">{error}</p>
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-alert" aria-hidden="true" />
+          <p className="text-[0.8125rem] leading-snug text-alert">{error}</p>
         </div>
       ) : null}
 
@@ -156,7 +156,7 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
           type="button"
           onClick={() => setShowPassword((v) => !v)}
           aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-          className="absolute top-9.5 right-3.5 text-fog transition-colors hover:text-chalk"
+          className="absolute top-9.5 right-3.5 text-fog transition-colors hover:text-ink"
         >
           {showPassword ? (
             <EyeOff className="size-4" aria-hidden="true" />
@@ -190,18 +190,18 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
         {isLogin ? dict.auth.noAccount : dict.auth.hasAccount}{" "}
         <Link
           href={`/${locale}/${isLogin ? "registro" : "ingresar"}`}
-          className="font-semibold text-volt transition-opacity hover:opacity-80"
+          className="font-semibold text-brand transition-opacity hover:opacity-80"
         >
           {isLogin ? dict.auth.goRegister : dict.auth.goLogin}
         </Link>
       </p>
 
       {isDemo ? (
-        <div className="rounded-xl border border-line bg-void/50 px-4 py-3">
+        <div className="rounded-xl border border-line bg-paper/50 px-4 py-3">
           <p className="text-[0.75rem] leading-relaxed text-fog">{dict.auth.demoNotice}</p>
 
           {isLogin ? (
-            <p className="mt-2 font-mono text-[0.6875rem] leading-relaxed text-volt">
+            <p className="mt-2 font-mono text-[0.6875rem] leading-relaxed text-brand">
               admin@stronggym.com · admin123
             </p>
           ) : null}

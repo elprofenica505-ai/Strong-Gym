@@ -1,5 +1,5 @@
 -- ============================================================
---  Strong Gym — Esquema de base de datos (Supabase / PostgreSQL)
+--  Strong Fitness Gym — Esquema de base de datos (Supabase / PostgreSQL)
 -- ============================================================
 --  Cómo usarlo:
 --    1. Entrá a tu proyecto en https://supabase.com
@@ -58,7 +58,7 @@ create index if not exists profiles_email_idx on public.profiles (lower(email));
 
 
 -- ------------------------------------------------------------
---  3. DISCIPLINAS (funcional, spinning, yoga...)
+--  3. DISCIPLINAS (pesas y máquinas, boxeo, zumba...)
 -- ------------------------------------------------------------
 
 create table if not exists public.classes (
@@ -71,7 +71,7 @@ create table if not exists public.classes (
   intensity      public.intensity_level not null default 'medium',
   duration_min   integer not null default 45 check (duration_min between 10 and 180),
   capacity       integer not null default 16 check (capacity between 1 and 200),
-  color          text not null default '#cbf73f',
+  color          text not null default '#d81a22',
   sort_order     integer not null default 0,
   is_active      boolean not null default true,
   created_at     timestamptz not null default now()
@@ -94,7 +94,7 @@ create table if not exists public.coaches (
   bio_en     text not null default '',
   specialties text[] not null default '{}',
   initials   text not null default '',
-  color      text not null default '#cbf73f',
+  color      text not null default '#d81a22',
   sort_order integer not null default 0,
   is_active  boolean not null default true,
   created_at timestamptz not null default now()
@@ -114,7 +114,8 @@ create table if not exists public.plans (
   name_en      text not null,
   tagline_es   text not null default '',
   tagline_en   text not null default '',
-  price        numeric(10, 2) not null default 0,
+  -- Puede ser NULL: significa "precio a consultar", la web no inventa un número.
+  price        numeric(10, 2),
   period       text not null default 'month' check (period in ('month', 'week', 'session')),
   features_es  text[] not null default '{}',
   features_en  text[] not null default '{}',
@@ -122,6 +123,11 @@ create table if not exists public.plans (
   sort_order   integer not null default 0,
   is_active    boolean not null default true
 );
+
+-- Si la tabla ya existía con price NOT NULL, la aflojamos: hay planes
+-- cuyo precio todavía no se publica.
+alter table public.plans alter column price drop not null;
+alter table public.plans alter column price drop default;
 
 -- El perfil referencia el plan por id (sin FK estricta para poder
 -- cambiar los IDs de los planes sin romper cuentas existentes).
@@ -429,60 +435,22 @@ begin
 -- >>> PLANTILLA SEMANAL (generada por scripts/build-sql.mjs — no editar a mano) >>>
       -- Misma grilla que src/lib/data/demo-sessions.ts (la web).
       -- día (0 = lunes), hora local del gimnasio, disciplina
-      -- Lunes
-      (0, '06:00'::time, 'funcional'),
-      (0, '07:00'::time, 'spinning'),
-      (0, '08:30'::time, 'stretching'),
-      (0, '10:00'::time, 'zumba'),
-      (0, '17:00'::time, 'funcional'),
-      (0, '18:00'::time, 'spinning'),
-      (0, '19:00'::time, 'cross-training'),
-      (0, '20:00'::time, 'boxeo'),
+      -- Lunes: sin clases dirigidas (sala abierta)
       -- Martes
-      (1, '06:00'::time, 'funcional'),
-      (1, '07:00'::time, 'hiit'),
-      (1, '09:00'::time, 'pilates'),
-      (1, '12:30'::time, 'spinning'),
-      (1, '17:30'::time, 'funcional'),
-      (1, '18:30'::time, 'boxeo'),
-      (1, '19:30'::time, 'cross-training'),
-      (1, '20:30'::time, 'stretching'),
+      (1, '06:00'::time, 'boxeo'),
+      (1, '17:30'::time, 'boxeo'),
+      (1, '20:00'::time, 'boxeo'),
       -- Miércoles
-      (2, '06:00'::time, 'cross-training'),
-      (2, '07:00'::time, 'spinning'),
-      (2, '10:00'::time, 'zumba'),
-      (2, '12:30'::time, 'hiit'),
-      (2, '17:00'::time, 'funcional'),
-      (2, '18:00'::time, 'pilates'),
-      (2, '19:00'::time, 'spinning'),
+      (2, '06:00'::time, 'boxeo'),
+      (2, '17:30'::time, 'boxeo'),
       (2, '20:00'::time, 'boxeo'),
       -- Jueves
-      (3, '06:00'::time, 'funcional'),
-      (3, '07:00'::time, 'spinning'),
-      (3, '10:30'::time, 'stretching'),
-      (3, '12:30'::time, 'hiit'),
-      (3, '17:30'::time, 'funcional'),
-      (3, '18:30'::time, 'cross-training'),
-      (3, '19:30'::time, 'boxeo'),
-      (3, '20:30'::time, 'yoga'),
-      -- Viernes
-      (4, '06:00'::time, 'funcional'),
-      (4, '07:00'::time, 'spinning'),
-      (4, '08:30'::time, 'yoga'),
-      (4, '10:00'::time, 'zumba'),
-      (4, '17:00'::time, 'funcional'),
-      (4, '18:00'::time, 'spinning'),
-      (4, '19:00'::time, 'cross-training'),
-      (4, '20:00'::time, 'boxeo'),
-      -- Sábado
-      (5, '08:00'::time, 'funcional'),
-      (5, '09:00'::time, 'spinning'),
-      (5, '10:00'::time, 'cross-training'),
-      (5, '11:00'::time, 'stretching'),
-      (5, '12:00'::time, 'zumba'),
-      -- Domingo
-      (6, '09:30'::time, 'yoga'),
-      (6, '11:00'::time, 'stretching')
+      (3, '06:00'::time, 'boxeo'),
+      (3, '17:30'::time, 'boxeo'),
+      (3, '20:00'::time, 'boxeo')
+      -- Viernes: sin clases dirigidas (sala abierta)
+      -- Sábado: sin clases dirigidas (sala abierta)
+      -- Domingo: CERRADO
 -- <<< PLANTILLA SEMANAL <<<
     ) as t(day_offset, start_time, slug)
   loop
@@ -517,14 +485,12 @@ begin
       v_start + (v_class.duration_min || ' minutes')::interval,
       v_class.capacity,
       case v_class.slug
-        when 'spinning' then 'Sala Cycling'
-        when 'yoga' then 'Salón Zen'
-        when 'pilates' then 'Salón Zen'
-        when 'stretching' then 'Salón Zen'
-        when 'boxeo' then 'Ring'
-        when 'hiit' then 'Salón B'
-        when 'zumba' then 'Salón B'
-        else 'Salón A'
+-- >>> SALAS >>>
+        when 'boxeo' then 'Área de boxeo'
+        when 'musculacion' then 'Sala de máquinas'
+        when 'zumba' then 'Salón de clases'
+-- <<< SALAS <<<
+        else 'Salón principal'
       end
     );
 
