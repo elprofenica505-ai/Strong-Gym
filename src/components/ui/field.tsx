@@ -5,9 +5,9 @@ import { useId } from "react";
 import { cn } from "@/lib/utils";
 
 const controlBase =
-  "w-full rounded-xl border bg-void/60 px-4 text-chalk placeholder:text-fog/50 " +
+  "w-full rounded-xl border bg-paper/60 px-4 text-ink placeholder:text-fog/50 " +
   "transition-colors focus:outline-none focus:ring-0 " +
-  "border-line focus:border-volt/70 disabled:opacity-60";
+  "border-line focus:border-brand/70 disabled:opacity-60";
 
 function Wrapper({
   label,
@@ -38,7 +38,7 @@ function Wrapper({
       {children}
 
       {error ? (
-        <p className="text-[0.75rem] font-medium text-flame" role="alert">
+        <p className="text-[0.75rem] font-medium text-alert" role="alert">
           {error}
         </p>
       ) : hint ? (
@@ -72,7 +72,7 @@ export function Input({ label, hint, error, wrapperClassName, className, id, ...
         className={cn(
           controlBase,
           "h-12",
-          error && "border-flame/70 focus:border-flame",
+          error && "border-alert/70 focus:border-alert",
           className,
         )}
         aria-invalid={error ? true : undefined}
@@ -116,7 +116,7 @@ export function Textarea({
         className={cn(
           controlBase,
           "resize-y py-3 leading-relaxed",
-          error && "border-flame/70 focus:border-flame",
+          error && "border-alert/70 focus:border-alert",
           className,
         )}
         aria-invalid={error ? true : undefined}
@@ -157,7 +157,7 @@ export function Select({
     >
       <select
         id={inputId}
-        className={cn(controlBase, "h-12 appearance-none pr-10", error && "border-flame/70", className)}
+        className={cn(controlBase, "h-12 appearance-none pr-10", error && "border-alert/70", className)}
         style={{
           backgroundImage:
             "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2398a1b0' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")",
@@ -191,7 +191,7 @@ export function Checkbox({
       <input
         id={inputId}
         type="checkbox"
-        className="mt-0.5 size-4 shrink-0 cursor-pointer appearance-none rounded border border-line bg-void checked:border-volt checked:bg-volt"
+        className="mt-0.5 size-4 shrink-0 cursor-pointer appearance-none rounded border border-line bg-paper checked:border-brand checked:bg-brand"
         style={{
           backgroundImage:
             "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%230a0c07' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E\")",

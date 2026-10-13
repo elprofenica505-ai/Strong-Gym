@@ -7,13 +7,13 @@ import { cn } from "@/lib/utils";
 const styles = {
   success: {
     icon: CheckCircle2,
-    ring: "border-volt/40 bg-[#141a0d]",
-    iconColor: "text-volt",
+    ring: "border-brand/40 bg-[#141a0d]",
+    iconColor: "text-brand",
   },
   error: {
     icon: AlertTriangle,
-    ring: "border-flame/40 bg-[#1c1009]",
-    iconColor: "text-flame",
+    ring: "border-alert/40 bg-[#1c1009]",
+    iconColor: "text-alert",
   },
   info: {
     icon: Info,
@@ -48,11 +48,11 @@ export function Toaster() {
             style={{ animation: "rise 0.35s cubic-bezier(0.16,1,0.3,1) both" }}
           >
             <Icon className={cn("mt-0.5 size-4 shrink-0", style.iconColor)} aria-hidden="true" />
-            <p className="flex-1 text-[0.8125rem] leading-snug text-chalk">{toast.message}</p>
+            <p className="flex-1 text-[0.8125rem] leading-snug text-ink">{toast.message}</p>
             <button
               type="button"
               onClick={() => dismissToast(toast.id)}
-              className="text-fog transition-colors hover:text-chalk"
+              className="text-fog transition-colors hover:text-ink"
               aria-label="Cerrar"
             >
               <X className="size-3.5" />

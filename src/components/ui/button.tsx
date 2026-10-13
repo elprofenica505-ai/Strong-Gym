@@ -2,23 +2,29 @@ import Link from "next/link";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-type Variant = "primary" | "outline" | "ghost" | "dark" | "flame";
+type Variant = "primary" | "outline" | "outline-dark" | "ghost" | "dark" | "white";
 type Size = "sm" | "md" | "lg";
 
 const base =
   "inline-flex items-center justify-center gap-2 font-semibold tracking-tight transition-all duration-200 " +
   "disabled:cursor-not-allowed disabled:opacity-50 select-none whitespace-nowrap " +
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt focus-visible:ring-offset-2 focus-visible:ring-offset-void";
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2";
 
 const variants: Record<Variant, string> = {
+  /** Rojo de marca. La acción principal en todo el sitio. */
   primary:
-    "bg-volt text-ink hover:bg-volt-600 active:scale-[0.98] shadow-[0_10px_30px_-12px_rgba(203,247,63,0.7)]",
+    "bg-brand text-onbrand hover:bg-brand-600 active:scale-[0.98] shadow-[0_10px_30px_-12px_rgba(216,26,34,0.65)]",
+  /** Sobre fondo claro. */
   outline:
-    "border border-white/20 text-chalk hover:border-volt/70 hover:text-volt hover:bg-volt/5 active:scale-[0.98]",
-  ghost: "text-mist hover:text-chalk hover:bg-white/5",
-  dark: "bg-card-2 text-chalk border border-line hover:border-white/25 hover:bg-card active:scale-[0.98]",
-  flame:
-    "bg-flame text-white hover:brightness-110 active:scale-[0.98] shadow-[0_10px_30px_-12px_rgba(255,91,38,0.7)]",
+    "border border-ink/15 text-ink hover:border-brand hover:text-brand hover:bg-brand-soft active:scale-[0.98]",
+  /** Sobre la portada o el pie, que son negros. */
+  "outline-dark":
+    "border border-white/25 text-white hover:border-brand hover:bg-brand/15 active:scale-[0.98]",
+  ghost: "text-mist hover:text-ink hover:bg-ink/5",
+  /** Negro sólido: contraste fuerte sobre superficies rojas o claras. */
+  dark: "bg-night text-white hover:bg-night-2 active:scale-[0.98]",
+  /** Blanco sólido: para usar encima del rojo. */
+  white: "bg-white text-ink hover:bg-white/90 active:scale-[0.98]",
 };
 
 const sizes: Record<Size, string> = {

@@ -1,33 +1,52 @@
 import Link from "next/link";
-import { Dumbbell } from "lucide-react";
+import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
+import { BrandMark } from "./brand-mark";
 
+/**
+ * Logo del sitio: el emblema del triángulo + el nombre del gimnasio.
+ * `tone` adapta el texto al fondo donde está (claro u oscuro); el
+ * triángulo rojo funciona igual en los dos.
+ */
 export function Logo({
   locale,
   name,
   className,
   compact = false,
+  tone = "light",
 }: {
   locale: string;
   name?: string;
   className?: string;
   compact?: boolean;
+  tone?: "light" | "dark";
 }) {
   return (
     <Link
       href={`/${locale}`}
-      aria-label={name ?? "Strong Gym"}
+      aria-label={name ?? siteConfig.name}
       className={cn("group flex items-center gap-2.5", className)}
     >
-      <span className="relative grid size-9 shrink-0 place-items-center rounded-xl bg-volt text-ink transition-transform duration-300 group-hover:-rotate-6 sm:size-10">
-        <Dumbbell className="size-4.5 sm:size-5" strokeWidth={2.5} aria-hidden="true" />
-      </span>
+      <BrandMark className="size-9 shrink-0 transition-transform duration-300 group-hover:scale-110 sm:size-10" />
 
       {!compact ? (
-        <span className="display-xl flex items-baseline text-[1.125rem] tracking-tight text-chalk sm:text-[1.25rem]">
-          Strong
-          <span className="text-volt">.</span>
-          <span className="text-fog">Gym</span>
+        <span className="flex flex-col leading-none">
+          <span
+            className={cn(
+              "display-xl text-[1.0625rem] tracking-[0.01em] sm:text-[1.1875rem]",
+              tone === "dark" ? "text-white" : "text-ink",
+            )}
+          >
+            Strong
+          </span>
+          <span
+            className={cn(
+              "mt-0.5 text-[0.5625rem] font-semibold tracking-[0.22em] uppercase sm:text-[0.625rem]",
+              tone === "dark" ? "text-white/55" : "text-fog",
+            )}
+          >
+            Fitness Gym
+          </span>
         </span>
       ) : null}
     </Link>

@@ -28,7 +28,7 @@ export function SectionHeading({
     >
       {eyebrow ? (
         <span className="eyebrow">
-          <span className="h-px w-6 bg-volt" aria-hidden="true" />
+          <span className="h-px w-6 bg-brand" aria-hidden="true" />
           {eyebrow}
         </span>
       ) : null}
@@ -36,7 +36,7 @@ export function SectionHeading({
       <h2
         className={cn(
           "display-xl max-w-3xl text-[2rem] leading-[0.92] sm:text-[2.75rem] lg:text-[3.5rem]",
-          light ? "text-ink" : "text-chalk",
+          light ? "text-onbrand" : "text-ink",
         )}
       >
         {title}
@@ -46,7 +46,7 @@ export function SectionHeading({
         <p
           className={cn(
             "max-w-2xl text-[0.9375rem] leading-relaxed sm:text-base",
-            light ? "text-ink/70" : "text-fog",
+            light ? "text-onbrand/70" : "text-fog",
           )}
         >
           {subtitle}
