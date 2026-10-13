@@ -7,7 +7,7 @@
     "build": "next build",
     "build:sql": "node scripts/build-sql.mjs",
     "dev": "next dev",
-    "lint": "next lint",
+    "lint": "eslint .",
     "start": "next start",
     "test:sql": "node scripts/test-sql.mjs",
     "typecheck": "tsc --noEmit"
@@ -30,6 +30,8 @@
     "@types/node": "^24.9.2",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.5",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.4.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3"
   },

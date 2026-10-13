@@ -29,6 +29,9 @@ jobs:
       - name: Revisar tipos de TypeScript
         run: npm run typecheck
 
+      - name: Revisar el código con ESLint
+        run: npm run lint
+
       - name: Compilar
         run: npm run build
         env:
