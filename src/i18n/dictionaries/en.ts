@@ -4,7 +4,7 @@ const en: Dictionary = {
   meta: {
     title: "Strong Gym | Train hard, train with us",
     description:
-      "Gym with instructor-led classes, weight training and functional fitness. Book your class online in seconds. Plans from $19,900 a month.",
+      "Gym with instructor-led classes, weight training and functional fitness. Book your class online in seconds. Plans from $25 a month.",
     keywords: "gym, group classes, functional training, weight training, crossfit, book a class",
   },
 
@@ -169,7 +169,7 @@ const en: Dictionary = {
       "App to book classes and track progress",
       "Locker rooms, showers and lockers",
     ],
-    note: "Prices in Argentine pesos. Ask about family and student discounts.",
+    note: "Prices in US dollars. Ask about family, student and corporate discounts.",
     askForPlan: "Ask about this plan",
   },
 
@@ -237,7 +237,7 @@ const en: Dictionary = {
       },
       {
         q: "Is there parking?",
-        a: "We have our own free parking for members, subject to availability, plus a bike rack at the entrance.",
+        a: "We have free parking for members, subject to availability, plus a bike rack at the entrance.",
       },
       {
         q: "Can I freeze my plan for holidays?",
@@ -250,8 +250,8 @@ const en: Dictionary = {
     title: "Visit us or get in touch",
     subtitle: "We're five blocks from the main square. Drop by and see the gym whenever you like.",
     addressLabel: "Address",
-    address: "Av. Siempre Fuerte 1450, Upper Floor",
-    city: "Buenos Aires, Argentina",
+    address: "Colonia Centroamérica, Rotonda 2 c. al sur",
+    city: "Managua, Nicaragua",
     phoneLabel: "Phone",
     emailLabel: "Email",
     hoursLabel: "Gym hours",

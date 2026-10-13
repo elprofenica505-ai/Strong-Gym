@@ -2,7 +2,7 @@ const es = {
   meta: {
     title: "Strong Gym | Entrená fuerte, entrená con nosotros",
     description:
-      "Gimnasio con clases dirigidas, musculación y entrenamiento funcional. Reservá tu clase online en segundos. Planes desde $19.900 por mes.",
+      "Gimnasio con clases dirigidas, musculación y entrenamiento funcional. Reservá tu clase online en segundos. Planes desde $25 al mes.",
     keywords: "gimnasio, clases dirigidas, entrenamiento funcional, musculación, crossfit, reservar clase",
   },
 
@@ -168,7 +168,7 @@ const es = {
       "App para reservar y ver tu progreso",
       "Vestuarios, duchas y lockers",
     ],
-    note: "Precios en pesos argentinos. Consultá por descuentos para grupos familiares y estudiantes.",
+    note: "Precios en dólares. Consultá por descuentos para grupos familiares, estudiantes y convenios de empresa.",
     askForPlan: "Consultar por este plan",
   },
 
@@ -190,7 +190,7 @@ const es = {
       },
       {
         quote:
-          "Lo mejor es poder reservar desde el celular. Llego del laburo, miro los horarios y entro. Nunca más quedarme sin lugar.",
+          "Lo mejor es poder reservar desde el celular. Salgo del trabajo, miro los horarios y entro. Nunca más quedarme sin lugar.",
         name: "Martín A.",
         role: "Plan Full",
       },
@@ -235,8 +235,8 @@ const es = {
         a: "Sí. La primera clase de cualquier disciplina es gratis. Solo tenés que reservarla desde la web.",
       },
       {
-        q: "¿Hay estacionamiento?",
-        a: "Contamos con cochera propia sin cargo para socios, sujeta a disponibilidad, y bicicletero en la puerta.",
+        q: "¿Hay parqueo?",
+        a: "Contamos con parqueo propio sin costo para socios, sujeto a disponibilidad, y parqueadero de bicicletas en la entrada.",
       },
       {
         q: "¿Puedo congelar mi plan por vacaciones?",
@@ -249,8 +249,8 @@ const es = {
     title: "Visitanos o escribinos",
     subtitle: "Estamos a cinco cuadras de la plaza principal. Pasá a conocer el gimnasio cuando quieras.",
     addressLabel: "Dirección",
-    address: "Av. Siempre Fuerte 1450, Planta Alta",
-    city: "Buenos Aires, Argentina",
+    address: "Colonia Centroamérica, Rotonda 2 c. al sur",
+    city: "Managua, Nicaragua",
     phoneLabel: "Teléfono",
     emailLabel: "Email",
     hoursLabel: "Horarios del gimnasio",

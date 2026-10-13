@@ -8,9 +8,9 @@ import type { WeekRange } from "@/lib/types";
  * ============================================================
  *  Todo el sitio piensa los horarios en la hora local del gym
  *  (config/site.ts → utcOffsetMinutes). Convertimos con un
- *  desplazamiento fijo: para Managua / Buenos Aires no hay
- *  horario de verano, así que es exacto y no necesita
- *  dependencias externas como date-fns-tz.
+ *  desplazamiento fijo: Managua no tiene horario de verano, así que
+ *  el cálculo es exacto y no necesita dependencias como date-fns-tz.
+ *  (Si algún día el gimnasio abre en un país con DST, revisá esto.)
  */
 
 const OFFSET_MS = siteConfig.utcOffsetMinutes * 60_000;
