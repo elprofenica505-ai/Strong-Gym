@@ -322,5 +322,81 @@ console.log("\n▶ Cerrar clases pasadas (ausentes)");
 const closed = await db.query(`select public.close_past_sessions() as n`);
 check("la función corre sin errores", typeof closed.rows[0].n === "number", `${closed.rows[0].n} marcadas`);
 
+/* ------------------------------------------------------------
+   El archivo único que se pega en Supabase
+   ------------------------------------------------------------
+   `supabase/SETUP.sql` es el que la gente copia y pega en el SQL
+   Editor. Acá lo probamos aparte, desde cero, para asegurarnos de
+   que la unión de los dos archivos funciona igual de bien.
+   ------------------------------------------------------------ */
+
+console.log("\n▶ El archivo único supabase/SETUP.sql (lo que se pega en Supabase)");
+
+try {
+  const unico = new PGlite();
+  await unico.exec(STUBS);
+  await unico.exec(readFileSync(`${REPO}/supabase/SETUP.sql`, "utf8"));
+
+  const resumen = (
+    await unico.query(`
+      select
+        (select count(*) from public.classes)  as clases,
+        (select count(*) from public.coaches)  as profes,
+        (select count(*) from public.plans)    as planes,
+        (select count(*) from public.sessions) as sesiones
+    `)
+  ).rows[0];
+
+  check(
+    "crea las 8 tablas",
+    (
+      await unico.query(
+        `select count(*)::int as n from pg_tables where schemaname = 'public'`,
+      )
+    ).rows[0].n === 8,
+  );
+  check("carga 9 disciplinas", Number(resumen.clases) === 9);
+  check("carga 6 profes", Number(resumen.profes) === 6);
+  check("carga 4 planes", Number(resumen.planes) === 4);
+  check("carga 188 clases (4 semanas)", Number(resumen.sesiones) === 188, `${resumen.sesiones}`);
+
+  const funciones = (
+    await unico.query(`
+      select count(*)::int as n
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and p.proname in ('book_session', 'cancel_booking', 'generate_week_sessions',
+                          'close_past_sessions', 'is_staff', 'handle_new_user')
+    `)
+  ).rows[0].n;
+  check("crea las 6 funciones (reservar, cancelar, generar...)", funciones === 6, `${funciones}`);
+
+  // Reserva de punta a punta usando sólo este archivo
+  const socio = (
+    await unico.query(
+      `insert into auth.users (email, raw_user_meta_data)
+       values ('prueba@example.com', '{"full_name":"Prueba"}'::jsonb) returning id`,
+    )
+  ).rows[0].id;
+  await unico.exec(`insert into auth.current_user values ('${socio}')`);
+
+  const clase = (
+    await unico.query(
+      `select id from public.sessions where starts_at > now() + interval '1 day' order by starts_at limit 1`,
+    )
+  ).rows[0].id;
+
+  const reserva = await unico.query(`select public.book_session($1) as r`, [clase]);
+  check("permite reservar", reserva.rows[0].r?.status === "confirmed");
+
+  const cancelacion = await unico.query(`select public.cancel_booking($1) as r`, [
+    reserva.rows[0].r?.id,
+  ]);
+  check("permite cancelar", cancelacion.rows[0].r?.status === "cancelled");
+} catch (error) {
+  check("SETUP.sql se ejecuta sin errores", false, String(error.message ?? error).slice(0, 120));
+}
+
 console.log(`\n${failures === 0 ? "🎉 Todo pasó" : `⚠️  ${failures} prueba(s) fallaron`}\n`);
 process.exit(failures === 0 ? 0 : 1);
