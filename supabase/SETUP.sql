@@ -1,6 +1,9 @@
 -- ============================================================
---  STRONG GYM — CONFIGURACIÓN COMPLETA DE SUPABASE
+--  STRONG FITNESS GYM — CONFIGURACIÓN COMPLETA DE SUPABASE
 -- ============================================================
+--
+--  ESTE ARCHIVO ES PARA UN PROYECTO NUEVO Y VACÍO.
+--  Si ya corriste una versión anterior, usá supabase/ACTUALIZAR.sql.
 --
 --  CÓMO USARLO
 --    1. Entrá a tu proyecto en https://supabase.com
@@ -12,8 +15,8 @@
 --    · Las tablas (socios, clases, reservas, consultas, novedades)
 --    · Las reglas de seguridad: cada socio sólo ve sus propias reservas
 --    · Las funciones de reservar y cancelar, sin sobreventa de cupos
---    · El contenido inicial: disciplinas, profes, planes
---    · Las clases de las próximas 4 semanas (47 por semana)
+--    · El contenido real: disciplinas, planes y la grilla de clases
+--    · Las clases de las próximas 4 semanas (9 por semana)
 --
 --  Es seguro correrlo más de una vez: no duplica datos.
 --
@@ -29,7 +32,7 @@
 -- ############################################################
 
 -- ============================================================
---  Strong Gym — Esquema de base de datos (Supabase / PostgreSQL)
+--  Strong Fitness Gym — Esquema de base de datos (Supabase / PostgreSQL)
 -- ============================================================
 --  Cómo usarlo:
 --    1. Entrá a tu proyecto en https://supabase.com
@@ -88,7 +91,7 @@ create index if not exists profiles_email_idx on public.profiles (lower(email));
 
 
 -- ------------------------------------------------------------
---  3. DISCIPLINAS (funcional, spinning, yoga...)
+--  3. DISCIPLINAS (pesas y máquinas, boxeo, zumba...)
 -- ------------------------------------------------------------
 
 create table if not exists public.classes (
@@ -101,7 +104,7 @@ create table if not exists public.classes (
   intensity      public.intensity_level not null default 'medium',
   duration_min   integer not null default 45 check (duration_min between 10 and 180),
   capacity       integer not null default 16 check (capacity between 1 and 200),
-  color          text not null default '#cbf73f',
+  color          text not null default '#d81a22',
   sort_order     integer not null default 0,
   is_active      boolean not null default true,
   created_at     timestamptz not null default now()
@@ -124,7 +127,7 @@ create table if not exists public.coaches (
   bio_en     text not null default '',
   specialties text[] not null default '{}',
   initials   text not null default '',
-  color      text not null default '#cbf73f',
+  color      text not null default '#d81a22',
   sort_order integer not null default 0,
   is_active  boolean not null default true,
   created_at timestamptz not null default now()
@@ -144,7 +147,8 @@ create table if not exists public.plans (
   name_en      text not null,
   tagline_es   text not null default '',
   tagline_en   text not null default '',
-  price        numeric(10, 2) not null default 0,
+  -- Puede ser NULL: significa "precio a consultar", la web no inventa un número.
+  price        numeric(10, 2),
   period       text not null default 'month' check (period in ('month', 'week', 'session')),
   features_es  text[] not null default '{}',
   features_en  text[] not null default '{}',
@@ -152,6 +156,11 @@ create table if not exists public.plans (
   sort_order   integer not null default 0,
   is_active    boolean not null default true
 );
+
+-- Si la tabla ya existía con price NOT NULL, la aflojamos: hay planes
+-- cuyo precio todavía no se publica.
+alter table public.plans alter column price drop not null;
+alter table public.plans alter column price drop default;
 
 -- El perfil referencia el plan por id (sin FK estricta para poder
 -- cambiar los IDs de los planes sin romper cuentas existentes).
@@ -459,60 +468,22 @@ begin
 -- >>> PLANTILLA SEMANAL (generada por scripts/build-sql.mjs — no editar a mano) >>>
       -- Misma grilla que src/lib/data/demo-sessions.ts (la web).
       -- día (0 = lunes), hora local del gimnasio, disciplina
-      -- Lunes
-      (0, '06:00'::time, 'funcional'),
-      (0, '07:00'::time, 'spinning'),
-      (0, '08:30'::time, 'stretching'),
-      (0, '10:00'::time, 'zumba'),
-      (0, '17:00'::time, 'funcional'),
-      (0, '18:00'::time, 'spinning'),
-      (0, '19:00'::time, 'cross-training'),
-      (0, '20:00'::time, 'boxeo'),
+      -- Lunes: sin clases dirigidas (sala abierta)
       -- Martes
-      (1, '06:00'::time, 'funcional'),
-      (1, '07:00'::time, 'hiit'),
-      (1, '09:00'::time, 'pilates'),
-      (1, '12:30'::time, 'spinning'),
-      (1, '17:30'::time, 'funcional'),
-      (1, '18:30'::time, 'boxeo'),
-      (1, '19:30'::time, 'cross-training'),
-      (1, '20:30'::time, 'stretching'),
+      (1, '06:00'::time, 'boxeo'),
+      (1, '17:30'::time, 'boxeo'),
+      (1, '20:00'::time, 'boxeo'),
       -- Miércoles
-      (2, '06:00'::time, 'cross-training'),
-      (2, '07:00'::time, 'spinning'),
-      (2, '10:00'::time, 'zumba'),
-      (2, '12:30'::time, 'hiit'),
-      (2, '17:00'::time, 'funcional'),
-      (2, '18:00'::time, 'pilates'),
-      (2, '19:00'::time, 'spinning'),
+      (2, '06:00'::time, 'boxeo'),
+      (2, '17:30'::time, 'boxeo'),
       (2, '20:00'::time, 'boxeo'),
       -- Jueves
-      (3, '06:00'::time, 'funcional'),
-      (3, '07:00'::time, 'spinning'),
-      (3, '10:30'::time, 'stretching'),
-      (3, '12:30'::time, 'hiit'),
-      (3, '17:30'::time, 'funcional'),
-      (3, '18:30'::time, 'cross-training'),
-      (3, '19:30'::time, 'boxeo'),
-      (3, '20:30'::time, 'yoga'),
-      -- Viernes
-      (4, '06:00'::time, 'funcional'),
-      (4, '07:00'::time, 'spinning'),
-      (4, '08:30'::time, 'yoga'),
-      (4, '10:00'::time, 'zumba'),
-      (4, '17:00'::time, 'funcional'),
-      (4, '18:00'::time, 'spinning'),
-      (4, '19:00'::time, 'cross-training'),
-      (4, '20:00'::time, 'boxeo'),
-      -- Sábado
-      (5, '08:00'::time, 'funcional'),
-      (5, '09:00'::time, 'spinning'),
-      (5, '10:00'::time, 'cross-training'),
-      (5, '11:00'::time, 'stretching'),
-      (5, '12:00'::time, 'zumba'),
-      -- Domingo
-      (6, '09:30'::time, 'yoga'),
-      (6, '11:00'::time, 'stretching')
+      (3, '06:00'::time, 'boxeo'),
+      (3, '17:30'::time, 'boxeo'),
+      (3, '20:00'::time, 'boxeo')
+      -- Viernes: sin clases dirigidas (sala abierta)
+      -- Sábado: sin clases dirigidas (sala abierta)
+      -- Domingo: CERRADO
 -- <<< PLANTILLA SEMANAL <<<
     ) as t(day_offset, start_time, slug)
   loop
@@ -547,14 +518,12 @@ begin
       v_start + (v_class.duration_min || ' minutes')::interval,
       v_class.capacity,
       case v_class.slug
-        when 'spinning' then 'Sala Cycling'
-        when 'yoga' then 'Salón Zen'
-        when 'pilates' then 'Salón Zen'
-        when 'stretching' then 'Salón Zen'
-        when 'boxeo' then 'Ring'
-        when 'hiit' then 'Salón B'
-        when 'zumba' then 'Salón B'
-        else 'Salón A'
+-- >>> SALAS >>>
+        when 'boxeo' then 'Área de boxeo'
+        when 'musculacion' then 'Sala de máquinas'
+        when 'zumba' then 'Salón de clases'
+-- <<< SALAS <<<
+        else 'Salón principal'
       end
     );
 
@@ -734,15 +703,20 @@ grant execute on function public.is_staff() to authenticated;
 
 
 -- ############################################################
--- #  PARTE 2 de 2 — DATOS INICIALES (disciplinas, profes, clases)
+-- #  PARTE 2 de 2 — DATOS (disciplinas, planes, clases)
 -- #  Original: supabase/migrations/00002_seed.sql
 -- ############################################################
 
 -- ============================================================
---  Strong Gym — Datos iniciales
+--  Strong Fitness Gym — Datos iniciales
 -- ============================================================
 --  Cargá este archivo DESPUÉS de 00001_schema.sql, en el SQL Editor.
 --  Se puede correr las veces que quieras: actualiza en lugar de duplicar.
+--
+--  Son los datos REALES del gimnasio. Lo que todavía no está
+--  confirmado (precio de la mensualidad, nombres de entrenadores)
+--  queda vacío o en NULL a propósito: la web muestra "Consultar"
+--  en vez de inventar un número.
 -- ============================================================
 
 
@@ -753,51 +727,22 @@ grant execute on function public.is_staff() to authenticated;
 insert into public.classes
   (id, slug, name_es, name_en, description_es, description_en, intensity, duration_min, capacity, color, sort_order)
 values
-  ('cls_funcional', 'funcional', 'Funcional', 'Functional Training',
-   'Trabajo de fuerza y resistencia con el peso del cuerpo, kettlebells, TRX y sogas. Mejora todo lo que necesitás para el día a día.',
-   'Strength and endurance work with bodyweight, kettlebells, TRX and ropes. Builds everything you need for daily life.',
-   'high', 50, 18, '#cbf73f', 1),
-
-  ('cls_cross', 'cross-training', 'Cross Training', 'Cross Training',
-   'Circuitos de alta intensidad que combinan levantamiento, gimnasia y cardio. La clase más exigente del gimnasio.',
-   'High-intensity circuits combining lifting, gymnastics and cardio. The toughest class we run.',
-   'high', 60, 16, '#ff5b26', 2),
-
-  ('cls_spinning', 'spinning', 'Spinning', 'Spinning',
-   'Pedaleo con música, luces y mucha energía. Quemá calorías y mejorá tu capacidad cardiovascular sin impacto en las rodillas.',
-   'Pedal to music, lights and high energy. Burn calories and improve your cardio with zero impact on your knees.',
-   'high', 45, 24, '#38bdf8', 3),
-
-  ('cls_hiit', 'hiit', 'HIIT', 'HIIT',
-   'Intervalos cortos de máxima intensidad con descansos medidos. 40 minutos que rinden como dos horas.',
-   'Short bursts of maximum intensity with measured rest. 40 minutes that pay off like two hours.',
-   'high', 40, 20, '#f472b6', 4),
+  ('cls_musculacion', 'musculacion', 'Pesas y máquinas', 'Weights & Machines',
+   'Sala completa con máquinas modernas y pesas libres: pecho, espalda, pierna, tríceps, pantorrilla y abdominales. Entrás en el horario que quieras, sin reservar.',
+   'A full floor of modern machines and free weights: chest, back, legs, triceps, calves and abs. Walk in whenever you like, no booking needed.',
+   'medium', 60, 40, '#0c0c0e', 1),
 
   ('cls_boxeo', 'boxeo', 'Boxeo', 'Boxing',
-   'Técnica, bolsa y guanteo controlado. Aprendés a moverte, ganás reflejos y descargás todo el estrés de la semana.',
-   'Technique, heavy bag and controlled sparring. Learn to move, sharpen your reflexes and burn off the week''s stress.',
-   'high', 55, 14, '#ef4444', 5),
+   'Clases de boxeo para todas las edades, con entrenador en cada sesión. Técnica, saco y acondicionamiento. Martes, miércoles y jueves, con tres horarios al día.',
+   'Boxing classes for all ages, with a coach in every session. Technique, heavy bag and conditioning. Tuesday, Wednesday and Thursday, three time slots a day.',
+   'high', 60, 20, '#d81a22', 2),
 
-  ('cls_zumba', 'zumba', 'Zumba', 'Zumba',
-   'Coreografías de ritmos latinos para entrenar sin darte cuenta. La clase donde más te vas a reír.',
-   'Latin rhythm choreographies that sneak the workout in. The class where you''ll laugh the most.',
-   'medium', 45, 26, '#fbbf24', 6),
-
-  ('cls_pilates', 'pilates', 'Pilates', 'Pilates',
-   'Trabajo profundo de core, postura y respiración. Ideal si pasás muchas horas sentado o si estás volviendo de una lesión.',
-   'Deep core work, posture and breathing. Ideal if you sit for long hours or are coming back from an injury.',
-   'low', 50, 16, '#a78bfa', 7),
-
-  ('cls_yoga', 'yoga', 'Yoga', 'Yoga',
-   'Posturas, respiración y estiramiento para cerrar el día. Bajá el ritmo, soltá la espalda y dormí mejor.',
-   'Poses, breathing and stretching to close the day. Slow down, release your back and sleep better.',
-   'low', 60, 20, '#4ade80', 8),
-
-  ('cls_stretching', 'stretching', 'Stretching y movilidad', 'Stretching & Mobility',
-   'Rutina de movilidad articular y elongación guiada. La mejor manera de evitar lesiones y recuperarte más rápido.',
-   'Joint mobility and guided stretching routine. The best way to avoid injuries and recover faster.',
-   'low', 45, 22, '#22d3ee', 9)
+  ('cls_zumba', 'zumba', 'Zumba y bailoterapia', 'Zumba & Dance Cardio',
+   'Cardio bailando ritmos latinos. Quemás calorías sin aburrirte y en grupo. Consultá el horario vigente por WhatsApp.',
+   'Dance cardio to Latin rhythms. Burn calories without getting bored, in a group. Ask for the current schedule on WhatsApp.',
+   'medium', 60, 30, '#8f0f15', 3)
 on conflict (id) do update set
+  slug = excluded.slug,
   name_es = excluded.name_es,
   name_en = excluded.name_en,
   description_es = excluded.description_es,
@@ -806,107 +751,69 @@ on conflict (id) do update set
   duration_min = excluded.duration_min,
   capacity = excluded.capacity,
   color = excluded.color,
-  sort_order = excluded.sort_order;
+  sort_order = excluded.sort_order,
+  is_active = true;
 
 
 -- ------------------------------------------------------------
---  PROFES
+--  ENTRENADORES
 -- ------------------------------------------------------------
-
-insert into public.coaches
-  (id, slug, name, role_es, role_en, bio_es, bio_en, specialties, initials, color, sort_order)
-values
-  ('cch_diego', 'diego-farias', 'Diego Farías',
-   'Head Coach · Funcional y Cross', 'Head Coach · Functional & Cross',
-   'Ex jugador de rugby y entrenador hace 12 años. Especialista en fuerza y acondicionamiento. Si querés resultados, Diego te los va a sacar.',
-   'Former rugby player and coach for 12 years. Strength and conditioning specialist. If you want results, Diego will get them out of you.',
-   array['funcional', 'cross-training'], 'DF', '#cbf73f', 1),
-
-  ('cch_sofia', 'sofia-mendez', 'Sofía Méndez',
-   'Spinning e HIIT', 'Spinning & HIIT',
-   'Instructora de ciclismo indoor certificada. Sus clases tienen lista de espera todos los martes: la energía que pone es difícil de igualar.',
-   'Certified indoor cycling instructor. Her classes have a waiting list every Tuesday: her energy is hard to match.',
-   array['spinning', 'hiit'], 'SM', '#38bdf8', 2),
-
-  ('cch_nicolas', 'nicolas-ruiz', 'Nicolás Ruiz',
-   'Boxeo', 'Boxing',
-   'Boxeador amateur con 40 peleas y entrenador de la escuela juvenil del club. Enseña técnica desde cero, sin apuro.',
-   'Amateur boxer with 40 fights and coach of the club''s youth school. Teaches technique from scratch, no rush.',
-   array['boxeo', 'funcional'], 'NR', '#ef4444', 3),
-
-  ('cch_valentina', 'valentina-sosa', 'Valentina Sosa',
-   'Yoga y Pilates', 'Yoga & Pilates',
-   'Kinesióloga y profesora de yoga. Trabaja con rehabilitación postural y adapta cada postura a tu cuerpo.',
-   'Physiotherapist and yoga teacher. She works with postural rehab and adapts every pose to your body.',
-   array['yoga', 'pilates', 'stretching'], 'VS', '#4ade80', 4),
-
-  ('cch_marcos', 'marcos-leiva', 'Marcos Leiva',
-   'Zumba y Stretching', 'Zumba & Stretching',
-   'Bailarín y profesor de danza. Hace que la clase más divertida sea también la que más te hace transpirar.',
-   'Dancer and dance teacher. He makes the most fun class also the one that makes you sweat the most.',
-   array['zumba', 'stretching'], 'ML', '#fbbf24', 5),
-
-  ('cch_julieta', 'julieta-barrios', 'Julieta Barrios',
-   'Funcional y HIIT', 'Functional & HIIT',
-   'Profesora de educación física y atleta de crossfit. Especialista en entrenamiento para principiantes y embarazadas.',
-   'Physical education teacher and crossfit athlete. Specialist in training for beginners and pregnant members.',
-   array['funcional', 'hiit', 'cross-training'], 'JB', '#f472b6', 6)
-on conflict (id) do update set
-  name = excluded.name,
-  role_es = excluded.role_es,
-  role_en = excluded.role_en,
-  bio_es = excluded.bio_es,
-  bio_en = excluded.bio_en,
-  specialties = excluded.specialties,
-  initials = excluded.initials,
-  color = excluded.color,
-  sort_order = excluded.sort_order;
+--  El gimnasio todavía no pasó los nombres reales. Mientras la
+--  tabla esté vacía, la web no muestra la sección "Nuestro equipo".
+--
+--  Para cargarlos, copiá este bloque y completá los datos:
+--
+--    insert into public.coaches
+--      (id, slug, name, role_es, role_en, specialties, initials, color, sort_order)
+--    values
+--      ('cch_ejemplo', 'nombre-apellido', 'Nombre Apellido',
+--       'Entrenador de boxeo', 'Boxing coach',
+--       array['boxeo'], 'NA', '#d81a22', 1)
+--    on conflict (id) do update set name = excluded.name;
 
 
 -- ------------------------------------------------------------
---  PLANES  (cambiá los precios a los tuyos)
+--  PLANES
 -- ------------------------------------------------------------
+--  price = NULL significa "a consultar": la web muestra un botón
+--  de WhatsApp en lugar de un precio.
 
 insert into public.plans
   (id, slug, name_es, name_en, tagline_es, tagline_en, price, period, features_es, features_en, is_popular, sort_order)
 values
-  ('pln_basico', 'basico', 'Básico', 'Basic',
-   'Para arrancar y armar el hábito', 'To get started and build the habit',
-   25, 'month',
-   array['3 clases dirigidas por semana', 'Acceso a la sala de musculación', 'Evaluación física inicial', 'Sin matrícula ni contrato'],
-   array['3 instructor-led classes per week', 'Access to the weights room', 'Initial fitness assessment', 'No joining fee, no contract'],
-   false, 1),
+  ('pln_boxeo', 'boxeo', 'Boxeo', 'Boxing',
+   'Para todas las edades, con entrenador', 'All ages, coach included',
+   20, 'month',
+   array['Martes, miércoles y jueves', '3 sesiones al día a elegir', 'Entrenador en cada clase', 'Para todas las edades'],
+   array['Tuesday, Wednesday and Thursday', '3 daily sessions to choose from', 'A coach in every class', 'Open to all ages'],
+   true, 1),
 
-  ('pln_full', 'full', 'Full', 'Full',
-   'Clases ilimitadas y musculación 24/7', 'Unlimited classes and 24/7 weights room',
-   39, 'month',
-   array['Clases dirigidas ilimitadas', 'Acceso 24/7 con llave digital', 'Plan de entrenamiento personalizado', 'Seguimiento mensual con tu profe', '1 invitado por mes, sin cargo'],
-   array['Unlimited instructor-led classes', '24/7 access with digital key', 'Personalised training plan', 'Monthly check-in with your coach', '1 free guest pass per month'],
-   true, 2),
+  ('pln_gimnasio', 'gimnasio-mensual', 'Gimnasio mensual', 'Monthly Gym',
+   'Pesas y máquinas todo el mes', 'Weights and machines all month',
+   null, 'month',
+   array['Máquinas modernas y pesas libres', 'Acceso en todo el horario de atención', 'Orientación del personal para usar los equipos', 'Consultá el precio por WhatsApp'],
+   array['Modern machines and free weights', 'Access during all opening hours', 'Staff guidance on how to use the equipment', 'Ask for the price on WhatsApp'],
+   false, 2),
 
-  ('pln_duo', 'duo', 'Dúo', 'Duo',
-   'Dos personas, un precio, mismos beneficios', 'Two people, one price, same benefits',
-   65, 'month',
-   array['Todo lo del plan Full para 2 personas', 'Ideal para parejas, hermanos o amigos', 'Congelá el plan hasta 30 días por año', 'Vestuarios y lockers individuales'],
-   array['Everything in the Full plan for 2 people', 'Ideal for couples, siblings or friends', 'Freeze your plan up to 30 days a year', 'Locker rooms and individual lockers'],
-   false, 3),
-
-  ('pln_personal', 'personal-trainer', 'Personal Trainer', 'Personal Trainer',
-   'Entrenamiento 1 a 1 con profe exclusivo', 'One-on-one training with a dedicated coach',
-   99, 'month',
-   array['8 sesiones personales al mes', 'Plan y dieta derivada a nutricionista', 'Clases grupales incluidas', 'Mediciones y control de progreso cada 2 semanas'],
-   array['8 personal sessions per month', 'Training plan plus nutritionist referral', 'Group classes included', 'Measurements and progress tracking every 2 weeks'],
-   false, 4)
+  ('pln_dia', 'pase-del-dia', 'Pase del día', 'Day Pass',
+   'Una visita para conocernos', 'A single visit to try us out',
+   null, 'session',
+   array['Una visita, sin compromiso', 'Ideal para probar la sala', 'Consultá el precio por WhatsApp'],
+   array['One visit, no commitment', 'Great for trying the gym floor', 'Ask for the price on WhatsApp'],
+   false, 3)
 on conflict (id) do update set
+  slug = excluded.slug,
   name_es = excluded.name_es,
   name_en = excluded.name_en,
   tagline_es = excluded.tagline_es,
   tagline_en = excluded.tagline_en,
   price = excluded.price,
+  period = excluded.period,
   features_es = excluded.features_es,
   features_en = excluded.features_en,
   is_popular = excluded.is_popular,
-  sort_order = excluded.sort_order;
+  sort_order = excluded.sort_order,
+  is_active = true;
 
 
 -- ------------------------------------------------------------
@@ -915,30 +822,15 @@ on conflict (id) do update set
 --  generate_week_sessions(lunes) crea la grilla de una semana.
 --  Acá la llamamos para las próximas 4 semanas (la fecha se
 --  calcula tomando el lunes de esta semana).
+--
+--  La grilla sale de src/lib/data/demo-sessions.ts: boxeo los
+--  martes, miércoles y jueves a las 06:00, 17:30 y 20:00.
+--  El gimnasio cierra los domingos, así que no hay clases ese día.
 
 select public.generate_week_sessions(current_date - (extract(isodow from current_date)::int - 1));
 select public.generate_week_sessions(current_date - (extract(isodow from current_date)::int - 1) + 7);
 select public.generate_week_sessions(current_date - (extract(isodow from current_date)::int - 1) + 14);
 select public.generate_week_sessions(current_date - (extract(isodow from current_date)::int - 1) + 21);
-
-
--- ------------------------------------------------------------
---  CONSULTAS DE EJEMPLO (borralas cuando estés en producción)
--- ------------------------------------------------------------
-
---  (Si volvés a correr este archivo, no se duplican.)
-insert into public.messages (name, email, phone, subject, message, locale, is_read)
-select * from (values
-  ('Andrea Solís', 'andrea.solis@example.com', '+505 8712 4490', 'trial',
-   '¡Buenas! Quiero aprovechar la clase de prueba gratis. ¿Puedo ir un martes por la tarde a probar funcional?',
-   'es', false),
-  ('Kevin Ramírez', 'kevin.ramirez@example.com', null, 'plans',
-   'Consulto por el plan Full: ¿incluye el acceso 24/7 desde el primer mes?',
-   'es', false)
-) as nueva(name, email, phone, subject, message, locale, is_read)
-where not exists (
-  select 1 from public.messages m where m.email = nueva.email
-);
 
 
 -- ============================================================
