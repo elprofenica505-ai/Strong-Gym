@@ -143,6 +143,8 @@ const en: Dictionary = {
     bookSuccess: "You're in! We saved your spot.",
     cancelSuccess: "Your booking was cancelled.",
     alreadyBooked: "You already had a booking for that class.",
+    tooManyBookings:
+      "You already have the maximum of 3 active bookings. Cancel one to book another class.",
     sessionFull: "The class is full, try another time.",
     pastSession: "That class already happened.",
     cancelledByGym: "The class was cancelled by the gym.",

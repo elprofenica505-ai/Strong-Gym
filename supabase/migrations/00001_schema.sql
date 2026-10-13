@@ -203,6 +203,27 @@ create table if not exists public.subscribers (
 );
 
 
+-- ------------------------------------------------------------
+--  9-bis. OCUPACIÓN DE CADA CLASE (vista pública)
+-- ------------------------------------------------------------
+--  El sitio necesita mostrar "quedan 4 lugares" a todo el mundo,
+--  pero las reservas están protegidas por RLS: cada socio sólo ve
+--  las suyas. Esta vista expone ÚNICAMENTE el conteo por clase
+--  (nunca quién reservó), así nadie puede espiar a los demás.
+
+create or replace view public.session_occupancy as
+  select
+    session_id,
+    count(*) filter (where status in ('confirmed', 'attended'))::int as booked_count
+  from public.bookings
+  group by session_id;
+
+comment on view public.session_occupancy is
+  'Cuántos lugares ocupados tiene cada clase. Sólo conteos, sin datos de socios.';
+
+grant select on public.session_occupancy to anon, authenticated;
+
+
 -- ============================================================
 --  10. PERFIL AUTOMÁTICO AL REGISTRARSE
 -- ============================================================
@@ -305,7 +326,7 @@ begin
       and b.status in ('confirmed', 'attended')
       and s.starts_at > now()
   ) >= v_max then
-    raise exception 'FULL: ya tenés % reservas activas', v_max;
+    raise exception 'LIMIT: ya tenés % reservas activas a la vez', v_max;
   end if;
 
   if found then

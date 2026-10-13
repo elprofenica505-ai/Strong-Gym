@@ -42,6 +42,7 @@ export type BookingErrorCode =
   | "AUTH"
   | "FULL"
   | "ALREADY_BOOKED"
+  | "LIMIT"
   | "PAST"
   | "CANCELLED"
   | "TOO_LATE"

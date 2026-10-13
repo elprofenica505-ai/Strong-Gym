@@ -102,7 +102,6 @@ interface RawSessionRow {
   status: "scheduled" | "cancelled";
   gymClass?: GymClass | null;
   coach?: Coach | null;
-  bookings?: { count: number }[] | null;
 }
 
 export async function getSessionsForWeek(weekKey?: string | null): Promise<{
@@ -122,8 +121,7 @@ export async function getSessionsForWeek(weekKey?: string | null): Promise<{
       .select(
         `id, class_id, coach_id, starts_at, ends_at, capacity, room, status,
          gymClass:classes (*),
-         coach:coaches (*),
-         bookings (count)`,
+         coach:coaches (*)`,
       )
       .gte("starts_at", week.start.toISOString())
       .lte("starts_at", week.end.toISOString())
@@ -131,10 +129,32 @@ export async function getSessionsForWeek(weekKey?: string | null): Promise<{
 
     if (error || !data) throw error ?? new Error("sin datos");
 
-    const sessions: SessionDetail[] = (data as unknown as RawSessionRow[])
+    // La ocupación la da una vista pública que sólo expone conteos
+    // (las reservas están protegidas por RLS).
+    const rows = data as unknown as RawSessionRow[];
+    const occupancy = new Map<string, number>();
+
+    if (rows.length > 0) {
+      const { data: occupancyData } = await supabase
+        .from("session_occupancy")
+        .select("session_id, booked_count")
+        .in(
+          "session_id",
+          rows.map((row) => row.id),
+        );
+
+      for (const item of (occupancyData ?? []) as {
+        session_id: string;
+        booked_count: number;
+      }[]) {
+        occupancy.set(item.session_id, Number(item.booked_count ?? 0));
+      }
+    }
+
+    const sessions: SessionDetail[] = rows
       .filter((row) => row.gymClass)
       .map((row) => {
-        const bookedCount = Number(row.bookings?.[0]?.count ?? 0);
+        const bookedCount = occupancy.get(row.id) ?? 0;
         const capacity = row.capacity ?? row.gymClass?.capacity ?? 0;
         return {
           id: row.id,

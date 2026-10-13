@@ -142,6 +142,8 @@ const es = {
     bookSuccess: "¡Listo! Te reservamos el lugar.",
     cancelSuccess: "Cancelamos tu reserva.",
     alreadyBooked: "Ya tenías una reserva en esa clase.",
+    tooManyBookings:
+      "Ya tenés el máximo de 3 reservas activas. Cancelá una para poder reservar otra clase.",
     sessionFull: "Se llenó la clase, probá con otro horario.",
     pastSession: "Esa clase ya pasó.",
     cancelledByGym: "La clase fue cancelada por el gimnasio.",

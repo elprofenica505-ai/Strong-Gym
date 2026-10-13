@@ -11,6 +11,7 @@ type ErrorCode =
   | "DEMO"
   | "FULL"
   | "ALREADY_BOOKED"
+  | "LIMIT"
   | "PAST"
   | "CANCELLED"
   | "NOT_FOUND"
@@ -60,6 +61,7 @@ export async function POST(request: Request) {
     const message = `${error.message} ${error.details ?? ""}`.toUpperCase();
     if (message.includes("FULL")) return fail("FULL", 409);
     if (message.includes("ALREADY")) return fail("ALREADY_BOOKED", 409);
+    if (message.includes("LIMIT")) return fail("LIMIT", 409);
     if (message.includes("PAST")) return fail("PAST", 409);
     if (message.includes("CANCELLED")) return fail("CANCELLED", 409);
     if (message.includes("NOT_FOUND")) return fail("NOT_FOUND", 404);

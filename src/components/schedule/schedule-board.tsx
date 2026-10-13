@@ -37,6 +37,7 @@ import { cn } from "@/lib/utils";
 const errorMessages = {
   FULL: "sessionFull",
   ALREADY_BOOKED: "alreadyBooked",
+  LIMIT: "tooManyBookings",
   PAST: "pastSession",
   CANCELLED: "cancelledByGym",
   TOO_LATE: "bookingError",
