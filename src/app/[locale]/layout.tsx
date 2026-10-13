@@ -55,34 +55,25 @@ export async function generateMetadata({
       description: dict.meta.description,
       url: `${siteUrl}/${locale}`,
       locale: locale === "es" ? "es_NI" : "en_US",
-      images: [
-        {
-          url: "/opengraph-image.jpg",
-          width: 1200,
-          height: 630,
-          alt: dict.meta.title,
-        },
-      ],
     },
     twitter: {
       card: "summary_large_image",
       title: dict.meta.title,
       description: dict.meta.description,
-      images: ["/opengraph-image.jpg"],
     },
     robots: { index: true, follow: true },
     icons: {
       icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
-      apple: [{ url: "/icon.svg" }],
+      apple: [{ url: "/apple-icon.png" }],
     },
   };
 }
 
 export const viewport: Viewport = {
-  themeColor: "#06070a",
+  themeColor: "#d81a22",
   width: "device-width",
   initialScale: 1,
-  colorScheme: "dark",
+  colorScheme: "light",
 };
 
 /**
@@ -107,12 +98,12 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale} suppressHydrationWarning>
-      <body className="min-h-dvh bg-void text-chalk antialiased">
+      <body className="min-h-dvh bg-paper text-ink antialiased">
         <DictionaryProvider dict={dict} locale={locale as Locale}>
           <AppProvider initialUser={user} isDemo={!isSupabaseConfigured}>
             <a
               href="#contenido"
-              className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:rounded-full focus:bg-volt focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-ink"
+              className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:rounded-full focus:bg-brand focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-onbrand"
             >
               {locale === "es" ? "Saltar al contenido" : "Skip to content"}
             </a>

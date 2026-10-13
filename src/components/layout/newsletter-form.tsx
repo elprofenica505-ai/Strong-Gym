@@ -30,7 +30,7 @@ export function NewsletterForm({ className }: { className?: string }) {
 
   if (status === "done") {
     return (
-      <p className={cn("flex items-center gap-2 text-[0.875rem] font-medium text-volt", className)}>
+      <p className={cn("flex items-center gap-2 text-[0.875rem] font-medium text-brand", className)}>
         <Check className="size-4" aria-hidden="true" />
         {dict.footer.newsletterSuccess}
       </p>
@@ -39,7 +39,7 @@ export function NewsletterForm({ className }: { className?: string }) {
 
   return (
     <form onSubmit={onSubmit} className={cn("flex flex-col gap-2", className)}>
-      <div className="flex items-center gap-2 rounded-full border border-line bg-void/60 p-1 pl-4 transition-colors focus-within:border-volt/60">
+      <div className="flex items-center gap-2 rounded-full border border-line bg-paper/60 p-1 pl-4 transition-colors focus-within:border-brand/60">
         <input
           type="email"
           required
@@ -47,20 +47,20 @@ export function NewsletterForm({ className }: { className?: string }) {
           onChange={(event) => setEmail(event.target.value)}
           placeholder={dict.footer.newsletterPlaceholder}
           aria-label={dict.footer.newsletter}
-          className="h-9 min-w-0 flex-1 bg-transparent text-[0.875rem] text-chalk placeholder:text-fog/60 focus:outline-none"
+          className="h-9 min-w-0 flex-1 bg-transparent text-[0.875rem] text-ink placeholder:text-fog/60 focus:outline-none"
         />
         <button
           type="submit"
           disabled={status === "loading"}
           aria-label={dict.footer.newsletterButton}
-          className="grid size-9 shrink-0 place-items-center rounded-full bg-volt text-ink transition-transform hover:scale-105 disabled:opacity-50"
+          className="grid size-9 shrink-0 place-items-center rounded-full bg-brand text-onbrand transition-transform hover:scale-105 disabled:opacity-50"
         >
           <ArrowRight className="size-4" strokeWidth={2.5} aria-hidden="true" />
         </button>
       </div>
 
       {status === "error" ? (
-        <p className="text-[0.75rem] text-flame">{dict.contact.error}</p>
+        <p className="text-[0.75rem] text-alert">{dict.contact.error}</p>
       ) : null}
     </form>
   );

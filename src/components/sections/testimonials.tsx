@@ -7,8 +7,12 @@ import { Reveal } from "@/components/ui/reveal";
 export function Testimonials({ locale }: { locale: Locale }) {
   const dict = getDictionary(locale);
 
+  // El testimonio con foto vive en la sección Comunidad. Esta sección
+  // sólo aparece cuando el gimnasio cargue reseñas escritas reales.
+  if (dict.testimonials.items.length === 0) return null;
+
   return (
-    <Section id="opiniones" className="border-b border-line bg-coal">
+    <Section id="opiniones" className="border-b border-line bg-cloud">
       <SectionHeading
         eyebrow={dict.nav.home}
         title={dict.testimonials.title}
@@ -23,7 +27,7 @@ export function Testimonials({ locale }: { locale: Locale }) {
                 {Array.from({ length: 5 }).map((_, starIndex) => (
                   <Star
                     key={starIndex}
-                    className="size-4 fill-volt text-volt"
+                    className="size-4 fill-brand text-brand"
                     aria-hidden="true"
                   />
                 ))}
@@ -31,7 +35,7 @@ export function Testimonials({ locale }: { locale: Locale }) {
 
               <blockquote className="mt-5 flex-1">
                 <p className="text-[0.9375rem] leading-relaxed text-mist">
-                  <span className="display-xl mr-1 text-[1.5rem] leading-none text-volt/60" aria-hidden="true">
+                  <span className="display-xl mr-1 text-[1.5rem] leading-none text-brand/60" aria-hidden="true">
                     &ldquo;
                   </span>
                   {item.quote}
@@ -39,11 +43,11 @@ export function Testimonials({ locale }: { locale: Locale }) {
               </blockquote>
 
               <figcaption className="mt-6 flex items-center gap-3 border-t border-line pt-5">
-                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-volt/15 text-[0.75rem] font-bold text-volt">
+                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand/15 text-[0.75rem] font-bold text-brand">
                   {item.name.charAt(0)}
                 </span>
                 <span>
-                  <span className="block text-[0.875rem] font-semibold text-chalk">
+                  <span className="block text-[0.875rem] font-semibold text-ink">
                     {item.name}
                   </span>
                   <span className="block text-[0.75rem] text-fog">{item.role}</span>

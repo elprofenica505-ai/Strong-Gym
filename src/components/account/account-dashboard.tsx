@@ -130,7 +130,7 @@ export function AccountDashboard({
       {/* --- Encabezado --- */}
       <div className="flex flex-col gap-5 rounded-2xl border border-line bg-card p-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-          <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-volt text-[1.125rem] font-bold text-ink">
+          <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-brand text-[1.125rem] font-bold text-onbrand">
             {user.fullName
               .split(/\s+/)
               .slice(0, 2)
@@ -209,11 +209,11 @@ export function AccountDashboard({
             key={label}
             className="flex items-center gap-4 rounded-2xl border border-line bg-card p-5"
           >
-            <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-line bg-void text-volt">
+            <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-line bg-paper text-brand">
               <Icon className="size-5" aria-hidden="true" />
             </span>
             <div>
-              <p className="display-xl text-[1.75rem] leading-none text-chalk">{value}</p>
+              <p className="display-xl text-[1.75rem] leading-none text-ink">{value}</p>
               <p className="mt-1 text-[0.75rem] text-fog">{label}</p>
             </div>
           </div>
@@ -241,7 +241,7 @@ export function AccountDashboard({
       </div>
 
       {isDemo ? (
-        <p className="rounded-xl border border-volt/30 bg-volt/[0.06] px-4 py-3 text-[0.75rem] leading-relaxed text-mist">
+        <p className="rounded-xl border border-brand/30 bg-brand/[0.06] px-4 py-3 text-[0.75rem] leading-relaxed text-mist">
           {dict.demo.text}
         </p>
       ) : null}
@@ -429,10 +429,10 @@ function toBookingDetail(booking: AppBooking, session: SessionDetail): BookingDe
    ------------------------------------------------------------ */
 
 const statusStyles: Record<string, string> = {
-  confirmed: "border-volt/40 text-volt bg-volt/10",
+  confirmed: "border-brand/40 text-brand bg-brand/10",
   attended: "border-emerald-400/40 text-emerald-300 bg-emerald-400/10",
-  no_show: "border-flame/40 text-flame bg-flame/10",
-  cancelled: "border-line text-fog bg-void/40",
+  no_show: "border-alert/40 text-alert bg-alert/10",
+  cancelled: "border-line text-fog bg-paper/40",
 };
 
 function BookingRow({
@@ -483,7 +483,7 @@ function BookingRow({
 
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-[0.9375rem] font-semibold text-chalk">{name}</h3>
+            <h3 className="text-[0.9375rem] font-semibold text-ink">{name}</h3>
 
             <span
               className={cn(
@@ -520,7 +520,7 @@ function BookingRow({
           size="sm"
           onClick={() => void onCancel()}
           disabled={pending}
-          className="shrink-0 border-volt/40 text-volt hover:border-flame/60 hover:bg-flame/10 hover:text-flame"
+          className="shrink-0 border-brand/40 text-brand hover:border-alert/60 hover:bg-alert/10 hover:text-alert"
         >
           {pending ? (
             <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />

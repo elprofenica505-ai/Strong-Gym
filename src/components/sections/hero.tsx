@@ -1,43 +1,53 @@
 "use client";
 
 import Image from "next/image";
-import { CalendarCheck, ChevronDown, Play } from "lucide-react";
+import { ChevronDown, MapPin, MessageCircle } from "lucide-react";
 import { useDictionary } from "@/components/providers/dictionary-provider";
 import { ButtonLink } from "@/components/ui/button";
 import { Reveal } from "@/components/ui/reveal";
+import { whatsappLink } from "@/config/site";
 
 /**
- * Hero de la home. Usa la foto del salón de musculación con un
- * degradado encima para que el texto quede siempre legible.
+ * Portada: la foto real de la fachada de noche, con la banderola roja
+ * encendida. Es el único bloque "negro" junto con la cinta y el pie,
+ * igual que el cartel del local.
+ *
+ * Si la foto todavía no está subida, el degradado rojo/negro de abajo
+ * sostiene el diseño solo: nunca se ve un hueco blanco.
  */
-export function Hero() {
+export function Hero({ fachada = false }: { fachada?: boolean }) {
   const { dict, locale } = useDictionary();
 
   return (
-    <section className="relative isolate overflow-hidden">
+    <section className="relative isolate overflow-hidden bg-night">
       {/* Fondo */}
       <div className="absolute inset-0 -z-10">
-        <Image
-          src="/images/hero.jpg"
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-center"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-void/92 via-void/78 to-void" />
-        <div className="absolute inset-0 bg-gradient-to-r from-void via-void/70 to-transparent" />
-        <div className="absolute inset-0 bg-grid opacity-40" />
+        <div className="absolute inset-0 bg-[radial-gradient(1100px_600px_at_15%_100%,#7a0f14_0%,transparent_62%)]" />
+
+        {fachada ? (
+          <Image
+            src="/images/fachada.jpg"
+            alt=""
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover object-center opacity-70"
+          />
+        ) : null}
+
+        <div className="absolute inset-0 bg-gradient-to-b from-night/85 via-night/60 to-night" />
+        <div className="absolute inset-0 bg-gradient-to-r from-night via-night/75 to-transparent" />
+        <div className="absolute inset-0 bg-grid-dark opacity-50" />
       </div>
 
       <div className="container-x">
         <div className="flex min-h-[calc(100svh-4rem)] flex-col justify-center py-14 sm:py-20 lg:min-h-[44rem] lg:py-24">
           <div className="max-w-3xl">
-            {/* Chip de prueba gratis */}
+            {/* Dónde estamos */}
             <Reveal>
-              <span className="inline-flex items-center gap-2 rounded-full border border-volt/35 bg-volt/10 py-1.5 pr-4 pl-1.5 text-[0.75rem] font-semibold text-volt sm:text-[0.8125rem]">
-                <span className="grid size-6 place-items-center rounded-full bg-volt text-ink">
-                  <Play className="size-3 fill-current" aria-hidden="true" />
+              <span className="inline-flex items-center gap-2 rounded-full border border-brand/45 bg-brand/15 py-1.5 pr-4 pl-1.5 text-[0.75rem] font-semibold text-white backdrop-blur-sm sm:text-[0.8125rem]">
+                <span className="grid size-6 place-items-center rounded-full bg-brand text-onbrand">
+                  <MapPin className="size-3.5" aria-hidden="true" />
                 </span>
                 {dict.hero.badge}
               </span>
@@ -46,15 +56,15 @@ export function Hero() {
             {/* Título */}
             <Reveal delay={80}>
               <h1 className="display-xl mt-6 text-[3.25rem] leading-[0.86] sm:text-[4.5rem] lg:text-[6.5rem] xl:text-[7.5rem]">
-                <span className="block text-chalk">{dict.hero.titleTop}</span>
-                <span className="block text-gradient-volt">{dict.hero.titleAccent}</span>
-                <span className="block text-chalk/35">{dict.hero.titleBottom}</span>
+                <span className="block text-white">{dict.hero.titleTop}</span>
+                <span className="block text-gradient-brand">{dict.hero.titleAccent}</span>
+                <span className="block text-white/35">{dict.hero.titleBottom}</span>
               </h1>
             </Reveal>
 
             {/* Bajada */}
             <Reveal delay={160}>
-              <p className="mt-6 max-w-xl text-[0.9375rem] leading-relaxed text-mist sm:mt-8 sm:text-base">
+              <p className="mt-6 max-w-xl text-[0.9375rem] leading-relaxed text-white/75 sm:mt-8 sm:text-base">
                 {dict.hero.subtitle}
               </p>
             </Reveal>
@@ -62,14 +72,24 @@ export function Hero() {
             {/* Botones */}
             <Reveal delay={240}>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <ButtonLink href={`/${locale}/horarios`} size="lg" className="w-full sm:w-auto">
-                  <CalendarCheck className="size-4.5" aria-hidden="true" />
+                <ButtonLink
+                  href={whatsappLink(
+                    locale === "es"
+                      ? "Hola, quiero información de Strong Fitness Gym."
+                      : "Hi, I would like information about Strong Fitness Gym.",
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  size="lg"
+                  className="w-full sm:w-auto"
+                >
+                  <MessageCircle className="size-4.5" aria-hidden="true" />
                   {dict.hero.primary}
                 </ButtonLink>
 
                 <ButtonLink
-                  href={`/${locale}#clases`}
-                  variant="outline"
+                  href={`/${locale}#galeria`}
+                  variant="outline-dark"
                   size="lg"
                   className="w-full sm:w-auto"
                 >
@@ -78,17 +98,17 @@ export function Hero() {
               </div>
             </Reveal>
 
-            {/* Estadísticas */}
+            {/* Datos reales del gimnasio */}
             <Reveal delay={320}>
-              <dl className="mt-12 grid max-w-2xl grid-cols-2 gap-x-6 gap-y-7 border-t border-line/70 pt-8 sm:grid-cols-4 sm:gap-x-4">
+              <dl className="mt-12 grid max-w-2xl grid-cols-2 gap-x-6 gap-y-7 border-t border-white/15 pt-8 sm:grid-cols-4 sm:gap-x-4">
                 {dict.hero.stats.map((stat) => (
                   <div key={stat.label}>
                     <dt className="sr-only">{stat.label}</dt>
                     <dd>
-                      <span className="display-xl block text-[1.75rem] text-volt sm:text-[2rem]">
+                      <span className="display-xl block text-[1.75rem] text-brand sm:text-[2rem]">
                         {stat.value}
                       </span>
-                      <span className="mt-1 block text-[0.75rem] leading-snug text-fog">
+                      <span className="mt-1 block text-[0.75rem] leading-snug text-white/55">
                         {stat.label}
                       </span>
                     </dd>
@@ -103,8 +123,8 @@ export function Hero() {
       {/* Indicador de scroll */}
       <div className="hidden justify-center pb-6 lg:flex">
         <a
-          href="#clases"
-          className="flex flex-col items-center gap-2 text-[0.6875rem] tracking-[0.2em] text-fog uppercase transition-colors hover:text-volt"
+          href="#por-que"
+          className="flex flex-col items-center gap-2 text-[0.6875rem] tracking-[0.2em] text-white/50 uppercase transition-colors hover:text-brand"
         >
           {dict.hero.scroll}
           <ChevronDown className="size-4 animate-bounce" aria-hidden="true" />

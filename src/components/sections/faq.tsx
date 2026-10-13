@@ -11,7 +11,7 @@ export function Faq({ locale }: { locale: Locale }) {
   const dict = getDictionary(locale);
 
   return (
-    <Section id="preguntas" className="border-b border-line bg-coal">
+    <Section id="preguntas" className="border-b border-line bg-cloud">
       <div className="grid gap-10 lg:grid-cols-12 lg:gap-12">
         <div className="lg:col-span-5">
           <SectionHeading
@@ -23,11 +23,11 @@ export function Faq({ locale }: { locale: Locale }) {
           <Reveal delay={140} className="mt-8">
             <div className="flex flex-col gap-3 rounded-2xl border border-line bg-card p-5">
               <div className="flex items-center gap-3">
-                <span className="grid size-10 place-items-center rounded-full bg-volt/12 text-volt">
+                <span className="grid size-10 place-items-center rounded-full bg-brand/12 text-brand">
                   <MessageCircleQuestion className="size-5" aria-hidden="true" />
                 </span>
                 <div>
-                  <p className="text-[0.875rem] font-semibold text-chalk">
+                  <p className="text-[0.875rem] font-semibold text-ink">
                     {dict.contact.formTitle}
                   </p>
                   <p className="text-[0.75rem] text-fog">{dict.contact.formSubtitle}</p>
@@ -38,7 +38,7 @@ export function Faq({ locale }: { locale: Locale }) {
                 href={whatsappLink(dict.cta.freeTrial)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-[0.8125rem] font-medium text-volt transition-opacity hover:opacity-80"
+                className="flex items-center gap-2 text-[0.8125rem] font-medium text-brand transition-opacity hover:opacity-80"
               >
                 <Phone className="size-3.5" aria-hidden="true" />
                 {siteConfig.phone}

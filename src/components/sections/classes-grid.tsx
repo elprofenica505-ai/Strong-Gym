@@ -1,20 +1,28 @@
-import { Clock, Users } from "lucide-react";
+import { CalendarCheck, Clock, DoorOpen, MessageCircle, Users } from "lucide-react";
 import { getDictionary } from "@/i18n/dictionaries";
 import type { Locale } from "@/i18n/config";
 import { getClasses } from "@/lib/data/queries";
 import { formatDuration } from "@/lib/schedule";
+import { whatsappLink } from "@/config/site";
 import { Section, SectionHeading } from "@/components/ui/section";
 import { Reveal } from "@/components/ui/reveal";
 import { ButtonLink } from "@/components/ui/button";
 
 const intensityBars: Record<string, number> = { low: 1, medium: 2, high: 3 };
 
+/** Cómo se accede a cada disciplina: reserva, acceso libre o consulta. */
+const ACCESS: Record<string, "book" | "free" | "ask"> = {
+  boxeo: "book",
+  musculacion: "free",
+  zumba: "ask",
+};
+
 export async function ClassesGrid({ locale }: { locale: Locale }) {
   const dict = getDictionary(locale);
   const classes = await getClasses();
 
   return (
-    <Section id="clases" className="border-b border-line">
+    <Section id="clases" className="border-b border-line bg-cloud">
       <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
         <SectionHeading
           eyebrow={dict.nav.classes}
@@ -38,30 +46,26 @@ export async function ClassesGrid({ locale }: { locale: Locale }) {
             const description =
               locale === "es" ? gymClass.description_es : gymClass.description_en;
             const level = intensityBars[gymClass.intensity] ?? 2;
+            const access = ACCESS[gymClass.slug] ?? "ask";
 
             return (
               <Reveal key={gymClass.id} delay={index * 50} className="h-full">
-                <article className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-card p-6 transition-all duration-300 hover:-translate-y-1 hover:border-white/20">
+                <article className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-card p-6 transition-all duration-300 hover:-translate-y-1 hover:border-brand/40 hover:shadow-[0_18px_50px_-30px_rgba(12,12,14,0.5)]">
                   {/* Barra de color superior */}
                   <span
                     className="absolute inset-x-0 top-0 h-1"
                     style={{ backgroundColor: gymClass.color }}
                     aria-hidden="true"
                   />
-                  <span
-                    className="pointer-events-none absolute -top-16 -right-16 size-40 rounded-full opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-30"
-                    style={{ backgroundColor: gymClass.color }}
-                    aria-hidden="true"
-                  />
 
                   <header className="flex items-start justify-between gap-3">
-                    <h3 className="display-xl text-[1.5rem] leading-none">{name}</h3>
+                    <h3 className="display-xl text-[1.5rem] leading-none text-ink">{name}</h3>
 
                     <span
-                      className="shrink-0 rounded-full px-2.5 py-1 text-[0.625rem] font-bold uppercase tracking-[0.1em]"
+                      className="shrink-0 rounded-full px-2.5 py-1 text-[0.625rem] font-bold tracking-[0.1em] uppercase"
                       style={{
                         color: gymClass.color,
-                        backgroundColor: `${gymClass.color}1a`,
+                        backgroundColor: `${gymClass.color}14`,
                       }}
                     >
                       {dict.classes.intensityLevels[gymClass.intensity]}
@@ -71,6 +75,42 @@ export async function ClassesGrid({ locale }: { locale: Locale }) {
                   <p className="mt-3 flex-1 text-[0.875rem] leading-relaxed text-fog">
                     {description}
                   </p>
+
+                  {/* Cómo se accede */}
+                  <div className="mt-5">
+                    {access === "book" ? (
+                      <ButtonLink
+                        href={`/${locale}/horarios`}
+                        variant="primary"
+                        size="sm"
+                        className="w-full"
+                      >
+                        <CalendarCheck className="size-3.5" aria-hidden="true" />
+                        {dict.schedule.book}
+                      </ButtonLink>
+                    ) : access === "free" ? (
+                      <span className="flex items-center gap-2 rounded-full border border-line bg-cloud px-3.5 py-2 text-[0.75rem] font-medium text-mist">
+                        <DoorOpen className="size-3.5 shrink-0 text-brand" aria-hidden="true" />
+                        {dict.classes.freeAccess} · {dict.classes.freeAccessHint}
+                      </span>
+                    ) : (
+                      <ButtonLink
+                        href={whatsappLink(
+                          locale === "es"
+                            ? `Hola, quiero consultar el horario de ${name}.`
+                            : `Hi, I would like to ask about the ${name} schedule.`,
+                        )}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                      >
+                        <MessageCircle className="size-3.5" aria-hidden="true" />
+                        {dict.classes.askSchedule}
+                      </ButtonLink>
+                    )}
+                  </div>
 
                   <footer className="mt-5 flex items-center gap-4 border-t border-line pt-4 text-[0.75rem] text-fog">
                     <span className="flex items-center gap-1.5">
@@ -92,7 +132,7 @@ export async function ClassesGrid({ locale }: { locale: Locale }) {
                           style={{
                             height: `${0.35 + bar * 0.28}rem`,
                             backgroundColor:
-                              bar <= level ? gymClass.color : "rgba(255,255,255,0.14)",
+                              bar <= level ? gymClass.color : "rgba(12,12,14,0.14)",
                           }}
                         />
                       ))}
