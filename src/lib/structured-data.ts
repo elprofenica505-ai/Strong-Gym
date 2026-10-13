@@ -1,4 +1,4 @@
-import { getSiteUrl, siteConfig } from "@/config/site";
+import { SCHEMA_DAYS, fullAddress, getSiteUrl, mapsLink, siteConfig } from "@/config/site";
 import type { Dictionary } from "@/i18n/dictionaries";
 import type { Locale } from "@/i18n/config";
 
@@ -14,47 +14,47 @@ export function homeJsonLd(locale: Locale, dict: Dictionary) {
     legalName: siteConfig.legalName,
     description: dict.meta.description,
     url: `${siteUrl}/${locale}`,
-    telephone: siteConfig.phone,
-    email: siteConfig.contactEmail,
-    priceRange: "$$",
+    telephone: siteConfig.phoneIntl,
+    // Sólo publicamos los datos que el gimnasio confirmó.
+    ...(siteConfig.contactEmail ? { email: siteConfig.contactEmail } : {}),
+    hasMap: mapsLink(),
+    priceRange: "$",
+    currenciesAccepted: siteConfig.currency.code,
     address: {
       "@type": "PostalAddress",
       streetAddress: siteConfig.address.street,
       addressLocality: siteConfig.address.city,
       addressRegion: siteConfig.address.region,
-      postalCode: siteConfig.address.postalCode,
-      addressCountry: siteConfig.address.country.slice(0, 2).toUpperCase(),
+      ...(siteConfig.address.postalCode
+        ? { postalCode: siteConfig.address.postalCode }
+        : {}),
+      addressCountry: "NI",
     },
-    geo: {
-      "@type": "GeoCoordinates",
-      latitude: siteConfig.geo.lat,
-      longitude: siteConfig.geo.lng,
-    },
+    ...(siteConfig.geo
+      ? {
+          geo: {
+            "@type": "GeoCoordinates",
+            latitude: siteConfig.geo.lat,
+            longitude: siteConfig.geo.lng,
+          },
+        }
+      : {}),
     sameAs: [
-      siteConfig.social.instagram,
       siteConfig.social.facebook,
+      siteConfig.social.instagram,
       siteConfig.social.youtube,
-    ],
-    openingHoursSpecification: [
-      {
+      siteConfig.social.tiktok,
+    ].filter((url): url is string => Boolean(url)),
+    // Un bloque por cada día con atención. El domingo no aparece:
+    // en schema.org, un día ausente significa cerrado.
+    openingHoursSpecification: siteConfig.openingHours.flatMap((slots, dayIndex) =>
+      slots.map((slot) => ({
         "@type": "OpeningHoursSpecification",
-        dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-        opens: siteConfig.openingHours.weekday.opens,
-        closes: siteConfig.openingHours.weekday.closes,
-      },
-      {
-        "@type": "OpeningHoursSpecification",
-        dayOfWeek: ["Saturday"],
-        opens: siteConfig.openingHours.saturday.opens,
-        closes: siteConfig.openingHours.saturday.closes,
-      },
-      {
-        "@type": "OpeningHoursSpecification",
-        dayOfWeek: ["Sunday"],
-        opens: siteConfig.openingHours.sunday.opens,
-        closes: siteConfig.openingHours.sunday.closes,
-      },
-    ],
+        dayOfWeek: SCHEMA_DAYS[dayIndex],
+        opens: slot.opens,
+        closes: slot.closes,
+      })),
+    ),
     inLanguage: locale,
     potentialAction: {
       "@type": "ReserveAction",
@@ -100,9 +100,9 @@ export function scheduleJsonLd(
           name: `${siteConfig.name} — ${item.room}`,
           address: {
             "@type": "PostalAddress",
-            streetAddress: siteConfig.address.street,
+            streetAddress: fullAddress(),
             addressLocality: siteConfig.address.city,
-            addressCountry: siteConfig.address.country.slice(0, 2).toUpperCase(),
+            addressCountry: "NI",
           },
         },
         url: `${siteUrl}/${locale}/horarios`,
