@@ -1,0 +1,326 @@
+#!/usr/bin/env node
+/**
+ * ============================================================
+ *  Pruebas del SQL de Supabase
+ * ============================================================
+ *  Levanta un PostgreSQL real (PGlite, un Postgres en WebAssembly)
+ *  le aplica los archivos de `supabase/migrations/` y verifica que
+ *  todo funcione: reservas, cupos, cancelaciones, seguridad y fechas.
+ *
+ *  Sirve para dos cosas:
+ *    · Confirmar que el SQL es correcto antes de pegarlo en Supabase.
+ *    · Detectar si un cambio futuro rompe algo (corre en el CI).
+ *
+ *  Uso:  npm run test:sql
+ *
+ *  Nota: PGlite no trae los objetos que Supabase ya provee (el esquema
+ *  `auth`, los roles y la función auth.uid()), así que abajo se crean
+ *  versiones mínimas para poder probar en un entorno parecido.
+ */
+
+import { PGlite } from "@electric-sql/pglite";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const REPO = join(dirname(fileURLToPath(import.meta.url)), "..");
+
+/* Lo que Supabase ya trae hecho y acá tenemos que imitar. */
+const STUBS = `
+create schema if not exists auth;
+
+do $$ begin
+  if not exists (select 1 from pg_roles where rolname = 'anon') then create role anon nologin; end if;
+  if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if;
+  if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role nologin; end if;
+end $$;
+
+create table if not exists auth.users (
+  id uuid primary key default gen_random_uuid(),
+  email text unique,
+  raw_user_meta_data jsonb default '{}'::jsonb,
+  created_at timestamptz default now()
+);
+
+-- Simula el JWT del request: quién está logueado.
+create table if not exists auth.current_user (id uuid);
+create or replace function auth.uid() returns uuid
+  language sql stable as $$ select id from auth.current_user limit 1 $$;
+
+grant usage on schema auth to authenticated, anon;
+grant select on auth.current_user to authenticated, anon;
+`;
+
+let failures = 0;
+function check(label, condition, detail = "") {
+  const ok = Boolean(condition);
+  if (!ok) failures++;
+  console.log(`${ok ? "  ✅" : "  ❌"} ${label}${detail ? ` — ${detail}` : ""}`);
+}
+
+async function expectError(label, sql, fragment) {
+  try {
+    await db.query(sql);
+    check(label, false, "no lanzó error (debía fallar)");
+  } catch (error) {
+    const message = String(error.message ?? error);
+    check(label, message.toUpperCase().includes(fragment.toUpperCase()), message.slice(0, 90));
+  }
+}
+
+const db = new PGlite();
+
+console.log("\n▶ Preparando el entorno tipo Supabase…");
+await db.exec(STUBS);
+
+console.log("\n▶ Ejecutando 00001_schema.sql…");
+await db.exec(readFileSync(`${REPO}/supabase/migrations/00001_schema.sql`, "utf8"));
+console.log("  ✅ esquema creado sin errores");
+
+console.log("\n▶ Ejecutando 00002_seed.sql…");
+await db.exec(readFileSync(`${REPO}/supabase/migrations/00002_seed.sql`, "utf8"));
+console.log("  ✅ datos iniciales cargados sin errores");
+
+console.log("\n▶ Contenido cargado");
+const counts = await db.query(`
+  select
+    (select count(*) from public.classes)  as clases,
+    (select count(*) from public.coaches)  as profes,
+    (select count(*) from public.plans)    as planes,
+    (select count(*) from public.sessions) as sesiones
+`);
+console.log("  ", counts.rows[0]);
+check("9 disciplinas", Number(counts.rows[0].clases) === 9);
+check("6 profes", Number(counts.rows[0].profes) === 6);
+check("4 planes", Number(counts.rows[0].planes) === 4);
+check(
+  "188 clases programadas (47 por semana × 4)",
+  Number(counts.rows[0].sesiones) === 188,
+  `${counts.rows[0].sesiones} sesiones`,
+);
+
+const tzCheck = await db.query(`
+  select
+    to_char(starts_at at time zone 'UTC', 'YYYY-MM-DD HH24:MI') as utc,
+    to_char(starts_at at time zone 'America/Managua', 'YYYY-MM-DD HH24:MI') as local,
+    extract(isodow from starts_at at time zone 'America/Managua') as dia
+  from public.sessions
+  where class_id = 'cls_funcional'
+  order by starts_at
+  limit 1
+`);
+check(
+  "la primera clase de funcional es lunes 06:00 en Managua",
+  tzCheck.rows[0].local === "2026-10-12 06:00",
+  `hora local = ${tzCheck.rows[0].local}, en UTC = ${tzCheck.rows[0].utc}`,
+);
+check(
+  "y en UTC son las 12:00 (Managua = UTC-6)",
+  tzCheck.rows[0].utc === "2026-10-12 12:00",
+  tzCheck.rows[0].utc,
+);
+check("cae en lunes (no se corrió de día)", Number(tzCheck.rows[0].dia) === 1, `isodow = ${tzCheck.rows[0].dia}`);
+
+console.log("\n▶ Idempotencia: correr el seed dos veces no debe duplicar");
+await db.exec(readFileSync(`${REPO}/supabase/migrations/00002_seed.sql`, "utf8"));
+const after = await db.query(`select
+  (select count(*) from public.classes) as clases,
+  (select count(*) from public.sessions) as sesiones`);
+check("las disciplinas siguen siendo 9", Number(after.rows[0].clases) === 9);
+check(
+  "las clases programadas no se duplicaron",
+  Number(after.rows[0].sesiones) === Number(counts.rows[0].sesiones),
+  `${counts.rows[0].sesiones} → ${after.rows[0].sesiones}`,
+);
+
+console.log("\n▶ Registro de socios (trigger de auth.users → profiles)");
+const userA = (
+  await db.query(
+    `insert into auth.users (email, raw_user_meta_data)
+     values ('ana@example.com', '{"full_name":"Ana Torres"}'::jsonb) returning id`,
+  )
+).rows[0].id;
+const userB = (
+  await db.query(
+    `insert into auth.users (email, raw_user_meta_data)
+     values ('bruno@example.com', '{"full_name":"Bruno Diaz"}'::jsonb) returning id`,
+  )
+).rows[0].id;
+
+const profiles = await db.query(`select full_name, email, role from public.profiles order by email`);
+check("se crearon los 2 perfiles", profiles.rows.length === 2, JSON.stringify(profiles.rows[0]));
+check("el rol por defecto es member", profiles.rows.every((r) => r.role === "member"));
+
+async function loginAs(id) {
+  await db.exec(`delete from auth.current_user; insert into auth.current_user values ('${id}');`);
+}
+
+console.log("\n▶ Reservar una clase");
+await loginAs(userA);
+const freeSession = (
+  await db.query(
+    `select id from public.sessions where starts_at > now() + interval '2 days'
+     order by starts_at limit 1`,
+  )
+).rows[0].id;
+
+const booking1 = await db.query(`select public.book_session($1) as r`, [freeSession]);
+check("la reserva se creó", booking1.rows[0].r?.status === "confirmed", JSON.stringify(booking1.rows[0].r));
+
+console.log("\n▶ Reservar la misma clase otra vez");
+await expectError("avisa que ya hay reserva", `select public.book_session('${freeSession}')`, "ALREADY");
+
+console.log("\n▶ Límite de 3 reservas activas");
+const moreSessions = (
+  await db.query(
+    `select id from public.sessions
+     where starts_at > now() + interval '2 days' and id <> $1
+     order by starts_at limit 3`,
+    [freeSession],
+  )
+).rows;
+await db.query(`select public.book_session($1)`, [moreSessions[0].id]);
+await db.query(`select public.book_session($1)`, [moreSessions[1].id]);
+await expectError(
+  "la cuarta choca con el límite",
+  `select public.book_session('${moreSessions[2].id}')`,
+  "LIMIT",
+);
+
+console.log("\n▶ Clase llena");
+// La clase ya la reservó Ana; bajamos el cupo a 1 y probamos con Bruno
+const antesDeLlenar = await db.query(
+  `select capacity, (select count(*) from public.bookings where session_id = $1 and status = 'confirmed')::int as ocupados
+   from public.sessions where id = $1`,
+  [freeSession],
+);
+check(
+  "Ana ocupa el único lugar",
+  Number(antesDeLlenar.rows[0].ocupados) === 1,
+  `${antesDeLlenar.rows[0].ocupados} reserva(s)`,
+);
+await db.exec(`update public.sessions set capacity = 1 where id = '${freeSession}'`);
+await loginAs(userB);
+await expectError("sin lugares disponibles", `select public.book_session('${freeSession}')`, "FULL");
+
+console.log("\n▶ Clase que ya pasó");
+const pastSession = (
+  await db.query(`select id from public.sessions order by starts_at limit 1`)
+).rows[0].id;
+await expectError("rechaza reservar en el pasado", `select public.book_session('${pastSession}')`, "PAST");
+
+console.log("\n▶ Cancelar una reserva");
+// Volvemos a entrar como Ana (Bruno quedó sin reserva: la clase estaba llena)
+await loginAs(userA);
+const bookingId = (
+  await db.query(
+    `select id from public.bookings where user_id = $1 and status = 'confirmed' limit 1`,
+    [userA],
+  )
+).rows[0]?.id;
+check("Ana tiene una reserva para cancelar", Boolean(bookingId));
+if (bookingId) {
+  const cancelled = await db.query(`select public.cancel_booking($1) as r`, [bookingId]);
+  check("la reserva quedó cancelada", cancelled.rows[0].r?.status === "cancelled");
+
+  // Y el lugar se libera: la ocupación baja
+  const liberado = await db.query(
+    `select booked_count from public.session_occupancy where session_id = $1`,
+    [cancelled.rows[0].r.session_id ?? freeSession],
+  );
+  check("el lugar volvió a estar libre", Number(liberado.rows[0]?.booked_count ?? 0) === 0,
+    `ocupación = ${liberado.rows[0]?.booked_count}`);
+
+  // Y puede volver a reservar la misma clase (se reutiliza la fila)
+  const reReserva = await db.query(`select public.book_session($1) as r`, [freeSession]);
+  check("puede volver a reservar la misma clase", reReserva.rows[0].r?.status === "confirmed");
+
+  // Y no se duplicó la fila
+  const filas = await db.query(
+    `select count(*)::int as n from public.bookings where user_id = $1 and session_id = $2`,
+    [userA, freeSession],
+  );
+  check("no se duplicó la reserva", Number(filas.rows[0].n) === 1, `${filas.rows[0].n} fila(s)`);
+}
+
+console.log("\n▶ Cancelar con menos de 3 horas de anticipación");
+await db.exec(`delete from auth.current_user;`);
+// Una clase que arranca en 1 hora, en una disciplina sin cupo lleno
+await db.exec(`
+  insert into public.sessions (id, class_id, coach_id, starts_at, ends_at, capacity, room)
+  values ('ses_prueba_tarde', 'cls_yoga', null, now() + interval '1 hour', now() + interval '2 hours', 20, 'Salón Zen')
+`);
+await loginAs(userB);
+const lateBooking = await db.query(`select public.book_session('ses_prueba_tarde') as r`);
+check("Bruno reserva la clase que arranca en 1 hora", lateBooking.rows[0].r?.status === "confirmed");
+const lateId = lateBooking.rows[0]?.r?.id;
+if (lateId) {
+  await expectError(
+    "no lo deja cancelar tan sobre la hora",
+    `select public.cancel_booking('${lateId}')`,
+    "TOO_LATE",
+  );
+}
+
+console.log("\n▶ Vista pública de ocupación");
+const occ = await db.query(`select count(*)::int as n, sum(booked_count)::int as total from public.session_occupancy`);
+check("la vista devuelve conteos", occ.rows[0].n > 0, `${occ.rows[0].n} clases con reservas`);
+
+console.log("\n▶ Seguridad (RLS): cada socio sólo ve sus propias reservas");
+await loginAs(userB);
+const comoSuperusuario = await db.query(`select count(*)::int as total from public.bookings`);
+const deBruno = await db.query(
+  `select count(*)::int as propias from public.bookings where user_id = $1`,
+  [userB],
+);
+
+// Nos ponemos en los zapatos de un socio logueado (rol `authenticated`)
+await db.exec(`set role authenticated;`);
+const comoSocio = await db.query(`select count(*)::int as visibles from public.bookings`);
+await db.exec(`reset role;`);
+
+check(
+  "el socio sólo ve sus reservas, no las de los demás",
+  Number(comoSocio.rows[0].visibles) === Number(deBruno.rows[0].propias),
+  `ve ${comoSocio.rows[0].visibles} y tiene ${deBruno.rows[0].propias} · en total hay ${comoSuperusuario.rows[0].total}`,
+);
+check(
+  "no ve la tabla completa",
+  Number(comoSocio.rows[0].visibles) < Number(comoSuperusuario.rows[0].total),
+);
+check("hay más de una reserva en la base para que la prueba tenga sentido",
+  Number(comoSuperusuario.rows[0].total) > 1);
+
+// ¿Y los horarios? Esos sí son públicos
+await db.exec(`set role anon;`);
+const horariosPublicos = await db.query(`select count(*)::int as n from public.sessions`);
+const ocupacionPublica = await db.query(`select count(*)::int as n from public.session_occupancy`);
+await db.exec(`reset role;`);
+check("los horarios se ven sin estar logueado", Number(horariosPublicos.rows[0].n) > 0, `${horariosPublicos.rows[0].n} clases`);
+check("la ocupación también (pero sólo el conteo)", Number(ocupacionPublica.rows[0].n) > 0, `${ocupacionPublica.rows[0].n} filas`);
+
+console.log("\n▶ Generar más semanas (función del panel)");
+// Sin usuario logueado = equivalente a correrlo desde el SQL Editor de Supabase
+await db.exec(`delete from auth.current_user;`);
+const generated = await db.query(`select public.generate_week_sessions(current_date + 28) as nuevas`);
+const again = await db.query(`select public.generate_week_sessions(current_date + 28) as repetidas`);
+check("genera clases nuevas", Number(generated.rows[0].nuevas) > 0, `${generated.rows[0].nuevas} clases`);
+check("no duplica si se corre de nuevo", Number(again.rows[0].repetidas) === 0, `${again.rows[0].repetidas} repetidas`);
+
+console.log("\n▶ Sólo el staff puede generar horarios");
+await loginAs(userB);
+await expectError(
+  "un socio común no puede tocar los horarios",
+  `select public.generate_week_sessions(current_date + 56)`,
+  "AUTH",
+);
+await db.exec(`update public.profiles set role = 'admin' where id = '${userB}';`);
+const asAdmin = await db.query(`select public.generate_week_sessions(current_date + 56) as n`);
+check("el admin sí puede", Number(asAdmin.rows[0].n) > 0, `${asAdmin.rows[0].n} clases`);
+
+console.log("\n▶ Cerrar clases pasadas (ausentes)");
+const closed = await db.query(`select public.close_past_sessions() as n`);
+check("la función corre sin errores", typeof closed.rows[0].n === "number", `${closed.rows[0].n} marcadas`);
+
+console.log(`\n${failures === 0 ? "🎉 Todo pasó" : `⚠️  ${failures} prueba(s) fallaron`}\n`);
+process.exit(failures === 0 ? 0 : 1);

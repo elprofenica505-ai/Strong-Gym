@@ -1,0 +1,689 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  CalendarX,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Loader2,
+  LogIn,
+  MapPin,
+  User as UserIcon,
+  Users,
+  X,
+} from "lucide-react";
+import { useApp } from "@/components/providers/app-provider";
+import { useDictionary } from "@/components/providers/dictionary-provider";
+import { Button, ButtonLink } from "@/components/ui/button";
+import {
+  dayMonth,
+  formatLongDate,
+  formatTime,
+  formatWeekRange,
+  getWeekRange,
+  gymNow,
+  shiftWeeks,
+  toISODate,
+  weekDays,
+  weekRangeFromKey,
+  weekdayName,
+} from "@/lib/schedule";
+import type { SessionDetail, WeekRange } from "@/lib/types";
+import { cn } from "@/lib/utils";
+
+/** Mensajes que mostramos cuando el backend rechaza una reserva. */
+const errorMessages = {
+  FULL: "sessionFull",
+  ALREADY_BOOKED: "alreadyBooked",
+  LIMIT: "tooManyBookings",
+  PAST: "pastSession",
+  CANCELLED: "cancelledByGym",
+  TOO_LATE: "bookingError",
+  NOT_FOUND: "bookingError",
+  AUTH: "loginToBook",
+  UNKNOWN: "bookingError",
+} as const;
+
+export function ScheduleBoard({ initialWeekKey }: { initialWeekKey?: string }) {
+  const { dict, locale } = useDictionary();
+  const { user, bookedSessionIds, book, cancelBySessionId, toast } = useApp();
+
+  const [week, setWeek] = useState<WeekRange>(() => weekRangeFromKey(initialWeekKey));
+  const [sessions, setSessions] = useState<SessionDetail[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeDay, setActiveDay] = useState<string | null>(null);
+  const [classFilter, setClassFilter] = useState<string>("all");
+  const [pendingSession, setPendingSession] = useState<string | null>(null);
+  const [needLogin, setNeedLogin] = useState(false);
+  const dayRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  /* ---------- Carga de datos ---------- */
+
+  const load = useCallback(
+    async (key: string) => {
+      setLoading(true);
+      try {
+        const url = key ? `/api/sessions?week=${encodeURIComponent(key)}` : "/api/sessions";
+        const response = await fetch(url, { cache: "no-store" });
+        if (!response.ok) throw new Error("fetch failed");
+
+        const data = (await response.json()) as {
+          weekKey: string;
+          sessions: SessionDetail[];
+        };
+
+        setSessions(data.sessions);
+        setWeek(weekRangeFromKey(data.weekKey));
+
+        // Mantenemos la URL sincronizada para poder compartir una semana
+        // concreta, sin disparar otro render del servidor.
+        if (typeof window !== "undefined") {
+          const url = new URL(window.location.href);
+          url.searchParams.set("week", data.weekKey);
+          window.history.replaceState(null, "", url.toString());
+        }
+      } catch {
+        setSessions([]);
+        toast(dict.schedule.bookingError, "error");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [dict.schedule.bookingError, toast],
+  );
+
+  useEffect(() => {
+    void load(initialWeekKey ?? "");
+  }, [load, initialWeekKey]);
+
+  /* ---------- Derivados ---------- */
+
+  const days = useMemo(() => weekDays(week), [week]);
+  const todayISO = useMemo(() => toISODate(gymNow()), []);
+
+  const disciplines = useMemo(() => {
+    const map = new Map<string, { slug: string; name: string; color: string }>();
+    for (const session of sessions ?? []) {
+      if (map.has(session.gymClass.slug)) continue;
+      map.set(session.gymClass.slug, {
+        slug: session.gymClass.slug,
+        name: locale === "es" ? session.gymClass.name_es : session.gymClass.name_en,
+        color: session.gymClass.color,
+      });
+    }
+    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, locale));
+  }, [sessions, locale]);
+
+  const sessionsByDay = useMemo(() => {
+    const map = new Map<string, SessionDetail[]>();
+    for (const session of sessions ?? []) {
+      if (classFilter !== "all" && session.gymClass.slug !== classFilter) continue;
+      const key = toISODate(new Date(session.starts_at));
+      const list = map.get(key);
+      if (list) list.push(session);
+      else map.set(key, [session]);
+    }
+    return map;
+  }, [sessions, classFilter]);
+
+  const visibleDays = activeDay ? days.filter((d) => toISODate(d) === activeDay) : days;
+  const totalVisible = useMemo(
+    () => [...sessionsByDay.values()].reduce((acc, list) => acc + list.length, 0),
+    [sessionsByDay],
+  );
+
+  const now = useMemo(() => gymNow(), []);
+
+  /* ---------- Acciones ---------- */
+
+  function goToWeek(offset: number) {
+    const next = shiftWeeks(week, offset);
+    setActiveDay(null);
+    void load(next.key);
+  }
+
+  function goToCurrentWeek() {
+    setActiveDay(null);
+    setClassFilter("all");
+    void load(getWeekRange().key);
+  }
+
+  async function onBook(session: SessionDetail) {
+    if (!user) {
+      setNeedLogin(true);
+      dayRefs.current["login"]?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+
+    setPendingSession(session.id);
+    const result = await book(session.id);
+    setPendingSession(null);
+
+    if (result.ok) {
+      toast(dict.schedule.bookSuccess, "success");
+      setSessions((prev) =>
+        (prev ?? []).map((item) =>
+          item.id === session.id
+            ? {
+                ...item,
+                bookedCount: item.bookedCount + 1,
+                spotsLeft: Math.max(0, item.spotsLeft - 1),
+              }
+            : item,
+        ),
+      );
+      return;
+    }
+
+    const key = result.error ? errorMessages[result.error] : "bookingError";
+    const message = dict.schedule[key];
+    toast(message, result.error === "ALREADY_BOOKED" ? "info" : "error");
+  }
+
+  async function onCancel(session: SessionDetail) {
+    setPendingSession(session.id);
+    const result = await cancelBySessionId(session.id);
+    setPendingSession(null);
+
+    if (result.ok) {
+      toast(dict.schedule.cancelSuccess, "info");
+      setSessions((prev) =>
+        (prev ?? []).map((item) =>
+          item.id === session.id
+            ? {
+                ...item,
+                bookedCount: Math.max(0, item.bookedCount - 1),
+                spotsLeft: item.spotsLeft + 1,
+              }
+            : item,
+        ),
+      );
+      return;
+    }
+
+    toast(dict.schedule.bookingError, "error");
+  }
+
+  /* ---------- Render ---------- */
+
+  return (
+    <div className="flex flex-col gap-5">
+      {/* --- Controles --- */}
+      <div className="flex flex-col gap-4 rounded-2xl border border-line bg-card p-4 sm:p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => goToWeek(-1)}
+              aria-label={dict.schedule.prevWeek}
+              className="grid size-10 place-items-center rounded-full border border-line text-mist transition-colors hover:border-volt/60 hover:text-volt"
+            >
+              <ChevronLeft className="size-4.5" aria-hidden="true" />
+            </button>
+
+            <div className="min-w-40 text-center sm:min-w-56">
+              <p className="text-[0.625rem] font-semibold tracking-[0.16em] text-fog uppercase">
+                {dict.schedule.weekOf}
+              </p>
+              <p className="text-[0.875rem] font-semibold text-chalk sm:text-[0.9375rem]">
+                {formatWeekRange(week, locale)}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => goToWeek(1)}
+              aria-label={dict.schedule.nextWeek}
+              className="grid size-10 place-items-center rounded-full border border-line text-mist transition-colors hover:border-volt/60 hover:text-volt"
+            >
+              <ChevronRight className="size-4.5" aria-hidden="true" />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={goToCurrentWeek}
+              className="rounded-full border border-line px-4 py-2 text-[0.75rem] font-semibold text-mist transition-colors hover:border-volt/60 hover:text-volt"
+            >
+              {dict.schedule.today}
+            </button>
+
+            {loading ? (
+              <span className="flex items-center gap-2 text-[0.75rem] text-fog">
+                <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+              </span>
+            ) : (
+              <span className="text-[0.75rem] text-fog">
+                {totalVisible} {dict.schedule.weeklySummary}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Filtros por disciplina */}
+        {disciplines.length > 0 ? (
+          <div
+            className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 no-scrollbar"
+            role="group"
+            aria-label={dict.schedule.filters}
+          >
+            <FilterChip
+              active={classFilter === "all"}
+              onClick={() => setClassFilter("all")}
+              label={dict.schedule.all}
+            />
+            {disciplines.map((discipline) => (
+              <FilterChip
+                key={discipline.slug}
+                active={classFilter === discipline.slug}
+                onClick={() => setClassFilter(discipline.slug)}
+                label={discipline.name}
+                color={discipline.color}
+              />
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      {/* --- Selector de día --- */}
+      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 lg:grid-cols-8">
+        <DayButton
+          top={dict.schedule.all}
+          bottom={`${days.length}`}
+          active={activeDay === null}
+          onClick={() => setActiveDay(null)}
+        />
+
+        {days.map((day) => {
+          const iso = toISODate(day);
+          const count = (sessionsByDay.get(iso) ?? []).length;
+
+          return (
+            <DayButton
+              key={iso}
+              top={weekdayName(day, locale)}
+              bottom={dayMonth(day, locale)}
+              count={count}
+              active={activeDay === iso}
+              isToday={iso === todayISO}
+              onClick={() => {
+                setActiveDay(iso);
+                requestAnimationFrame(() => {
+                  dayRefs.current[iso]?.scrollIntoView({ behavior: "smooth", block: "start" });
+                });
+              }}
+            />
+          );
+        })}
+      </div>
+
+      {/* --- Aviso de login --- */}
+      {needLogin && !user ? (
+        <div
+          ref={(node) => {
+            dayRefs.current["login"] = node;
+          }}
+          className="flex scroll-mt-28 flex-col gap-4 rounded-2xl border border-volt/35 bg-volt/[0.07] p-5 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div className="flex items-start gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-volt/15 text-volt">
+              <LogIn className="size-4.5" aria-hidden="true" />
+            </span>
+            <div>
+              <p className="text-[0.875rem] font-semibold text-chalk">
+                {dict.schedule.loginToBook}
+              </p>
+              <p className="mt-0.5 text-[0.8125rem] text-fog">{dict.schedule.loginHint}</p>
+            </div>
+          </div>
+
+          <div className="flex shrink-0 gap-2">
+            <ButtonLink href={`/${locale}/ingresar`} size="sm">
+              {dict.nav.login}
+            </ButtonLink>
+            <ButtonLink href={`/${locale}/registro`} variant="outline" size="sm">
+              {dict.nav.register}
+            </ButtonLink>
+          </div>
+        </div>
+      ) : null}
+
+      {/* --- Listado de clases --- */}
+      {loading && !sessions ? (
+        <SkeletonList />
+      ) : totalVisible === 0 ? (
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-line bg-card px-6 py-16 text-center">
+          <CalendarX className="size-8 text-fog" aria-hidden="true" />
+          <p className="text-[0.9375rem] text-mist">
+            {classFilter === "all" ? dict.schedule.noSessions : dict.schedule.noResults}
+          </p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-7">
+          {visibleDays.map((day) => {
+            const iso = toISODate(day);
+            const daySessions = sessionsByDay.get(iso) ?? [];
+            if (daySessions.length === 0 && activeDay === null) return null;
+
+            const isToday = iso === todayISO;
+
+            return (
+              <div
+                key={iso}
+                ref={(node) => {
+                  dayRefs.current[iso] = node;
+                }}
+                className="scroll-mt-28"
+              >
+                <header className="mb-3 flex items-center gap-3">
+                  <h3
+                    className={cn(
+                      "display-xl text-[1.25rem] capitalize sm:text-[1.5rem]",
+                      isToday ? "text-volt" : "text-chalk",
+                    )}
+                  >
+                    {formatLongDate(day, locale)}
+                  </h3>
+
+                  {isToday ? (
+                    <span className="shrink-0 rounded-full bg-volt px-2.5 py-0.5 text-[0.625rem] font-bold tracking-wide text-ink uppercase">
+                      {dict.schedule.today}
+                    </span>
+                  ) : null}
+
+                  <span className="ml-auto shrink-0 text-[0.75rem] text-fog">
+                    {daySessions.length === 1
+                      ? dict.schedule.oneClassCount
+                      : dict.schedule.classesCount.replace("{count}", String(daySessions.length))}
+                  </span>
+                </header>
+
+                {daySessions.length === 0 ? (
+                  <p className="rounded-xl border border-line bg-card/50 px-4 py-6 text-center text-[0.875rem] text-fog">
+                    {dict.schedule.noSessions}
+                  </p>
+                ) : (
+                  <ul className="flex flex-col gap-2.5">
+                    {daySessions.map((session) => (
+                      <SessionRow
+                        key={session.id}
+                        session={session}
+                        locale={locale}
+                        labels={dict.schedule}
+                        durationLabel={dict.classes.duration}
+                        isBooked={bookedSessionIds.has(session.id)}
+                        isPast={new Date(session.starts_at) < now}
+                        isPending={pendingSession === session.id}
+                        onBook={() => void onBook(session)}
+                        onCancel={() => void onCancel(session)}
+                      />
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------
+   Subcomponentes
+   ------------------------------------------------------------ */
+
+function FilterChip({
+  active,
+  onClick,
+  label,
+  color,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  color?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-[0.75rem] font-medium transition-colors",
+        active
+          ? "border-volt/60 bg-volt/12 text-volt"
+          : "border-line text-mist hover:border-white/25 hover:text-chalk",
+      )}
+    >
+      {color ? (
+        <span
+          className="size-2 rounded-full"
+          style={{ backgroundColor: color }}
+          aria-hidden="true"
+        />
+      ) : null}
+      {label}
+    </button>
+  );
+}
+
+function DayButton({
+  top,
+  bottom,
+  count,
+  active,
+  isToday,
+  onClick,
+}: {
+  top: string;
+  bottom: string;
+  count?: number;
+  active?: boolean;
+  isToday?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "flex min-w-24 shrink-0 flex-col items-start gap-0.5 rounded-xl border px-3.5 py-2.5 text-left transition-colors sm:min-w-0",
+        active ? "border-volt/60 bg-volt/12" : "border-line bg-card hover:border-white/25",
+      )}
+    >
+      <span
+        className={cn(
+          "max-w-full truncate text-[0.8125rem] font-semibold capitalize",
+          active ? "text-volt" : "text-chalk",
+        )}
+      >
+        {top}
+      </span>
+
+      <span className="flex items-center gap-2 text-[0.6875rem] text-fog">
+        {bottom}
+        {isToday ? <span className="size-1.5 rounded-full bg-volt" aria-hidden="true" /> : null}
+        {typeof count === "number" && count > 0 ? <span>· {count}</span> : null}
+      </span>
+    </button>
+  );
+}
+
+function SkeletonList() {
+  return (
+    <div className="flex flex-col gap-2.5">
+      {Array.from({ length: 5 }).map((_, index) => (
+        <div
+          key={index}
+          className="h-24 animate-pulse rounded-2xl border border-line bg-card/60"
+        />
+      ))}
+    </div>
+  );
+}
+
+interface ScheduleLabels {
+  book: string;
+  booked: string;
+  full: string;
+  finished: string;
+  spotsLeft: string;
+  spotLeft: string;
+  with: string;
+  cancel: string;
+}
+
+function SessionRow({
+  session,
+  locale,
+  labels,
+  durationLabel,
+  isBooked,
+  isPast,
+  isPending,
+  onBook,
+  onCancel,
+}: {
+  session: SessionDetail;
+  locale: "es" | "en";
+  labels: ScheduleLabels;
+  durationLabel: string;
+  isBooked: boolean;
+  isPast: boolean;
+  isPending: boolean;
+  onBook: () => void;
+  onCancel: () => void;
+}) {
+  const name = locale === "es" ? session.gymClass.name_es : session.gymClass.name_en;
+  const startsAt = new Date(session.starts_at);
+  const endsAt = new Date(session.ends_at);
+  const isFull = session.spotsLeft <= 0;
+  const occupancy = Math.min(
+    100,
+    Math.round((session.bookedCount / Math.max(1, session.capacity)) * 100),
+  );
+
+  return (
+    <li className="relative overflow-hidden rounded-2xl border border-line bg-card transition-colors hover:border-white/20">
+      <span
+        className="absolute inset-y-0 left-0 w-1"
+        style={{ backgroundColor: session.gymClass.color }}
+        aria-hidden="true"
+      />
+
+      <div className="flex flex-col gap-4 p-4 pl-5 sm:flex-row sm:items-center sm:gap-5 sm:p-5 sm:pl-6">
+        {/* Hora */}
+        <div className="flex items-center gap-4 sm:w-24 sm:shrink-0 sm:flex-col sm:items-start sm:gap-1">
+          <p className="display-xl text-[1.375rem] leading-none text-chalk">
+            {formatTime(startsAt, locale)}
+          </p>
+          <p className="flex items-center gap-1.5 text-[0.6875rem] text-fog">
+            <Clock className="size-3" aria-hidden="true" />
+            {formatTime(endsAt, locale)}
+          </p>
+        </div>
+
+        {/* Detalle */}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="display-xl text-[1.125rem] leading-none sm:text-[1.25rem]">{name}</h4>
+
+            <span
+              className="rounded-full px-2 py-0.5 text-[0.625rem] font-bold tracking-wide uppercase"
+              style={{
+                color: session.gymClass.color,
+                backgroundColor: `${session.gymClass.color}1a`,
+              }}
+            >
+              {session.gymClass.duration_min} {durationLabel}
+            </span>
+          </div>
+
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.75rem] text-fog">
+            {session.coach ? (
+              <span className="flex items-center gap-1.5">
+                <UserIcon className="size-3.5" aria-hidden="true" />
+                {labels.with} {session.coach.name}
+              </span>
+            ) : null}
+
+            <span className="flex items-center gap-1.5">
+              <MapPin className="size-3.5" aria-hidden="true" />
+              {session.room}
+            </span>
+
+            <span className="flex items-center gap-1.5">
+              <Users className="size-3.5" aria-hidden="true" />
+              {isFull && !isBooked
+                ? labels.full
+                : `${session.spotsLeft} ${session.spotsLeft === 1 ? labels.spotLeft : labels.spotsLeft}`}
+            </span>
+          </div>
+
+          {/* Ocupación */}
+          <div className="mt-3 flex items-center gap-2">
+            <div className="h-1 flex-1 overflow-hidden rounded-full bg-void">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${occupancy}%`,
+                  backgroundColor: isFull && !isBooked ? "#ff5b26" : session.gymClass.color,
+                }}
+              />
+            </div>
+            <span className="w-14 text-right text-[0.625rem] tabular-nums text-fog">
+              {session.bookedCount}/{session.capacity}
+            </span>
+          </div>
+        </div>
+
+        {/* Acción */}
+        <div className="shrink-0 sm:w-40">
+          {isPast ? (
+            <span className="flex w-full items-center justify-center gap-2 rounded-full border border-line px-4 py-2.5 text-[0.75rem] font-semibold text-fog">
+              {isBooked ? <Check className="size-3.5" aria-hidden="true" /> : null}
+              {isBooked ? labels.booked : labels.finished}
+            </span>
+          ) : isBooked ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onCancel}
+              disabled={isPending}
+              className="w-full border-volt/50 text-volt hover:border-flame/60 hover:bg-flame/10 hover:text-flame"
+            >
+              {isPending ? (
+                <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+              ) : (
+                <X className="size-3.5" aria-hidden="true" />
+              )}
+              {labels.cancel}
+            </Button>
+          ) : isFull ? (
+            <span className="flex w-full items-center justify-center rounded-full border border-flame/30 bg-flame/10 px-4 py-2.5 text-[0.75rem] font-semibold text-flame">
+              {labels.full}
+            </span>
+          ) : (
+            <Button
+              size="sm"
+              onClick={onBook}
+              disabled={isPending}
+              className="w-full"
+              style={{ backgroundColor: session.gymClass.color, color: "#0a0c07" }}
+            >
+              {isPending ? (
+                <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+              ) : null}
+              {labels.book}
+            </Button>
+          )}
+        </div>
+      </div>
+    </li>
+  );
+}
