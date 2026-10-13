@@ -1,0 +1,443 @@
+import type { Dictionary } from "./index";
+
+const en: Dictionary = {
+  meta: {
+    title: "Strong Gym | Train hard, train with us",
+    description:
+      "Gym with instructor-led classes, weight training and functional fitness. Book your class online in seconds. Plans from $19,900 a month.",
+    keywords: "gym, group classes, functional training, weight training, crossfit, book a class",
+  },
+
+  nav: {
+    home: "Home",
+    classes: "Classes",
+    schedule: "Schedule",
+    plans: "Plans",
+    coaches: "Coaches",
+    contact: "Contact",
+    account: "My account",
+    login: "Sign in",
+    register: "Sign up",
+    logout: "Sign out",
+    admin: "Admin",
+    menu: "Open menu",
+    close: "Close menu",
+    language: "Language",
+  },
+
+  cta: {
+    book: "Book a class",
+    bookNow: "Book now",
+    viewSchedule: "View schedule",
+    viewClasses: "See all classes",
+    viewPlans: "View plans",
+    contact: "Contact us",
+    whatsapp: "WhatsApp",
+    freeTrial: "First class free",
+    back: "Back",
+  },
+
+  hero: {
+    badge: "First trial class on us",
+    titleTop: "Train",
+    titleAccent: "strong",
+    titleBottom: "live better",
+    subtitle:
+      "Over 40 weekly classes, coaches who guide you and a space built so that training becomes the best part of your day. Book from your phone in 10 seconds.",
+    primary: "Book a class",
+    secondary: "Explore the gym",
+    scroll: "Scroll to see more",
+    stats: [
+      { value: "+900", label: "Active members" },
+      { value: "40", label: "Classes per week" },
+      { value: "12", label: "Certified coaches" },
+      { value: "24/7", label: "Weights room access" },
+    ],
+  },
+
+  marquee: [
+    "Weight training",
+    "Functional",
+    "Spinning",
+    "Cross Training",
+    "Yoga",
+    "Boxing",
+    "HIIT",
+    "Pilates",
+    "Zumba",
+    "Stretching",
+  ],
+
+  features: {
+    title: "Why Strong Gym?",
+    subtitle: "Everything you need to train seriously, close to home.",
+    items: [
+      {
+        title: "Classes every day",
+        text: "40 weekly classes across 10 disciplines, from 7 in the morning until 10 at night.",
+      },
+      {
+        title: "Coaches who follow you",
+        text: "Every class has a coach in charge. They fix your form and build the plan around your goal.",
+      },
+      {
+        title: "Book from your phone",
+        text: "Pick a day and time, book it and get a reminder. Cancel free of charge up to 3 hours before.",
+      },
+      {
+        title: "Weights room 24/7",
+        text: "Free access with a digital key on Full plans. Train whenever it suits you.",
+      },
+      {
+        title: "Full locker rooms",
+        text: "Showers, lockers with padlocks, hairdryers and towels available. Walk out ready for the day.",
+      },
+      {
+        title: "No fine print",
+        text: "Clear plans with no hidden joining fee and no surprise charges. Switch plans whenever you want.",
+      },
+    ],
+  },
+
+  classes: {
+    title: "Our classes",
+    subtitle: "Pick the discipline that fits you. Every class works for beginners.",
+    duration: "min",
+    capacity: "spots",
+    intensity: "Intensity",
+    intensityLevels: {
+      low: "Low",
+      medium: "Medium",
+      high: "High",
+    },
+    seeSchedule: "View schedule",
+    empty: "No classes published yet. Check back soon.",
+    count: "classes available",
+  },
+
+  schedule: {
+    title: "Schedule and booking",
+    subtitle: "Pick a day, see the available classes and book your spot. Spaces are limited.",
+    week: "Week",
+    today: "Today",
+    prevWeek: "Previous week",
+    nextWeek: "Next week",
+    chooseWeek: "Pick a week",
+    filters: "Filter by discipline",
+    all: "All",
+    noSessions: "There are no classes scheduled for this day.",
+    noResults: "There are no classes for this discipline this week.",
+    book: "Book",
+    booked: "Booked",
+    cancel: "Cancel booking",
+    full: "Full",
+    finished: "Finished",
+    inProgress: "In progress",
+    spotsLeft: "spots left",
+    spotLeft: "spot left",
+    capacity: "Capacity",
+    room: "Room",
+    with: "with",
+    loginToBook: "Sign in to book",
+    loginHint: "You need an account to book classes. It's free and takes 30 seconds.",
+    bookSuccess: "You're in! We saved your spot.",
+    cancelSuccess: "Your booking was cancelled.",
+    alreadyBooked: "You already had a booking for that class.",
+    sessionFull: "The class is full, try another time.",
+    pastSession: "That class already happened.",
+    cancelledByGym: "The class was cancelled by the gym.",
+    bookingError: "We couldn't complete your booking. Please try again.",
+    weekOf: "Week of",
+    weeklySummary: "classes this week",
+    bookable: "bookable",
+    classesCount: "{count} classes",
+    oneClassCount: "1 class",
+  },
+
+  plans: {
+    title: "Plans and pricing",
+    subtitle: "No joining fee, no contracts. Pay month to month and cancel whenever you want.",
+    month: "per month",
+    popular: "Most popular",
+    choose: "Choose this plan",
+    allIncluded: "Every plan includes",
+    included: [
+      "Access to every class at the gym",
+      "Initial fitness assessment and follow-up",
+      "App to book classes and track progress",
+      "Locker rooms, showers and lockers",
+    ],
+    note: "Prices in Argentine pesos. Ask about family and student discounts.",
+    askForPlan: "Ask about this plan",
+  },
+
+  coaches: {
+    title: "Our team",
+    subtitle: "Certified coaches with years of experience and a real interest in your progress.",
+    seeClasses: "See their classes",
+  },
+
+  testimonials: {
+    title: "What our members say",
+    subtitle: "More than 900 people train with us every day.",
+    items: [
+      {
+        quote:
+          "I started unable to run for five minutes and today I do two classes back to back. The coaches genuinely have your back.",
+        name: "Camila R.",
+        role: "Member since 2022",
+      },
+      {
+        quote:
+          "The best part is booking from my phone. I finish work, check the times and walk in. Never missed a spot again.",
+        name: "Martín A.",
+        role: "Full plan",
+      },
+      {
+        quote:
+          "I came for the weights room and stayed for the classes. Great crowd and the facilities are spotless.",
+        name: "Lucía P.",
+        role: "Member since 2023",
+      },
+    ],
+  },
+
+  gallery: {
+    title: "Take a look around",
+    subtitle: "2 floors, 900 m² and brand new equipment in every room.",
+    items: [
+      { label: "Class studio", detail: "Professional sound and lighting" },
+      { label: "Weights room", detail: "Machines and free weights" },
+      { label: "Functional zone", detail: "Kettlebells, TRX and sleds" },
+      { label: "Locker rooms", detail: "Showers and individual lockers" },
+    ],
+  },
+
+  faq: {
+    title: "Frequently asked questions",
+    subtitle: "Still unsure about something? Write to us and we'll answer the same day.",
+    items: [
+      {
+        q: "Do I need previous experience to start?",
+        a: "No. Every class has a beginner option and the coach adapts the exercises for you from day one.",
+      },
+      {
+        q: "How do I book a class?",
+        a: "Create your account, go to Schedule, pick the day and time and confirm. You can cancel free of charge up to 3 hours before.",
+      },
+      {
+        q: "What happens if I miss a booked class?",
+        a: "If you cancel with less than 3 hours' notice or don't show up, it's recorded as a no-show. On the third no-show of the month your weekly spot is released.",
+      },
+      {
+        q: "Can I try before paying?",
+        a: "Yes. Your first class in any discipline is free. You just need to book it on the website.",
+      },
+      {
+        q: "Is there parking?",
+        a: "We have our own free parking for members, subject to availability, plus a bike rack at the entrance.",
+      },
+      {
+        q: "Can I freeze my plan for holidays?",
+        a: "Yes, Full and Duo plans can be frozen for up to 30 days a year at no extra cost.",
+      },
+    ],
+  },
+
+  contact: {
+    title: "Visit us or get in touch",
+    subtitle: "We're five blocks from the main square. Drop by and see the gym whenever you like.",
+    addressLabel: "Address",
+    address: "Av. Siempre Fuerte 1450, Upper Floor",
+    city: "Buenos Aires, Argentina",
+    phoneLabel: "Phone",
+    emailLabel: "Email",
+    hoursLabel: "Gym hours",
+    hours: [
+      { day: "Monday to Friday", time: "07:00 — 22:00" },
+      { day: "Saturdays", time: "08:00 — 18:00" },
+      { day: "Sundays and holidays", time: "09:00 — 13:00" },
+    ],
+    formTitle: "Send us a message",
+    formSubtitle: "We reply within 24 business hours.",
+    name: "Full name",
+    namePlaceholder: "e.g. Camila Rodriguez",
+    email: "Email",
+    emailPlaceholder: "you@example.com",
+    phone: "Phone (optional)",
+    phonePlaceholder: "+54 9 11 1234 5678",
+    subject: "Reason",
+    subjectOptions: {
+      info: "I'd like general information",
+      trial: "I want the free trial class",
+      plans: "Question about plans and pricing",
+      corporate: "Corporate plans for companies",
+      other: "Something else",
+    },
+    message: "Message",
+    messagePlaceholder: "Tell us what you need and we'll get back to you shortly.",
+    send: "Send message",
+    sending: "Sending...",
+    success: "Thanks! We got your message and will write back soon.",
+    error: "We couldn't send your message. Check the details and try again.",
+    required: "This field is required",
+    invalidEmail: "Enter a valid email",
+    tooShort: "Tell us a bit more (at least 10 characters)",
+    mapTitle: "Location map",
+  },
+
+  auth: {
+    loginTitle: "Sign in to your account",
+    loginSubtitle: "See your bookings, change your plan and track your progress.",
+    registerTitle: "Create your account",
+    registerSubtitle: "It's free. In 30 seconds you can book your first class.",
+    name: "Full name",
+    email: "Email",
+    password: "Password",
+    passwordHint: "At least 6 characters",
+    confirmPassword: "Repeat password",
+    login: "Sign in",
+    register: "Create account",
+    loading: "One moment...",
+    noAccount: "Don't have an account yet?",
+    hasAccount: "Already have an account?",
+    goRegister: "Sign up",
+    goLogin: "Sign in",
+    forgot: "Forgot your password?",
+    resetSent: "We sent you an email to reset your password.",
+    confirmEmailTitle: "Check your inbox",
+    confirmEmailText:
+      "We sent a confirmation link to {email}. Open it to activate your account, then sign in.",
+    invalidCredentials: "Wrong email or password.",
+    emailInUse: "An account with that email already exists. Try signing in.",
+    weakPassword: "Your password must be at least 6 characters long.",
+    passwordMismatch: "The passwords don't match.",
+    genericError: "We couldn't complete the request. Please try again.",
+    requiredField: "This field is required",
+    passwordMin: "At least 6 characters",
+    demoNotice:
+      "You're in demo mode. Real sign-in turns on once you connect Supabase (see the README).",
+  },
+
+  account: {
+    title: "My account",
+    greeting: "Hi, {name}!",
+    subtitle: "Here you can see your upcoming classes and your history.",
+    upcoming: "Upcoming bookings",
+    history: "History",
+    noUpcoming: "You have no booked classes. Shall we start with one?",
+    noHistory: "No past classes yet.",
+    browseClasses: "View schedule",
+    cancelBooking: "Cancel",
+    cancelConfirm: "Are you sure you want to cancel this booking?",
+    cancelled: "Cancelled",
+    confirmed: "Confirmed",
+    attended: "Attended",
+    noShow: "No-show",
+    memberSince: "Member since",
+    plan: "Current plan",
+    noPlan: "No plan assigned",
+    stats: {
+      total: "Total bookings",
+      attended: "Classes attended",
+      upcoming: "Upcoming",
+    },
+    settings: "Account details",
+    fullName: "Name",
+    phone: "Phone",
+    save: "Save changes",
+    saved: "Details saved.",
+    logoutCta: "Sign out",
+  },
+
+  admin: {
+    title: "Admin panel",
+    subtitle: "Bookings, enquiries and classes for the gym.",
+    noAccess: "You don't have permission to view this section.",
+    noAccessHint:
+      "If you're part of the gym staff, ask the administrator to enable your user in the profiles table.",
+    stats: {
+      bookingsToday: "Bookings today",
+      bookingsWeek: "Bookings this week",
+      members: "Registered members",
+      messages: "Unread enquiries",
+      occupancy: "Average occupancy",
+    },
+    tabs: {
+      overview: "Overview",
+      bookings: "Bookings",
+      messages: "Enquiries",
+      classes: "Classes",
+    },
+    table: {
+      member: "Member",
+      email: "Email",
+      class: "Class",
+      date: "Date",
+      time: "Time",
+      status: "Status",
+      actions: "Actions",
+      coach: "Coach",
+      spots: "Spots",
+      active: "Active",
+      created: "Received",
+      subject: "Reason",
+      message: "Message",
+    },
+    actions: {
+      markAttended: "Mark attended",
+      markNoShow: "Mark no-show",
+      cancelBooking: "Cancel",
+      markRead: "Mark as read",
+      toggleClass: "Enable / disable",
+    },
+    empty: {
+      bookings: "No bookings recorded yet.",
+      messages: "No new enquiries.",
+      classes: "No classes loaded.",
+    },
+    demoNotice:
+      "The panel is showing sample data. Once Supabase is connected you'll see the gym's real information.",
+  },
+
+  footer: {
+    tagline: "Train hard. Live better.",
+    about:
+      "We're a neighbourhood gym with a big attitude: instructor-led classes, weight training and a community that pushes you further.",
+    quickLinks: "Navigation",
+    servicesTitle: "Services",
+    services: ["Group classes", "Weight training", "Functional training", "Personal trainer"],
+    contactTitle: "Contact",
+    socialTitle: "Follow us",
+    hoursTitle: "Hours",
+    newsletter: "Newsletter",
+    newsletterText: "Leave your email and we'll let you know about new times and offers.",
+    newsletterPlaceholder: "you@example.com",
+    newsletterButton: "Subscribe",
+    newsletterSuccess: "Thanks! You're on the list.",
+    rights: "All rights reserved.",
+    terms: "Terms and conditions",
+    privacy: "Privacy policy",
+    madeWith: "Built with Next.js and Supabase",
+  },
+
+  demo: {
+    title: "Demo mode",
+    text: "The site is running on sample data. Connect Supabase to switch on the real database and sign-in.",
+    hint: "Instructions are in the repository README",
+    dismiss: "Got it",
+  },
+
+  notFound: {
+    title: "This page doesn't exist",
+    text: "You may have mistyped the address or we may have moved it.",
+    cta: "Back to home",
+  },
+
+  errors: {
+    generic: "Something went wrong. Please try again in a moment.",
+    supabaseMissing: "Supabase credentials are not configured.",
+  },
+};
+
+export default en;
