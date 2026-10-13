@@ -186,15 +186,19 @@ select public.generate_week_sessions(current_date - (extract(isodow from current
 --  CONSULTAS DE EJEMPLO (borralas cuando estés en producción)
 -- ------------------------------------------------------------
 
+--  (Si volvés a correr este archivo, no se duplican.)
 insert into public.messages (name, email, phone, subject, message, locale, is_read)
-values
+select * from (values
   ('Andrea Solís', 'andrea.solis@example.com', '+505 8712 4490', 'trial',
    '¡Buenas! Quiero aprovechar la clase de prueba gratis. ¿Puedo ir un martes por la tarde a probar funcional?',
    'es', false),
   ('Kevin Ramírez', 'kevin.ramirez@example.com', null, 'plans',
    'Consulto por el plan Full: ¿incluye el acceso 24/7 desde el primer mes?',
    'es', false)
-on conflict do nothing;
+) as nueva(name, email, phone, subject, message, locale, is_read)
+where not exists (
+  select 1 from public.messages m where m.email = nueva.email
+);
 
 
 -- ============================================================

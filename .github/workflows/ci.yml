@@ -36,3 +36,27 @@ jobs:
           # Estas variables quedan vacías a propósito.
           NEXT_PUBLIC_SUPABASE_URL: ""
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ""
+
+  sql:
+    name: Base de datos
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v5
+
+      - name: Preparar Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: El SQL tiene que estar sincronizado con la web
+        run: node scripts/build-sql.mjs --check
+
+      - name: Probar el SQL contra un PostgreSQL real
+        run: npm run test:sql

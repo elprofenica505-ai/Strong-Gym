@@ -4,10 +4,12 @@
   "private": true,
   "description": "Sitio web del gimnasio Strong Gym: landing bilingüe (ES/EN) con reserva de clases, Next.js + Supabase.",
   "scripts": {
-    "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "build:sql": "node scripts/build-sql.mjs",
+    "dev": "next dev",
     "lint": "next lint",
+    "start": "next start",
+    "test:sql": "node scripts/test-sql.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -23,6 +25,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.9",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^24.9.2",
     "@types/react": "^19.2.7",

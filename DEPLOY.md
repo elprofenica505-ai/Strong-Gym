@@ -55,22 +55,25 @@ git push
 
 ## Paso 3 · Crear las tablas
 
-1. En el menú lateral del proyecto, entrá a **SQL Editor** → **New query**.
-2. Abrí el archivo `supabase/migrations/00001_schema.sql` de este repositorio,
-   copiá **todo** el contenido y pegalo en el editor.
-3. Apretá **Run** (o `Ctrl + Enter`). Tiene que decir *Success*.
-4. Repetí con el archivo `supabase/migrations/00002_seed.sql`.
-   Este carga las disciplinas, los profes, los planes y las clases de las próximas 4 semanas.
+1. Abrí el archivo **`supabase/SETUP.sql`** de este repositorio.
+2. Copiá **todo** el contenido (es largo, pero es un solo paso).
+3. En Supabase, entrá a **SQL Editor** → **New query**, pegalo y apretá **Run**
+   (o `Ctrl + Enter`). Tiene que decir *Success*.
 
-> **¿Te dio error?** Corré primero `00001` y después `00002`. Si algo sale mal,
-> podés correr los dos de nuevo: están escritos para no duplicar datos.
+Ese único archivo crea las tablas, las reglas de seguridad, las funciones de reserva,
+las disciplinas, los profes, los planes y **las clases de las próximas 4 semanas**.
+
+> **Si algo sale mal, volvé a correrlo**: está escrito para no duplicar datos.
+> ¿Preferís el detalle? Son dos archivos: `supabase/migrations/00001_schema.sql`
+> (estructura) y `00002_seed.sql` (contenido). `SETUP.sql` es exactamente los dos
+> juntos, en orden.
 
 ### Verificar
 
 En el menú lateral → **Table Editor** deberías ver las tablas:
 `bookings`, `classes`, `coaches`, `messages`, `plans`, `profiles`, `sessions`, `subscribers`.
 
-En `sessions` tendría que haber alrededor de **190 clases** (4 semanas × ~47).
+En `sessions` tendría que haber **188 clases** (4 semanas × 47 por semana).
 ¿Está vacía? Corré esto en el SQL Editor:
 
 ```sql
@@ -78,6 +81,21 @@ select public.generate_week_sessions(
   current_date - (extract(isodow from current_date)::int - 1)
 );
 ```
+
+---
+
+### ¿Querés comprobar el SQL antes de usarlo?
+
+En tu computadora, con el proyecto clonado:
+
+```bash
+npm install
+npm run test:sql
+```
+
+Levanta un PostgreSQL real, aplica los mismos archivos y corre 34 pruebas
+(reservar, cancelar, cupos llenos, seguridad entre socios...). Tiene que terminar con
+**🎉 Todo pasó**.
 
 ---
 
@@ -239,7 +257,7 @@ copy (select * from public.bookings) to stdout with csv header;
 | Queda el aviso "Modo demo" | Las variables de entorno no llegaron. En Vercel: Settings → Environment Variables, y después **Redeploy** (las variables no se aplican a un deploy ya hecho). |
 | "Email o contraseña incorrectos" con datos correctos | Falta confirmar el email. Revisá Authentication → Users: si dice *Waiting for verification*, el socio tiene que abrir el link del mail. |
 | El mail de confirmación no llega | Límite del servicio gratuito de emails o el mail cayó en spam. Probá desactivando **Confirm email** o configurá un SMTP propio. |
-| Al reservar dice "No pudimos completar la reserva" | Mirá los logs: Vercel → tu proyecto → **Logs**. Si dice `function book_session does not exist`, no corriste `00001_schema.sql`. |
+| Al reservar dice "No pudimos completar la reserva" | Mirá los logs: Vercel → tu proyecto → **Logs**. Si dice `function book_session does not exist`, no corriste `SETUP.sql`. |
 | El panel dice "No tenés permisos" | Corré el `update public.profiles set role = 'admin' ...` y volvé a iniciar sesión. |
 | El sitio redirige siempre a `/es` | Es lo normal: el idioma se detecta del navegador. El selector ES/EN del header lo cambia. |
 | Las clases aparecen vacías | `sessions` está vacía. Corré `select public.generate_week_sessions(...)` (ver Paso 3). |

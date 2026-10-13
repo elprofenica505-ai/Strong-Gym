@@ -91,6 +91,8 @@ npm run dev        # servidor de desarrollo (localhost:3000)
 npm run build      # compilar para producción
 npm start          # correr la versión compilada
 npm run typecheck  # revisar los tipos de TypeScript
+npm run test:sql   # probar el SQL de Supabase en un Postgres real (34 pruebas)
+npm run build:sql  # regenerar supabase/SETUP.sql tras cambiar los horarios
 ```
 
 ---
@@ -135,9 +137,15 @@ src/
 │   └── types.ts
 └── proxy.ts                   # redirección de idioma + refresco de sesión
 
-supabase/migrations/
-├── 00001_schema.sql           # tablas, permisos y funciones de reserva
-└── 00002_seed.sql             # disciplinas, profes, planes y clases de ejemplo
+supabase/
+├── SETUP.sql                  # 👈 los dos de abajo en un solo archivo (pegar y listo)
+└── migrations/
+    ├── 00001_schema.sql       # tablas, permisos y funciones de reserva
+    └── 00002_seed.sql         # disciplinas, profes, planes y clases de ejemplo
+
+scripts/
+├── build-sql.mjs              # mantiene la grilla de clases sincronizada
+└── test-sql.mjs               # pruebas del SQL en un Postgres real
 
 public/images/                 # fotos del gimnasio
 ```

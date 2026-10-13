@@ -272,17 +272,19 @@ security definer
 set search_path = public
 as $$
 declare
-  v_user_id   uuid := auth.uid();
-  v_session   public.sessions;
-  v_booked    integer;
-  v_booking   public.bookings;
-  v_max       integer := 3;   -- reservas activas simultáneas
+  v_user_id  uuid := auth.uid();
+  v_session  public.sessions;
+  v_booking  public.bookings;
+  v_existing boolean := false;   -- ¿ya tenía una reserva cancelada en esta clase?
+  v_booked   integer;            -- lugares ocupados
+  v_active   integer;            -- reservas activas del socio
+  v_max      integer := 3;       -- máximo de reservas activas a la vez
 begin
   if v_user_id is null then
     raise exception 'AUTH: tenés que iniciar sesión';
   end if;
 
-  -- Bloqueamos la fila para que nadie más reserve al mismo tiempo
+  -- Bloqueamos la fila: nadie más puede reservar al mismo tiempo
   select * into v_session
   from public.sessions
   where id = p_session_id
@@ -300,16 +302,20 @@ begin
     raise exception 'PAST: la clase ya comenzó';
   end if;
 
-  -- ¿Ya tiene reserva?
+  -- ¿Ya tiene una reserva en esta clase?
   select * into v_booking
   from public.bookings
   where session_id = p_session_id and user_id = v_user_id;
 
-  if found and v_booking.status in ('confirmed', 'attended') then
-    raise exception 'ALREADY_BOOKED: ya tenés una reserva en esa clase';
+  if found then
+    if v_booking.status in ('confirmed', 'attended') then
+      raise exception 'ALREADY_BOOKED: ya tenés una reserva en esa clase';
+    end if;
+    -- Estaba cancelada: después reutilizamos la fila
+    v_existing := true;
   end if;
 
-  -- Cupos disponibles (no cuentan las canceladas)
+  -- Cupos disponibles (las canceladas no ocupan lugar)
   select count(*) into v_booked
   from public.bookings
   where session_id = p_session_id and status in ('confirmed', 'attended');
@@ -319,18 +325,18 @@ begin
   end if;
 
   -- Límite de reservas activas por socio
-  if (
-    select count(*) from public.bookings b
-    join public.sessions s on s.id = b.session_id
-    where b.user_id = v_user_id
-      and b.status in ('confirmed', 'attended')
-      and s.starts_at > now()
-  ) >= v_max then
+  select count(*) into v_active
+  from public.bookings b
+  join public.sessions s on s.id = b.session_id
+  where b.user_id = v_user_id
+    and b.status in ('confirmed', 'attended')
+    and s.starts_at > now();
+
+  if v_active >= v_max then
     raise exception 'LIMIT: ya tenés % reservas activas a la vez', v_max;
   end if;
 
-  if found then
-    -- Reutilizamos la fila cancelada
+  if v_existing then
     update public.bookings
       set status = 'confirmed', cancelled_at = null, created_at = now()
       where id = v_booking.id
@@ -420,33 +426,74 @@ begin
 
   for v_slot in
     select * from (values
-      -- día (0=lunes), hora, disciplina
-      (0, '06:00'::time, 'funcional'),   (0, '07:00', 'spinning'),
-      (0, '18:00', 'spinning'),          (0, '19:00', 'cross-training'),
-      (0, '20:00', 'boxeo'),
-      (1, '06:00', 'funcional'),         (1, '07:00', 'hiit'),
-      (1, '09:00', 'pilates'),           (1, '18:30', 'boxeo'),
-      (1, '19:30', 'cross-training'),
-      (2, '06:00', 'cross-training'),    (2, '07:00', 'spinning'),
-      (2, '18:00', 'pilates'),           (2, '19:00', 'spinning'),
-      (2, '20:00', 'boxeo'),
-      (3, '06:00', 'funcional'),         (3, '07:00', 'spinning'),
-      (3, '18:30', 'cross-training'),    (3, '19:30', 'boxeo'),
-      (3, '20:30', 'yoga'),
-      (4, '06:00', 'funcional'),         (4, '07:00', 'spinning'),
-      (4, '18:00', 'spinning'),          (4, '19:00', 'cross-training'),
-      (4, '20:00', 'boxeo'),
-      (5, '08:00', 'funcional'),         (5, '09:00', 'spinning'),
-      (5, '10:00', 'cross-training'),    (5, '12:00', 'zumba'),
-      (6, '09:30', 'yoga'),              (6, '11:00', 'stretching')
+-- >>> PLANTILLA SEMANAL (generada por scripts/build-sql.mjs — no editar a mano) >>>
+      -- Misma grilla que src/lib/data/demo-sessions.ts (la web).
+      -- día (0 = lunes), hora local del gimnasio, disciplina
+      -- Lunes
+      (0, '06:00'::time, 'funcional'),
+      (0, '07:00'::time, 'spinning'),
+      (0, '08:30'::time, 'stretching'),
+      (0, '10:00'::time, 'zumba'),
+      (0, '17:00'::time, 'funcional'),
+      (0, '18:00'::time, 'spinning'),
+      (0, '19:00'::time, 'cross-training'),
+      (0, '20:00'::time, 'boxeo'),
+      -- Martes
+      (1, '06:00'::time, 'funcional'),
+      (1, '07:00'::time, 'hiit'),
+      (1, '09:00'::time, 'pilates'),
+      (1, '12:30'::time, 'spinning'),
+      (1, '17:30'::time, 'funcional'),
+      (1, '18:30'::time, 'boxeo'),
+      (1, '19:30'::time, 'cross-training'),
+      (1, '20:30'::time, 'stretching'),
+      -- Miércoles
+      (2, '06:00'::time, 'cross-training'),
+      (2, '07:00'::time, 'spinning'),
+      (2, '10:00'::time, 'zumba'),
+      (2, '12:30'::time, 'hiit'),
+      (2, '17:00'::time, 'funcional'),
+      (2, '18:00'::time, 'pilates'),
+      (2, '19:00'::time, 'spinning'),
+      (2, '20:00'::time, 'boxeo'),
+      -- Jueves
+      (3, '06:00'::time, 'funcional'),
+      (3, '07:00'::time, 'spinning'),
+      (3, '10:30'::time, 'stretching'),
+      (3, '12:30'::time, 'hiit'),
+      (3, '17:30'::time, 'funcional'),
+      (3, '18:30'::time, 'cross-training'),
+      (3, '19:30'::time, 'boxeo'),
+      (3, '20:30'::time, 'yoga'),
+      -- Viernes
+      (4, '06:00'::time, 'funcional'),
+      (4, '07:00'::time, 'spinning'),
+      (4, '08:30'::time, 'yoga'),
+      (4, '10:00'::time, 'zumba'),
+      (4, '17:00'::time, 'funcional'),
+      (4, '18:00'::time, 'spinning'),
+      (4, '19:00'::time, 'cross-training'),
+      (4, '20:00'::time, 'boxeo'),
+      -- Sábado
+      (5, '08:00'::time, 'funcional'),
+      (5, '09:00'::time, 'spinning'),
+      (5, '10:00'::time, 'cross-training'),
+      (5, '11:00'::time, 'stretching'),
+      (5, '12:00'::time, 'zumba'),
+      -- Domingo
+      (6, '09:30'::time, 'yoga'),
+      (6, '11:00'::time, 'stretching')
+-- <<< PLANTILLA SEMANAL <<<
     ) as t(day_offset, start_time, slug)
   loop
     select * into v_class from public.classes where slug = v_slot.slug and is_active;
     if not found then continue; end if;
 
-    v_start := (p_monday + v_slot.day_offset)::timestamptz
-               + v_slot.start_time::interval
-               - interval '6 hours';   -- hora local de Nicaragua (UTC-6)
+    -- `fecha + hora` da un timestamp "sin zona"; AT TIME ZONE lo interpreta
+    -- como hora local del gimnasio y devuelve el instante UTC correcto.
+    -- (Managua es UTC-6 todo el año, no tiene horario de verano.)
+    v_start := ((p_monday + v_slot.day_offset) + v_slot.start_time)
+               at time zone 'America/Managua';
 
     -- Evitamos duplicar si ya existe esa clase a esa hora
     select count(*) into v_created
