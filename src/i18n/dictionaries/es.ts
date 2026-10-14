@@ -262,6 +262,31 @@ const es = {
     title: "Nuestro equipo",
     subtitle: "Las clases de boxeo siempre tienen un entrenador a cargo.",
     seeClasses: "Ver sus clases",
+    // Sin nombres todavía: sólo lo ya confirmado en el gimnasio.
+    facts: [
+      {
+        title: "Entrenador en cada clase de boxeo",
+        text: "Técnica, saco y acondicionamiento con un entrenador a cargo en cada sesión, para todas las edades.",
+      },
+      {
+        title: "Orientación para usar las máquinas",
+        text: "El personal te orienta para usar los equipos y las máquinas del gimnasio.",
+      },
+      {
+        title: "Te enseñan a usar la maquinaria",
+        text: "Sólo los entrenadores o la recepción manipulan la maquinaria para enseñar su uso.",
+      },
+    ],
+  },
+
+  memberSummary: {
+    title: "Tu resumen",
+    nextClass: "Próxima clase",
+    noNextClass: "Todavía no tenés una próxima clase reservada.",
+    viewAccount: "Ver mi cuenta",
+    guestTitle: "¿Ya sos socio?",
+    guestText:
+      "Entrá a tu cuenta para ver tus clases reservadas, tus clases asistidas y tu próxima clase, o creá una cuenta para empezar.",
   },
 
   testimonials: {
