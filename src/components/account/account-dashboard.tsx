@@ -31,7 +31,7 @@ import {
   shiftWeeks,
 } from "@/lib/schedule";
 import type { BookingDetail, Plan, SessionDetail } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { accentOnDark, cn, textOnAccent } from "@/lib/utils";
 
 /**
  * Panel del socio.
@@ -213,7 +213,7 @@ export function AccountDashboard({
               <Icon className="size-5" aria-hidden="true" />
             </span>
             <div>
-              <p className="display-xl text-[1.75rem] leading-none text-ink">{value}</p>
+              <p className="display-xl text-[1.75rem] leading-none text-brand">{value}</p>
               <p className="mt-1 text-[0.75rem] text-fog">{label}</p>
             </div>
           </div>
@@ -429,7 +429,7 @@ function toBookingDetail(booking: AppBooking, session: SessionDetail): BookingDe
    ------------------------------------------------------------ */
 
 const statusStyles: Record<string, string> = {
-  confirmed: "border-brand/40 text-brand bg-brand/10",
+  confirmed: "border-brand/40 text-brand-300 bg-brand/10",
   attended: "border-emerald-400/40 text-emerald-300 bg-emerald-400/10",
   no_show: "border-alert/40 text-alert bg-alert/10",
   cancelled: "border-line text-fog bg-paper/40",
@@ -473,8 +473,8 @@ function BookingRow({
         <span
           className="display-xl grid size-12 shrink-0 place-items-center rounded-xl text-[0.875rem]"
           style={{
-            color: session.gymClass.color,
-            backgroundColor: `${session.gymClass.color}1a`,
+            backgroundColor: accentOnDark(session.gymClass.color),
+            color: textOnAccent(session.gymClass.color),
           }}
           aria-hidden="true"
         >
@@ -520,7 +520,7 @@ function BookingRow({
           size="sm"
           onClick={() => void onCancel()}
           disabled={pending}
-          className="shrink-0 border-brand/40 text-brand hover:border-alert/60 hover:bg-alert/10 hover:text-alert"
+          className="shrink-0 border-brand/40 text-brand-300 hover:border-alert/60 hover:bg-alert/10 hover:text-alert"
         >
           {pending ? (
             <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />

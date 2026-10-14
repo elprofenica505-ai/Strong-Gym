@@ -160,6 +160,7 @@ export const demoGallery = [
   { key: "triceps", src: "/images/triceps.jpg" },
   { key: "pantorrilla", src: "/images/pantorrilla.jpg" },
   { key: "abs", src: "/images/abs.jpg" },
+  { key: "dip", src: "/images/dip.jpg" },
 ] as const;
 
 /** Suplementos y ropa que vende el gimnasio. */

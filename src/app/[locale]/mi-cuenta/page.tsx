@@ -38,7 +38,7 @@ export default async function AccountPage({
 
   return (
     <>
-      <section className="relative overflow-hidden border-b border-line bg-cloud pt-12 pb-10 sm:pt-16 sm:pb-12 lg:pt-20">
+      <section className="relative overflow-hidden border-b border-brand/25 bg-cloud pt-12 pb-10 sm:pt-16 sm:pb-12 lg:pt-20">
         <div className="absolute inset-0 bg-grid opacity-50" aria-hidden="true" />
         <div className="container-x relative">
           <SectionHeading

@@ -30,7 +30,7 @@ export function NewsletterForm({ className }: { className?: string }) {
 
   if (status === "done") {
     return (
-      <p className={cn("flex items-center gap-2 text-[0.875rem] font-medium text-brand", className)}>
+      <p className={cn("flex items-center gap-2 text-[0.875rem] font-medium text-brand-300", className)}>
         <Check className="size-4" aria-hidden="true" />
         {dict.footer.newsletterSuccess}
       </p>
@@ -39,7 +39,7 @@ export function NewsletterForm({ className }: { className?: string }) {
 
   return (
     <form onSubmit={onSubmit} className={cn("flex flex-col gap-2", className)}>
-      <div className="flex items-center gap-2 rounded-full border border-line bg-paper/60 p-1 pl-4 transition-colors focus-within:border-brand/60">
+      <div className="flex items-center gap-2 rounded-full border border-line bg-white/[0.04] p-1 pl-4 transition-colors focus-within:border-brand/60">
         <input
           type="email"
           required

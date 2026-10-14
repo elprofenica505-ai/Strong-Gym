@@ -25,6 +25,7 @@ sola en la página, sin tocar nada de código.
 | `triceps.jpg`     | Galería: máquina de tríceps                        |
 | `pantorrilla.jpg` | Galería: máquina de pantorrilla                    |
 | `abs.jpg`         | Galería: zona de abdominales                       |
+| `dip.jpg`         | Galería: máquina de abdominales                    |
 
 ## Cómo subirlas desde el celular
 

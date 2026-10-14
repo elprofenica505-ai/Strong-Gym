@@ -55,7 +55,7 @@ export function Supplements({ locale }: { locale: Locale }) {
                   key={key}
                   className="flex items-center gap-3 rounded-xl border border-line bg-card px-4 py-3.5"
                 >
-                  <span className="grid size-6 shrink-0 place-items-center rounded-full bg-brand-soft text-brand">
+                  <span className="grid size-6 shrink-0 place-items-center rounded-full bg-brand-soft text-brand-300">
                     <Check className="size-3.5" strokeWidth={3} aria-hidden="true" />
                   </span>
                   <span className="text-[0.9375rem] font-medium text-ink">

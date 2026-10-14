@@ -17,7 +17,7 @@ import {
 import { useDictionary } from "@/components/providers/dictionary-provider";
 import { ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { accentOnDark, cn } from "@/lib/utils";
 import { formatDateNumeric, formatLongDate, formatTime, gymNow } from "@/lib/schedule";
 import type { ContactMessage, GymClass } from "@/lib/types";
 
@@ -177,7 +177,7 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
                   <Icon className="size-5" aria-hidden="true" />
                 </span>
                 <div>
-                  <p className="display-xl text-[1.75rem] leading-none text-ink">{value}</p>
+                  <p className="display-xl text-[1.75rem] leading-none text-brand">{value}</p>
                   <p className="mt-1 text-[0.75rem] leading-snug text-fog">{label}</p>
                 </div>
               </div>
@@ -243,7 +243,7 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
                       <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-paper">
                         <span
                           className="block h-full rounded-full"
-                          style={{ width: `${load}%`, backgroundColor: gymClass.color }}
+                          style={{ width: `${load}%`, backgroundColor: accentOnDark(gymClass.color) }}
                         />
                       </span>
                       <span className="w-8 shrink-0 text-right text-[0.6875rem] tabular-nums text-fog">
@@ -424,7 +424,7 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
                           "rounded-full border px-3 py-1.5 text-[0.6875rem] font-semibold transition-colors",
                           isRead
                             ? "border-line text-fog hover:text-ink"
-                            : "border-brand/50 text-brand hover:bg-brand/10",
+                            : "border-brand/50 text-brand-300 hover:bg-brand/10",
                         )}
                       >
                         {dict.admin.actions.markRead}
@@ -457,7 +457,7 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
                 )}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <h2 className="display-xl text-[1.25rem] leading-none" style={{ color: gymClass.color }}>
+                  <h2 className="display-xl text-[1.25rem] leading-none" style={{ color: accentOnDark(gymClass.color) }}>
                     {gymClass.name}
                   </h2>
 
@@ -535,7 +535,7 @@ function StatusPill({
   const map: Record<string, { label: string; className: string }> = {
     confirmed: {
       label: dict.account.confirmed,
-      className: "border-brand/40 text-brand bg-brand/10",
+      className: "border-brand/40 text-brand-300 bg-brand/10",
     },
     attended: {
       label: dict.account.attended,

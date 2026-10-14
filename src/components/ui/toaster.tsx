@@ -7,12 +7,12 @@ import { cn } from "@/lib/utils";
 const styles = {
   success: {
     icon: CheckCircle2,
-    ring: "border-brand/40 bg-[#141a0d]",
-    iconColor: "text-brand",
+    ring: "border-brand/40 bg-card",
+    iconColor: "text-brand-300",
   },
   error: {
     icon: AlertTriangle,
-    ring: "border-alert/40 bg-[#1c1009]",
+    ring: "border-alert/40 bg-card",
     iconColor: "text-alert",
   },
   info: {

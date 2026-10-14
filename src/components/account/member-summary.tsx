@@ -100,7 +100,7 @@ export function MemberSummary({ initialBookings }: { initialBookings: BookingDet
                   <Icon className="size-5" aria-hidden="true" />
                 </span>
                 <div>
-                  <p className="display-xl text-[1.625rem] leading-none text-ink">{value}</p>
+                  <p className="display-xl text-[1.625rem] leading-none text-brand">{value}</p>
                   <p className="mt-1 text-[0.75rem] text-fog">{label}</p>
                 </div>
               </div>

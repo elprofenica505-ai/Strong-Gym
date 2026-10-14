@@ -21,7 +21,7 @@ export function Boxing({ locale }: { locale: Locale }) {
       : "Hi, I would like information about the boxing classes.";
 
   return (
-    <Section id="boxeo" className="bg-night text-white">
+    <Section id="boxeo" className="border-y border-brand/35 bg-brand-soft text-white">
       <div className="grid items-center gap-10 lg:grid-cols-12 lg:gap-14">
         {/* Texto */}
         <div className="lg:col-span-6">
@@ -53,11 +53,13 @@ export function Boxing({ locale }: { locale: Locale }) {
                 </dd>
               </div>
 
-              <div className="rounded-2xl border border-brand/40 bg-brand/12 p-5">
+              <div className="rounded-2xl border border-brand/45 bg-night/30 p-5">
                 <dt className="text-[0.6875rem] font-semibold tracking-[0.14em] text-white/60 uppercase">
                   {dict.boxing.priceLabel}
                 </dt>
-                <dd className="display-xl mt-1 text-[2rem] leading-none text-brand">
+                {/* Número grande en blanco: sobre el fondo rojo oscuro el
+                    rojo de marca no tiene contraste suficiente. */}
+                <dd className="display-xl mt-1 text-[2rem] leading-none text-white">
                   {dict.boxing.price}
                 </dd>
               </div>

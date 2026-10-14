@@ -29,7 +29,7 @@ export function Accordion({ items, className }: { items: AccordionItem[]; classN
                 <span
                   className={cn(
                     "text-[0.9375rem] font-semibold leading-snug transition-colors sm:text-base",
-                    isOpen ? "text-brand" : "text-ink",
+                    isOpen ? "text-brand-300" : "text-ink",
                   )}
                 >
                   {item.q}

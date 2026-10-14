@@ -43,7 +43,7 @@ export function Testimonials({ locale }: { locale: Locale }) {
               </blockquote>
 
               <figcaption className="mt-6 flex items-center gap-3 border-t border-line pt-5">
-                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand/15 text-[0.75rem] font-bold text-brand">
+                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand/15 text-[0.75rem] font-bold text-brand-300">
                   {item.name.charAt(0)}
                 </span>
                 <span>

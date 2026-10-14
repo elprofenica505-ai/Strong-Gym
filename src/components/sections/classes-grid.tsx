@@ -7,6 +7,7 @@ import { whatsappLink } from "@/config/site";
 import { Section, SectionHeading } from "@/components/ui/section";
 import { Reveal } from "@/components/ui/reveal";
 import { ButtonLink } from "@/components/ui/button";
+import { accentOnDark, textOnAccent } from "@/lib/utils";
 
 const intensityBars: Record<string, number> = { low: 1, medium: 2, high: 3 };
 
@@ -50,11 +51,11 @@ export async function ClassesGrid({ locale }: { locale: Locale }) {
 
             return (
               <Reveal key={gymClass.id} delay={index * 50} className="h-full">
-                <article className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-card p-6 transition-all duration-300 hover:-translate-y-1 hover:border-brand/40 hover:shadow-[0_18px_50px_-30px_rgba(12,12,14,0.5)]">
+                <article className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-card p-6 transition-all duration-300 hover:-translate-y-1 hover:border-brand/40 hover:shadow-[0_18px_50px_-30px_rgba(216,26,34,0.55)]">
                   {/* Barra de color superior */}
                   <span
                     className="absolute inset-x-0 top-0 h-1"
-                    style={{ backgroundColor: gymClass.color }}
+                    style={{ backgroundColor: accentOnDark(gymClass.color) }}
                     aria-hidden="true"
                   />
 
@@ -64,8 +65,8 @@ export async function ClassesGrid({ locale }: { locale: Locale }) {
                     <span
                       className="shrink-0 rounded-full px-2.5 py-1 text-[0.625rem] font-bold tracking-[0.1em] uppercase"
                       style={{
-                        color: gymClass.color,
-                        backgroundColor: `${gymClass.color}14`,
+                        backgroundColor: accentOnDark(gymClass.color),
+                        color: textOnAccent(gymClass.color),
                       }}
                     >
                       {dict.classes.intensityLevels[gymClass.intensity]}
@@ -132,7 +133,7 @@ export async function ClassesGrid({ locale }: { locale: Locale }) {
                           style={{
                             height: `${0.35 + bar * 0.28}rem`,
                             backgroundColor:
-                              bar <= level ? gymClass.color : "rgba(12,12,14,0.14)",
+                              bar <= level ? accentOnDark(gymClass.color) : "rgba(255,255,255,0.16)",
                           }}
                         />
                       ))}

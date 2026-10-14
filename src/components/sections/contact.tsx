@@ -65,7 +65,7 @@ export function Contact({ locale }: { locale: Locale }) {
             <ul className="flex flex-col gap-5">
               {details.map(({ key, Icon, label, value, href, external }) => (
                 <li key={key} className="flex gap-4">
-                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand-300">
                     <Icon className="size-4.5" aria-hidden="true" />
                   </span>
                   <span className="min-w-0">
@@ -85,7 +85,7 @@ export function Contact({ locale }: { locale: Locale }) {
 
               {/* Horario real: dos tramos el sábado y domingo cerrado */}
               <li className="flex gap-4">
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand-300">
                   <Clock className="size-4.5" aria-hidden="true" />
                 </span>
                 <span className="min-w-0 flex-1">
@@ -99,7 +99,7 @@ export function Contact({ locale }: { locale: Locale }) {
                         <dd
                           className={
                             row.hours === dict.contact.closed
-                              ? "font-semibold text-brand"
+                              ? "font-semibold text-brand-300"
                               : "font-medium text-ink tabular-nums"
                           }
                         >

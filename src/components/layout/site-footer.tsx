@@ -36,7 +36,7 @@ export function SiteFooter({ locale }: { locale: Locale }) {
   );
 
   return (
-    <footer className="relative bg-night text-white">
+    <footer className="relative border-t border-brand/30 bg-night text-white">
       <div className="container-x py-14 lg:py-20">
         <div className="grid gap-10 lg:grid-cols-12 lg:gap-8">
           {/* Marca */}
@@ -150,7 +150,7 @@ export function SiteFooter({ locale }: { locale: Locale }) {
                       <span
                         className={
                           row.hours === dict.contact.closed
-                            ? "font-semibold text-brand"
+                            ? "font-semibold text-brand-300"
                             : "text-white tabular-nums"
                         }
                       >

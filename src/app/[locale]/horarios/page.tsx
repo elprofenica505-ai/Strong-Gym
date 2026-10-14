@@ -76,7 +76,7 @@ export default async function SchedulePage({
       />
 
       {/* Cabecera de la página */}
-      <section className="relative overflow-hidden border-b border-line bg-cloud pt-12 pb-12 sm:pt-16 sm:pb-14 lg:pt-20">
+      <section className="relative overflow-hidden border-b border-brand/25 bg-cloud pt-12 pb-12 sm:pt-16 sm:pb-14 lg:pt-20">
         <div className="absolute inset-0 bg-grid opacity-50" aria-hidden="true" />
         <div
           className="absolute -top-32 left-1/3 size-96 rounded-full bg-brand/8 blur-3xl"
