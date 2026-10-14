@@ -1,31 +1,23 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  CalendarCheck,
-  LayoutDashboard,
-  LogOut,
-  Menu,
-  User as UserIcon,
-  X,
-} from "lucide-react";
-import { isOpenAt, siteConfig } from "@/config/site";
-import { useApp } from "@/components/providers/app-provider";
+import { CalendarCheck, Menu } from "lucide-react";
+import { isOpenAt } from "@/config/site";
 import { useDictionary } from "@/components/providers/dictionary-provider";
 import { ButtonLink } from "@/components/ui/button";
-import { cn, initials } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { LanguageSwitcher } from "./language-switcher";
 import { Logo } from "./logo";
 
-export function SiteHeader() {
+/**
+ * Barra superior simplificada: la navegación vive en el panel lateral
+ * (SideNav), así que acá sólo quedan el botón de menú del celular, el
+ * logo (sólo en el celular, donde el panel está oculto), el estado
+ * abierto/cerrado, el idioma y el acceso directo a reservar.
+ */
+export function SiteHeader({ onOpenMenu }: { onOpenMenu: () => void }) {
   const { dict, locale } = useDictionary();
-  const { user, signOut, toast, hydrated } = useApp();
-  const pathname = usePathname();
-  const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [accountOpen, setAccountOpen] = useState(false);
   const [abierto, setAbierto] = useState<boolean | null>(null);
 
   /* ¿Está abierto ahora? Se calcula en el navegador para no quedar
@@ -37,7 +29,6 @@ export function SiteHeader() {
     return () => window.clearInterval(id);
   }, []);
 
-  /* Sombra/desenfoque cuando el usuario baja */
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
     onScroll();
@@ -45,341 +36,59 @@ export function SiteHeader() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  /* Cerrar el menú al cambiar de página y bloquear el scroll de fondo */
-  useEffect(() => {
-    setOpen(false);
-    setAccountOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [open]);
-
-  const links = [
-    { href: `/${locale}`, label: dict.nav.home, match: "exact" as const },
-    { href: `/${locale}/horarios`, label: dict.nav.schedule, match: "prefix" as const },
-    { href: `/${locale}#clases`, label: dict.nav.classes, match: "none" as const },
-    { href: `/${locale}#planes`, label: dict.nav.plans, match: "none" as const },
-    { href: `/${locale}#profes`, label: dict.nav.coaches, match: "none" as const },
-    { href: `/${locale}#contacto`, label: dict.nav.contact, match: "none" as const },
-  ];
-
-  function isActive(link: (typeof links)[number]) {
-    if (link.match === "none") return false;
-    if (link.match === "exact") return pathname === link.href;
-    return pathname.startsWith(link.href);
-  }
-
   return (
-    <>
-      <header
-        className={cn(
-          "sticky top-0 z-50 border-b bg-paper/95 backdrop-blur-xl transition-all duration-300",
-          scrolled ? "border-line shadow-[0_1px_20px_rgba(12,12,14,0.07)]" : "border-line-soft",
-        )}
-      >
-        <div className="container-x">
-          <div className="flex h-16 items-center justify-between gap-3 sm:h-18 lg:h-20">
-            <Logo locale={locale} name={dict.nav.home} />
-
-            {/* Navegación de escritorio */}
-            <nav className="hidden items-center gap-0.5 lg:flex" aria-label={dict.nav.menu}>
-              {links.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={cn(
-                    "relative rounded-full px-3.5 py-2 text-[0.8125rem] font-medium transition-colors",
-                    isActive(link)
-                      ? "text-brand"
-                      : "text-mist hover:bg-cloud hover:text-ink",
-                  )}
-                >
-                  {link.label}
-                  {isActive(link) ? (
-                    <span className="absolute inset-x-3.5 -bottom-0.5 h-px bg-brand" aria-hidden="true" />
-                  ) : null}
-                </Link>
-              ))}
-            </nav>
-
-            <div className="flex items-center gap-2">
-              {abierto !== null ? (
-                <span
-                  className={cn(
-                    "hidden items-center gap-1.5 rounded-full border px-3 py-1.5 text-[0.6875rem] font-semibold tracking-[0.08em] uppercase xl:inline-flex",
-                    abierto
-                      ? "border-ok/25 bg-ok/8 text-ok"
-                      : "border-line bg-cloud text-fog",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "size-1.5 rounded-full",
-                      abierto ? "animate-pulse bg-ok" : "bg-fog",
-                    )}
-                    aria-hidden="true"
-                  />
-                  {abierto ? dict.contact.openNow : dict.contact.closedNow}
-                </span>
-              ) : null}
-
-              <div className="hidden sm:block">
-                <LanguageSwitcher locale={locale} label={dict.nav.language} />
-              </div>
-
-              {!hydrated ? (
-                <span
-                  className="hidden h-10 w-28 animate-pulse rounded-full border border-line bg-card lg:block"
-                  aria-hidden="true"
-                />
-              ) : user ? (
-                <div className="relative hidden lg:block">
-                  <button
-                    type="button"
-                    onClick={() => setAccountOpen((v) => !v)}
-                    aria-expanded={accountOpen}
-                    aria-haspopup="menu"
-                    className="flex items-center gap-2 rounded-full border border-line bg-card py-1 pr-3 pl-1 transition-colors hover:border-brand/40"
-                  >
-                    <span className="grid size-8 place-items-center rounded-full bg-brand text-[0.6875rem] font-bold text-onbrand">
-                      {initials(user.fullName)}
-                    </span>
-                    <span className="max-w-24 truncate text-[0.8125rem] font-medium text-ink">
-                      {user.fullName.split(" ")[0]}
-                    </span>
-                  </button>
-
-                  {accountOpen ? (
-                    <>
-                      <button
-                        type="button"
-                        className="fixed inset-0 z-10 cursor-default"
-                        onClick={() => setAccountOpen(false)}
-                        aria-label={dict.nav.close}
-                      />
-                      <div
-                        role="menu"
-                        className="absolute right-0 z-20 mt-2 w-56 overflow-hidden rounded-2xl border border-line bg-card p-1.5 shadow-2xl"
-                      >
-                        <div className="px-3 py-2">
-                          <p className="truncate text-[0.8125rem] font-semibold text-ink">
-                            {user.fullName}
-                          </p>
-                          <p className="truncate text-[0.75rem] text-fog">{user.email}</p>
-                        </div>
-                        <div className="my-1 h-px bg-line" />
-                        <Link
-                          href={`/${locale}/mi-cuenta`}
-                          role="menuitem"
-                          className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-[0.8125rem] text-mist transition-colors hover:bg-cloud hover:text-ink"
-                        >
-                          <UserIcon className="size-4" aria-hidden="true" />
-                          {dict.nav.account}
-                        </Link>
-                        {user.role === "admin" || user.role === "staff" ? (
-                          <Link
-                            href={`/${locale}/panel`}
-                            role="menuitem"
-                            className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-[0.8125rem] text-mist transition-colors hover:bg-cloud hover:text-ink"
-                          >
-                            <LayoutDashboard className="size-4" aria-hidden="true" />
-                            {dict.nav.admin}
-                          </Link>
-                        ) : null}
-                        <button
-                          type="button"
-                          role="menuitem"
-                          onClick={() => {
-                            void signOut();
-                            toast(dict.nav.logout, "info");
-                          }}
-                          className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[0.8125rem] text-mist transition-colors hover:bg-cloud hover:text-ink"
-                        >
-                          <LogOut className="size-4" aria-hidden="true" />
-                          {dict.nav.logout}
-                        </button>
-                      </div>
-                    </>
-                  ) : null}
-                </div>
-              ) : (
-                <ButtonLink
-                  href={`/${locale}/ingresar`}
-                  variant="ghost"
-                  size="sm"
-                  className="hidden lg:inline-flex"
-                >
-                  {dict.nav.login}
-                </ButtonLink>
-              )}
-
-              <ButtonLink
-                href={`/${locale}/horarios`}
-                size="sm"
-                className="hidden sm:inline-flex"
-              >
-                <CalendarCheck className="size-4" aria-hidden="true" />
-                {dict.cta.book}
-              </ButtonLink>
-
-              {/* Botón del menú móvil */}
-              <button
-                type="button"
-                onClick={() => setOpen(true)}
-                aria-label={dict.nav.menu}
-                className="grid size-10 place-items-center rounded-full border border-line bg-card text-ink transition-colors hover:border-brand/40 lg:hidden"
-              >
-                <Menu className="size-5" aria-hidden="true" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Menú móvil a pantalla completa */}
-      <div
-        className={cn(
-          "fixed inset-0 z-[60] lg:hidden",
-          open ? "pointer-events-auto" : "pointer-events-none",
-        )}
-        aria-hidden={!open}
-      >
-        <div
-          className={cn(
-            "absolute inset-0 bg-paper/95 backdrop-blur-xl transition-opacity duration-300",
-            open ? "opacity-100" : "opacity-0",
-          )}
-          onClick={() => setOpen(false)}
-        />
-
-        <div
-          className={cn(
-            "absolute inset-y-0 right-0 flex w-full max-w-sm flex-col border-l border-line bg-cloud transition-transform duration-300 ease-out",
-            open ? "translate-x-0" : "translate-x-full",
-          )}
-        >
-          <div className="flex h-16 items-center justify-between px-5 sm:h-18">
-            <Logo locale={locale} name={dict.nav.home} />
+    <header
+      className={cn(
+        "sticky top-0 z-40 border-b bg-paper/95 backdrop-blur-xl transition-all duration-300",
+        scrolled ? "border-line shadow-[0_1px_20px_rgba(12,12,14,0.07)]" : "border-line-soft",
+      )}
+    >
+      <div className="container-x">
+        <div className="flex h-16 items-center justify-between gap-3 sm:h-18">
+          <div className="flex items-center gap-2">
+            {/* Botón de menú: abre el panel lateral en el celular */}
             <button
               type="button"
-              onClick={() => setOpen(false)}
-              aria-label={dict.nav.close}
-              className="grid size-10 place-items-center rounded-full border border-line bg-card text-ink"
+              onClick={onOpenMenu}
+              aria-label={dict.nav.menu}
+              className="grid size-10 place-items-center rounded-full border border-line bg-card text-ink transition-colors hover:border-brand/40 lg:hidden"
             >
-              <X className="size-5" aria-hidden="true" />
+              <Menu className="size-5" aria-hidden="true" />
             </button>
+
+            {/* En la computadora el logo ya está en el panel lateral */}
+            <span className="lg:hidden">
+              <Logo locale={locale} name={dict.nav.home} />
+            </span>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-5 pb-6">
-            {!hydrated ? (
-              <div className="mb-5 h-16 animate-pulse rounded-2xl border border-line bg-card" />
-            ) : user ? (
-              <div className="mb-5 flex items-center gap-3 rounded-2xl border border-line bg-card p-3">
-                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand text-[0.75rem] font-bold text-onbrand">
-                  {initials(user.fullName)}
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate text-[0.875rem] font-semibold text-ink">
-                    {user.fullName}
-                  </p>
-                  <p className="truncate text-[0.75rem] text-fog">{user.email}</p>
-                </div>
-              </div>
+          <div className="flex items-center gap-2">
+            {abierto !== null ? (
+              <span
+                className={cn(
+                  "hidden items-center gap-1.5 rounded-full border px-3 py-1.5 text-[0.6875rem] font-semibold tracking-[0.08em] uppercase xl:inline-flex",
+                  abierto
+                    ? "border-ok/25 bg-ok/8 text-ok"
+                    : "border-line bg-cloud text-fog",
+                )}
+              >
+                <span
+                  className={cn("size-1.5 rounded-full", abierto ? "animate-pulse bg-ok" : "bg-fog")}
+                  aria-hidden="true"
+                />
+                {abierto ? dict.contact.openNow : dict.contact.closedNow}
+              </span>
             ) : null}
 
-            <nav className="flex flex-col gap-1" aria-label={dict.nav.menu}>
-              {links.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setOpen(false)}
-                  className={cn(
-                    "flex items-center justify-between rounded-xl px-4 py-3.5 text-base font-medium transition-colors",
-                    isActive(link)
-                      ? "bg-brand/10 text-brand"
-                      : "text-mist hover:bg-cloud hover:text-ink",
-                  )}
-                >
-                  {link.label}
-                </Link>
-              ))}
+            <LanguageSwitcher locale={locale} label={dict.nav.language} />
 
-              {user ? (
-                <>
-                  <Link
-                    href={`/${locale}/mi-cuenta`}
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-base font-medium text-mist transition-colors hover:bg-cloud hover:text-ink"
-                  >
-                    <UserIcon className="size-4.5" aria-hidden="true" />
-                    {dict.nav.account}
-                  </Link>
-                  {user.role === "admin" || user.role === "staff" ? (
-                    <Link
-                      href={`/${locale}/panel`}
-                      onClick={() => setOpen(false)}
-                      className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-base font-medium text-mist transition-colors hover:bg-cloud hover:text-ink"
-                    >
-                      <LayoutDashboard className="size-4.5" aria-hidden="true" />
-                      {dict.nav.admin}
-                    </Link>
-                  ) : null}
-                </>
-              ) : null}
-            </nav>
-
-            <div className="mt-6">
-              <LanguageSwitcher locale={locale} label={dict.nav.language} variant="menu" />
-            </div>
-
-            <div className="mt-4 flex flex-col gap-2.5">
-              <ButtonLink href={`/${locale}/horarios`} size="lg" onClick={() => setOpen(false)}>
-                <CalendarCheck className="size-4.5" aria-hidden="true" />
-                {dict.cta.book}
-              </ButtonLink>
-
-              {!hydrated ? (
-                <div className="h-13 animate-pulse rounded-full border border-line bg-card" />
-              ) : user ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    void signOut();
-                    setOpen(false);
-                  }}
-                  className="inline-flex h-13 items-center justify-center gap-2 rounded-full border border-line bg-card text-[0.9375rem] font-semibold text-mist transition-colors hover:border-brand/40 hover:text-ink"
-                >
-                  <LogOut className="size-4.5" aria-hidden="true" />
-                  {dict.nav.logout}
-                </button>
-              ) : (
-                <>
-                  <ButtonLink
-                    href={`/${locale}/ingresar`}
-                    variant="dark"
-                    size="lg"
-                    onClick={() => setOpen(false)}
-                  >
-                    {dict.nav.login}
-                  </ButtonLink>
-                  <ButtonLink
-                    href={`/${locale}/registro`}
-                    variant="outline"
-                    size="lg"
-                    onClick={() => setOpen(false)}
-                  >
-                    {dict.nav.register}
-                  </ButtonLink>
-                </>
-              )}
-            </div>
+            <ButtonLink href={`/${locale}/horarios`} size="sm" className="hidden sm:inline-flex">
+              <CalendarCheck className="size-4" aria-hidden="true" />
+              {dict.cta.book}
+            </ButtonLink>
           </div>
         </div>
       </div>
-    </>
+    </header>
   );
 }

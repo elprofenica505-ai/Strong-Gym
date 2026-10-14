@@ -6,7 +6,7 @@ import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
 import { DemoBanner } from "@/components/layout/demo-banner";
 import { SiteFooter } from "@/components/layout/site-footer";
-import { SiteHeader } from "@/components/layout/site-header";
+import { SiteShell } from "@/components/layout/site-shell";
 import { AppProvider } from "@/components/providers/app-provider";
 import { DictionaryProvider } from "@/components/providers/dictionary-provider";
 import { Toaster } from "@/components/ui/toaster";
@@ -108,15 +108,12 @@ export default async function LocaleLayout({
               {locale === "es" ? "Saltar al contenido" : "Skip to content"}
             </a>
 
-            {!isSupabaseConfigured ? <DemoBanner /> : null}
-
-            <SiteHeader />
-
-            <main id="contenido" className="relative">
+            <SiteShell
+              banner={!isSupabaseConfigured ? <DemoBanner /> : null}
+              footer={<SiteFooter locale={locale as Locale} />}
+            >
               {children}
-            </main>
-
-            <SiteFooter locale={locale as Locale} />
+            </SiteShell>
             <Toaster />
           </AppProvider>
         </DictionaryProvider>

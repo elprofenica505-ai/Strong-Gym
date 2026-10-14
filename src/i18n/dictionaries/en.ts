@@ -259,6 +259,31 @@ const en = {
     title: "Our team",
     subtitle: "Boxing classes always have a coach in charge.",
     seeClasses: "See their classes",
+    // No names yet: only what is already confirmed at the gym.
+    facts: [
+      {
+        title: "A coach in every boxing class",
+        text: "Technique, heavy bag and conditioning with a coach in charge of every session, for all ages.",
+      },
+      {
+        title: "Guidance on the machines",
+        text: "Staff guide you on how to use the gym equipment and machines.",
+      },
+      {
+        title: "They show you how the machinery works",
+        text: "Only coaches or reception handle the machinery to show how it works.",
+      },
+    ],
+  },
+
+  memberSummary: {
+    title: "Your summary",
+    nextClass: "Next class",
+    noNextClass: "You have no upcoming class booked yet.",
+    viewAccount: "View my account",
+    guestTitle: "Already a member?",
+    guestText:
+      "Log in to see your booked classes, the classes you attended and your next class, or create an account to get started.",
   },
 
   testimonials: {
