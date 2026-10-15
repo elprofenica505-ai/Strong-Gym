@@ -12,6 +12,7 @@ import {
   MessageSquare,
   ShieldAlert,
   TrendingUp,
+  Upload,
   Users,
   X,
 } from "lucide-react";
@@ -152,6 +153,29 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
         </div>
         <span className="shrink-0 rounded-full border border-brand/50 px-3 py-1 text-[0.6875rem] font-semibold uppercase tracking-wider text-brand-300">
           Fase 1 · Nuevo
+        </span>
+      </a>
+
+      {/* --- Herramientas: importar / reset / guía --- */}
+      <a
+        href={`/${locale}/panel/herramientas`}
+        className="group flex items-center justify-between gap-4 rounded-2xl border border-line bg-card p-4 transition-colors hover:border-brand"
+      >
+        <div className="flex items-center gap-3">
+          <span className="grid size-11 place-items-center rounded-xl bg-card-2 text-mist">
+            <Upload className="size-5" />
+          </span>
+          <div>
+            <p className="text-[0.9375rem] font-semibold text-ink">
+              Herramientas
+            </p>
+            <p className="text-[0.75rem] text-fog">
+              Importar socios desde CSV, borrar los datos de ejemplo y ver la guía paso a paso
+            </p>
+          </div>
+        </div>
+        <span className="shrink-0 text-[0.6875rem] font-semibold text-fog group-hover:text-brand-300">
+          Abrir →
         </span>
       </a>
 
