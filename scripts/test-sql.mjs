@@ -591,15 +591,15 @@ try {
   ).rows[0];
 
   check(
-    "crea las 8 tablas",
+    "crea 16 tablas (8 base + 8 de Fase 1)",
     (
       await unico.query(
         `select count(*)::int as n from pg_tables where schemaname = 'public'`,
       )
-    ).rows[0].n === 8,
+    ).rows[0].n === 16,
   );
   check("carga 3 disciplinas", Number(resumen.clases) === 3);
-  check("no inventa entrenadores", Number(resumen.profes) === 0);
+  check("3 coaches cargados (seed de Fase 1)", Number(resumen.profes) === 3);
   check("carga 3 planes", Number(resumen.planes) === 3);
   check("carga 36 clases (4 semanas)", Number(resumen.sesiones) === 36, `${resumen.sesiones}`);
 
