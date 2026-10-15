@@ -75,7 +75,7 @@ export function Contact({ locale }: { locale: Locale }) {
                     <a
                       href={href}
                       {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                      className="mt-1 block text-[0.9375rem] leading-snug text-ink transition-colors hover:text-brand"
+                      className="mt-1 block text-[0.9375rem] leading-snug text-ink transition-colors hover:text-brand-300"
                     >
                       {value}
                     </a>
