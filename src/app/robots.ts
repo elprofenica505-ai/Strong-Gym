@@ -10,7 +10,15 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: "*",
         allow: "/",
         // Las zonas privadas no se indexan
-        disallow: ["/api/", "/es/mi-cuenta", "/en/mi-cuenta", "/es/panel", "/en/panel"],
+        disallow: [
+          "/api/",
+          "/es/mi-cuenta",
+          "/en/mi-cuenta",
+          "/es/panel",
+          "/en/panel",
+          "/es/offline",
+          "/en/offline",
+        ],
       },
     ],
     sitemap: `${siteUrl}/sitemap.xml`,

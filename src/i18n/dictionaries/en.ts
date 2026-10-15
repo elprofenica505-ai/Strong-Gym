@@ -532,6 +532,14 @@ const en = {
     cta: "Back to home",
   },
 
+  /** Page shown to the user when there is no network. */
+  offline: {
+    title: "You are offline",
+    text: "We couldn't load this page. If you've already visited it, try again once you have a signal.",
+    retry: "Try again",
+    home: "Go to home",
+  },
+
   errors: {
     generic: "Something went wrong. Please try again in a moment.",
     supabaseMissing: "Supabase credentials are not configured.",
