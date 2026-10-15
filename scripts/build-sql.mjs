@@ -181,6 +181,8 @@ function sincronizar(archivo) {
 
 const schemaNuevo = sincronizar(SCHEMA);
 const migracionNueva = sincronizar(UPDATE_MIGRATION);
+const financeNuevo = readFileSync(join(ROOT, "supabase/migrations/00010_finance.sql"), "utf8");
+const financeSeedNuevo = readFileSync(join(ROOT, "supabase/migrations/00011_finance_seed.sql"), "utf8");
 
 /* --- 3b. SETUP.sql: instalación desde cero --- */
 const cabecera = `-- ============================================================
@@ -201,12 +203,13 @@ const cabecera = `-- ===========================================================
 --    · Las reglas de seguridad: cada socio sólo ve sus propias reservas
 --    · Las funciones de reservar y cancelar, sin sobreventa de cupos
 --    · El contenido real: disciplinas, planes y la grilla de clases
+--    · El sistema de caja, contabilidad y métodos de pago (Fase 1)
 --    · Las clases de las próximas ${SEMANAS} semanas (${cantidadSemanal} por semana)
 --
 --  Es seguro correrlo más de una vez: no duplica datos.
 --
 --  ARCHIVO GENERADO — no lo edites a mano.
---  El original son supabase/migrations/00001_schema.sql y 00002_seed.sql.
+--  El original son supabase/migrations/*.sql.
 --  Para regenerarlo:  node scripts/build-sql.mjs
 -- ============================================================
 
@@ -216,15 +219,23 @@ const cabecera = `-- ===========================================================
 const setupNuevo =
   cabecera +
   "-- ############################################################\n" +
-  "-- #  PARTE 1 de 2 — ESTRUCTURA (tablas, permisos y funciones)\n" +
+  "-- #  PARTE 1 de 3 — ESTRUCTURA BASE (tablas, permisos, funciones)\n" +
   "-- #  Original: supabase/migrations/00001_schema.sql\n" +
   "-- ############################################################\n\n" +
   schemaNuevo.trimStart() +
   "\n\n\n-- ############################################################\n" +
-  "-- #  PARTE 2 de 2 — DATOS (disciplinas, planes, clases)\n" +
+  "-- #  PARTE 2 de 3 — DATOS INICIALES (disciplinas, planes, clases)\n" +
   "-- #  Original: supabase/migrations/00002_seed.sql\n" +
   "-- ############################################################\n\n" +
-  readFileSync(SEED, "utf8").trimStart();
+  readFileSync(SEED, "utf8").trimStart() +
+  "\n\n\n-- ############################################################\n" +
+  "-- #  PARTE 3 de 3 — SISTEMA DE CAJA Y CONTABILIDAD (Fase 1)\n" +
+  "-- #  Originales: supabase/migrations/00010_finance.sql\n" +
+  "-- #                supabase/migrations/00011_finance_seed.sql\n" +
+  "-- ############################################################\n\n" +
+  financeNuevo.trimStart() +
+  "\n\n" +
+  financeSeedNuevo.trimStart();
 
 /* --- 3c. ACTUALIZAR.sql: para una base que ya está en uso --- */
 const actualizarNuevo =
@@ -235,6 +246,7 @@ const actualizarNuevo =
 --  ESTE ARCHIVO ES PARA UN PROYECTO QUE YA ESTÁ FUNCIONANDO.
 --  Reemplaza los datos de ejemplo de la primera carga por los
 --  datos reales del gimnasio y corrige la grilla de clases.
+--  Si todavía no tenés la Fase 1 (caja), también la instala.
 --
 --  CÓMO USARLO (se hace todo desde el celular)
 --    1. Entrá a https://supabase.com y abrí tu proyecto
@@ -251,7 +263,15 @@ const actualizarNuevo =
 -- ============================================================
 
 
-` + migracionNueva.trimStart();
+` +
+  migracionNueva.trimStart() +
+  "\n\n\n-- ############################################################\n" +
+  "-- #  FASE 1: CAJA Y CONTABILIDAD (para bases que ya estaban\n" +
+  "-- #  funcionando antes de esta fase)\n" +
+  "-- ############################################################\n\n" +
+  financeNuevo.trimStart() +
+  "\n\n" +
+  financeSeedNuevo.trimStart();
 
 function sincronizarGenerado(archivo, contenido) {
   let anterior = "";

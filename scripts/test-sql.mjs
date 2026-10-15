@@ -81,6 +81,14 @@ console.log("\n▶ Ejecutando 00002_seed.sql…");
 await db.exec(readFileSync(`${REPO}/supabase/migrations/00002_seed.sql`, "utf8"));
 console.log("  ✅ datos iniciales cargados sin errores");
 
+console.log("\n▶ Ejecutando 00010_finance.sql (Fase 1: contabilidad)…");
+await db.exec(readFileSync(`${REPO}/supabase/migrations/00010_finance.sql`, "utf8"));
+console.log("  ✅ esquema de finanzas creado sin errores");
+
+console.log("\n▶ Ejecutando 00011_finance_seed.sql (Fase 1: datos de ejemplo)…");
+await db.exec(readFileSync(`${REPO}/supabase/migrations/00011_finance_seed.sql`, "utf8"));
+console.log("  ✅ 40 socios, 3 coaches, 10 métodos de pago, ~50 transacciones");
+
 console.log("\n▶ Contenido cargado");
 const counts = await db.query(`
   select
@@ -91,7 +99,7 @@ const counts = await db.query(`
 `);
 console.log("  ", counts.rows[0]);
 check("3 disciplinas (pesas, boxeo, zumba)", Number(counts.rows[0].clases) === 3);
-check("sin entrenadores cargados todavía", Number(counts.rows[0].profes) === 0);
+check("3 coaches cargados (Douglas, María, José Luis)", Number(counts.rows[0].profes) === 3);
 check("3 planes", Number(counts.rows[0].planes) === 3);
 check(
   "36 clases programadas (9 por semana × 4)",
@@ -583,15 +591,15 @@ try {
   ).rows[0];
 
   check(
-    "crea las 8 tablas",
+    "crea 16 tablas (8 base + 8 de Fase 1)",
     (
       await unico.query(
         `select count(*)::int as n from pg_tables where schemaname = 'public'`,
       )
-    ).rows[0].n === 8,
+    ).rows[0].n === 16,
   );
   check("carga 3 disciplinas", Number(resumen.clases) === 3);
-  check("no inventa entrenadores", Number(resumen.profes) === 0);
+  check("3 coaches cargados (seed de Fase 1)", Number(resumen.profes) === 3);
   check("carga 3 planes", Number(resumen.planes) === 3);
   check("carga 36 clases (4 semanas)", Number(resumen.sesiones) === 36, `${resumen.sesiones}`);
 
