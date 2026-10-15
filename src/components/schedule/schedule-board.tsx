@@ -31,7 +31,7 @@ import {
   weekdayName,
 } from "@/lib/schedule";
 import type { SessionDetail, WeekRange } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { accentOnDark, cn, textOnAccent } from "@/lib/utils";
 
 /** Mensajes que mostramos cuando el backend rechaza una reserva. */
 const errorMessages = {
@@ -246,7 +246,7 @@ export function ScheduleBoard({ initialWeekKey }: { initialWeekKey?: string }) {
             <button
               type="button"
               onClick={goToCurrentWeek}
-              className="rounded-full border border-line px-4 py-2 text-[0.75rem] font-semibold text-mist transition-colors hover:border-brand/60 hover:text-brand"
+              className="rounded-full border border-line px-4 py-2 text-[0.75rem] font-semibold text-mist transition-colors hover:border-brand/60 hover:text-brand-300"
             >
               {dict.schedule.today}
             </button>
@@ -329,7 +329,7 @@ export function ScheduleBoard({ initialWeekKey }: { initialWeekKey?: string }) {
           className="flex scroll-mt-28 flex-col gap-4 rounded-2xl border border-brand/35 bg-brand/[0.07] p-5 sm:flex-row sm:items-center sm:justify-between"
         >
           <div className="flex items-start gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand/15 text-brand">
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand/15 text-brand-300">
               <LogIn className="size-4.5" aria-hidden="true" />
             </span>
             <div>
@@ -455,7 +455,7 @@ function FilterChip({
       className={cn(
         "flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-[0.75rem] font-medium transition-colors",
         active
-          ? "border-brand/60 bg-brand/12 text-brand"
+          ? "border-brand/60 bg-brand/12 text-brand-300"
           : "border-line text-mist hover:border-brand/40 hover:text-ink",
       )}
     >
@@ -493,21 +493,33 @@ function DayButton({
       aria-pressed={active}
       className={cn(
         "flex min-w-24 shrink-0 flex-col items-start gap-0.5 rounded-xl border px-3.5 py-2.5 text-left transition-colors sm:min-w-0",
-        active ? "border-brand/60 bg-brand/12" : "border-line bg-card hover:border-brand/40",
+        active
+          ? "border-brand bg-brand text-onbrand"
+          : "border-line bg-card hover:border-brand/40",
       )}
     >
       <span
         className={cn(
           "max-w-full truncate text-[0.8125rem] font-semibold capitalize",
-          active ? "text-brand" : "text-ink",
+          active ? "text-onbrand" : "text-ink",
         )}
       >
         {top}
       </span>
 
-      <span className="flex items-center gap-2 text-[0.6875rem] text-fog">
+      <span
+        className={cn(
+          "flex items-center gap-2 text-[0.6875rem]",
+          active ? "text-onbrand/80" : "text-fog",
+        )}
+      >
         {bottom}
-        {isToday ? <span className="size-1.5 rounded-full bg-brand" aria-hidden="true" /> : null}
+        {isToday ? (
+          <span
+            className={cn("size-1.5 rounded-full", active ? "bg-onbrand" : "bg-brand")}
+            aria-hidden="true"
+          />
+        ) : null}
         {typeof count === "number" && count > 0 ? <span>· {count}</span> : null}
       </span>
     </button>
@@ -572,7 +584,7 @@ function SessionRow({
     <li className="relative overflow-hidden rounded-2xl border border-line bg-card transition-colors hover:border-brand/40">
       <span
         className="absolute inset-y-0 left-0 w-1"
-        style={{ backgroundColor: session.gymClass.color }}
+        style={{ backgroundColor: accentOnDark(session.gymClass.color) }}
         aria-hidden="true"
       />
 
@@ -596,8 +608,8 @@ function SessionRow({
             <span
               className="rounded-full px-2 py-0.5 text-[0.625rem] font-bold tracking-wide uppercase"
               style={{
-                color: session.gymClass.color,
-                backgroundColor: `${session.gymClass.color}1a`,
+                backgroundColor: accentOnDark(session.gymClass.color),
+                color: textOnAccent(session.gymClass.color),
               }}
             >
               {session.gymClass.duration_min} {durationLabel}
@@ -632,7 +644,7 @@ function SessionRow({
                 className="h-full rounded-full transition-all duration-500"
                 style={{
                   width: `${occupancy}%`,
-                  backgroundColor: isFull && !isBooked ? "#ff5b26" : session.gymClass.color,
+                  backgroundColor: isFull && !isBooked ? "#ff5b26" : accentOnDark(session.gymClass.color),
                 }}
               />
             </div>
@@ -655,7 +667,7 @@ function SessionRow({
               size="sm"
               onClick={onCancel}
               disabled={isPending}
-              className="w-full border-brand/50 text-brand hover:border-alert/60 hover:bg-alert/10 hover:text-alert"
+              className="w-full border-brand/50 text-brand-300 hover:border-alert/60 hover:bg-alert/10 hover:text-alert"
             >
               {isPending ? (
                 <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
@@ -674,7 +686,10 @@ function SessionRow({
               onClick={onBook}
               disabled={isPending}
               className="w-full"
-              style={{ backgroundColor: session.gymClass.color, color: "#0a0c07" }}
+              style={{
+                backgroundColor: accentOnDark(session.gymClass.color),
+                color: textOnAccent(session.gymClass.color),
+              }}
             >
               {isPending ? (
                 <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />

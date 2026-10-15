@@ -19,7 +19,7 @@ export function Features({ locale }: { locale: Locale }) {
         subtitle={dict.features.subtitle}
       />
 
-      <div className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-line bg-line sm:mt-14 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-10 grid gap-4 sm:mt-14 sm:grid-cols-2 lg:grid-cols-3">
         {dict.features.items.map((item, index) => {
           const Icon = icons[index % icons.length];
 
@@ -27,9 +27,9 @@ export function Features({ locale }: { locale: Locale }) {
             <Reveal
               key={item.title}
               delay={index * 60}
-              className="group relative bg-card p-6 transition-colors duration-300 hover:bg-card-2 sm:p-7 lg:p-8"
+              className="group rounded-2xl border border-line bg-card p-6 transition-colors duration-300 hover:border-brand/45 sm:p-7 lg:p-8"
             >
-              <span className="grid size-11 place-items-center rounded-xl bg-brand-soft text-brand transition-colors duration-300 group-hover:bg-brand group-hover:text-onbrand">
+              <span className="grid size-11 place-items-center rounded-xl bg-brand-soft text-brand-300 transition-colors duration-300 group-hover:bg-brand group-hover:text-onbrand">
                 <Icon className="size-5" aria-hidden="true" />
               </span>
 

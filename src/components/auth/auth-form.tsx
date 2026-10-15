@@ -86,7 +86,7 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
 
         <Link
           href={`/${locale}/ingresar`}
-          className="text-[0.8125rem] font-semibold text-brand transition-opacity hover:opacity-80"
+          className="text-[0.8125rem] font-semibold text-brand-300 transition-opacity hover:opacity-80"
         >
           {dict.auth.goLogin}
         </Link>
@@ -190,7 +190,7 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
         {isLogin ? dict.auth.noAccount : dict.auth.hasAccount}{" "}
         <Link
           href={`/${locale}/${isLogin ? "registro" : "ingresar"}`}
-          className="font-semibold text-brand transition-opacity hover:opacity-80"
+          className="font-semibold text-brand-300 transition-opacity hover:opacity-80"
         >
           {isLogin ? dict.auth.goRegister : dict.auth.goLogin}
         </Link>
@@ -201,7 +201,7 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
           <p className="text-[0.75rem] leading-relaxed text-fog">{dict.auth.demoNotice}</p>
 
           {isLogin ? (
-            <p className="mt-2 font-mono text-[0.6875rem] leading-relaxed text-brand">
+            <p className="mt-2 font-mono text-[0.6875rem] leading-relaxed text-brand-300">
               admin@stronggym.com · admin123
             </p>
           ) : null}

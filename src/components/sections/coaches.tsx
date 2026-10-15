@@ -37,7 +37,7 @@ export async function Coaches({ locale }: { locale: Locale }) {
             return (
               <Reveal key={fact.title} delay={index * 60} className="h-full">
                 <article className="flex h-full flex-col rounded-2xl border border-line bg-card p-6 transition-all duration-300 hover:-translate-y-1 hover:border-brand/40">
-                  <span className="grid size-11 place-items-center rounded-xl bg-brand-soft text-brand">
+                  <span className="grid size-11 place-items-center rounded-xl bg-brand-soft text-brand-300">
                     <Icon className="size-5" aria-hidden="true" />
                   </span>
                   <h3 className="mt-5 text-[1.0625rem] font-semibold text-ink">{fact.title}</h3>

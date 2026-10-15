@@ -23,7 +23,7 @@ export function Faq({ locale }: { locale: Locale }) {
           <Reveal delay={140} className="mt-8">
             <div className="flex flex-col gap-3 rounded-2xl border border-line bg-card p-5">
               <div className="flex items-center gap-3">
-                <span className="grid size-10 place-items-center rounded-full bg-brand/12 text-brand">
+                <span className="grid size-10 place-items-center rounded-full bg-brand/12 text-brand-300">
                   <MessageCircleQuestion className="size-5" aria-hidden="true" />
                 </span>
                 <div>
@@ -38,7 +38,7 @@ export function Faq({ locale }: { locale: Locale }) {
                 href={whatsappLink(dict.cta.freeTrial)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-[0.8125rem] font-medium text-brand transition-opacity hover:opacity-80"
+                className="flex items-center gap-2 text-[0.8125rem] font-medium text-brand-300 transition-opacity hover:opacity-80"
               >
                 <Phone className="size-3.5" aria-hidden="true" />
                 {siteConfig.phone}

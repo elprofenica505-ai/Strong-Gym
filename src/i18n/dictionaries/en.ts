@@ -302,6 +302,7 @@ const en = {
       triceps: { label: "Triceps machine", detail: "Arm work" },
       pantorrilla: { label: "Calf machine", detail: "Lower body" },
       abs: { label: "Abs area", detail: "Core and dips" },
+      dip: { label: "Ab machine", detail: "Core work" },
     },
   },
 

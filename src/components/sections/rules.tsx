@@ -22,17 +22,17 @@ export function Rules({ locale }: { locale: Locale }) {
           />
 
           <Reveal delay={120} className="mt-8 hidden lg:block">
-            <span className="grid size-14 place-items-center rounded-2xl bg-brand-soft text-brand">
+            <span className="grid size-14 place-items-center rounded-2xl bg-brand-soft text-brand-300">
               <ShieldCheck className="size-7" aria-hidden="true" />
             </span>
           </Reveal>
         </div>
 
         <Reveal delay={80} className="lg:col-span-8">
-          <ol className="grid gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-2">
+          <ol className="grid gap-px overflow-hidden rounded-2xl border border-brand/25 bg-brand/20 sm:grid-cols-2">
             {dict.rules.items.map((rule, index) => (
               <li key={rule} className="flex gap-3.5 bg-card p-5">
-                <span className="display-xl mt-0.5 shrink-0 text-[1.125rem] leading-none text-brand tabular-nums">
+                <span className="display-xl mt-0.5 shrink-0 text-[1.125rem] leading-none text-brand-300 tabular-nums">
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <span className="text-[0.875rem] leading-relaxed text-mist">{rule}</span>

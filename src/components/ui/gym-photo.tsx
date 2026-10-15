@@ -59,13 +59,13 @@ function FotoPendiente({ src, className }: { src: string; className?: string }) 
   return (
     <div
       className={cn(
-        "absolute inset-0 flex flex-col items-center justify-center gap-2 bg-cloud p-4 text-center",
+        "absolute inset-0 flex flex-col items-center justify-center gap-2 bg-card-2 p-4 text-center ring-1 ring-line ring-inset",
         className,
       )}
       aria-hidden="true"
     >
-      <ImageOff className="size-5 text-fog/60" strokeWidth={1.75} />
-      <span className="font-mono text-[0.6875rem] leading-tight break-all text-fog/70">
+      <ImageOff className="size-5 text-fog" strokeWidth={1.75} />
+      <span className="font-mono text-[0.6875rem] leading-tight break-all text-fog/90">
         {nombre}
       </span>
     </div>

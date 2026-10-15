@@ -17,7 +17,8 @@ const spans = [
   "lg:col-span-2",
   "lg:col-span-2",
   "lg:col-span-2",
-  "sm:col-span-2 lg:col-span-2",
+  "sm:col-span-2 lg:col-span-3",
+  "sm:col-span-2 lg:col-span-3",
 ];
 
 export function Gallery({ locale }: { locale: Locale }) {

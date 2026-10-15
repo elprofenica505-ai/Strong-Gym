@@ -143,7 +143,7 @@ export default async function AdminPage({ params }: { params: Promise<{ locale: 
 
   return (
     <>
-      <section className="relative overflow-hidden border-b border-line bg-cloud pt-12 pb-10 sm:pt-16 sm:pb-12 lg:pt-20">
+      <section className="relative overflow-hidden border-b border-brand/25 bg-cloud pt-12 pb-10 sm:pt-16 sm:pb-12 lg:pt-20">
         <div className="absolute inset-0 bg-grid opacity-50" aria-hidden="true" />
         <div
           className="absolute -top-24 left-1/4 size-80 rounded-full bg-brand/8 blur-3xl"
@@ -160,12 +160,12 @@ export default async function AdminPage({ params }: { params: Promise<{ locale: 
           <p className="mt-4 text-[0.8125rem] text-fog">
             {user ? (
               <>
-                {user.fullName} · <span className="font-mono text-brand">{user.role}</span>
+                {user.fullName} · <span className="font-mono text-brand-300">{user.role}</span>
               </>
             ) : (
               <>
                 {dict.demo.title} ·{" "}
-                <Link href={`/${locale}/ingresar`} className="text-brand hover:opacity-80">
+                <Link href={`/${locale}/ingresar`} className="text-brand-300 hover:opacity-80">
                   {dict.nav.login}
                 </Link>
               </>

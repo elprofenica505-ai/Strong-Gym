@@ -36,7 +36,7 @@ export async function Plans({ locale }: { locale: Locale }) {
                   "relative flex h-full flex-col rounded-3xl border p-6 transition-all duration-300 sm:p-7",
                   plan.is_popular
                     ? "glow-brand border-brand/50 bg-gradient-to-b from-brand-soft to-card"
-                    : "border-line bg-card shadow-[0_18px_50px_-38px_rgba(12,12,14,0.55)] hover:border-ink/20",
+                    : "border-line bg-card shadow-[0_18px_50px_-38px_rgba(216,26,34,0.45)] hover:border-brand/40",
                 )}
               >
                 {plan.is_popular ? (
@@ -57,7 +57,7 @@ export async function Plans({ locale }: { locale: Locale }) {
                     className={cn(
                       "display-xl leading-none",
                       price ? "text-[2.75rem]" : "text-[1.75rem]",
-                      plan.is_popular ? "text-brand" : "text-ink",
+                      plan.is_popular ? "text-brand-300" : "text-ink",
                     )}
                   >
                     {price ?? dict.plans.consult}

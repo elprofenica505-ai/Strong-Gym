@@ -21,7 +21,7 @@ export function Boxing({ locale }: { locale: Locale }) {
       : "Hi, I would like information about the boxing classes.";
 
   return (
-    <Section id="boxeo" className="bg-night text-white">
+    <Section id="boxeo" className="border-y border-line">
       <div className="grid items-center gap-10 lg:grid-cols-12 lg:gap-14">
         {/* Texto */}
         <div className="lg:col-span-6">
@@ -31,11 +31,11 @@ export function Boxing({ locale }: { locale: Locale }) {
               {dict.boxing.eyebrow}
             </span>
 
-            <h2 className="display-xl mt-4 max-w-xl text-[2rem] leading-[0.92] text-white sm:text-[2.75rem] lg:text-[3.25rem]">
+            <h2 className="display-xl mt-4 max-w-xl text-[2rem] leading-[0.92] text-ink sm:text-[2.75rem] lg:text-[3.25rem]">
               {dict.boxing.title}
             </h2>
 
-            <p className="mt-4 max-w-xl text-[0.9375rem] leading-relaxed text-white/70 sm:text-base">
+            <p className="mt-4 max-w-xl text-[0.9375rem] leading-relaxed text-fog sm:text-base">
               {dict.boxing.subtitle}
             </p>
           </Reveal>
@@ -43,18 +43,18 @@ export function Boxing({ locale }: { locale: Locale }) {
           {/* Días y precio */}
           <Reveal delay={100}>
             <dl className="mt-8 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-white/12 bg-white/[0.04] p-5">
-                <dt className="flex items-center gap-2 text-[0.6875rem] font-semibold tracking-[0.14em] text-white/50 uppercase">
-                  <Users className="size-3.5 text-brand" aria-hidden="true" />
+              <div className="rounded-2xl border border-line bg-card p-5">
+                <dt className="flex items-center gap-2 text-[0.6875rem] font-semibold tracking-[0.14em] text-fog uppercase">
+                  <Users className="size-3.5 text-brand-300" aria-hidden="true" />
                   {dict.boxing.daysLabel}
                 </dt>
-                <dd className="mt-2 text-[0.9375rem] font-medium text-white">
+                <dd className="mt-2 text-[0.9375rem] font-medium text-ink">
                   {dict.boxing.days}
                 </dd>
               </div>
 
-              <div className="rounded-2xl border border-brand/40 bg-brand/12 p-5">
-                <dt className="text-[0.6875rem] font-semibold tracking-[0.14em] text-white/60 uppercase">
+              <div className="rounded-2xl border border-line bg-card p-5">
+                <dt className="text-[0.6875rem] font-semibold tracking-[0.14em] text-fog uppercase">
                   {dict.boxing.priceLabel}
                 </dt>
                 <dd className="display-xl mt-1 text-[2rem] leading-none text-brand">
@@ -66,8 +66,8 @@ export function Boxing({ locale }: { locale: Locale }) {
 
           {/* Los tres horarios */}
           <Reveal delay={160}>
-            <p className="mt-8 flex items-center gap-2 text-[0.6875rem] font-semibold tracking-[0.14em] text-white/50 uppercase">
-              <Clock className="size-3.5 text-brand" aria-hidden="true" />
+            <p className="mt-8 flex items-center gap-2 text-[0.6875rem] font-semibold tracking-[0.14em] text-fog uppercase">
+              <Clock className="size-3.5 text-brand-300" aria-hidden="true" />
               {dict.boxing.sessionsLabel}
             </p>
 
@@ -75,12 +75,12 @@ export function Boxing({ locale }: { locale: Locale }) {
               {dict.boxing.sessions.map((session) => (
                 <li
                   key={session.name}
-                  className="rounded-xl border border-white/12 bg-white/[0.04] px-4 py-3 transition-colors hover:border-brand/50"
+                  className="rounded-xl border border-line bg-card px-4 py-3 transition-colors hover:border-brand/60"
                 >
-                  <span className="block text-[0.6875rem] tracking-[0.12em] text-white/45 uppercase">
+                  <span className="block text-[0.6875rem] tracking-[0.12em] text-fog uppercase">
                     {session.name}
                   </span>
-                  <span className="mt-1 block font-mono text-[0.9375rem] font-semibold text-white tabular-nums">
+                  <span className="mt-1 block font-mono text-[0.9375rem] font-semibold text-ink tabular-nums">
                     {session.time}
                   </span>
                 </li>
@@ -89,7 +89,7 @@ export function Boxing({ locale }: { locale: Locale }) {
           </Reveal>
 
           <Reveal delay={220}>
-            <p className="mt-6 text-[0.8125rem] text-white/55">{dict.boxing.note}</p>
+            <p className="mt-6 text-[0.8125rem] text-fog">{dict.boxing.note}</p>
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <ButtonLink href={`/${locale}/horarios`} size="lg">

@@ -30,7 +30,7 @@ export function DemoBanner() {
         <Database className="size-4 shrink-0 text-brand" aria-hidden="true" />
 
         <p className="flex-1 text-[0.75rem] leading-snug text-mist sm:text-[0.8125rem]">
-          <span className="font-semibold text-brand">{dict.demo.title}:</span> {dict.demo.text}{" "}
+          <span className="font-semibold text-brand-300">{dict.demo.title}:</span> {dict.demo.text}{" "}
           <span className="hidden text-fog sm:inline">{dict.demo.hint}</span>
         </p>
 

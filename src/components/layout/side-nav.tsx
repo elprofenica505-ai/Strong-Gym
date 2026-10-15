@@ -101,7 +101,7 @@ export function SideNav({ open, onClose }: { open: boolean; onClose: () => void 
   const nav = (
     <>
       <div className="flex h-16 items-center justify-between px-5 sm:h-18 lg:h-20">
-        <Logo locale={locale} name={dict.nav.home} />
+        <Logo locale={locale} name={dict.nav.home} tone="dark" />
         <button
           type="button"
           onClick={onClose}
@@ -124,7 +124,7 @@ export function SideNav({ open, onClose }: { open: boolean; onClose: () => void 
               className={cn(
                 "flex items-center gap-3 rounded-xl px-4 py-3 text-[0.9375rem] font-medium transition-colors",
                 isActive
-                  ? "bg-brand/10 text-brand"
+                  ? "bg-brand/10 text-brand-300"
                   : "text-mist hover:bg-cloud hover:text-ink",
               )}
             >
@@ -144,7 +144,7 @@ export function SideNav({ open, onClose }: { open: boolean; onClose: () => void 
             className={cn(
               "flex items-center gap-3 rounded-xl px-4 py-3 text-[0.9375rem] font-medium transition-colors",
               pathname.startsWith(`/${locale}/panel`)
-                ? "bg-brand/10 text-brand"
+                ? "bg-brand/10 text-brand-300"
                 : "text-mist hover:bg-cloud hover:text-ink",
             )}
           >
@@ -210,7 +210,7 @@ export function SideNav({ open, onClose }: { open: boolean; onClose: () => void 
       >
         <div
           className={cn(
-            "absolute inset-0 bg-ink/40 backdrop-blur-sm transition-opacity duration-300",
+            "absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity duration-300",
             open ? "opacity-100" : "opacity-0",
           )}
           onClick={onClose}

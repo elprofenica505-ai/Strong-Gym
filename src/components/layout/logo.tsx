@@ -5,15 +5,18 @@ import { BrandMark } from "./brand-mark";
 
 /**
  * Logo del sitio: el emblema del triángulo + el nombre del gimnasio.
- * `tone` adapta el texto al fondo donde está (claro u oscuro); el
- * triángulo rojo funciona igual en los dos.
+ *
+ * `tone` describe la superficie donde va apoyado, no el color del texto:
+ *  - "dark"  → fondo oscuro (el caso de todo el sitio) → texto blanco.
+ *  - "light" → fondo claro (rojo o blanco) → texto negro.
+ * El triángulo rojo funciona igual en las dos.
  */
 export function Logo({
   locale,
   name,
   className,
   compact = false,
-  tone = "light",
+  tone = "dark",
 }: {
   locale: string;
   name?: string;
@@ -34,7 +37,7 @@ export function Logo({
           <span
             className={cn(
               "display-xl text-[1.0625rem] tracking-[0.01em] sm:text-[1.1875rem]",
-              tone === "dark" ? "text-white" : "text-ink",
+              tone === "dark" ? "text-white" : "text-night",
             )}
           >
             Strong
@@ -42,7 +45,7 @@ export function Logo({
           <span
             className={cn(
               "mt-0.5 text-[0.5625rem] font-semibold tracking-[0.22em] uppercase sm:text-[0.625rem]",
-              tone === "dark" ? "text-white/55" : "text-fog",
+              tone === "dark" ? "text-white/55" : "text-night/60",
             )}
           >
             Fitness Gym

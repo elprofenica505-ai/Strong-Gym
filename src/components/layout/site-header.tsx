@@ -40,7 +40,9 @@ export function SiteHeader({ onOpenMenu }: { onOpenMenu: () => void }) {
     <header
       className={cn(
         "sticky top-0 z-40 border-b bg-paper/95 backdrop-blur-xl transition-all duration-300",
-        scrolled ? "border-line shadow-[0_1px_20px_rgba(12,12,14,0.07)]" : "border-line-soft",
+        scrolled
+          ? "border-brand/30 shadow-[0_10px_30px_-24px_rgba(216,26,34,0.55)]"
+          : "border-line-soft",
       )}
     >
       <div className="container-x">
@@ -58,7 +60,7 @@ export function SiteHeader({ onOpenMenu }: { onOpenMenu: () => void }) {
 
             {/* En la computadora el logo ya está en el panel lateral */}
             <span className="lg:hidden">
-              <Logo locale={locale} name={dict.nav.home} />
+              <Logo locale={locale} name={dict.nav.home} tone="dark" />
             </span>
           </div>
 

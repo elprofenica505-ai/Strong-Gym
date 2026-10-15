@@ -305,6 +305,7 @@ const es = {
       triceps: { label: "Máquina de tríceps", detail: "Trabajo de brazo" },
       pantorrilla: { label: "Máquina de pantorrilla", detail: "Tren inferior" },
       abs: { label: "Zona de abdominales", detail: "Core y fondos" },
+      dip: { label: "Máquina de abdominales", detail: "Trabajo de abdomen" },
     },
   },
 
