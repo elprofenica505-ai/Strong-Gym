@@ -540,6 +540,14 @@ const es = {
     cta: "Volver al inicio",
   },
 
+  /** Página que ve el usuario cuando no tiene conexión. */
+  offline: {
+    title: "Estás sin conexión",
+    text: "No pudimos cargar esta página. Si ya la habías visitado, intentá volver cuando tengas señal.",
+    retry: "Reintentar",
+    home: "Ir al inicio",
+  },
+
   errors: {
     generic: "Algo salió mal. Intentá de nuevo en un momento.",
     supabaseMissing: "Falta configurar las credenciales de Supabase.",

@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import { DemoBanner } from "@/components/layout/demo-banner";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteShell } from "@/components/layout/site-shell";
+import { SwRegister } from "@/components/sw-register";
 import { AppProvider } from "@/components/providers/app-provider";
 import { DictionaryProvider } from "@/components/providers/dictionary-provider";
 import { Toaster } from "@/components/ui/toaster";
@@ -62,9 +63,22 @@ export async function generateMetadata({
       description: dict.meta.description,
     },
     robots: { index: true, follow: true },
+    // El manifest se declara en `manifest.ts`; acá referenciamos los
+    // íconos y el app-capable de iOS. appleWebApp hace que Safari
+    // muestre "Añadir a pantalla de inicio" y abra la app en modo
+    // standalone (sin barra de Safari).
+    appleWebApp: {
+      capable: true,
+      title: siteConfig.shortName,
+      statusBarStyle: "black-translucent",
+    },
     icons: {
-      icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
-      apple: [{ url: "/apple-icon.png" }],
+      icon: [
+        { url: "/icon.svg", type: "image/svg+xml" },
+        { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+        { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+      ],
+      apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }],
     },
   };
 }
@@ -74,7 +88,16 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   colorScheme: "dark",
+  viewportFit: "cover",
 };
+
+/**
+ * Splash screens de iOS: cada iPhone (y iPad) usa el que coincide con su
+ * tamaño exacto. iOS los lee de `<link rel="apple-touch-startup-image">`
+ * en el `<head>`; los metemos como tags sueltos en el `<body>` abajo.
+ * El status bar queda translúcido para que la franja superior del splash
+ * se vea como parte de la app.
+ */
 
 /**
  * El sitio se renderiza por request (no estático) porque el header y las
@@ -98,6 +121,30 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale} suppressHydrationWarning>
+      <head>
+        {/* Splash screens de iOS (uno por tamaño de pantalla).
+            iOS los lee sólo si están acá, no sirven desde Next metadata. */}
+        <link
+          rel="apple-touch-startup-image"
+          href="/splash/splash-640x1136.png"
+          media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)"
+        />
+        <link
+          rel="apple-touch-startup-image"
+          href="/splash/splash-750x1334.png"
+          media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)"
+        />
+        <link
+          rel="apple-touch-startup-image"
+          href="/splash/splash-1242x2208.png"
+          media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3)"
+        />
+        <link
+          rel="apple-touch-startup-image"
+          href="/splash/splash-1125x2436.png"
+          media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)"
+        />
+      </head>
       <body className="min-h-dvh bg-paper text-ink antialiased">
         <DictionaryProvider dict={dict} locale={locale as Locale}>
           <AppProvider initialUser={user} isDemo={!isSupabaseConfigured}>
@@ -115,6 +162,10 @@ export default async function LocaleLayout({
               {children}
             </SiteShell>
             <Toaster />
+            {/* Registra el service worker. Solo se monta en producción
+                (`process.env.NODE_ENV === "production"`) y si el navegador
+                lo soporta, así que en dev local no interferimos. */}
+            <SwRegister />
           </AppProvider>
         </DictionaryProvider>
       </body>
