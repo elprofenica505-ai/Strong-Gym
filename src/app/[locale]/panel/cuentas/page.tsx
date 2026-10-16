@@ -1,3 +1,5 @@
+import { FinanceUnavailable } from "@/components/admin/finance-unavailable";
+import { readFinance } from "@/lib/finance/read-result";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -38,7 +40,16 @@ export default async function CuentasPage({
     redirect(`/${locale}/mi-cuenta`);
   }
 
-  const rows = await getAccountsReceivable();
+  const result = await readFinance(() => getAccountsReceivable());
+  if (!result.ok)
+    return (
+      <FinanceUnavailable
+        locale={locale}
+        code={result.code}
+        message={result.message}
+      />
+    );
+  const rows = result.data;
   const totalOwed = rows.reduce((acc, r) => acc + r.totalOwedNio, 0);
 
   return (
@@ -55,7 +66,9 @@ export default async function CuentasPage({
             <span className="h-px w-6 bg-brand" aria-hidden="true" />
             Caja · Cuentas por cobrar
           </span>
-          <h1 className="display-xl mt-2 text-[1.75rem] sm:text-[2.25rem]">Quién te debe</h1>
+          <h1 className="display-xl mt-2 text-[1.75rem] sm:text-[2.25rem]">
+            Quién te debe
+          </h1>
         </div>
       </div>
 
@@ -64,11 +77,7 @@ export default async function CuentasPage({
         <Stat label="Total adeudado" value={formatMoney(totalOwed)} />
         <Stat
           label="Más antiguo"
-          value={
-            rows[0]
-              ? `${rows[0].daysOverdue} días`
-              : "—"
-          }
+          value={rows[0] ? `${rows[0].daysOverdue} días` : "—"}
         />
       </div>
 
@@ -85,7 +94,9 @@ export default async function CuentasPage({
             >
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="truncate text-[0.9375rem] font-semibold text-ink">{r.fullName}</p>
+                  <p className="truncate text-[0.9375rem] font-semibold text-ink">
+                    {r.fullName}
+                  </p>
                   {r.daysOverdue > 0 && (
                     <Badge className="border-alert/40 bg-card text-alert">
                       {r.daysOverdue} días de mora
@@ -126,8 +137,12 @@ export default async function CuentasPage({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-line bg-card p-4">
-      <p className="text-[0.6875rem] font-semibold tracking-[0.14em] text-fog uppercase">{label}</p>
-      <p className="display-xl mt-2 text-[1.375rem] leading-none text-brand">{value}</p>
+      <p className="text-[0.6875rem] font-semibold tracking-[0.14em] text-fog uppercase">
+        {label}
+      </p>
+      <p className="display-xl mt-2 text-[1.375rem] leading-none text-brand">
+        {value}
+      </p>
     </div>
   );
 }

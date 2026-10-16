@@ -1,4 +1,5 @@
 import "server-only";
+import { FinanceReadError } from "@/lib/finance/read-result";
 
 import { cache } from "react";
 import { resolveCurrentUser } from "@/lib/auth/current-user";
@@ -446,61 +447,102 @@ export interface AccountsReceivableRow {
 
 export async function getPaymentMethods(): Promise<PaymentMethod[]> {
   const supabase = await getSupabaseServerClient();
-  if (!supabase) return [];
-  const { data } = await supabase
+  if (!supabase) {
+    if (isSupabaseConfigured)
+      throw new FinanceReadError("METHODS", "UNAVAILABLE");
+    return [];
+  }
+  const { data, error } = await supabase
     .from("payment_methods")
-    .select("*")
+    .select(
+      "id,slug,kind,name_es,name_en,details_es,details_en,accepts_nio,accepts_usd,icon,is_active,sort_order",
+    )
     .eq("is_active", true)
     .order("sort_order");
+  if (error) throw new FinanceReadError("METHODS", error.code);
   return (data ?? []).map(mapPaymentMethod);
 }
 
 export async function getExpenseCategories(): Promise<ExpenseCategory[]> {
   const supabase = await getSupabaseServerClient();
-  if (!supabase) return [];
-  const { data } = await supabase
+  if (!supabase) {
+    if (isSupabaseConfigured)
+      throw new FinanceReadError("CATEGORIES", "UNAVAILABLE");
+    return [];
+  }
+  const { data, error } = await supabase
     .from("expense_categories")
-    .select("*")
+    .select("id,slug,name_es,name_en,icon,is_active,sort_order")
     .eq("is_active", true)
     .order("sort_order");
+  if (error) throw new FinanceReadError("CATEGORIES", error.code);
   return (data ?? []).map(mapExpenseCategory);
 }
 
 export async function getAccounts(): Promise<Account[]> {
   const supabase = await getSupabaseServerClient();
-  if (!supabase) return [];
-  const { data } = await supabase
+  if (!supabase) {
+    if (isSupabaseConfigured)
+      throw new FinanceReadError("ACCOUNTS", "UNAVAILABLE");
+    return [];
+  }
+  const { data, error } = await supabase
     .from("accounts")
-    .select("*")
+    .select(
+      "id,slug,name,kind,currency,bank_name,account_number,holder_name,is_active",
+    )
     .eq("is_active", true)
     .order("name");
+  if (error) throw new FinanceReadError("ACCOUNTS", error.code);
   return (data ?? []).map(mapAccount);
 }
 
-export async function getRecentTransactions(limit = 30): Promise<Transaction[]> {
+export async function getRecentTransactions(
+  limit = 30,
+): Promise<Transaction[]> {
   const supabase = await getSupabaseServerClient();
-  if (!supabase) return [];
+  if (!supabase) {
+    if (isSupabaseConfigured)
+      throw new FinanceReadError("TRANSACTIONS", "UNAVAILABLE");
+    return [];
+  }
   let { data, error } = await supabase
     .from("transactions")
-    .select("*, member:profiles!transactions_member_id_fkey(full_name), client:gym_clients!transactions_client_id_fkey(full_name)")
+    .select(
+      "id,occurred_at,direction,status,amount,currency,fx_rate,base_amount,payment_method_id,account_id,member_id,invoice_id,expense_category_id,concept,notes,created_by, member:profiles!transactions_member_id_fkey(full_name), client:gym_clients!transactions_client_id_fkey(full_name)",
+    )
     .order("occurred_at", { ascending: false })
     .limit(limit);
-  if (error) {
-    const legacy = await supabase.from("transactions").select("*, member:profiles!transactions_member_id_fkey(full_name)").order("occurred_at", { ascending: false }).limit(limit);
+  if (
+    error &&
+    ["PGRST200", "PGRST205", "42P01", "42703"].includes(error.code)
+  ) {
+    const legacy = await supabase
+      .from("transactions")
+      .select(
+        "id,occurred_at,direction,status,amount,currency,fx_rate,base_amount,payment_method_id,account_id,member_id,invoice_id,expense_category_id,concept,notes,created_by, member:profiles!transactions_member_id_fkey(full_name)",
+      )
+      .order("occurred_at", { ascending: false })
+      .limit(limit);
     data = legacy.data as typeof data;
     error = legacy.error;
   }
-  if (error) return [];
+  if (error) throw new FinanceReadError("TRANSACTIONS", error.code);
   return (data ?? []).map((row) => mapTransaction(row));
 }
 
 export async function getDailyCash(days = 14): Promise<DailyCashRow[]> {
   const supabase = await getSupabaseServerClient();
-  if (!supabase) return [];
-  const { data } = await supabase
+  if (!supabase) {
+    if (isSupabaseConfigured)
+      throw new FinanceReadError("DAILY", "UNAVAILABLE");
+    return [];
+  }
+  const { data, error } = await supabase
     .from("v_daily_cash")
-    .select("*")
+    .select("day,income_nio,expense_nio,net_nio,tx_count")
     .limit(days);
+  if (error) throw new FinanceReadError("DAILY", error.code);
   return (data ?? []).map((r) => ({
     day: String(r.day),
     incomeNio: Number(r.income_nio ?? 0),
@@ -512,11 +554,16 @@ export async function getDailyCash(days = 14): Promise<DailyCashRow[]> {
 
 export async function getMonthlyPnl(months = 6): Promise<MonthlyPnlRow[]> {
   const supabase = await getSupabaseServerClient();
-  if (!supabase) return [];
-  const { data } = await supabase
+  if (!supabase) {
+    if (isSupabaseConfigured)
+      throw new FinanceReadError("MONTHLY", "UNAVAILABLE");
+    return [];
+  }
+  const { data, error } = await supabase
     .from("v_monthly_pnl")
-    .select("*")
+    .select("month,income_nio,expense_nio,net_nio")
     .limit(months);
+  if (error) throw new FinanceReadError("MONTHLY", error.code);
   return (data ?? []).map((r) => ({
     month: String(r.month),
     incomeNio: Number(r.income_nio ?? 0),
@@ -525,12 +572,21 @@ export async function getMonthlyPnl(months = 6): Promise<MonthlyPnlRow[]> {
   }));
 }
 
-export async function getPaymentMethodsBreakdown(): Promise<PaymentMethodBreakdown[]> {
+export async function getPaymentMethodsBreakdown(): Promise<
+  PaymentMethodBreakdown[]
+> {
   const supabase = await getSupabaseServerClient();
-  if (!supabase) return [];
-  const { data } = await supabase
+  if (!supabase) {
+    if (isSupabaseConfigured)
+      throw new FinanceReadError("METHOD_TOTALS", "UNAVAILABLE");
+    return [];
+  }
+  const { data, error } = await supabase
     .from("v_payment_methods_breakdown")
-    .select("*");
+    .select(
+      "payment_method_id,name_es,icon,tx_count,total_nio,income_nio,expense_nio",
+    );
+  if (error) throw new FinanceReadError("METHOD_TOTALS", error.code);
   return (data ?? []).map((r) => ({
     paymentMethodId: r.payment_method_id,
     nameEs: r.name_es,
@@ -542,10 +598,21 @@ export async function getPaymentMethodsBreakdown(): Promise<PaymentMethodBreakdo
   }));
 }
 
-export async function getAccountsReceivable(): Promise<AccountsReceivableRow[]> {
+export async function getAccountsReceivable(): Promise<
+  AccountsReceivableRow[]
+> {
   const supabase = await getSupabaseServerClient();
-  if (!supabase) return [];
-  const { data } = await supabase.from("v_accounts_receivable").select("*");
+  if (!supabase) {
+    if (isSupabaseConfigured)
+      throw new FinanceReadError("RECEIVABLES", "UNAVAILABLE");
+    return [];
+  }
+  const { data, error } = await supabase
+    .from("v_accounts_receivable")
+    .select(
+      "member_id,full_name,email,phone,invoices_open,total_owed_nio,oldest_due,days_overdue",
+    );
+  if (error) throw new FinanceReadError("RECEIVABLES", error.code);
   return (data ?? []).map((r) => ({
     memberId: r.member_id,
     fullName: r.full_name ?? "—",
@@ -579,37 +646,57 @@ export interface CashSummary {
 export async function getCashSummary(): Promise<CashSummary> {
   const supabase = await getSupabaseServerClient();
   if (!supabase) {
+    if (isSupabaseConfigured)
+      throw new FinanceReadError("SUMMARY", "UNAVAILABLE");
     return {
-      incomeToday: 0, expenseToday: 0, netToday: 0, txToday: 0,
-      incomeMonth: 0, expenseMonth: 0, netMonth: 0, txMonth: 0,
-      pendingInvoices: 0, totalOwed: 0, openRegister: null,
+      incomeToday: 0,
+      expenseToday: 0,
+      netToday: 0,
+      txToday: 0,
+      incomeMonth: 0,
+      expenseMonth: 0,
+      netMonth: 0,
+      txMonth: 0,
+      pendingInvoices: 0,
+      totalOwed: 0,
+      openRegister: null,
     };
   }
   // Hoy
   const today = new Date().toISOString().slice(0, 10);
-  const { data: todayRows } = await supabase
+  const { data: todayRows, error: todayError } = await supabase
     .from("v_daily_cash")
-    .select("*")
+    .select("day,income_nio,expense_nio,net_nio,tx_count")
     .eq("day", today)
     .maybeSingle();
   // Mes
   const monthStart = new Date();
   monthStart.setDate(1);
-  const { data: monthRows } = await supabase
+  const { data: monthRows, error: monthError } = await supabase
     .from("v_monthly_pnl")
-    .select("*")
+    .select("month,income_nio,expense_nio,net_nio")
     .gte("month", monthStart.toISOString())
     .maybeSingle();
   // Cuentas por cobrar
-  const { data: ar } = await supabase.from("v_accounts_receivable").select("total_owed_nio");
+  const { data: ar, error: arError } = await supabase
+    .from("v_accounts_receivable")
+    .select("total_owed_nio");
   // Caja abierta
-  const { data: open } = await supabase
+  const { data: open, error: openError } = await supabase
     .from("cash_registers")
     .select("id, opened_at, opening_amount")
     .is("closed_at", null)
     .order("opened_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+
+  for (const [operation, error] of [
+    ["SUMMARY_DAY", todayError],
+    ["SUMMARY_MONTH", monthError],
+    ["SUMMARY_DEBT", arError],
+    ["SUMMARY_REGISTER", openError],
+  ] as const)
+    if (error) throw new FinanceReadError(operation, error.code);
 
   return {
     incomeToday: Number(todayRows?.income_nio ?? 0),
@@ -621,7 +708,10 @@ export async function getCashSummary(): Promise<CashSummary> {
     netMonth: Number(monthRows?.net_nio ?? 0),
     txMonth: Number(monthRows ? 1 : 0),
     pendingInvoices: (ar ?? []).length,
-    totalOwed: (ar ?? []).reduce((a, b) => a + Number(b.total_owed_nio ?? 0), 0),
+    totalOwed: (ar ?? []).reduce(
+      (a, b) => a + Number(b.total_owed_nio ?? 0),
+      0,
+    ),
     openRegister: open
       ? {
           id: open.id,

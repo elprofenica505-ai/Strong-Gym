@@ -21,7 +21,14 @@ export function createLoader(overrides = {}) {
           jsx: ts.JsxEmit.ReactJSX,
         },
       })
-      .outputText.replace(/from "([^"]+)"/g, (_, name) => {
+      .outputText.replace(/import "([^"]+)";/g, (_, name) => {
+        const url =
+          name in overrides
+            ? dataUrl(overrides[name])
+            : import.meta.resolve(name);
+        return `import ${JSON.stringify(url)};`;
+      })
+      .replace(/from "([^"]+)"/g, (_, name) => {
         if (name in overrides)
           return `from ${JSON.stringify(dataUrl(overrides[name]))}`;
         if (name.startsWith("@/") || name.startsWith(".")) {

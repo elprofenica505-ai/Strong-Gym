@@ -29,7 +29,6 @@ import {
 /* ============================================================
    Formateo de moneda
    ============================================================ */
-const FX_NIO_PER_USD = 36.5;
 
 export function formatMoney(
   amount: number,
@@ -185,7 +184,7 @@ export function CashPanel({
             Caja y cuentas
           </h1>
           <p className="mt-2 max-w-xl text-[0.875rem] leading-relaxed text-fog">
-            Ingresos, egresos, cuentas por cobrar y los 10 métodos de pago del gimnasio. Tipo de cambio: 1 USD = {FX_NIO_PER_USD} NIO.
+            Ingresos, egresos, cuentas por cobrar y métodos de pago del gimnasio. Las conversiones deben usar la tasa guardada en cada movimiento, no una tasa fija.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

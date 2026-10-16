@@ -1,3 +1,5 @@
+import { FinanceUnavailable } from "@/components/admin/finance-unavailable";
+import { readFinance } from "@/lib/finance/read-result";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -37,10 +39,18 @@ export default async function ReportesPage({
     redirect(`/${locale}/mi-cuenta`);
   }
 
-  const [pnl, methods] = await Promise.all([
-    getMonthlyPnl(12),
-    getPaymentMethodsBreakdown(),
-  ]);
+  const result = await readFinance(() =>
+    Promise.all([getMonthlyPnl(12), getPaymentMethodsBreakdown()]),
+  );
+  if (!result.ok)
+    return (
+      <FinanceUnavailable
+        locale={locale}
+        code={result.code}
+        message={result.message}
+      />
+    );
+  const [pnl, methods] = result.data;
 
   return (
     <div className="space-y-6">
@@ -75,7 +85,9 @@ export default async function ReportesPage({
           <tbody className="divide-y divide-line">
             {pnl.map((m) => (
               <tr key={m.month} className="bg-card">
-                <td className="px-4 py-3 font-mono text-ink">{m.month.slice(0, 7)}</td>
+                <td className="px-4 py-3 font-mono text-ink">
+                  {m.month.slice(0, 7)}
+                </td>
                 <td className="px-4 py-3 text-right font-mono tabular-nums text-brand-300">
                   {formatMoney(m.incomeNio)}
                 </td>
@@ -104,12 +116,16 @@ export default async function ReportesPage({
       </div>
 
       <div className="rounded-2xl border border-line bg-card p-5">
-        <h2 className="text-[0.9375rem] font-semibold text-ink">Desglose por método de pago</h2>
+        <h2 className="text-[0.9375rem] font-semibold text-ink">
+          Desglose por método de pago
+        </h2>
         <p className="mt-1 text-[0.75rem] text-fog">
           Qué método se usa más para cobrar en el gimnasio.
         </p>
         {methods.length === 0 ? (
-          <p className="py-6 text-center text-[0.875rem] text-fog">Sin datos.</p>
+          <p className="py-6 text-center text-[0.875rem] text-fog">
+            Sin datos.
+          </p>
         ) : (
           <ul className="mt-4 space-y-2">
             {methods.map((m) => (

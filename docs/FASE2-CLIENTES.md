@@ -288,3 +288,47 @@ Este ajuste no modifica SQL ni habilita cobros. La no duplicación conserva las
 pruebas SQL originales; la posición del mensaje se prueba con componentes reales
 y respuestas simuladas. Falta la comprobación visual del Preview actualizado en
 el teléfono del usuario.
+
+## Continuación autorizada: auditoría de Caja y cobros
+
+El usuario autorizó continuar sin merge. La entrada repetida con aviso al lado
+del botón ya quedó confirmada por captura en la ficha de prueba. Eso no valida
+finanzas ni habilita cobros.
+
+La revisión de FASE1 encontró lecturas que ignoraban `error` de Supabase y
+convertían fallos en ceros/listas vacías o «No hay cuentas pendientes». Ahora las
+lecturas de Caja, Cuentas, Reportes y Gastos exigen columnas de su contrato nativo,
+propagan un error seguro y esas páginas muestran «Información financiera no
+disponible», sin KPI cero ni afirmación de ausencia de deuda cuando falla una
+consulta. Una lectura confirmada sin filas sigue siendo distinta de un error.
+No se reemplazaron las tablas de la base bank_accounts ni se inventó un mapeo de
+escritura. En esa estructura el aviso puede seguir apareciendo hasta implementar
+compatibilidad real de reportes, no por desconexión total de la aplicación.
+
+También se quitó la afirmación fija «1 USD = 36.5 NIO» y «10 métodos», porque
+no estaba basada en configuración consultada. No se convierte dinero con una
+tasa supuesta. La pantalla Gastos aclara que su formulario aún no existe; conectar
+Supabase por sí solo no lo habilita. Fechas/cortes de reportes, cuenta corriente,
+comisiones y actualización atómica de cuentas siguen pendientes de la revisión de
+las funciones/vistas efectivas. Este avance no certifica ningún total remoto.
+
+### Diagnóstico del escritor financiero (sólo lectura)
+
+`supabase/DIAGNOSTICO-ESCRITURA-FINANCIERA.sql` obtiene en una fila JSON:
+- Funciones/procedimientos públicos no CRM que referencian las tablas financieras
+  o usan nombres financieros; sólo sus definiciones, no las ejecuta.
+- Vistas/reportes, precisión de columnas, estado RLS, políticas y permisos de
+  tablas relacionadas. No modifica ni elimina políticas.
+
+Ejecutar en SQL Editor, Export → CSV y compartir el archivo revisado, sin claves.
+No necesita reinstalar la compatibilidad ni crear clientes o movimientos. La
+consulta se prueba en transacción READ ONLY local y no devuelve datos comerciales.
+Si no aparecen escritores, no concluir que no existen en otro esquema o con
+SQL dinámico: revisar ese límite antes de decidir una migración.
+
+El CSV anterior sólo incluía funciones de triggers de esas tablas (lista vacía);
+no permitía identificar RPC que actualicen saldos explícitamente. No decidir cómo
+repartir un cobro entre crédito y deuda ni aplicar comisiones sin revisar ese
+contrato. La autorización para seguir no significa autorización de merge ni
+certificación de cobros. Hasta completar esa revisión, permanece el bloqueo SQL
+FINANCE_REVIEW_REQUIRED y la referencia idempotente de cualquier intento pendiente.

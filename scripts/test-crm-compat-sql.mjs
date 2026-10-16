@@ -248,5 +248,19 @@ check(
   "implementación privada nativa idéntica a FASE2 original",
   compat.includes(original),
 );
+await db.exec("begin read only");
+const metadata = await db.query(
+  sql("supabase/DIAGNOSTICO-ESCRITURA-FINANCIERA.sql"),
+);
+const exported = JSON.parse(metadata.rows[0].diagnostico);
+check(
+  "diagnóstico de escritores/vistas/permisos es sólo lectura y no exporta movimientos",
+  metadata.rows.length === 1 &&
+    Array.isArray(exported.funciones) &&
+    Array.isArray(exported.vistas) &&
+    Array.isArray(exported.politicas) &&
+    !metadata.rows[0].diagnostico.includes("Movimiento ficticio previo"),
+);
+await db.exec("rollback");
 await db.close();
 console.log(`\n🎉 Compatibilidad CRM: ${count} comprobaciones pasaron\n`);

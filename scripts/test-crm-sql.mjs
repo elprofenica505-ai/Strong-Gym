@@ -394,5 +394,22 @@ check(
   (await row("select count(*)::int as n from public.client_visits")).n ===
     seedBefore,
 );
+await db.exec("begin read only");
+const writerMetadata = await db.query(
+  readFileSync(
+    new URL(
+      "../supabase/DIAGNOSTICO-ESCRITURA-FINANCIERA.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+);
+const writerData = JSON.parse(writerMetadata.rows[0].diagnostico);
+check(
+  "diagnóstico nativo identifica escritor de saldos y vistas sin ejecutarlos",
+  writerData.funciones.some((f) => f.nombre === "update_member_balance") &&
+    writerData.vistas.some((v) => v.nombre === "v_daily_cash"),
+);
+await db.exec("rollback");
 await db.close();
 console.log(`\n🎉 CRM: ${count} comprobaciones pasaron\n`);

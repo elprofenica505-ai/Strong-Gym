@@ -1,3 +1,5 @@
+import { FinanceUnavailable } from "@/components/admin/finance-unavailable";
+import { readFinance } from "@/lib/finance/read-result";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -32,7 +34,16 @@ export default async function GastosPage({
     redirect(`/${locale}/mi-cuenta`);
   }
 
-  const categories = await getExpenseCategories();
+  const result = await readFinance(() => getExpenseCategories());
+  if (!result.ok)
+    return (
+      <FinanceUnavailable
+        locale={locale}
+        code={result.code}
+        message={result.message}
+      />
+    );
+  const categories = result.data;
 
   return (
     <div className="space-y-6">
@@ -48,13 +59,16 @@ export default async function GastosPage({
             <span className="h-px w-6 bg-brand" aria-hidden="true" />
             Caja · Gastos
           </span>
-          <h1 className="display-xl mt-2 text-[1.75rem] sm:text-[2.25rem]">Categorías de gastos</h1>
+          <h1 className="display-xl mt-2 text-[1.75rem] sm:text-[2.25rem]">
+            Categorías de gastos
+          </h1>
         </div>
       </div>
 
       <p className="max-w-2xl text-[0.875rem] leading-relaxed text-fog">
-        Cuando registrás un egreso desde el panel, lo encajás en una de estas categorías.
-        Cada una alimenta los reportes mensuales para que sepas a dónde se va la plata.
+        Cuando registrás un egreso desde el panel, lo encajás en una de estas
+        categorías. Cada una alimenta los reportes mensuales para que sepas a
+        dónde se va la plata.
       </p>
 
       <ul className="grid gap-2.5 sm:grid-cols-2">
@@ -67,7 +81,9 @@ export default async function GastosPage({
               <Receipt className="size-4" />
             </span>
             <div>
-              <p className="text-[0.875rem] font-semibold text-ink">{c.nameEs}</p>
+              <p className="text-[0.875rem] font-semibold text-ink">
+                {c.nameEs}
+              </p>
               <p className="text-[0.6875rem] text-fog uppercase tracking-wider">
                 {c.slug}
               </p>
@@ -79,8 +95,9 @@ export default async function GastosPage({
       <div className="rounded-2xl border border-dashed border-line bg-card-2 p-6 text-center">
         <Plus className="mx-auto size-6 text-fog" />
         <p className="mt-2 text-[0.8125rem] text-fog">
-          El formulario para registrar un egreso se activa cuando hay Supabase conectado.
-          En la siguiente fase se agregan más cuentas y un modal de alta rápida.
+          El formulario para registrar gastos todavía no está implementado en
+          esta pantalla. Tener Supabase conectado no lo habilita
+          automáticamente.
         </p>
       </div>
     </div>
