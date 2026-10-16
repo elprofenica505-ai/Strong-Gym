@@ -42,17 +42,17 @@ const STEPS = [
       <>
         <p>
           Si los datos están en papel o en audio, armá una <strong>planilla de Google Sheets</strong>
-          (es gratis, no necesitás Excel). Poné una columna por dato y un socio por fila.
+          (es gratis, no necesitás Excel). Poné una columna por dato y un cliente por fila.
         </p>
         <p className="mt-2">
           Si los datos ya están en Excel, pasalos a Google Sheets (o exportá como CSV directamente).
         </p>
         <p className="mt-2">
-          Las columnas mínimas son: <code>fullName</code> y <code>email</code>. El resto es opcional
+          La columna mínima es <code>fullName</code>. Correo y teléfono son opcionales. El resto es opcional
           y podés dejarlo vacío.
         </p>
         <p className="mt-2 text-fog">
-          En la sección <Link href="." className="text-brand-300 underline">Importar socios</Link>{" "}
+          En la sección <Link href="." className="text-brand-300 underline">Importar clientes</Link>{" "}
           podés bajar una plantilla de ejemplo con todas las columnas.
         </p>
       </>
@@ -82,7 +82,7 @@ const STEPS = [
     body: (
       <>
         <p>
-          Andá a <strong>Panel → Herramientas → Importar socios</strong>, tocá el botón para elegir
+          Andá a <strong>Panel → Herramientas → Importar clientes</strong>, tocá el botón para elegir
           el archivo y revisá la vista previa. Cuando esté bien, tocá{" "}
           <strong>Importar</strong>.
         </p>
@@ -91,10 +91,9 @@ const STEPS = [
           incompletos, etc.).
         </p>
         <p className="mt-2 text-fog">
-          <strong>Importante</strong>: este paso crea los perfiles en la base de datos pero{" "}
-          <strong>no crea la cuenta de login</strong>. Cada socio todavía tiene que entrar
-          al sitio y registrarse con su email para tener acceso a su cuenta. Más adelante
-          podemos generarles un link de invitación automático.
+          <strong>Importante</strong>: este paso crea fichas CRM independientes, pero{" "}
+          <strong>no crea la cuenta de login</strong>. Sólo si quiere una cuenta web, el cliente debe entrar
+          al sitio y registrarse. Por seguridad, no se vinculan fichas por coincidencia de correo: la vinculación posterior de una ficha de recepción requiere revisión administrativa.
         </p>
       </>
     ),
@@ -106,11 +105,11 @@ const STEPS = [
     body: (
       <>
         <p>
-          Una vez que los socios reales están cargados, andá a{" "}
+          Una vez que los clientes reales están cargados, andá a{" "}
           <strong>Panel → Herramientas → Reset</strong> y tocá <strong>Borrar TODO lo de ejemplo</strong>.
         </p>
         <p className="mt-2">
-          Eso borra los 40 socios ficticios, los 3 coaches de ejemplo y los 13 gastos del mes.
+          Eso borra los clientes ficticios, los 3 coaches de ejemplo y los 13 gastos del mes.
           <strong>No toca la estructura de la base ni tu usuario admin.</strong>
         </p>
         <p className="mt-2 text-fog">
@@ -168,7 +167,7 @@ values
           <li>Cobrar mensualidades desde <strong>Panel → Caja y cuentas</strong>.</li>
           <li>Ver las cuentas por cobrar y los días de mora.</li>
           <li>Generar reportes mensuales de P&L.</li>
-          <li>Cada socio se registra desde el sitio y ya puede reservar clases.</li>
+          <li>Cada cliente se registra desde el sitio y ya puede reservar clases.</li>
         </ul>
       </>
     ),

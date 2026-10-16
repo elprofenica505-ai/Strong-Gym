@@ -264,3 +264,10 @@ All UI copy lives in `src/i18n/dictionaries/es.ts` and `en.ts`. Business details
 ## Licencia
 
 MIT. Usalo, cambialo y publicalo como quieras.
+
+## Clientes y recepción (FASE 2)
+
+CRM con etiquetas comerciales, alta sin cuenta web, QR/carnet opcional y atención manual.
+Ver [instalación, alcance y pruebas](docs/FASE2-CLIENTES.md). Para una base existente
+con Fase 1 y 00012, aplicar sólo `supabase/FASE2.sql`; ejemplos opcionales separados
+en `00021_clients_seed.sql`. No se instalan automáticamente en producción.

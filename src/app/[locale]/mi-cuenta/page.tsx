@@ -1,3 +1,4 @@
+import { ClientPass } from "@/components/crm/client-pass";
 import type { Metadata } from "next";
 import { AccountDashboard } from "@/components/account/account-dashboard";
 import { SectionHeading } from "@/components/ui/section";
@@ -49,6 +50,7 @@ export default async function AccountPage({
         </div>
       </section>
 
+      <ClientPass />
       <section className="py-10 sm:py-12 lg:py-14">
         <div className="container-x">
           <AccountDashboard initialBookings={bookings} plans={plans} />

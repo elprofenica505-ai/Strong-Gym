@@ -9,7 +9,7 @@ import { formatLongDate, formatTime, getWeekRange, gymNow, shiftWeeks } from "@/
 import type { BookingDetail, SessionDetail } from "@/lib/types";
 
 /**
- * Resumen del socio arriba de todo en el inicio: clases reservadas,
+ * Resumen del cliente arriba de todo en el inicio: clases reservadas,
  * clases asistidas y próxima clase. Es el mismo resumen de Mi Cuenta.
  * Sin sesión iniciada muestra la invitación a entrar o registrarse.
  *

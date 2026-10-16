@@ -55,15 +55,15 @@ export default async function HerramientasPage({
         <ToolCard
           href={`/${locale}/panel/importar`}
           Icon={FileSpreadsheet}
-          title="Importar socios desde CSV"
-          description="Cargá todos los socios del gimnasio de una sola vez. Bajá la plantilla, llenala y subila."
+          title="Importar clientes desde CSV"
+          description="Cargá todos los clientes del gimnasio de una sola vez. Bajá la plantilla, llenala y subila."
           cta="Abrir importador"
         />
         <ToolCard
           href={`/${locale}/panel/reset`}
           Icon={Trash2}
           title="Borrar datos de ejemplo"
-          description="Quita los 40 socios ficticios, los gastos y los coaches que vinieron con la instalación."
+          description="Quita los clientes ficticios, los gastos y los coaches que vinieron con la instalación."
           cta="Ver opciones de reset"
         />
         <ToolCard

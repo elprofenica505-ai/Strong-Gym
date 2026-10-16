@@ -32,7 +32,7 @@ jobs:
       - name: Revisar el código con ESLint
         run: npm run lint
 
-      - name: Probar identidad y permisos del panel
+      - name: Probar autenticación, CRM y QR
         run: npm run test:auth
 
       - name: Compilar

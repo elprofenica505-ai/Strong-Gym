@@ -61,7 +61,7 @@ function parseCSV(text: string): { headers: string[]; rows: Row[] } {
    Acepta varios alias para que sea flexible con el Excel del
    dueño. La primera coincidencia gana. */
 const ALIASES: Record<string, string[]> = {
-  fullName:            ["fullname", "full_name", "nombre", "name", "socio"],
+  fullName:            ["fullname", "full_name", "nombre", "name", "cliente", "socio"],
   email:               ["email", "correo", "mail"],
   phone:               ["phone", "telefono", "tel", "celular", "movil"],
   planId:              ["planid", "plan_id", "plan"],
@@ -99,7 +99,7 @@ const FIELD_LABELS: Record<keyof typeof ALIASES, string> = {
   medicalNotes: "Notas médicas / alergias",
 };
 
-const REQUIRED: (keyof typeof ALIASES)[] = ["fullName", "email"];
+const REQUIRED: (keyof typeof ALIASES)[] = ["fullName"];
 
 /* ============================================================
    Componente: Importador
@@ -135,7 +135,7 @@ export function ImportMembersTool() {
           medicalNotes: mapping.medicalNotes ? r[mapping.medicalNotes] : "",
         };
       })
-      .filter((r) => r.fullName && r.email);
+      .filter((r) => r.fullName);
   }, [parsed, mapping]);
 
   const onFile = (f: File) => {
@@ -168,7 +168,7 @@ export function ImportMembersTool() {
       "María Fernanda Pérez",
       "maria.perez@ejemplo.com",
       "+505 8888-1001",
-      "plan_mensual",
+      "",
       "active",
       "1995-04-12",
       "Bo. San Judas, Casa #12",
@@ -185,7 +185,7 @@ export function ImportMembersTool() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "plantilla-socios-strong-gym.csv";
+    a.download = "plantilla-clientes-strong-gym.csv";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -232,7 +232,7 @@ export function ImportMembersTool() {
       <div className="rounded-2xl border border-line bg-card p-5">
         <h3 className="text-[0.9375rem] font-semibold text-ink">1. Descargá la plantilla</h3>
         <p className="mt-1 text-[0.8125rem] text-fog">
-          Las columnas obligatorias son <strong>nombre</strong> y <strong>email</strong>.
+          La única columna obligatoria es <strong>nombre</strong>.
           El resto es opcional y se puede cargar después desde el panel.
         </p>
         <button
@@ -241,7 +241,7 @@ export function ImportMembersTool() {
           className="mt-3 inline-flex items-center gap-2 rounded-full border border-line bg-card-2 px-4 py-2 text-[0.8125rem] font-semibold text-ink transition-colors hover:border-brand hover:text-brand-300"
         >
           <Download className="size-4" />
-          plantilla-socios-strong-gym.csv
+          plantilla-clientes-strong-gym.csv
         </button>
       </div>
 
@@ -316,7 +316,7 @@ export function ImportMembersTool() {
       {validRows.length > 0 && (
         <div className="rounded-2xl border border-line bg-card p-5">
           <h3 className="text-[0.9375rem] font-semibold text-ink">
-            4. Vista previa · {validRows.length} socio{validRows.length === 1 ? "" : "s"} listo{validRows.length === 1 ? "" : "s"}
+            4. Vista previa · {validRows.length} cliente{validRows.length === 1 ? "" : "s"} listo{validRows.length === 1 ? "" : "s"}
           </h3>
           <p className="mt-1 text-[0.75rem] text-fog">
             Estos se importarán al confirmar.
@@ -362,7 +362,7 @@ export function ImportMembersTool() {
           className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand px-6 py-3 text-[0.9375rem] font-semibold text-onbrand transition-colors hover:bg-brand-600 disabled:opacity-50"
         >
           {busy ? <RefreshCw className="size-4 animate-spin" /> : <Upload className="size-4" />}
-          {busy ? "Importando…" : `Importar ${validRows.length} socio${validRows.length === 1 ? "" : "s"}`}
+          {busy ? "Importando…" : `Importar ${validRows.length} cliente${validRows.length === 1 ? "" : "s"}`}
         </button>
       )}
 
@@ -379,7 +379,7 @@ export function ImportMembersTool() {
             <h3 className="text-[0.9375rem] font-semibold text-ink">Listo</h3>
           </div>
           <p className="mt-2 text-[0.8125rem] text-mist">
-            <strong className="text-brand-300">{result.imported}</strong> socio
+            <strong className="text-brand-300">{result.imported}</strong> cliente
             {result.imported === 1 ? "" : "s"} importado{result.imported === 1 ? "" : "s"}.
             {result.skipped > 0 && (
               <> <strong className="text-alert">{result.skipped}</strong> salteado{result.skipped === 1 ? "" : "s"}.</>
@@ -445,17 +445,17 @@ export function ResetTool() {
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-alert" />
           <span>
             Las acciones de abajo borran <strong>solo datos de ejemplo</strong>:
-            los 40 socios de <code>@stronggym-ejemplo.com</code>, los 3 coaches
+            los clientes de <code>@stronggym-ejemplo.com</code>, los 3 coaches
             del seed y los 13 gastos del mes con la marca <code>[SEED-GASTO]</code>.
             No se tocan la estructura de la base, los planes, las disciplinas,
-            ni tu usuario admin.
+            ni tu usuario admin. Este reset es de Fase 1 y no elimina los ejemplos CRM de Fase 2.
           </span>
         </p>
       </div>
 
       <ResetButtonCard
         scope="members"
-        label="Borrar los 40 socios de ejemplo"
+        label="Borrar los clientes de ejemplo"
         hint="Solo los que tengan email @stronggym-ejemplo.com"
         onAsk={ask}
         disabled={busy !== null}
@@ -476,7 +476,7 @@ export function ResetTool() {
       />
       <ResetButtonCard
         scope="all"
-        label="Borrar TODO lo de ejemplo (socios + gastos + coaches)"
+        label="Borrar ejemplos de Fase 1 (clientes + gastos + coaches)"
         hint="Útil cuando los datos reales ya están listos"
         danger
         onAsk={ask}
@@ -493,10 +493,10 @@ export function ResetTool() {
             <p className="mt-3 text-[0.875rem] leading-relaxed text-mist">
               Vas a borrar:{" "}
               <strong className="text-ink">
-                {confirm === "members" && "los 40 socios de ejemplo"}
+                {confirm === "members" && "los clientes de ejemplo"}
                 {confirm === "transactions" && "los 13 gastos de ejemplo"}
                 {confirm === "coaches" && "los 3 coaches de ejemplo"}
-                {confirm === "all" && "socios + gastos + coaches de ejemplo"}
+                {confirm === "all" && "clientes + gastos + coaches de ejemplo"}
               </strong>
               . Esta acción no se puede deshacer.
             </p>

@@ -45,7 +45,7 @@ function emailFor(first: string, last: string): string {
       .toLowerCase();
 
   // example.com es el dominio reservado para ejemplos: deja claro que
-  // estos socios son de prueba y no corresponden a personas reales.
+  // estos clientes son de prueba y no corresponden a personas reales.
   return `${clean(first)}.${clean(last)}@example.com`;
 }
 
@@ -54,7 +54,7 @@ export function demoAdminBookings(): AdminBookingRow[] {
   const rows: AdminBookingRow[] = [];
 
   sessions.forEach((session, sessionIndex) => {
-    // Tantos socios anotados como la ocupación simulada de la clase.
+    // Tantos clientes anotados como la ocupación simulada de la clase.
     const count = Math.min(4, Math.max(1, Math.round(session.bookedCount / 5)));
 
     for (let i = 0; i < count; i++) {

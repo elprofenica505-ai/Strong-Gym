@@ -302,7 +302,7 @@ export async function getAllBookings(): Promise<
         status: row.status,
         created_at: row.created_at,
         cancelled_at: row.cancelled_at,
-        memberName: row.profile?.full_name ?? "Socio",
+        memberName: row.profile?.full_name ?? "Cliente",
         memberEmail: row.profile?.email ?? "",
         session: {
           ...(row.session as SessionDetail),
@@ -337,15 +337,11 @@ export async function getContactMessages(): Promise<ContactMessage[]> {
 export async function countMembers(): Promise<number> {
   const supabase = await getSupabaseServerClient();
   if (!supabase) return 0;
-
-  try {
-    const { count } = await supabase
-      .from("profiles")
-      .select("id", { count: "exact", head: true });
-    return count ?? 0;
-  } catch {
-    return 0;
-  }
+  const { count, error } = await supabase.from("gym_clients").select("id", { count: "exact", head: true });
+  if (!error) return count ?? 0;
+  // Compatibilidad antes de instalar FASE2: no cuenta staff/admin como clientes.
+  const legacy = await supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "member");
+  return legacy.count ?? 0;
 }
 
 
@@ -484,11 +480,17 @@ export async function getAccounts(): Promise<Account[]> {
 export async function getRecentTransactions(limit = 30): Promise<Transaction[]> {
   const supabase = await getSupabaseServerClient();
   if (!supabase) return [];
-  const { data } = await supabase
+  let { data, error } = await supabase
     .from("transactions")
-    .select("*, member:profiles!transactions_member_id_fkey(full_name)")
+    .select("*, member:profiles!transactions_member_id_fkey(full_name), client:gym_clients!transactions_client_id_fkey(full_name)")
     .order("occurred_at", { ascending: false })
     .limit(limit);
+  if (error) {
+    const legacy = await supabase.from("transactions").select("*, member:profiles!transactions_member_id_fkey(full_name)").order("occurred_at", { ascending: false }).limit(limit);
+    data = legacy.data as typeof data;
+    error = legacy.error;
+  }
+  if (error) return [];
   return (data ?? []).map((row) => mapTransaction(row));
 }
 
@@ -689,7 +691,7 @@ function mapTransaction(r: Record<string, unknown>): Transaction {
     paymentMethodId: (r.payment_method_id as string) ?? null,
     accountId: (r.account_id as string) ?? null,
     memberId: (r.member_id as string) ?? null,
-    memberName: member?.full_name ?? null,
+    memberName: (r.client as {full_name?:string}|null)?.full_name ?? member?.full_name ?? null,
     invoiceId: (r.invoice_id as string) ?? null,
     expenseCategoryId: (r.expense_category_id as string) ?? null,
     concept: r.concept as string,

@@ -133,6 +133,11 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
         </p>
       ) : null}
 
+      <a href={`/${locale}/panel/clientes`} className="rounded-2xl border border-brand/40 bg-brand/10 p-5 transition-colors hover:border-brand">
+        <p className="text-lg font-bold text-ink">Clientes · recepción y QR</p>
+        <p className="mt-1 text-sm text-fog">Alta sin cuenta, búsqueda manual, etiquetas, carnet, asistencias y cobros confirmados.</p>
+      </a>
+
       {/* --- Acceso rápido a la Fase 1: caja --- */}
       <a
         href={`/${locale}/panel/caja`}
@@ -170,7 +175,7 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
               Herramientas
             </p>
             <p className="text-[0.75rem] text-fog">
-              Importar socios desde CSV, borrar los datos de ejemplo y ver la guía paso a paso
+              Importar clientes desde CSV, borrar los datos de ejemplo y ver la guía paso a paso
             </p>
           </div>
         </div>
