@@ -1,5 +1,9 @@
 import "server-only";
 
+import { cache } from "react";
+import { resolveCurrentUser } from "@/lib/auth/current-user";
+export type { AuthUser } from "@/lib/auth/current-user";
+
 import { getWeekRange, weekRangeFromKey } from "@/lib/schedule";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -10,7 +14,6 @@ import type {
   ContactMessage,
   GymClass,
   Plan,
-  Profile,
   SessionDetail,
   WeekRange,
 } from "@/lib/types";
@@ -182,52 +185,18 @@ export async function getSessionsForWeek(weekKey?: string | null): Promise<{
    Usuario, reservas y consultas
    ------------------------------------------------------------ */
 
-export interface AuthUser {
-  id: string;
-  email: string;
-  fullName: string;
-  role: "member" | "staff" | "admin";
-  phone: string | null;
-  planId: string | null;
-  createdAt: string;
-  isDemo: false;
-}
-
-export async function getCurrentUser(): Promise<AuthUser | null> {
+// React cache deduplica dentro del mismo render, no entre usuarios/peticiones.
+export const getCurrentUser = cache(async () => {
   const supabase = await getSupabaseServerClient();
   if (!supabase) return null;
 
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) return null;
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .maybeSingle<Profile>();
-
-    return {
-      id: user.id,
-      email: user.email ?? profile?.email ?? "",
-      fullName:
-        profile?.full_name ??
-        (user.user_metadata?.full_name as string | undefined) ??
-        user.email?.split("@")[0] ??
-        "Socio",
-      role: profile?.role ?? "member",
-      phone: profile?.phone ?? null,
-      planId: profile?.plan_id ?? null,
-      createdAt: profile?.created_at ?? user.created_at,
-      isDemo: false,
-    };
+    return await resolveCurrentUser(supabase);
   } catch {
+    console.error("[auth/session] No se pudo verificar la sesión");
     return null;
   }
-}
+});
 
 export async function getMyBookings(userId: string): Promise<BookingDetail[]> {
   const supabase = await getSupabaseServerClient();

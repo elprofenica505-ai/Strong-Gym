@@ -19,6 +19,23 @@ export async function updateSession(
         return request.cookies.getAll();
       },
       setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[], headers) {
+        // El render de ESTA petición también debe recibir el token renovado,
+        // no sólo el navegador en la próxima navegación.
+        for (const { name, value } of cookiesToSet) {
+          request.cookies.set(name, value);
+        }
+        if (response.headers.get("x-middleware-next") === "1") {
+          const previousResponse = response;
+          response = NextResponse.next({ request: { headers: request.headers } });
+          for (const [key, value] of previousResponse.headers) {
+            if (!key.startsWith("x-middleware-") && key !== "set-cookie") {
+              response.headers.set(key, value);
+            }
+          }
+          for (const cookie of previousResponse.cookies.getAll()) {
+            response.cookies.set(cookie);
+          }
+        }
         for (const { name, value, options } of cookiesToSet) {
           response.cookies.set(name, value, options);
         }
