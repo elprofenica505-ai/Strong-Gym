@@ -51,6 +51,9 @@ export default async function CuentasPage({
     );
   const rows = result.data;
   const totalOwed = rows.reduce((acc, r) => acc + r.totalOwedNio, 0);
+  const hasSplit = rows.some(r => r.totalOwedUsd !== undefined);
+  const totalOwedUsd = rows.reduce((acc,r) => acc+(r.totalOwedUsd ?? 0),0);
+  const ages = rows.flatMap(r => r.daysOverdue === null ? [] : [r.daysOverdue]);
 
   return (
     <div className="space-y-6">
@@ -74,16 +77,18 @@ export default async function CuentasPage({
 
       <div className="grid gap-3 sm:grid-cols-3">
         <Stat label="Clientes con deuda" value={String(rows.length)} />
-        <Stat label="Total adeudado" value={formatMoney(totalOwed)} />
+        <Stat label="Deuda informada NIO" value={formatMoney(totalOwed)} />
         <Stat
           label="Más antiguo"
-          value={rows[0] ? `${rows[0].daysOverdue} días` : "—"}
+          value={ages.length ? `${Math.max(...ages)} días` : "No informado"}
         />
       </div>
 
+      {hasSplit && <Stat label="Deuda informada USD · sin convertir" value={formatMoney(totalOwedUsd,"USD")} />}
+      <p className="text-sm text-fog">Montos informados por la base, sin compensar créditos ni convertir entre monedas. Si no hay vencimiento o factura, no se inventan días de mora.</p>
       {rows.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-line bg-card py-12 text-center text-[0.875rem] text-fog">
-          No hay cuentas pendientes. 🎉
+          No hay deudas informadas en esta consulta.
         </p>
       ) : (
         <ul className="space-y-2.5">
@@ -97,7 +102,7 @@ export default async function CuentasPage({
                   <p className="truncate text-[0.9375rem] font-semibold text-ink">
                     {r.fullName}
                   </p>
-                  {r.daysOverdue > 0 && (
+                  {r.daysOverdue !== null && r.daysOverdue > 0 && (
                     <Badge className="border-alert/40 bg-card text-alert">
                       {r.daysOverdue} días de mora
                     </Badge>
@@ -114,7 +119,7 @@ export default async function CuentasPage({
                   )}
                   <span className="inline-flex items-center gap-1">
                     <Clock className="size-3" />
-                    {r.invoicesOpen} factura{r.invoicesOpen === 1 ? "" : "s"}
+                    {r.invoicesOpen === null ? "Facturas no informadas" : `${r.invoicesOpen} factura${r.invoicesOpen === 1 ? "" : "s"}`}
                   </span>
                 </div>
               </div>
@@ -122,6 +127,7 @@ export default async function CuentasPage({
                 <p className="font-mono text-[1.0625rem] font-semibold text-brand tabular-nums">
                   {formatMoney(r.totalOwedNio)}
                 </p>
+                {r.totalOwedUsd !== undefined && <p className="font-mono text-brand">{formatMoney(r.totalOwedUsd,"USD")}</p>}
                 <p className="mt-0.5 text-[0.6875rem] text-fog">
                   Vence: {r.oldestDue ?? "—"}
                 </p>

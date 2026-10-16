@@ -2,7 +2,8 @@
 
 -- Sólo nombres/tipos/defaults/constraints/vista; NO contiene registros del negocio.
 
--- La exportación no incluye precisión numérica, políticas RLS ni funciones no ligadas a triggers.
+-- Ampliado con columnas del segundo CSV. Precisión sólo cuando fue exportada.
+-- Los defaults nuevos y el escritor centinela son exclusivamente de prueba.
 
 -- No usar como migración ni como instalación. Datos de prueba se agregan aparte.
 
@@ -10,7 +11,23 @@ create type public.transaction_status as enum ('pending', 'completed', 'cancelle
 
 create type public.transaction_type as enum ('income', 'expense', 'transfer');
 
-create table public.expense_categories(id text primary key);
+create table public.expense_categories(
+  id text primary key, name text not null, color text not null default '#999999',
+  budget_monthly numeric(12,2), display_order integer not null default 0
+);
+create table public.cash_sessions(
+  id uuid primary key default gen_random_uuid(), opened_by uuid not null references profiles(id),
+  opened_at timestamptz not null default now(), closed_by uuid references profiles(id), closed_at timestamptz,
+  opening_balance_nio numeric(12,2) not null default 0, opening_balance_usd numeric(12,2) not null default 0,
+  closing_balance_nio numeric(12,2), closing_balance_usd numeric(12,2),
+  expected_balance_nio numeric(12,2), expected_balance_usd numeric(12,2),
+  difference_nio numeric(12,2), difference_usd numeric(12,2), notes text
+);
+-- Misma firma exportada; centinela SIN escrituras, no implementación de negocio.
+create function public.record_payment(p_member_id uuid,p_amount numeric,p_currency text,p_method_id text,p_account_id text,p_plan_id text default null,p_concept text default 'Pago de membresía',p_reference text default null)
+returns uuid language plpgsql security definer set search_path=public as $$
+begin raise exception 'UNGUARDED_TEST_SENTINEL'; end $$;
+
 
 create table public.bank_accounts (
   id text not null,
@@ -96,3 +113,28 @@ create view public.v_account_balances as  SELECT id,
   ORDER BY display_order;
 
 -- Diagnóstico remoto: lista de triggers no internos vacía en estas tablas.
+
+-- Políticas de estas seis tablas según el segundo CSV; sólo entorno de pruebas.
+alter table public.bank_accounts enable row level security;
+grant all on public.bank_accounts to anon,authenticated;
+alter table public.cash_sessions enable row level security;
+grant all on public.cash_sessions to anon,authenticated;
+alter table public.expense_categories enable row level security;
+grant all on public.expense_categories to anon,authenticated;
+alter table public.member_balances enable row level security;
+grant all on public.member_balances to anon,authenticated;
+alter table public.payment_methods enable row level security;
+grant all on public.payment_methods to anon,authenticated;
+alter table public.transactions enable row level security;
+grant all on public.transactions to anon,authenticated;
+create policy "Authenticated can read bank_accounts" on public.bank_accounts for select to authenticated using (true);
+create policy "Staff can write bank_accounts" on public.bank_accounts for all to authenticated using (is_staff()) with check (is_staff());
+create policy "Staff can write cash_sessions" on public.cash_sessions for all to authenticated using (is_staff()) with check (is_staff());
+create policy "Authenticated can read expense_categories" on public.expense_categories for select to authenticated using (true);
+create policy "Staff can write expense_categories" on public.expense_categories for all to authenticated using (is_staff()) with check (is_staff());
+create policy "Members see own balance" on public.member_balances for select to authenticated using (((member_id = auth.uid()) OR is_staff()));
+create policy "Staff can write member_balances" on public.member_balances for all to authenticated using (is_staff()) with check (is_staff());
+create policy "Authenticated can read payment_methods" on public.payment_methods for select to authenticated using (true);
+create policy "Staff can write payment_methods" on public.payment_methods for all to authenticated using (is_staff()) with check (is_staff());
+create policy "Members see own transactions" on public.transactions for select to authenticated using (((member_id = auth.uid()) OR is_staff()));
+create policy "Staff can write transactions" on public.transactions for all to authenticated using (is_staff()) with check (is_staff());

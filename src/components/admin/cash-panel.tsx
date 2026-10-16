@@ -132,7 +132,7 @@ interface Props {
   methods: PaymentMethodBreakdown[];
   paymentMethodNames: Record<string, string>;
   paymentMethodIcons: Record<string, string>;
-  accounts: { id: string; name: string; currency: Currency; kind: string }[];
+  accounts: { id: string; name: string; currency: Currency; kind: string; balance?: number }[];
   isDemo: boolean;
 }
 
@@ -188,7 +188,9 @@ export function CashPanel({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {summary.openRegister ? (
+          {summary.sourceModel === "bank_accounts_split" ? (
+            <Badge className="border-line bg-card text-fog">{summary.openRegisterCount ?? 0} sesiones abiertas informadas</Badge>
+          ) : summary.openRegister ? (
             <Badge className="border-brand/40 bg-brand-soft text-brand-300">
               <span className="mr-1.5 inline-block size-1.5 rounded-full bg-brand" />
               Caja abierta · {formatMoney(summary.openRegister.openingAmount)} inicial
@@ -202,9 +204,15 @@ export function CashPanel({
         </div>
       </div>
 
+      {summary.sourceModel === "bank_accounts_split" && <div className="rounded-xl border border-line bg-card p-4 text-sm text-fog space-y-2">
+        <p>Caja en modo lectura. Los cobros continúan bloqueados por decisión del administrador.</p>
+        <p>Ingresos, egresos y resultados: equivalentes NIO guardados en cada movimiento; sin convertir con una tasa nueva. Cortes: America/Managua. Los saldos de cuentas se muestran en su propia moneda y no se recalculan ni certifican.</p>
+        {summary.openRegister && <p>Última sesión abierta informada: apertura NIO {formatMoney(summary.openRegister.openingAmount)} · USD {formatMoney(summary.openRegister.openingAmountUsd ?? 0, "USD")}. No es un arqueo confirmado.</p>}
+      </div>}
+
       <a href={`/${useLocale()}/panel/clientes`} className="flex flex-col gap-1 rounded-2xl border border-brand/40 bg-brand/10 p-5 hover:border-brand">
         <span className="font-bold text-ink">Identificar cliente · escáner o búsqueda manual →</span>
-        <span className="text-sm text-fog">Crear ficha, consultar historial, registrar entrada o confirmar un cobro. Sin celular también te atendemos.</span>
+        <span className="text-sm text-fog">Crear ficha, consultar historial o registrar entrada. Búsqueda por nombre, sin celular obligatorio.</span>
       </a>
 
       {/* ---------- KPIs principales ---------- */}
@@ -224,26 +232,28 @@ export function CashPanel({
           tone="expense"
         />
         <Kpi
-          label="Balance del mes"
+          label="Resultado del mes · NIO"
           value={formatMoney(summary.netMonth)}
           Icon={TrendingUp}
           trend={summary.netMonth >= 0 ? "up" : "down"}
         />
         <Kpi
-          label="Cuentas por cobrar"
+          label="Deuda informada · NIO"
           value={formatMoney(summary.totalOwed)}
           Icon={Wallet}
           tone="default"
         />
       </div>
 
+      {summary.totalOwedUsd !== undefined && <Kpi label="Deuda informada · USD (sin convertir)" value={formatMoney(summary.totalOwedUsd,"USD")} Icon={Wallet} />}
+
       {/* ---------- Gráficos ---------- */}
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-2xl border border-line bg-card p-5">
-          <MiniBar data={dailyChart} valueKey="income" label="Ingresos · últimos 14 días" />
+          <MiniBar data={dailyChart} valueKey="income" label="Ingresos NIO · 14 días con registros" />
         </div>
         <div className="rounded-2xl border border-line bg-card p-5">
-          <MiniBar data={monthlyChart} valueKey="net" label="Resultado neto · últimos 6 meses" />
+          <MiniBar data={monthlyChart} valueKey="net" label="Resultado NIO · 6 meses con registros" />
         </div>
       </div>
 
@@ -253,7 +263,7 @@ export function CashPanel({
           <div>
             <h2 className="text-[1.0625rem] font-semibold text-ink">Métodos de pago</h2>
             <p className="mt-1 text-[0.75rem] text-fog">
-              Cuánto entró por cada método este mes
+              Movimientos completados por método · todo el historial
             </p>
           </div>
         </div>
@@ -284,7 +294,7 @@ export function CashPanel({
                   </div>
                   <div className="text-right">
                     <p className="font-mono text-[0.875rem] font-semibold text-ink tabular-nums">
-                      {formatMoney(total)}
+                      <span className="text-xs text-fog">Volumen NIO: </span>{formatMoney(total)}
                     </p>
                     {m.expenseNio > 0 && (
                       <p className="text-[0.6875rem] text-fog">
@@ -305,7 +315,7 @@ export function CashPanel({
           <div>
             <h2 className="text-[1.0625rem] font-semibold text-ink">Movimientos recientes</h2>
             <p className="mt-1 text-[0.75rem] text-fog">
-              Los últimos 30 ingresos y egresos del gimnasio
+              Últimos 30 movimientos · estado y moneda original
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -339,10 +349,10 @@ export function CashPanel({
                 <span
                   className={cn(
                     "grid size-9 shrink-0 place-items-center rounded-lg",
-                    t.direction === "income" ? "bg-brand-soft text-brand-300" : "bg-night-3 text-alert",
+                    t.status !== "completed" || t.direction === "transfer" ? "bg-night-3 text-fog" : t.direction === "income" ? "bg-brand-soft text-brand-300" : "bg-night-3 text-alert",
                   )}
                 >
-                  {t.direction === "income" ? <TrendingUp className="size-4" /> : <TrendingDown className="size-4" />}
+                  {t.direction === "income" ? <TrendingUp className="size-4" /> : t.direction === "transfer" ? <ChevronRight className="size-4" /> : <TrendingDown className="size-4" />}
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[0.875rem] font-medium text-ink">
@@ -352,18 +362,19 @@ export function CashPanel({
                     )}
                   </p>
                   <p className="text-[0.6875rem] text-fog">
-                    {new Date(t.occurredAt).toLocaleDateString("es-NI", { day: "2-digit", month: "short" })}
+                    {new Date(t.occurredAt).toLocaleDateString("es-NI", { day: "2-digit", month: "short", timeZone: "America/Managua" })}
                     {" · "}
                     {paymentMethodNames[t.paymentMethodId ?? ""] ?? t.paymentMethodId ?? "—"}
+                    {" · "}{t.direction === "transfer" ? "Transferencia · " : ""}{t.status === "completed" ? "Completado" : t.status === "pending" ? "Pendiente" : t.status === "cancelled" ? "Cancelado" : "Revertido"}
                   </p>
                 </div>
                 <p
                   className={cn(
                     "font-mono text-[0.9375rem] font-semibold tabular-nums",
-                    t.direction === "income" ? "text-brand-300" : "text-ink",
+                    t.status !== "completed" ? "text-fog" : t.direction === "income" ? "text-brand-300" : "text-ink",
                   )}
                 >
-                  {t.direction === "income" ? "+" : "−"}
+                  {t.direction === "income" ? "+" : t.direction === "expense" ? "−" : "⇄"}
                   {formatMoney(t.amount, t.currency)}
                 </p>
               </li>
@@ -389,7 +400,9 @@ export function CashPanel({
                   <p className="text-[0.8125rem] font-semibold text-ink">{a.name}</p>
                   <p className="text-[0.6875rem] text-fog uppercase tracking-wider">{a.kind}</p>
                 </div>
-                <Badge className="border-line bg-night-3 text-mist">{a.currency}</Badge>
+                <div className="text-right"><Badge className="border-line bg-night-3 text-mist">{a.currency}</Badge>
+                  {a.balance !== undefined && <p className="text-xs text-fog">Saldo informado: {formatMoney(a.balance,a.currency)}</p>}
+                </div>
               </li>
             ))}
             {accounts.length === 0 && (

@@ -211,6 +211,245 @@ check(
       )
     ).n === 0,
 );
+// Nuevo contrato: todas las secciones se ejercitan en una transacción READ ONLY.
+const readMigration = sql(
+  "supabase/migrations/00023_finance_read_bank_accounts.sql",
+);
+const beforeRead = await snapshot();
+const policiesBefore = JSON.stringify(
+  (
+    await db.query(
+      "select * from pg_policies order by schemaname,tablename,policyname",
+    )
+  ).rows,
+);
+await db.exec(readMigration);
+await db.exec(readMigration);
+check(
+  "00023 repetida no toca cuentas, saldos, movimientos ni políticas",
+  (await snapshot()) === beforeRead &&
+    policiesBefore ===
+      JSON.stringify(
+        (
+          await db.query(
+            "select * from pg_policies order by schemaname,tablename,policyname",
+          )
+        ).rows,
+      ),
+);
+await reject(null, "select finance_read('summary')", [], /permission denied/);
+await reject(member, "select finance_read('summary')", [], /AUTH/);
+await reject(
+  staff,
+  "select finance_read('unknown')",
+  [],
+  /INVALID_FINANCE_SECTION/,
+);
+const oldPay = "select record_payment($1,10,'NIO','test-nio','test-nio')";
+await reject(null, oldPay, [member], /permission denied/);
+await reject(member, oldPay, [member], /AUTH/);
+await reject(staff, oldPay, [member], /FINANCE_REVIEW_REQUIRED/);
+await reject(admin, oldPay, [member], /FINANCE_REVIEW_REQUIRED/);
+check(
+  "rechazos del escritor antiguo no modifican datos",
+  (await snapshot()) === beforeRead,
+);
+await db.query(
+  "insert into cash_sessions(opened_by,opening_balance_nio,opening_balance_usd) values($1,40,2),($1,70,3)",
+  [staff],
+);
+await db.exec(`
+insert into expense_categories(id,name) values('test-cat','Categoría ficticia');
+insert into transactions(type,status,account_id,method_id,amount,currency,amount_nio,amount_usd,fx_used,concept) values
+ ('income','completed','test-nio','test-nio',200,'NIO',200,5,40,'Ficticio NIO'),
+ ('income','completed','test-usd','test-usd',12,'USD',480,12,40,'Ficticio USD'),
+ ('expense','completed','test-nio','test-nio',50,'NIO',50,1.25,40,'Ficticio gasto'),
+ ('transfer','completed','test-nio','test-nio',9999,'NIO',9999,249.975,40,'Ficticia transferencia'),
+ ('income','cancelled','test-nio','test-nio',8888,'NIO',8888,222.2,40,'Ficticio cancelado'),
+ ('income','pending','test-nio','test-nio',7777,'NIO',7777,194.425,40,'Ficticio pendiente');
+insert into transactions(type,account_id,occurred_at,amount,currency,amount_nio,amount_usd,fx_used,concept) values
+ ('income','test-nio','2001-02-01T05:59:00Z',11,'NIO',11,0.275,40,'Antes del corte Managua'),
+ ('income','test-nio','2001-02-01T06:00:00Z',22,'NIO',22,0.55,40,'Después del corte Managua');
+`);
+const readSnapshot = await snapshot();
+const finance = async (section) =>
+  (await as(staff, "select finance_read($1,366) as v", [section])).rows[0].v
+    .data;
+// Una función invocada por el propietario también exige identidad staff.
+await reject(null, "select finance_read('accounts')", [], /permission denied/);
+for (const section of [
+  "methods",
+  "accounts",
+  "categories",
+  "transactions",
+  "daily",
+  "monthly",
+  "method_totals",
+  "receivables",
+  "summary",
+]) {
+  await db.query("insert into auth.current_user values($1)", [admin]);
+  await db.exec("begin read only; set local role authenticated");
+  const result = (await db.query("select finance_read($1) as v", [section]))
+    .rows[0].v;
+  check(
+    `finance_read ${section}: contrato y READ ONLY`,
+    result.finance_layout === "bank_accounts_split" &&
+      result.section === section &&
+      (section === "summary" ? !!result.data : Array.isArray(result.data)),
+  );
+  await db.exec("rollback; reset role; delete from auth.current_user");
+}
+check(
+  "00023 no habilita cobros CRM",
+  (await as(staff, "select crm_options() as v")).rows[0].v.payments_enabled ===
+    false,
+);
+const summary = await finance("summary");
+check(
+  "resumen conserva equivalentes guardados y excluye pendientes/cancelados/transferencias del dinero",
+  summary.incomeMonth === 780 &&
+    summary.expenseMonth === 50 &&
+    summary.netMonth === 730 &&
+    summary.txMonth === 5,
+);
+check(
+  "deuda USD y NIO separada, sin compensar crédito ni inventar facturas",
+  summary.totalOwed === 20 &&
+    summary.totalOwedUsd === 3 &&
+    summary.pendingInvoices === null,
+);
+check(
+  "sesiones múltiples se cuentan sin fingir un único arqueo",
+  summary.openRegisterCount === 2 &&
+    summary.openRegister.openingAmountUsd !== undefined,
+);
+const receivables = await finance("receivables");
+check(
+  "cuentas no inventa mora ni fechas/facturas",
+  receivables.length === 1 &&
+    receivables[0].total_owed_nio === 20 &&
+    receivables[0].total_owed_usd === 3 &&
+    receivables[0].days_overdue === null &&
+    receivables[0].oldest_due === null &&
+    receivables[0].invoices_open === null,
+);
+const daily = await finance("daily");
+check(
+  "corte diario Managua y mensual no usa UTC",
+  daily.find((d) => d.day === "2001-01-31")?.income_nio === 11 &&
+    daily.find((d) => d.day === "2001-02-01")?.income_nio === 22 &&
+    (await finance("monthly")).find((m) => m.month === "2001-01-01")
+      ?.income_nio === 11,
+);
+check(
+  "historial conserva moneda original, cancelados y transferencias visibles",
+  (await finance("transactions")).some(
+    (t) => t.currency === "USD" && t.amount === 12 && t.base_amount === 480,
+  ) &&
+    (await finance("transactions")).some((t) => t.status === "cancelled") &&
+    (await finance("transactions")).some((t) => t.direction === "transfer"),
+);
+const methodTotals = await finance("method_totals");
+check(
+  "métodos excluyen pendientes/cancelados/transferencias",
+  methodTotals.find((m) => m.payment_method_id === "test-usd")?.income_nio ===
+    480 &&
+    methodTotals.find((m) => m.payment_method_id === "test-nio")?.income_nio ===
+      200,
+);
+check(
+  "saldos informados siguen intactos, no calculados desde movimientos",
+  (await finance("accounts")).find((a) => a.id === "test-usd")?.balance ===
+    12 &&
+    (await finance("accounts")).find((a) => a.id === "test-nio")?.balance ===
+      900 &&
+    (await snapshot()) === readSnapshot,
+);
+check(
+  "RLS sigue activo en tablas financieras",
+  (
+    await row(
+      "select bool_and(relrowsecurity) as ok from pg_class where oid in ('bank_accounts'::regclass,'transactions'::regclass,'member_balances'::regclass,'payment_methods'::regclass,'expense_categories'::regclass,'cash_sessions'::regclass)",
+    )
+  ).ok,
+);
+check(
+  "member conserva sólo sus movimientos, no adquiere lectura de Caja",
+  (await as(member, "select count(*)::int n from transactions")).rows[0].n ===
+    1,
+);
+const originalDataQuery = `select jsonb_build_object('banks',(select jsonb_agg(to_jsonb(b) order by id) from bank_accounts b where id not like 'ejemplo-%'),'balances',(select jsonb_agg(to_jsonb(b) order by member_id) from member_balances b),'clients',(select jsonb_agg(to_jsonb(c) order by id) from gym_clients c where id<>'e0000000-0000-4000-8000-000000000023')) as data`;
+const originalDataBeforeSeed = JSON.stringify(await row(originalDataQuery));
+const seed = sql("supabase/EJEMPLOS-CAJA-OPCIONAL.sql");
+const usersBefore = await row("select count(*)::int as n from auth.users");
+const txBeforeSeed = JSON.stringify(
+  (await db.query("select * from transactions order by id")).rows,
+);
+await db.exec(seed);
+await db.exec(seed);
+check(
+  "ejemplos opt-in idempotentes: 2 cuentas en cero, un cliente demo sin perfil/plan",
+  (
+    await row(
+      "select count(*)::int n from bank_accounts where id like 'ejemplo-%' and balance=0",
+    )
+  ).n === 2 &&
+    (
+      await row(
+        "select count(*)::int n from gym_clients where id='e0000000-0000-4000-8000-000000000023' and is_demo and profile_id is null and plan_id is null",
+      )
+    ).n === 1,
+);
+check(
+  "seed no crea usuarios ni movimientos",
+  (await row("select count(*)::int n from auth.users")).n === usersBefore.n &&
+    JSON.stringify(
+      (await db.query("select * from transactions order by id")).rows,
+    ) === txBeforeSeed,
+);
+check(
+  "seed preserva cuentas, crédito/deuda y fichas existentes",
+  JSON.stringify(await row(originalDataQuery)) === originalDataBeforeSeed,
+);
+await db.exec(
+  "update bank_accounts set balance=19 where id='ejemplo-caja-usd-00023'",
+);
+await db.exec(seed);
+check(
+  "repetir ejemplos NO reinicia un saldo modificado",
+  Number(
+    (
+      await row(
+        "select balance from bank_accounts where id='ejemplo-caja-usd-00023'",
+      )
+    ).balance,
+  ) === 19,
+);
+await db.exec(
+  "update bank_accounts set name='Nombre real en conflicto' where id='ejemplo-caja-nio-00023'",
+);
+const conflicting = await snapshot();
+await assert.rejects(db.exec(seed), /EJEMPLO_ACCOUNT_CONFLICT/);
+await db.exec("rollback");
+check(
+  "conflicto de cuenta aborta sin alterar existentes",
+  (await snapshot()) === conflicting,
+);
+await db.exec(
+  "update bank_accounts set name='EJEMPLO - Caja NIO' where id='ejemplo-caja-nio-00023'; update gym_clients set is_demo=false where id='e0000000-0000-4000-8000-000000000023'",
+);
+await assert.rejects(db.exec(seed), /EJEMPLO_CLIENT_CONFLICT/);
+await db.exec("rollback");
+check(
+  "seed nunca marca un cliente real como ejemplo",
+  !(
+    await row(
+      "select is_demo from gym_clients where id='e0000000-0000-4000-8000-000000000023'",
+    )
+  ).is_demo,
+);
+
 await db.query("delete from member_balances where member_id=$1", [member]);
 const missing = (await as(staff, "select crm_detail($1) as value", [linked]))
   .rows[0].value;
@@ -226,6 +465,12 @@ check(
   (await row("select crm_finance_layout() as layout")).layout === "unsupported",
 );
 await reject(staff, "select crm_options()", [], /FINANCE_SCHEMA_UNSUPPORTED/);
+await reject(
+  staff,
+  "select finance_read('summary')",
+  [],
+  /FINANCE_SCHEMA_UNSUPPORTED/,
+);
 await reject(staff, pay, args, /FINANCE_REVIEW_REQUIRED/);
 const partial = (await as(staff, "select crm_detail($1) as value", [id]))
   .rows[0].value;

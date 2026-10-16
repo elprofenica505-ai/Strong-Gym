@@ -332,3 +332,95 @@ repartir un cobro entre crédito y deuda ni aplicar comisiones sin revisar ese
 contrato. La autorización para seguir no significa autorización de merge ni
 certificación de cobros. Hasta completar esa revisión, permanece el bloqueo SQL
 FINANCE_REVIEW_REQUIRED y la referencia idempotente de cualquier intento pendiente.
+
+## Lecturas compatibles con el segundo diagnóstico (00023)
+
+Decisiones expresas del usuario: **mantener cobros bloqueados** y preparar, sin
+aplicarlo, un SQL opcional con cuentas y cliente nuevos identificados EJEMPLO.
+El segundo CSV ya fue revisado: no se necesita repetir aquella exportación.
+
+### Alcance e instalación incremental
+
+1. Sobre la base con CRM y `COMPATIBILIDAD-CRM.sql` (00022) ya aplicados,
+   revisar y ejecutar **sólo `supabase/LECTURA-CAJA.sql`** (copia generada de
+   `00023_finance_read_bank_accounts.sql`). No reinstalar SETUP/ACTUALIZAR en
+   la base remota con esquema diferente. Nada se ejecuta automáticamente desde
+   el frontend ni por publicar/mergear el código.
+2. El script crea `finance_read(text,integer)`, SECURITY DEFINER, con permiso de
+   ejecución para authenticated y verificación interna `crm_is_staff()` antes
+   de leer. Nueve secciones cubren métodos, cuentas activas, categorías,
+   movimientos, días, meses, métodos agregados, deuda y resumen. No crea tablas,
+   vistas paralelas, movimientos ni reglas financieras; no cambia RLS existente.
+3. **También reemplaza/bloquea la firma antigua comprobada**
+   `record_payment(uuid,numeric,text,text,text,text,text,text)` sólo en el modelo
+   bank_accounts_split. Esto afectará llamadas externas a ese RPC, no sólo al
+   botón CRM. Staff/admin reciben FINANCE_REVIEW_REQUIRED; member AUTH;
+   anon no tiene EXECUTE. No se cambia la firma/escritor nativo diferente.
+   Revisar/guardar la definición anterior antes de aplicar si se requiere
+   reversión; nunca reactivarla sin corregir y acordar reglas.
+4. Código de aplicación y SQL deben acompañarse. Sin la nueva RPC, un error
+   de contrato sigue mostrándose como información no disponible, no como cero.
+   El lector alternativo se activa sólo ante columnas/tablas/relaciones ausentes;
+   errores de permisos, sesión, cancelación, timeout o red no habilitan fallback.
+   Se valida wrapper, modelo, sección, estructura, valores monetarios y estados.
+5. Opcional y **separado**: revisar/ejecutar
+   `supabase/EJEMPLOS-CAJA-OPCIONAL.sql`. Crea dos cuentas NIO/USD EJEMPLO,
+   saldo inicial cero y un `gym_clients.is_demo=true`, sin perfil/login, plan,
+   teléfono, correo, visita, transacción, deuda ni crédito. Identificadores
+   estables, sin UPDATE; repetir no reinicia saldos. Conflictos abortan la
+   transacción. No está incluido en SETUP, ACTUALIZAR ni FASE2. No es una
+   demo aislada ni una implementación de cobros.
+
+### Interpretación de las lecturas
+
+- Agregados en **equivalentes NIO guardados** (`amount_nio`), sin consultar FX
+  actual, calcular nuevas conversiones o intentar reparar movimientos históricos.
+  Resumen diario/mensual: cortes America/Managua. Dinero sólo de completed;
+  transferencias no se tratan como ingresos/egresos. Contador de movimientos
+  completados sí puede incluir transferencias. Desglose por método: todo el
+  historial, no fingir que es sólo el mes; gráficos: días/meses con registros.
+- Historial: importe/moneda originales y estados pending/completed/cancelled;
+  transferencias neutrales, con estado visible, excluidas del dinero agregado.
+- Deuda: debt_nio y debt_usd **separadas**. No compensar credit_nio/credit_usd.
+  Sin fuente de facturas/vencimientos: null, «no informado», no cero facturas ni
+  días de mora inventados. Falta de filas no certifica una cuenta corriente completa.
+- Cuentas: balance **informado** en moneda propia, sin recalcular ni certificar
+  arqueo. Varias cash_sessions abiertas se cuentan y la última se identifica como
+  informada, no se afirma una única caja correctamente arqueada.
+- Gastos: categorías legibles; no se habilitó formulario de egresos. El esquema
+  exportado no tiene is_active para categorías: queda desconocido, no inventado.
+- El escritor antiguo observado no valida rol internamente y no ofrece
+  idempotencia; reduce deuda en ambas monedas y suma equivalentes NIO incluso a
+  cuentas USD. No se reutiliza. Permisos EXECUTE previos y cuerpo de
+  get_fx_nio_per_usd no estaban en el CSV: no se afirma exposición anónima probada.
+- No se reparan automáticamente saldos, deudas ni conversiones previas. La ruta
+  nativa conserva sus vistas/cortes y escritor; este cambio no certifica su
+  contabilidad ni corrige todas las limitaciones históricas de FASE1.
+
+### Prueba local y revisión remota pendiente
+
+Pruebas con fixtures sin registros reales: migración repetible y snapshots
+financieros intactos; nueve secciones en transacciones READ ONLY; separación de
+monedas; cortes UTC/Managua en borde de día/mes; estados/cuentas; conservación de
+RLS y acceso limitado; bloqueo CRM/escritor antiguo por rol; escritor nativo
+intacto; seed opcional idempotente, sin reset de saldo ni creación de usuarios,
+y aborto por conflictos sin convertir personas reales en ejemplos. Tests de
+aplicación: fallback sólo de contrato, errores seguros, respuesta inválida,
+monedas, estados y SSR de Caja/Cuentas. No equivalen a E2E en Supabase remoto.
+
+Tras revisar/aplicar el incremental, con el Preview del PR actualizado: abrir
+Caja/Cuentas/Reportes/Gastos como staff/admin, comprobar valores contra la base,
+verificar botón de cobro bloqueado y que un member no acceda al panel. Si se
+elige el seed opcional, comprobar sus identificadores y conservar separado de
+los registros reales. **PR #10 sigue sin merge. No declarar demo financiera
+completa hasta esas pruebas y el acuerdo de reglas con el dueño.**
+
+Salida de validación local de este avance (secuencial, 2026-10-15):
+- `npm run typecheck`: `tsc --noEmit`, exit 0.
+- `npm run lint`: `10 problems (0 errors, 10 warnings)`; advertencias previas.
+- `npm run test:auth`: `tests 106`, `pass 106`, `fail 0`.
+- `npm run build`: `Compiled successfully`, `Generating static pages (41/41)`.
+  Sigue el aviso previo metadataBase, no fallo de compilación.
+- `npm run test:sql`: suite histórica «Todo pasó»; CRM 48 y compatibilidad 67.
+- `node scripts/build-sql.mjs --check`: «Todo al día — 9 clases por semana».
+- `git diff --check`: sin errores. No se aplicó SQL a Supabase remoto.

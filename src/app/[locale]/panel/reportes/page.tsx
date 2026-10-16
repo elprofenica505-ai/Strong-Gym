@@ -72,6 +72,7 @@ export default async function ReportesPage({
         </div>
       </div>
 
+      <p className="text-sm text-fog">Importes consolidados NIO guardados en los movimientos completados; no se usa una tasa nueva. Las transferencias no son ingresos ni gastos. Estos resultados no certifican saldos de cuentas.</p>
       <div className="overflow-hidden rounded-2xl border border-line">
         <table className="w-full text-left text-[0.8125rem]">
           <thead className="bg-card-2 text-[0.6875rem] uppercase tracking-wider text-fog">

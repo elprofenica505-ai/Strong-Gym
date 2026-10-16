@@ -1,5 +1,6 @@
 import "server-only";
 import { FinanceReadError } from "@/lib/finance/read-result";
+import { isFinanceSchemaError, readBankFinance } from "@/lib/finance/legacy-reader";
 
 import { cache } from "react";
 import { resolveCurrentUser } from "@/lib/auth/current-user";
@@ -355,7 +356,7 @@ export type Currency = "NIO" | "USD";
 export interface PaymentMethod {
   id: string;
   slug: string;
-  kind: string;
+  kind: string | null;
   nameEs: string;
   nameEn: string;
   detailsEs: string;
@@ -373,7 +374,7 @@ export interface ExpenseCategory {
   nameEs: string;
   nameEn: string;
   icon: string;
-  isActive: boolean;
+  isActive: boolean | null;
   sortOrder: number;
 }
 
@@ -386,14 +387,15 @@ export interface Account {
   bankName: string | null;
   accountNumber: string | null;
   holderName: string | null;
+  balance?: number;
   isActive: boolean;
 }
 
 export interface Transaction {
   id: string;
   occurredAt: string;
-  direction: "income" | "expense";
-  status: "pending" | "completed" | "reversed";
+  direction: "income" | "expense" | "transfer";
+  status: "pending" | "completed" | "reversed" | "cancelled";
   amount: number;
   currency: Currency;
   fxRate: number;
@@ -439,10 +441,11 @@ export interface AccountsReceivableRow {
   fullName: string;
   email: string;
   phone: string | null;
-  invoicesOpen: number;
+  invoicesOpen: number | null;
   totalOwedNio: number;
+  totalOwedUsd?: number;
   oldestDue: string | null;
-  daysOverdue: number;
+  daysOverdue: number | null;
 }
 
 export async function getPaymentMethods(): Promise<PaymentMethod[]> {
@@ -452,14 +455,17 @@ export async function getPaymentMethods(): Promise<PaymentMethod[]> {
       throw new FinanceReadError("METHODS", "UNAVAILABLE");
     return [];
   }
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("payment_methods")
     .select(
       "id,slug,kind,name_es,name_en,details_es,details_en,accepts_nio,accepts_usd,icon,is_active,sort_order",
     )
     .eq("is_active", true)
     .order("sort_order");
-  if (error) throw new FinanceReadError("METHODS", error.code);
+  if (error) {
+    if (!isFinanceSchemaError(error.code)) throw new FinanceReadError("METHODS", error.code);
+    data = await readBankFinance<NonNullable<typeof data>>(supabase, "methods");
+  }
   return (data ?? []).map(mapPaymentMethod);
 }
 
@@ -470,12 +476,15 @@ export async function getExpenseCategories(): Promise<ExpenseCategory[]> {
       throw new FinanceReadError("CATEGORIES", "UNAVAILABLE");
     return [];
   }
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("expense_categories")
     .select("id,slug,name_es,name_en,icon,is_active,sort_order")
     .eq("is_active", true)
     .order("sort_order");
-  if (error) throw new FinanceReadError("CATEGORIES", error.code);
+  if (error) {
+    if (!isFinanceSchemaError(error.code)) throw new FinanceReadError("CATEGORIES", error.code);
+    data = await readBankFinance<NonNullable<typeof data>>(supabase, "categories");
+  }
   return (data ?? []).map(mapExpenseCategory);
 }
 
@@ -486,14 +495,17 @@ export async function getAccounts(): Promise<Account[]> {
       throw new FinanceReadError("ACCOUNTS", "UNAVAILABLE");
     return [];
   }
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("accounts")
     .select(
       "id,slug,name,kind,currency,bank_name,account_number,holder_name,is_active",
     )
     .eq("is_active", true)
     .order("name");
-  if (error) throw new FinanceReadError("ACCOUNTS", error.code);
+  if (error) {
+    if (!isFinanceSchemaError(error.code)) throw new FinanceReadError("ACCOUNTS", error.code);
+    data = await readBankFinance<NonNullable<typeof data>>(supabase, "accounts");
+  }
   return (data ?? []).map(mapAccount);
 }
 
@@ -527,7 +539,10 @@ export async function getRecentTransactions(
     data = legacy.data as typeof data;
     error = legacy.error;
   }
-  if (error) throw new FinanceReadError("TRANSACTIONS", error.code);
+  if (error) {
+    if (!isFinanceSchemaError(error.code)) throw new FinanceReadError("TRANSACTIONS", error.code);
+    data = await readBankFinance<NonNullable<typeof data>>(supabase, "transactions", limit);
+  }
   return (data ?? []).map((row) => mapTransaction(row));
 }
 
@@ -538,11 +553,14 @@ export async function getDailyCash(days = 14): Promise<DailyCashRow[]> {
       throw new FinanceReadError("DAILY", "UNAVAILABLE");
     return [];
   }
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("v_daily_cash")
     .select("day,income_nio,expense_nio,net_nio,tx_count")
     .limit(days);
-  if (error) throw new FinanceReadError("DAILY", error.code);
+  if (error) {
+    if (!isFinanceSchemaError(error.code)) throw new FinanceReadError("DAILY", error.code);
+    data = await readBankFinance<NonNullable<typeof data>>(supabase, "daily", days);
+  }
   return (data ?? []).map((r) => ({
     day: String(r.day),
     incomeNio: Number(r.income_nio ?? 0),
@@ -559,11 +577,14 @@ export async function getMonthlyPnl(months = 6): Promise<MonthlyPnlRow[]> {
       throw new FinanceReadError("MONTHLY", "UNAVAILABLE");
     return [];
   }
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("v_monthly_pnl")
     .select("month,income_nio,expense_nio,net_nio")
     .limit(months);
-  if (error) throw new FinanceReadError("MONTHLY", error.code);
+  if (error) {
+    if (!isFinanceSchemaError(error.code)) throw new FinanceReadError("MONTHLY", error.code);
+    data = await readBankFinance<NonNullable<typeof data>>(supabase, "monthly", months);
+  }
   return (data ?? []).map((r) => ({
     month: String(r.month),
     incomeNio: Number(r.income_nio ?? 0),
@@ -581,12 +602,15 @@ export async function getPaymentMethodsBreakdown(): Promise<
       throw new FinanceReadError("METHOD_TOTALS", "UNAVAILABLE");
     return [];
   }
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("v_payment_methods_breakdown")
     .select(
       "payment_method_id,name_es,icon,tx_count,total_nio,income_nio,expense_nio",
     );
-  if (error) throw new FinanceReadError("METHOD_TOTALS", error.code);
+  if (error) {
+    if (!isFinanceSchemaError(error.code)) throw new FinanceReadError("METHOD_TOTALS", error.code);
+    data = await readBankFinance<NonNullable<typeof data>>(supabase, "method_totals");
+  }
   return (data ?? []).map((r) => ({
     paymentMethodId: r.payment_method_id,
     nameEs: r.name_es,
@@ -607,21 +631,25 @@ export async function getAccountsReceivable(): Promise<
       throw new FinanceReadError("RECEIVABLES", "UNAVAILABLE");
     return [];
   }
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("v_accounts_receivable")
     .select(
       "member_id,full_name,email,phone,invoices_open,total_owed_nio,oldest_due,days_overdue",
     );
-  if (error) throw new FinanceReadError("RECEIVABLES", error.code);
+  if (error) {
+    if (!isFinanceSchemaError(error.code)) throw new FinanceReadError("RECEIVABLES", error.code);
+    data = await readBankFinance<NonNullable<typeof data>>(supabase, "receivables");
+  }
   return (data ?? []).map((r) => ({
     memberId: r.member_id,
     fullName: r.full_name ?? "—",
     email: r.email ?? "",
     phone: r.phone,
-    invoicesOpen: Number(r.invoices_open ?? 0),
+    invoicesOpen: r.invoices_open === null ? null : Number(r.invoices_open ?? 0),
     totalOwedNio: Number(r.total_owed_nio ?? 0),
+    ...("total_owed_usd" in r ? {totalOwedUsd: Number(r.total_owed_usd)} : {}),
     oldestDue: r.oldest_due,
-    daysOverdue: Number(r.days_overdue ?? 0),
+    daysOverdue: r.days_overdue === null ? null : Number(r.days_overdue ?? 0),
   }));
 }
 
@@ -634,12 +662,16 @@ export interface CashSummary {
   expenseMonth: number;
   netMonth: number;
   txMonth: number;
-  pendingInvoices: number;
+  pendingInvoices: number | null;
   totalOwed: number;
+  totalOwedUsd?: number;
+  sourceModel?: string;
+  openRegisterCount?: number;
   openRegister: {
     id: string;
     openedAt: string;
     openingAmount: number;
+    openingAmountUsd?: number;
   } | null;
 }
 
@@ -690,13 +722,14 @@ export async function getCashSummary(): Promise<CashSummary> {
     .limit(1)
     .maybeSingle();
 
-  for (const [operation, error] of [
-    ["SUMMARY_DAY", todayError],
-    ["SUMMARY_MONTH", monthError],
-    ["SUMMARY_DEBT", arError],
-    ["SUMMARY_REGISTER", openError],
-  ] as const)
-    if (error) throw new FinanceReadError(operation, error.code);
+  const failures = [
+    ["SUMMARY_DAY", todayError], ["SUMMARY_MONTH", monthError],
+    ["SUMMARY_DEBT", arError], ["SUMMARY_REGISTER", openError],
+  ] as const;
+  for (const [operation, error] of failures) {
+    if (error && !isFinanceSchemaError(error.code)) throw new FinanceReadError(operation, error.code);
+  }
+  if (failures.some(([,error]) => !!error)) return readBankFinance<CashSummary>(supabase, "summary");
 
   return {
     incomeToday: Number(todayRows?.income_nio ?? 0),
@@ -728,7 +761,7 @@ function mapPaymentMethod(r: Record<string, unknown>): PaymentMethod {
   return {
     id: r.id as string,
     slug: r.slug as string,
-    kind: r.kind as string,
+    kind: (r.kind as string) ?? null,
     nameEs: r.name_es as string,
     nameEn: r.name_en as string,
     detailsEs: (r.details_es as string) ?? "",
@@ -748,7 +781,7 @@ function mapExpenseCategory(r: Record<string, unknown>): ExpenseCategory {
     nameEs: r.name_es as string,
     nameEn: r.name_en as string,
     icon: (r.icon as string) ?? "Receipt",
-    isActive: r.is_active as boolean,
+    isActive: r.is_active === null ? null : r.is_active as boolean,
     sortOrder: Number(r.sort_order ?? 0),
   };
 }
@@ -763,6 +796,7 @@ function mapAccount(r: Record<string, unknown>): Account {
     bankName: (r.bank_name as string) ?? null,
     accountNumber: (r.account_number as string) ?? null,
     holderName: (r.holder_name as string) ?? null,
+    ...(r.balance !== undefined ? {balance: Number(r.balance)} : {}),
     isActive: r.is_active as boolean,
   };
 }
@@ -772,8 +806,8 @@ function mapTransaction(r: Record<string, unknown>): Transaction {
   return {
     id: r.id as string,
     occurredAt: r.occurred_at as string,
-    direction: r.direction as "income" | "expense",
-    status: r.status as "pending" | "completed" | "reversed",
+    direction: r.direction as Transaction["direction"],
+    status: r.status as Transaction["status"],
     amount: Number(r.amount ?? 0),
     currency: r.currency as Currency,
     fxRate: Number(r.fx_rate ?? 1),

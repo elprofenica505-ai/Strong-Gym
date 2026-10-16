@@ -24,6 +24,11 @@ for (const file of [
       "utf8",
     ),
   );
+const nativeWriterQuery =
+  "select pg_get_functiondef(oid) as definition from pg_proc where pronamespace='public'::regnamespace and proname='record_payment' order by oid";
+const nativeWriterBefore = JSON.stringify(
+  (await db.query(nativeWriterQuery)).rows,
+);
 const migration = readFileSync(
   new URL("../supabase/FASE2.sql", import.meta.url),
   "utf8",
@@ -411,5 +416,28 @@ check(
     writerData.vistas.some((v) => v.nombre === "v_daily_cash"),
 );
 await db.exec("rollback");
+check(
+  "00023 no reemplaza escritor ni reglas del modelo nativo",
+  JSON.stringify((await db.query(nativeWriterQuery)).rows) ===
+    nativeWriterBefore,
+);
+await reject(
+  staff,
+  "select finance_read('summary')",
+  [],
+  "FINANCE_SCHEMA_UNSUPPORTED",
+);
+await reject(member, "select finance_read('summary')", [], "AUTH");
+await reject(null, "select finance_read('summary')", [], "permission denied");
+const optionalBankSeed = readFileSync(
+  new URL("../supabase/EJEMPLOS-CAJA-OPCIONAL.sql", import.meta.url),
+  "utf8",
+);
+await assert.rejects(db.exec(optionalBankSeed), /FINANCE_SCHEMA_UNSUPPORTED/);
+await db.exec("rollback");
+check(
+  "seed de cuentas bank_accounts rechaza esquema nativo sin crear tabla paralela",
+  !(await row("select to_regclass('public.bank_accounts') as t")).t,
+);
 await db.close();
 console.log(`\n🎉 CRM: ${count} comprobaciones pasaron\n`);

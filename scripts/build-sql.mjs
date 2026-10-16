@@ -187,7 +187,8 @@ const financeSeedNuevo = readFileSync(join(ROOT, "supabase/migrations/00011_fina
 const profilesReadFix = readFileSync(join(ROOT, "supabase/migrations/00012_profiles_self_read.sql"), "utf8");
 
 const crmCompat = readFileSync(join(ROOT, "supabase/migrations/00022_crm_finance_compat.sql"), "utf8");
-const crmSql = readFileSync(join(ROOT, "supabase/migrations/00020_clients_crm.sql"), "utf8") + "\n\n" + crmCompat;
+const financeRead = readFileSync(join(ROOT, "supabase/migrations/00023_finance_read_bank_accounts.sql"), "utf8");
+const crmSql = readFileSync(join(ROOT, "supabase/migrations/00020_clients_crm.sql"), "utf8") + "\n\n" + crmCompat + "\n\n" + financeRead;
 
 /* --- 3b. SETUP.sql: instalación desde cero --- */
 const cabecera = `-- ============================================================
@@ -294,6 +295,7 @@ function sincronizarGenerado(archivo, contenido) {
 
 sincronizarGenerado(join(ROOT, "supabase/FASE2.sql"), "-- ACTUALIZACIÓN FASE 2. Base con Fase 1 y fix 00012 aplicados.\n-- Sólo estructura CRM y vinculación de perfiles existentes; no borra ni carga ejemplos.\n-- Seed opcional separado: migrations/00021_clients_seed.sql.\n\n" + crmSql);
 sincronizarGenerado(join(ROOT, "supabase/COMPATIBILIDAD-CRM.sql"), crmCompat);
+sincronizarGenerado(join(ROOT, "supabase/LECTURA-CAJA.sql"), financeRead);
 sincronizarGenerado(SETUP, setupNuevo);
 sincronizarGenerado(UPDATE, actualizarNuevo);
 
