@@ -62,6 +62,7 @@ const detail = (c = client()) => ({
   balance: null,
 });
 const options = {
+  payments_enabled: true,
   plans: [],
   methods: [
     { id: "cash", name_es: "Efectivo", accepts_nio: true, accepts_usd: false },
@@ -345,4 +346,70 @@ test("cobro con respuesta perdida conserva referencia; reintento usa exactamente
   const bodies = calls.filter((c) => c.body).map((c) => c.body);
   assert.equal(bodies.length, 2);
   assert.deepEqual(bodies, [pending, pending]);
+});
+
+test("estructura bank_accounts abre ficha y muestra monedas separadas, sin habilitar cobros", async () => {
+  const legacy = {
+    ...detail(),
+    finance_layout: "bank_accounts_split",
+    balances: { credit_nio: 100, credit_usd: 7, debt_nio: 20, debt_usd: 3 },
+  };
+  const calls = setup(
+    () => json(legacy),
+    [client()],
+    () =>
+      json({
+        ...options,
+        payments_enabled: false,
+        payment_block_reason: "Caja pendiente de compatibilidad",
+      }),
+  );
+  await open();
+  await heading();
+  assert.ok(screen.getByText("Crédito NIO: C$ 100.00"));
+  assert.ok(screen.getByText("Deuda NIO: C$ 20.00"));
+  assert.ok(screen.getByText("Crédito USD: US$ 7.00"));
+  assert.ok(screen.getByText("Deuda USD: US$ 3.00"));
+  assert.equal(screen.queryByText(/Saldo de cuenta vinculada:/), null);
+  assert.ok(screen.getByRole("button", { name: "Confirmar cobro" }).disabled);
+  assert.ok(screen.getByText("Caja pendiente de compatibilidad"));
+  assert.equal(
+    screen.getByRole("button", { name: /Confirmar entrada/ }).disabled,
+    false,
+  );
+  assert.equal(calls.filter((c) => c.body).length, 0);
+});
+test("cobro pendiente conserva referencia pero no puede reintentarse en modelo bloqueado", async () => {
+  const pending = {
+    action: "payment",
+    id,
+    requestId: other,
+    amount: 500,
+    currency: "NIO",
+    method: "cash",
+    account: "cash_nio",
+    concept: "Mensualidad",
+    fx: 1,
+  };
+  sessionStorage.setItem(
+    `strong-gym:crm-payment:${id}`,
+    JSON.stringify(pending),
+  );
+  const calls = setup(
+    () => json(detail()),
+    [client()],
+    () => json({ ...options, payments_enabled: false }),
+  );
+  await open();
+  await heading();
+  const button = screen.getByRole("button", {
+    name: "Reintentar el mismo cobro",
+  });
+  assert.ok(button.disabled);
+  fireEvent.submit(button.closest("form"));
+  assert.equal(calls.filter((c) => c.body).length, 0);
+  assert.deepEqual(
+    JSON.parse(sessionStorage.getItem(`strong-gym:crm-payment:${id}`)),
+    pending,
+  );
 });

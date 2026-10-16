@@ -271,3 +271,13 @@ CRM con etiquetas comerciales, alta sin cuenta web, QR/carnet opcional y atenci�
 Ver [instalación, alcance y pruebas](docs/FASE2-CLIENTES.md). Para una base existente
 con Fase 1 y 00012, aplicar sólo `supabase/FASE2.sql`; ejemplos opcionales separados
 en `00021_clients_seed.sql`. No se instalan automáticamente en producción.
+
+
+### Base con `bank_accounts` y saldos separados
+
+Si ya instalaste CRM y el diagnóstico confirma esa estructura financiera,
+consultá [la compatibilidad incremental](docs/FASE2-CLIENTES.md#compatibilidad-incremental-confirmada-por-csv-00022)
+y `supabase/COMPATIBILIDAD-CRM.sql`. No reinstales SETUP/ACTUALIZAR sobre esa base.
+El parche permite leer ficha/opciones y conserva saldos separados; **los cobros
+CRM quedan bloqueados** en ese modelo hasta revisar su actualización de Caja.
+No equivale a una migración completa de finanzas ni valida reportes FASE1.

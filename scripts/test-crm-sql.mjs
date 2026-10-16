@@ -325,6 +325,24 @@ check(
   "sin cuenta financiera vinculada no inventa saldo",
   detail.balance === null,
 );
+const financeOptions = (await as(staff, "select public.crm_options() as value"))
+  .rows[0].value;
+check(
+  "modelo original conserva cobros habilitados",
+  financeOptions.payments_enabled === true &&
+    financeOptions.finance_layout === "repository",
+);
+check(
+  "opciones originales conservan métodos y cuentas",
+  financeOptions.methods.length > 0 && financeOptions.accounts.length > 0,
+);
+await reject(member, "select public.crm_options()", [], "AUTH");
+await reject(
+  staff,
+  "select public.crm_record_payment_repository($1,$2,$3,$4,$5,$6,$7,$8)",
+  args,
+  "permission denied",
+);
 const imported = (
   await as(staff, "select public.crm_import_client($1) as r", [
     JSON.stringify({

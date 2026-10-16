@@ -51,12 +51,22 @@ export interface ClientDetail {
   events: ClientEvent[];
   payments: ClientPayment[];
   balance: number | null;
+  finance_layout?: "repository" | "bank_accounts_split" | "unsupported";
+  balances?: {
+    credit_nio: number;
+    credit_usd: number;
+    debt_nio: number;
+    debt_usd: number;
+  } | null;
 }
 export interface Directory {
   rows: GymClient[];
   total: number;
 }
 export interface CrmOptions {
+  payments_enabled: boolean;
+  finance_layout?: string;
+  payment_block_reason?: string | null;
   plans: { id: string; name_es: string }[];
   methods: {
     id: string;

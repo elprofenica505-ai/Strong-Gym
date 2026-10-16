@@ -38,6 +38,14 @@ function failure(
     INVALID_METHOD: ["El método no está habilitado para esta moneda.", 422],
     INVALID_PAYMENT: ["Revisá monto, moneda, concepto y tipo de cambio.", 422],
     INVALID_EMAIL: ["Revisá el correo.", 422],
+    FINANCE_REVIEW_REQUIRED: [
+      "Los cobros CRM están bloqueados en esta estructura financiera hasta revisar la actualización de Caja. No se guardó un cobro nuevo desde esta operación.",
+      409,
+    ],
+    FINANCE_SCHEMA_UNSUPPORTED: [
+      "La estructura financiera no coincide con un modelo verificado. No reinstalés la base; revisá la compatibilidad antes de cobrar.",
+      503,
+    ],
   };
   const match = Object.hasOwn(known, error.message ?? "")
     ? known[error.message!]
@@ -109,30 +117,33 @@ export async function GET(request: Request) {
     if (!ctx.db) return ctx.response;
     const url = new URL(request.url);
     if (url.searchParams.get("mode") === "options") {
-      const [plans, methods, accounts] = await Promise.all([
-        ctx.db
-          .from("plans")
-          .select("id,name_es")
-          .eq("is_active", true)
-          .order("sort_order"),
-        ctx.db
-          .from("payment_methods")
-          .select("id,name_es,accepts_nio,accepts_usd")
-          .eq("is_active", true)
-          .order("sort_order"),
-        ctx.db
-          .from("accounts")
-          .select("id,name,currency")
-          .eq("is_active", true),
-      ]);
-      const error = plans.error ?? methods.error ?? accounts.error;
-      return error
-        ? failure(error, "OPTIONS")
-        : reply({
-            plans: plans.data,
-            methods: methods.data,
-            accounts: accounts.data,
-          });
+      const { data, error } = await ctx.db.rpc("crm_options");
+      if (error && ["PGRST202", "42883"].includes(error.code ?? ""))
+        return reply(
+          {
+            error:
+              "Falta la actualización incremental de compatibilidad CRM. Revisá supabase/COMPATIBILIDAD-CRM.sql; no reinstalés SETUP ni ACTUALIZAR.",
+            code: "CRM_OPTIONS_COMPAT_REQUIRED",
+          },
+          503,
+        );
+      if (error) return failure(error, "OPTIONS");
+      if (
+        !data ||
+        !Array.isArray(data.plans) ||
+        !Array.isArray(data.methods) ||
+        !Array.isArray(data.accounts) ||
+        typeof data.payments_enabled !== "boolean"
+      )
+        return reply(
+          {
+            error:
+              "Opciones incompletas. Los cobros quedan bloqueados; reintentá la lectura.",
+            code: "CRM_OPTIONS_INVALID_RESPONSE",
+          },
+          503,
+        );
+      return reply(data);
     }
     const id = url.searchParams.get("id");
     if (id) {

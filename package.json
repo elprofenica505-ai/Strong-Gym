@@ -9,7 +9,7 @@
     "dev": "next dev",
     "lint": "eslint .",
     "start": "next start",
-    "test:sql": "node scripts/test-sql.mjs && node scripts/test-crm-sql.mjs",
+    "test:sql": "node scripts/test-sql.mjs && node scripts/test-crm-sql.mjs && node scripts/test-crm-compat-sql.mjs",
     "typecheck": "tsc --noEmit",
     "test:auth": "node --experimental-strip-types --test tests/*.test.mjs"
   },

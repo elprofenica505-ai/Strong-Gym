@@ -179,9 +179,9 @@ crudos, nombres de clientes, tokens QR ni cuerpos de solicitudes.
    ejecutar ROLLBACK antes de continuar. No compartir credenciales ni tokens.
 4. Volver a buscar al cliente existente; no duplicarlo por un error al abrirlo.
 
-El error de la base real reportado después de PR #9 aún requiere su código o
-resultado de diagnóstico. Las pruebas automatizadas reproducen los fallos de
-frontend/API con respuestas simuladas; no certifican esa instalación remota.
+El diagnóstico completo posterior a PR #10 confirmó una estructura financiera
+diferente (ver sección de compatibilidad abajo). Las pruebas locales no
+certifican por sí solas esa instalación remota.
 
 ### Demostración comercial conectada vs. modo sin base
 
@@ -210,7 +210,8 @@ Las capturas posteriores a PR #10 confirman que esa base no usa la estructura
 financiera de `00010_finance.sql`: el diagnóstico devuelve nueve columnas no
 encontradas. La estructura visible incluye `bank_accounts`,
 `payment_methods.name/currency`, `member_balances.credit_nio/credit_usd/debt_nio`
-y `transactions.type`. Las celdas siguen truncadas; no es un inventario completo.
+y `transactions.type`. El CSV completo recibido posteriormente permitió reproducir columnas,
+restricciones, enums y la vista en una fixture local, sin registros del negocio.
 No asumir que `type` equivale a `direction`, ni calcular un saldo neto mezclando
 monedas. No crear tablas paralelas `accounts` ni columnas vacías para silenciar
 el fallo. La compatibilidad de cobros y Caja requiere revisar también enums,
@@ -224,3 +225,52 @@ celdas cortadas y el límite de filas de la interfaz. Revisar el archivo antes d
 compartirlo: las definiciones SQL personalizadas podrían contener literales
 privados añadidos fuera del repositorio; no compartir claves ni secretos.
 El diagnóstico no cambia el esquema ni certifica que el CRM remoto funcione.
+
+
+## Compatibilidad incremental confirmada por CSV (00022)
+
+**Para la base existente del diagnóstico, con CRM ya instalado:** hacer backup y
+aplicar únicamente `supabase/COMPATIBILIDAD-CRM.sql` (idéntico a migración 00022).
+No SETUP, ACTUALIZAR, seed ni reinstalación completa de FASE2. El cambio de
+funciones SQL afecta a todas las versiones que compartan esa base, incluso si
+el PR aún no está mergeado. Coordinar la prueba en una base de ensayo si es
+posible. Si la ejecución falla dentro de la transacción, ejecutar ROLLBACK antes
+de cualquier otra consulta y compartir el error sin repetir escrituras.
+
+Qué cambia exactamente:
+- Agrega `crm_options`, RPC para authenticated con comprobación interna de
+  admin/staff. No concede acceso directo nuevo a ninguna tabla ni desactiva RLS.
+- Normaliza `bank_accounts` y `payment_methods.name/currency/display_order`
+  según las columnas recibidas. `BOTH` permite ambas monedas; no incluye métodos
+  ni cuentas inactivos. No inventa cuentas ni métodos ni copia registros.
+- Sustituye `crm_detail`: conserva ficha/carnet/historial y devuelve los cuatro
+  campos crédito/deuda NIO/USD por separado. No convierte ni compensa monedas;
+  una fila de saldo ausente no se muestra como cero.
+- Conserva la implementación de cobro original como función privada sin EXECUTE
+  para PUBLIC/anon/authenticated. El punto de entrada público sigue validando
+  staff y sólo la invoca para el modelo original del repositorio.
+- **En el modelo bank_accounts/saldos separados bloquea cobros CRM tanto en UI
+  como SQL (`FINANCE_REVIEW_REQUIRED`).** No inserta una transacción ni cambia
+  cuentas, créditos o deuda en ese modelo. Las referencias pendientes se
+  conservan; no repetir un cobro en otra pantalla sin revisar primero historial.
+- No modifica visitas ni etiquetas y no borra/recrea clientes o carnets.
+- Es idempotente. Los paquetes generados para instalaciones nuevas incorporan
+  00022; el archivo incremental evita reinstalar etapas anteriores en esta base.
+
+El CSV recibido trae una lista de triggers no internos vacía y
+`v_account_balances` simplemente lee `bank_accounts.balance`. **No alcanza con
+insertar un income y asumir que Caja se actualiza.** Todavía falta revisar las
+funciones de escritura/actualización financieras que esa instalación utiliza
+(si existen) y acordar el significado del cobro respecto a crédito/deuda. Por
+eso esta entrega habilita lectura/recepción compatible, NO certifica ni habilita
+cobros en esa base. Tampoco adapta aún el resto de consultas/reportes de FASE1;
+que abra una pantalla de Caja no valida sus totales con ese esquema.
+
+Pruebas: la fixture `tests/fixtures/finance-bank-accounts.sql` reproduce metadatos
+recibidos, no contiene datos reales ni pretende representar permisos RLS o
+funciones no exportadas. Los datos insertados en las pruebas son ficticios y
+sólo viven en PGlite local. Se reproduce el 42703 antes del parche; después se
+prueban lectura, monedas, permisos, bloqueo de cobro, conservación de datos y
+reaplicación. La estructura original del repositorio mantiene sus pruebas de
+pago idempotente mediante el wrapper. Pendiente ejecutar/validar el incremental
+en la base remota con autorización del usuario.

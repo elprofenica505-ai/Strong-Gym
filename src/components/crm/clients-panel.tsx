@@ -18,7 +18,12 @@ import { crmRequest } from "@/lib/crm/request";
 import { useCrmResource } from "./use-crm-resource";
 const input =
   "w-full rounded-lg border border-line bg-paper px-3 py-2.5 text-ink disabled:opacity-60";
-const emptyOptions: CrmOptions = { plans: [], methods: [], accounts: [] };
+const emptyOptions: CrmOptions = {
+  plans: [],
+  methods: [],
+  accounts: [],
+  payments_enabled: false,
+};
 function validDirectory(data: unknown) {
   const value = data as Directory | null;
   return !!value && Array.isArray(value.rows) && Number.isInteger(value.total);
@@ -29,7 +34,8 @@ function validOptions(data: unknown) {
     !!value &&
     Array.isArray(value.plans) &&
     Array.isArray(value.methods) &&
-    Array.isArray(value.accounts)
+    Array.isArray(value.accounts) &&
+    typeof value.payments_enabled === "boolean"
   );
 }
 function validDetail(data: unknown) {
@@ -530,16 +536,36 @@ export function ClientsPanel({
               asistencia.
             </p>
           )}
-          {detail.balance !== null ? (
+          {detail.balances ? (
+            <div className="rounded-xl border border-line p-4 text-sm text-fog space-y-1">
+              <h3 className="font-bold text-ink">
+                Créditos y deudas de la cuenta vinculada
+              </h3>
+              <p>
+                Crédito NIO: C$ {Number(detail.balances.credit_nio).toFixed(2)}
+              </p>
+              <p>Deuda NIO: C$ {Number(detail.balances.debt_nio).toFixed(2)}</p>
+              <p>
+                Crédito USD: US$ {Number(detail.balances.credit_usd).toFixed(2)}
+              </p>
+              <p>
+                Deuda USD: US$ {Number(detail.balances.debt_usd).toFixed(2)}
+              </p>
+              <p>
+                Valores guardados por separado. No se compensan ni convierten
+                automáticamente.
+              </p>
+            </div>
+          ) : detail.balance !== null ? (
             <p className="text-sm text-fog">
               Saldo de cuenta vinculada: C$ {Number(detail.balance).toFixed(2)}{" "}
               (+ a favor / − deuda). No bloquea entradas automáticamente.
             </p>
           ) : (
             <p className="text-sm text-fog">
-              Sin saldo financiero vinculado. Los cobros de esta ficha se
-              muestran abajo; esto no significa que esté al día ni genera una
-              cuenta por cobrar.
+              {detail.client.profile_id
+                ? "Saldo de la cuenta vinculada no disponible. No equivale a cero ni confirma que esté al día."
+                : "Sin saldo financiero vinculado. Los cobros de esta ficha se muestran abajo; esto no significa que esté al día ni genera una cuenta por cobrar."}
             </p>
           )}
           <EditClient
@@ -597,7 +623,10 @@ export function ClientsPanel({
               clientId={detail.client.id}
               options={options}
               blocked={
-                detailBusy || optionsResource.loading || !!optionsResource.error
+                detailBusy ||
+                optionsResource.loading ||
+                !!optionsResource.error ||
+                options.payments_enabled !== true
               }
               onBusy={setBusy}
               onRefresh={() => setRevision((n) => n + 1)}
@@ -862,6 +891,15 @@ function PaymentForm({
   return (
     <section className="space-y-3">
       <h3 className="text-lg font-bold">Registrar un cobro</h3>
+      {options.payments_enabled === false && (
+        <p
+          role="status"
+          className="rounded-xl border border-alert/40 p-3 text-sm text-alert"
+        >
+          {options.payment_block_reason ||
+            "Los cobros están bloqueados hasta confirmar las opciones y la compatibilidad financiera. No se envió ningún cobro por este aviso."}
+        </p>
+      )}
       <p className="text-sm text-fog">
         Acción independiente de la entrada. No emite factura ni aplica
         promociones ni renueva planes automáticamente.
