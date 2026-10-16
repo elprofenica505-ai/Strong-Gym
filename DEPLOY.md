@@ -264,7 +264,7 @@ copy (select * from public.bookings) to stdout with csv header;
 | "Email o contraseña incorrectos" con datos correctos | Falta confirmar el email. Revisá Authentication → Users: si dice *Waiting for verification*, el socio tiene que abrir el link del mail. |
 | El mail de confirmación no llega | Límite del servicio gratuito de emails o el mail cayó en spam. Probá desactivando **Confirm email** o configurá un SMTP propio. |
 | Al reservar dice "No pudimos completar la reserva" | Mirá los logs: Vercel → tu proyecto → **Logs**. Si dice `function book_session does not exist`, no corriste `SETUP.sql`. |
-| El panel dice "No tenés permisos" | Corré el `update public.profiles set role = 'admin' ...` y volvé a iniciar sesión. |
+| El panel dice "No tenés permisos" o no puede verificar el perfil | Revisá el ID/rol que muestra y seguí [el diagnóstico del panel](docs/PANEL-ADMIN.md). No confundir un SELECT como dueño con la lectura bajo RLS del usuario autenticado. |
 | El sitio redirige siempre a `/es` | Es lo normal: el idioma se detecta del navegador. El selector ES/EN del header lo cambia. |
 | Las clases aparecen vacías | `sessions` está vacía. Corré `select public.generate_week_sessions(...)` (ver Paso 3). |
 

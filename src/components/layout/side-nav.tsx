@@ -18,6 +18,7 @@ import {
 import { useApp } from "@/components/providers/app-provider";
 import { useDictionary } from "@/components/providers/dictionary-provider";
 import { ButtonLink } from "@/components/ui/button";
+import { canAccessPanel } from "@/lib/auth/current-user";
 import { cn, initials } from "@/lib/utils";
 import { Logo } from "./logo";
 
@@ -137,7 +138,7 @@ export function SideNav({ open, onClose }: { open: boolean; onClose: () => void 
           );
         })}
 
-        {user && (user.role === "admin" || user.role === "staff") ? (
+        {canAccessPanel(user) ? (
           <Link
             href={`/${locale}/panel`}
             onClick={onClose}

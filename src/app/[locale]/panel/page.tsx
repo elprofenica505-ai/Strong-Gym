@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { canAccessPanel } from "@/lib/auth/current-user";
+import { ReloadButton } from "@/components/ui/reload-button";
 import { ShieldAlert } from "lucide-react";
 import {
   AdminPanel,
@@ -47,7 +50,33 @@ export default async function AdminPage({ params }: { params: Promise<{ locale: 
 
   const demo = !isSupabaseConfigured;
   const user = await getCurrentUser();
-  const isStaff = user?.role === "admin" || user?.role === "staff";
+  const isStaff = canAccessPanel(user);
+
+  if (!demo && !user) redirect(`/${locale}/ingresar`);
+
+  // Un fallo de RLS/red o un perfil inexistente no es una denegación por rol.
+  if (!demo && user && user.profileStatus !== "ready") {
+    const es = locale === "es";
+    return (
+      <section className="container-x flex min-h-[70vh] flex-col items-center justify-center gap-5 py-24 text-center">
+        <ShieldAlert className="size-8 text-alert" aria-hidden="true" />
+        <h1 className="display-xl text-[1.75rem]">
+          {es ? "No pudimos verificar tu perfil" : "We could not verify your profile"}
+        </h1>
+        <p className="max-w-lg text-fog">
+          {es
+            ? "Tu sesión está iniciada, pero no se pudo leer un perfil válido en public.profiles. No cambiamos tu rol ni habilitamos acceso sin verificarlo. Revisá las políticas RLS y que Vercel use el mismo proyecto de Supabase donde verificaste tu rol."
+            : "You are signed in, but a valid public.profiles record could not be read. Your role was not changed and access remains protected. Check RLS policies and that Vercel uses the correct Supabase project."}
+        </p>
+        <p className="max-w-full break-all font-mono text-xs text-fog">
+          ID: {user.id} · {user.profileStatus === "missing"
+            ? (es ? "Perfil no visible o inexistente" : "Profile missing or not visible")
+            : (es ? "Error al leer el perfil" : "Profile read error")}
+        </p>
+        <ReloadButton label={es ? "Reintentar" : "Retry"} />
+      </section>
+    );
+  }
 
   /* ------------------------------------------------------------
      Control de acceso: sólo staff/admin (en modo demo se puede
@@ -68,12 +97,13 @@ export default async function AdminPage({ params }: { params: Promise<{ locale: 
           {dict.admin.noAccessHint}
         </p>
 
+        {user ? (
+          <p className="mt-4 max-w-full break-all font-mono text-xs text-fog">
+            ID: {user.id} · public.profiles.role: {user.role}
+          </p>
+        ) : null}
+
         <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-          {user ? null : (
-            <ButtonLink href={`/${locale}/ingresar`} size="lg">
-              {dict.nav.login}
-            </ButtonLink>
-          )}
           <ButtonLink href={`/${locale}/mi-cuenta`} variant="outline" size="lg">
             {dict.account.title}
           </ButtonLink>

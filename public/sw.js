@@ -6,10 +6,9 @@
  *     red y se guarda. El navegador puede llegar a tener cientos de KB
  *     en caché, que es lo que hace que la app abra instantánea aún sin
  *     red.
- *   - Páginas HTML: network-first con fallback offline. Primero se
- *     intenta la red; si falla, se sirve la última versión cacheada;
- *     si tampoco hay caché, se sirve la página `/es/offline` para que
- *     el usuario vea algo coherente con el sitio.
+ *   - Páginas HTML: red con fallback a la pantalla offline. No guardar
+ *     HTML personalizado: incluso el inicio contiene menú y sesión.
+ *     Sólo las pantallas /es/offline y /en/offline admiten caché.
  *   - API y Supabase: nunca se cachean. Reservar, cancelar, login y
  *     todo lo que toca la base de datos va SIEMPRE por la red; si
  *     falla, la app muestra el error y se acabó.
@@ -17,14 +16,11 @@
  * Versión del caché: cambiarla fuerza al SW a descartar todo el
  * caché viejo en la próxima activación.
  */
-const CACHE_VERSION = "strong-gym-v1";
+const CACHE_VERSION = "strong-gym-v2";
 const ASSET_CACHE = `${CACHE_VERSION}-assets`;
 const PAGE_CACHE = `${CACHE_VERSION}-pages`;
 
 const PRECACHE_ASSETS = [
-  "/",
-  "/es",
-  "/en",
   "/es/offline",
   "/en/offline",
   "/icon.svg",
@@ -122,9 +118,8 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(networkFirstPage(req));
   } else if (isAsset(req)) {
     event.respondWith(cacheFirstAsset(req));
-  } else {
-    event.respondWith(networkFirstPage(req));
   }
+  // RSC/prefetch y otros requests: red normal, nunca un HTML cacheado.
 });
 
 async function cacheFirstAsset(req) {
@@ -154,11 +149,12 @@ async function networkFirstPage(req) {
   const cache = await caches.open(PAGE_CACHE);
   try {
     const res = await fetch(req);
-    if (res && res.ok) cache.put(req, res.clone());
+    if (res && res.ok && /^\/(es|en)\/offline$/.test(new URL(req.url).pathname)) {
+      await cache.put(req, res.clone());
+    }
     return res;
   } catch (err) {
-    const cached = await cache.match(req);
-    if (cached) return cached;
+    // No devolver una sesión/denegación anterior de /panel o /mi-cuenta.
     // Fallback: la página offline del idioma correcto (si la podemos
     // deducir) o genérica.
     const acceptLang = req.headers.get("accept-language") || "";

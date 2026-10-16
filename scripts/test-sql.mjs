@@ -365,6 +365,30 @@ await db.exec(`update public.profiles set role = 'admin' where id = '${userB}';`
 const asAdmin = await db.query(`select public.generate_week_sessions(current_date + 56) as n`);
 check("el admin sí puede", Number(asAdmin.rows[0].n) > 0, `${asAdmin.rows[0].n} clases`);
 
+console.log("\n▶ El rol del panel se puede leer con RLS (no sólo desde el SQL Editor)");
+await db.exec(`set role authenticated;`);
+try {
+  const propio = await db.query(`select id, role from public.profiles where id = auth.uid()`);
+  const permiso = await db.query(`select public.is_staff() as allowed`);
+  check("el admin autenticado puede leer su rol desde profiles", propio.rows[0]?.role === "admin");
+  check("is_staff reconoce al mismo admin", permiso.rows[0]?.allowed === true);
+} finally {
+  await db.exec(`reset role;`);
+}
+await loginAs(userA);
+await db.exec(`set role authenticated;`);
+try {
+  const propio = await db.query(`select id, role from public.profiles where id = auth.uid()`);
+  const permiso = await db.query(`select public.is_staff() as allowed`);
+  check("el socio autenticado puede leer su propio perfil", propio.rows[0]?.role === "member");
+  check("el socio no obtiene permisos de staff", permiso.rows[0]?.allowed === false);
+  const ajeno = await db.query(`select id from public.profiles where id = $1`, [userB]);
+  check("el socio no puede leer el perfil del admin", ajeno.rows.length === 0);
+} finally {
+  await db.exec(`reset role;`);
+}
+await loginAs(userB);
+
 console.log("\n▶ Cerrar clases pasadas (ausentes)");
 const closed = await db.query(`select public.close_past_sessions() as n`);
 check("la función corre sin errores", typeof closed.rows[0].n === "number", `${closed.rows[0].n} marcadas`);
