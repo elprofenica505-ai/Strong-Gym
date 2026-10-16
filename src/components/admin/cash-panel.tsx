@@ -104,12 +104,12 @@ export function MiniBar({ data, label }: {
   const max = Math.max(1, ...data.filter(d => Number.isFinite(d.value)).map(d => Math.abs(d.value)));
   const allZero = data.length > 0 && data.every(d => d.value === 0);
   return (
-    <section aria-label={label}>
+    <section className="min-w-0 max-w-full" aria-label={label}>
       <p className="mb-3 text-[0.6875rem] font-semibold tracking-[0.14em] text-fog uppercase">{label}</p>
       {data.length === 0 ? <p className="py-8 text-sm text-fog">Sin registros informados para este gráfico.</p> : <>
         {allZero && <p className="mb-2 text-xs text-fog">Los importes de los {data.length} registros mostrados son 0 NIO; no hay barras de importe distinto de cero.</p>}
         <p className="mb-2 text-xs text-fog">Eje 0 al centro · positivos arriba, negativos abajo.</p>
-        <div className="overflow-x-auto pb-2">
+        <div className="w-full min-w-0 max-w-full overflow-x-auto pb-2" role="region" aria-label={`Desplazar gráfico: ${label}`} tabIndex={0}>
           <div className="flex gap-1.5" style={{ minWidth: data.length > 8 ? data.length * 34 : undefined }}>
             {data.map((d) => {
               const valid = Number.isFinite(d.value);
@@ -274,11 +274,11 @@ export function CashPanel({
       {summary.totalOwedUsd !== undefined && <Kpi label="Deuda informada · USD (sin convertir)" value={formatMoney(summary.totalOwedUsd,"USD")} Icon={Wallet} />}
 
       {/* ---------- Gráficos ---------- */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl border border-line bg-card p-5">
+      <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="min-w-0 rounded-2xl border border-line bg-card p-5">
           <MiniBar data={dailyChart} label="Ingresos NIO · 14 días con registros" />
         </div>
-        <div className="rounded-2xl border border-line bg-card p-5">
+        <div className="min-w-0 rounded-2xl border border-line bg-card p-5">
           <MiniBar data={monthlyChart} label="Resultado NIO · 6 meses con registros" />
         </div>
       </div>

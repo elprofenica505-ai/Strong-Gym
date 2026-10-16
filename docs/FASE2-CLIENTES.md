@@ -461,3 +461,45 @@ Salida real local posterior al ajuste: typecheck `tsc --noEmit` exit 0; lint
 `fail 0`; build `Compiled successfully` y `41/41` (aviso previo metadataBase);
 test:sql «Todo pasó», CRM 48 y compatibilidad 67; build-sql --check al día;
 git diff --check sin errores. Sin ejecución remota ni certificación visual nueva.
+
+## Confirmación de gráficos y contención móvil (2026-10-16)
+
+Las capturas nuevas de 07:29 en el Preview `3e5minnn6` muestran barras negativas
+(-166.5K/-86.6K) y tabla expandida de ingresos en cero. Se valida ese caso visual,
+no sus importes contables. Las capturas de 07:15 adjuntas otra vez corresponden
+al Preview anterior (`f78mjvkhv`), no prueban regresión del texto de accesos.
+La captura de Hellen ya validada tampoco se interpreta como nueva prueba de Caja.
+
+Se detectó que la grilla móvil, sin columnas explícitas ni min-width:0 en sus
+hijos, heredaba el ancho mínimo del gráfico. Corrección acotada: columna
+minmax(0,1fr) en móvil, tarjetas/section min-w-0 y contenedor scroll w-full,
+min-w-0/max-w-full. Sólo la tira interna mantiene ancho mínimo para las fechas.
+El área desplazable tiene nombre accesible y foco de teclado. Sin ocultar el
+overflow del body, sin modificar importes, consultas, cobros ni SQL.
+
+Comprobación real con Chromium local, markup SSR de CashPanel con 14 días
+sintéticos, CSS compilado por Next y marco flex/main equivalente (sin cabecera,
+sin sesión/Supabase remoto ni navegación completa):
+
+| Viewport px | Documento antes px | Documento después px |
+| --- | --- | --- |
+| 320 | 527 | 320 |
+| 360 | 527 | 360 |
+| 393 | 527 | 393 |
+| 414 | 527 | 414 |
+| 768 | 768 | 768 |
+| 1280 | 1280 | 1280 |
+
+Cada tamaño se midió con tablas cerradas y abiertas. Después, el contenedor
+interior permite contenido más ancho (477px frente a 318px de área en viewport
+360), sin ensanchar la página. El test habitual agrega regresión DOM de la
+cadena grid/tarjeta/section/scroll; JSDOM no calcula dimensiones. La medición
+Chromium es una comprobación local separada, no E2E del Preview ni de datos
+reales. No se agregaron dependencias de navegador al proyecto. Falta confirmar
+la contención en teléfono y revisar Cuentas/Reportes/Gastos. PR sin merge.
+
+Salida real local del ajuste de contención: typecheck `tsc --noEmit`, exit 0;
+lint `10 problems (0 errors, 10 warnings)` previos; test:auth `tests 113`,
+`pass 113`, `fail 0`; build `Compiled successfully` y `41/41`, con aviso previo
+metadataBase; test:sql «Todo pasó», CRM 48 y compatibilidad 67; build-sql --check
+al día y diff --check sin errores.
