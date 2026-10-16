@@ -203,3 +203,24 @@ Verificación antes de una venta: alta sólo nombre, búsqueda, ficha, una visit
 por día, cobro con referencia visible en Caja, reintento sin duplicación,
 reemplazo de QR, permisos staff/member y pruebas físicas de cámara/impresión.
 No marcar estas verificaciones como hechas sólo por pasar CI o abrir páginas.
+
+### Evidencia de la instalación remota y exportación de estructura
+
+Las capturas posteriores a PR #10 confirman que esa base no usa la estructura
+financiera de `00010_finance.sql`: el diagnóstico devuelve nueve columnas no
+encontradas. La estructura visible incluye `bank_accounts`,
+`payment_methods.name/currency`, `member_balances.credit_nio/credit_usd/debt_nio`
+y `transactions.type`. Las celdas siguen truncadas; no es un inventario completo.
+No asumir que `type` equivale a `direction`, ni calcular un saldo neto mezclando
+monedas. No crear tablas paralelas `accounts` ni columnas vacías para silenciar
+el fallo. La compatibilidad de cobros y Caja requiere revisar también enums,
+restricciones y triggers reales antes de cambiar funciones o escritura.
+
+`supabase/DIAGNOSTICO-FINANZAS.sql` es una consulta manual de metadatos (no una
+migración). Devuelve una fila JSON con columnas/tipos/defaults, restricciones,
+valores enum, definiciones de triggers y vistas de esas relaciones financieras.
+No consulta registros comerciales. Exportar el resultado completo como CSV evita
+celdas cortadas y el límite de filas de la interfaz. Revisar el archivo antes de
+compartirlo: las definiciones SQL personalizadas podrían contener literales
+privados añadidos fuera del repositorio; no compartir claves ni secretos.
+El diagnóstico no cambia el esquema ni certifica que el CRM remoto funcione.
