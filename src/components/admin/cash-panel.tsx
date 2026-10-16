@@ -95,28 +95,54 @@ function Kpi({
 /* ============================================================
    Mini gráfico de barras (sin libs externas)
    ============================================================ */
-function MiniBar({ data, valueKey, label }: {
+export function MiniBar({ data, label }: {
   data: { label: string; value: number }[];
-  valueKey: string;
   label: string;
 }) {
-  const max = Math.max(1, ...data.map((d) => d.value));
+  // Alturas explícitas: un porcentaje en una columna sin altura definida colapsaba.
+  // Eje central compartido para que los resultados negativos no sean alturas inválidas.
+  const max = Math.max(1, ...data.filter(d => Number.isFinite(d.value)).map(d => Math.abs(d.value)));
+  const allZero = data.length > 0 && data.every(d => d.value === 0);
   return (
-    <div>
+    <section aria-label={label}>
       <p className="mb-3 text-[0.6875rem] font-semibold tracking-[0.14em] text-fog uppercase">{label}</p>
-      <div className="flex h-32 items-end gap-1.5">
-        {data.map((d) => (
-          <div key={d.label} className="flex flex-1 flex-col items-center gap-1">
-            <div
-              className="w-full rounded-t bg-brand/60 transition-all duration-500 hover:bg-brand"
-              style={{ height: `${(d.value / max) * 100}%`, minHeight: d.value > 0 ? "4px" : "0" }}
-              title={`${d.label}: ${formatMoney(d.value)}`}
-            />
-            <span className="text-[0.625rem] text-fog">{d.label}</span>
+      {data.length === 0 ? <p className="py-8 text-sm text-fog">Sin registros informados para este gráfico.</p> : <>
+        {allZero && <p className="mb-2 text-xs text-fog">Los importes de los {data.length} registros mostrados son 0 NIO; no hay barras de importe distinto de cero.</p>}
+        <p className="mb-2 text-xs text-fog">Eje 0 al centro · positivos arriba, negativos abajo.</p>
+        <div className="overflow-x-auto pb-2">
+          <div className="flex gap-1.5" style={{ minWidth: data.length > 8 ? data.length * 34 : undefined }}>
+            {data.map((d) => {
+              const valid = Number.isFinite(d.value);
+              const negative = d.value < 0;
+              const height = valid ? Math.abs(d.value) / max * 56 : 0;
+              return (
+                <div key={d.label} className="min-w-0 flex-1 text-center">
+                  <div className="relative" style={{height: 128}} role="img" aria-label={`${d.label}: ${formatMoney(d.value)}`}>
+                    <span aria-hidden="true" className="absolute inset-x-0 top-1/2 border-t border-line" />
+                    {valid && <div
+                      aria-hidden="true"
+                      className={cn("absolute inset-x-0 rounded-sm", negative ? "bg-alert" : d.value === 0 ? "bg-fog" : "bg-brand")}
+                      style={{ height: d.value === 0 ? 2 : Math.max(2, height), ...(negative ? {top: 64} : {bottom: d.value === 0 ? 63 : 64}) }}
+                      title={`${d.label}: ${formatMoney(d.value)}`}
+                    />}
+                  </div>
+                  <p className="whitespace-nowrap text-[0.625rem] text-fog">{d.label}</p>
+                  {data.length <= 6 && <p className="mt-1 text-[0.625rem] text-mist">{formatMoney(d.value, "NIO", {compact: true})}</p>}
+                </div>
+              );
+            })}
           </div>
-        ))}
-      </div>
-    </div>
+        </div>
+        <details className="mt-2 text-xs text-fog">
+          <summary className="cursor-pointer text-mist">Ver importes del gráfico</summary>
+          <table className="mt-2 w-full text-left">
+            <caption className="sr-only">{label} · importes NIO informados</caption>
+            <thead><tr><th scope="col">Período</th><th scope="col" className="text-right">Importe NIO</th></tr></thead>
+            <tbody>{data.map(d => <tr key={d.label}><th scope="row" className="py-1 font-normal">{d.label}</th><td className="py-1 text-right font-mono">{formatMoney(d.value)}</td></tr>)}</tbody>
+          </table>
+        </details>
+      </>}
+    </section>
   );
 }
 
@@ -250,10 +276,10 @@ export function CashPanel({
       {/* ---------- Gráficos ---------- */}
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-2xl border border-line bg-card p-5">
-          <MiniBar data={dailyChart} valueKey="income" label="Ingresos NIO · 14 días con registros" />
+          <MiniBar data={dailyChart} label="Ingresos NIO · 14 días con registros" />
         </div>
         <div className="rounded-2xl border border-line bg-card p-5">
-          <MiniBar data={monthlyChart} valueKey="net" label="Resultado NIO · 6 meses con registros" />
+          <MiniBar data={monthlyChart} label="Resultado NIO · 6 meses con registros" />
         </div>
       </div>
 
@@ -286,7 +312,7 @@ export function CashPanel({
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[0.875rem] font-semibold text-ink">
-                      {m.nameEs ?? "Otros"}
+                      {m.nameEs ?? "Sin método informado"}
                     </p>
                     <p className="text-[0.6875rem] text-fog">
                       {m.txCount} mov · {m.incomeNio > 0 ? `+${formatMoney(m.incomeNio)}` : "—"} ingresos
@@ -398,7 +424,7 @@ export function CashPanel({
               >
                 <div>
                   <p className="text-[0.8125rem] font-semibold text-ink">{a.name}</p>
-                  <p className="text-[0.6875rem] text-fog uppercase tracking-wider">{a.kind}</p>
+                  <p className="text-[0.6875rem] text-fog uppercase tracking-wider">{{cash: "Caja", bank: "Banco", wallet: "Billetera"}[a.kind] ?? a.kind}</p>
                 </div>
                 <div className="text-right"><Badge className="border-line bg-night-3 text-mist">{a.currency}</Badge>
                   {a.balance !== undefined && <p className="text-xs text-fog">Saldo informado: {formatMoney(a.balance,a.currency)}</p>}
@@ -422,17 +448,17 @@ export function CashPanel({
             <QuickLink
               href={`/${useLocale()}/panel/cuentas`}
               label="Ver cuentas por cobrar"
-              hint="Clientes con cuotas pendientes"
+              hint="Deudas informadas por moneda"
             />
             <QuickLink
               href={`/${useLocale()}/panel/gastos`}
-              label="Registrar un gasto"
-              hint="Alquiler, sueldos, mantenimiento"
+              label="Ver categorías de gastos"
+              hint="Sólo consulta · registro de egresos no habilitado"
             />
             <QuickLink
               href={`/${useLocale()}/panel/reportes`}
               label="Reporte mensual"
-              hint="P&L y desglose por método"
+              hint="Ingresos, egresos y resultado NIO"
             />
             <QuickLink
               href={`/${useLocale()}/panel`}

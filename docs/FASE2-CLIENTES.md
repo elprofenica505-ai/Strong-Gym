@@ -424,3 +424,40 @@ Salida de validación local de este avance (secuencial, 2026-10-15):
 - `npm run test:sql`: suite histórica «Todo pasó»; CRM 48 y compatibilidad 67.
 - `node scripts/build-sql.mjs --check`: «Todo al día — 9 clases por semana».
 - `git diff --check`: sin errores. No se aplicó SQL a Supabase remoto.
+
+## Capturas remotas de Caja y corrección de gráficos (2026-10-16)
+
+El usuario compartió seis capturas del Preview: se ve la lectura compatible,
+0 sesiones abiertas informadas, ingresos/egresos del día en cero, resultado del
+mes -NIO 86,600, deudas NIO/USD en cero y ambas cuentas EJEMPLO con saldo cero.
+También aparecen conceptos `[SEED-GASTO]` y un agregado sin nombre de método.
+Esto prueba el caso de carga mostrado, NO la exactitud contable, el bloqueo de
+RPC por rol en remoto, la existencia del cliente EJEMPLO ni las otras pantallas.
+No interpretar el resultado negativo como pérdida real del negocio sin revisar
+los movimientos y su procedencia. No se borran/excluyen automáticamente seeds.
+
+Las barras tenían alturas porcentuales dentro de columnas sin altura definida;
+el resultado negativo además generaba alturas negativas. Se corrige sólo su
+representación: alturas explícitas en px, escala compartida por valor absoluto,
+eje cero central y negativos debajo, importes disponibles como texto/tabla
+expandible sin depender del hover. Cero con registros se distingue de ausencia
+de registros. En celular se conserva el formato de las fechas mediante scroll
+horizontal del gráfico, no de toda la página. No hay cambios a consultas,
+agregados, importes, permisos, migraciones ni datos.
+
+Accesos rápidos: «Ver categorías de gastos» y aclaración de consulta, sin
+prometer registrar egresos; deuda informada por moneda en vez de cuotas
+inferidas; reporte enlazado sin prometer desglose no incluido en esa página.
+Tipos de cuenta traducidos y método sin nombre: «Sin método informado», sin
+asignar un método a transacciones existentes.
+
+Pruebas nuevas: negativos, mixtos, cero, sin filas, valores desconocidos,
+anchura/fechas del gráfico móvil y enlaces sin promesas de escritura. La salida
+SSR prueba el markup/estilos generados; no sustituye revisión visual del Preview
+en el teléfono. PR #10 permanece sin merge. Este ajuste **no necesita SQL nuevo**.
+
+Salida real local posterior al ajuste: typecheck `tsc --noEmit` exit 0; lint
+`10 problems (0 errors, 10 warnings)` previos; test:auth `tests 112`, `pass 112`,
+`fail 0`; build `Compiled successfully` y `41/41` (aviso previo metadataBase);
+test:sql «Todo pasó», CRM 48 y compatibilidad 67; build-sql --check al día;
+git diff --check sin errores. Sin ejecución remota ni certificación visual nueva.
