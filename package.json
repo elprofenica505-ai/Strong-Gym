@@ -31,11 +31,13 @@
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.9",
     "@tailwindcss/postcss": "^4.3.3",
+    "@testing-library/react": "^16.3.3",
     "@types/node": "^24.9.2",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.5",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.4.0",
+    "jsdom": "^26.1.0",
     "sharp": "^0.35.5",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3"

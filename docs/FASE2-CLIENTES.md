@@ -142,3 +142,64 @@ real ni una cámara física: esas comprobaciones siguen en el recorrido de acept
 Marketing/envío de promociones, fusión de cuentas posteriores, membresías con
 vencimiento, lector de torniquete, autoservicio y sincronización offline NO están
 incluidos en esta entrega. Las etiquetas y métricas preparan esa evolución.
+
+## Corrección de apertura de fichas y atención sin QR
+
+- La búsqueda por nombre es la primera sección del panel. QR/cámara/lector USB
+  son alternativas opcionales; escanear sigue sin cobrar ni registrar entrada.
+- Listado, ficha y planes/métodos tienen estados de error independientes. Una
+  lectura exitosa del listado no borra el error de la ficha. Los botones de
+  reintento sólo repiten lecturas: **no vuelven a crear clientes ni cobros**.
+- Lecturas con espera máxima de 15 segundos; operaciones de escritura, 30.
+  Una respuesta perdida de escritura **no significa que no se guardó**. Buscar
+  al cliente o revisar historial antes de repetir. Los cobros conservan la misma
+  referencia en sessionStorage; no abrir otra pestaña para repetirlos.
+- Durante una actualización se conserva el formulario de cobro y su referencia,
+  pero se deshabilitan las acciones y se oculta el carnet hasta confirmar la
+  ficha actual. Una respuesta tardía de otro cliente se descarta.
+- Respuestas vacías o JSON inválido producen error, nunca una ficha inventada
+  ni una carga perpetua.
+
+### Diagnóstico de una base ya instalada
+
+No reinstalar SETUP/ACTUALIZAR ni cambiar RLS a ciegas. La pantalla puede mostrar
+por ejemplo `CRM_DETAIL_42703`: `DETAIL` identifica la lectura de ficha; `42703`
+es una columna no encontrada. `42501` identifica permisos rechazados;
+`PGRST202`/`42883`, una función que no se pudo encontrar. El código orienta la
+revisión, pero no identifica por sí solo la columna o el cambio SQL necesario.
+Los logs de esta API sólo registran operación y código validado, no mensajes SQL
+crudos, nombres de clientes, tokens QR ni cuerpos de solicitudes.
+
+1. Copiar el código visible y decir si falló ficha, listado o planes/métodos.
+2. Si el listado funciona, no concluir que toda Supabase está desconectada.
+3. Comparar la función/columnas reales con las migraciones antes de proponer SQL.
+   Si se diagnostica `crm_detail` desde el SQL Editor con identidad de staff,
+   usar una transacción y **ROLLBACK**: esa función puede crear un carnet cuando
+   falta, por lo que no es una consulta estrictamente de sólo lectura. Si falla,
+   ejecutar ROLLBACK antes de continuar. No compartir credenciales ni tokens.
+4. Volver a buscar al cliente existente; no duplicarlo por un error al abrirlo.
+
+El error de la base real reportado después de PR #9 aún requiere su código o
+resultado de diagnóstico. Las pruebas automatizadas reproducen los fallos de
+frontend/API con respuestas simuladas; no certifican esa instalación remota.
+
+### Demostración comercial conectada vs. modo sin base
+
+- **Sin configuración Supabase:** panel sin escritura; no sirve para demostrar
+  alta/cobros reales.
+- **Demo comercial conectada:** usar preferentemente un proyecto Supabase y un
+  despliegue separados, con migraciones revisadas y clientes de ejemplo
+  identificados (`is_demo`, indicador EJEMPLO). El seed 00021 es opt-in: no se
+  ejecutó automáticamente con este arreglo. No crea pagos ni cuentas Auth falsas.
+- **Entrega al negocio:** preparar su propia base/despliegue y sus credenciales,
+  sin seed ficticio. Configurar sus planes, métodos, cuentas y administrador con
+  información confirmada. No reemplazar variables de un despliegue compartido
+  ni limpiar la base actual sin backup y autorización.
+- El código no selecciona automáticamente “demo comercial” por el nombre del
+  despliegue: una base configurada escribe realmente en ella. `is_demo` marca
+  datos de ejemplo, no crea aislamiento ni convierte cobros en simulaciones.
+
+Verificación antes de una venta: alta sólo nombre, búsqueda, ficha, una visita
+por día, cobro con referencia visible en Caja, reintento sin duplicación,
+reemplazo de QR, permisos staff/member y pruebas físicas de cámara/impresión.
+No marcar estas verificaciones como hechas sólo por pasar CI o abrir páginas.

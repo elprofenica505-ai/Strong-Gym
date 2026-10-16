@@ -6,9 +6,11 @@ import { parseCard } from "@/lib/crm/types";
 export function QrScanner({
   onRead,
   disabled = false,
+  onManual,
 }: {
   onRead: (token: string) => Promise<void>;
   disabled?: boolean;
+  onManual?: () => void;
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const controls = useRef<IScannerControls | null>(null);
@@ -41,7 +43,9 @@ export function QrScanner({
     stop();
     const token = parseCard(raw);
     if (!token) {
-      setMessage("Este no es un QR de cliente Strong. Usá la búsqueda manual.");
+      setMessage(
+        "Este campo sólo acepta códigos QR, no nombres. Tocá Buscar por nombre para encontrar al cliente sin carnet.",
+      );
       return;
     }
     try {
@@ -111,33 +115,55 @@ export function QrScanner({
       >
         {running ? "Detener cámara" : "Abrir cámara"}
       </Button>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void submit(value);
-        }}
-        className="flex flex-col gap-2 sm:flex-row"
-      >
-        <label className="flex-1 text-xs text-fog">
-          Lector USB o código copiado
-          <input
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            disabled={disabled}
-            className="mt-1 w-full rounded-lg border border-line bg-paper p-3 text-ink"
-            placeholder="strong-gym:client:…"
-            maxLength={100}
-          />
-        </label>
+      {onManual && (
         <Button
-          type="submit"
-          disabled={disabled}
+          type="button"
           variant="outline"
-          className="self-end"
+          disabled={disabled}
+          onClick={() => {
+            stop();
+            onManual();
+          }}
         >
-          Buscar QR
+          Buscar por nombre
         </Button>
-      </form>
+      )}
+      <details className="rounded-xl border border-line p-3">
+        <summary className="cursor-pointer text-sm text-fog">
+          Opciones del lector USB o código QR copiado
+        </summary>
+        <p className="my-2 text-xs text-fog">
+          Este campo no busca nombres. Sólo usalo si tenés el contenido completo
+          de un QR Strong.
+        </p>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void submit(value);
+          }}
+          className="flex flex-col gap-2 sm:flex-row"
+        >
+          <label className="flex-1 text-xs text-fog">
+            Lector USB o código copiado
+            <input
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              disabled={disabled}
+              className="mt-1 w-full rounded-lg border border-line bg-paper p-3 text-ink"
+              placeholder="strong-gym:client:…"
+              maxLength={100}
+            />
+          </label>
+          <Button
+            type="submit"
+            disabled={disabled}
+            variant="outline"
+            className="self-end"
+          >
+            Buscar QR
+          </Button>
+        </form>
+      </details>
       {message && (
         <p role="status" className="text-sm text-brand-300">
           {message}

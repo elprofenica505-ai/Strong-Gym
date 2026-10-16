@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useDictionary } from "@/components/providers/dictionary-provider";
@@ -14,27 +14,35 @@ import {
 import { crmActionSchema } from "@/lib/crm/schemas";
 import { ClientCard } from "./client-card";
 import { QrScanner } from "./qr-scanner";
+import { crmRequest } from "@/lib/crm/request";
+import { useCrmResource } from "./use-crm-resource";
 const input =
   "w-full rounded-lg border border-line bg-paper px-3 py-2.5 text-ink disabled:opacity-60";
 const emptyOptions: CrmOptions = { plans: [], methods: [], accounts: [] };
-export async function crmRequest<T>(
-  url: string,
-  body?: unknown,
-  signal?: AbortSignal,
-): Promise<T> {
-  const res = await fetch(url, {
-    method: body ? "POST" : "GET",
-    cache: "no-store",
-    signal,
-    headers: body ? { "Content-Type": "application/json" } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const json = await res
-    .json()
-    .catch(() => ({ error: "Respuesta no válida. Revisá la conexión." }));
-  if (!res.ok)
-    throw new Error(json.error || "No se pudo completar la operación.");
-  return json as T;
+function validDirectory(data: unknown) {
+  const value = data as Directory | null;
+  return !!value && Array.isArray(value.rows) && Number.isInteger(value.total);
+}
+function validOptions(data: unknown) {
+  const value = data as CrmOptions | null;
+  return (
+    !!value &&
+    Array.isArray(value.plans) &&
+    Array.isArray(value.methods) &&
+    Array.isArray(value.accounts)
+  );
+}
+function validDetail(data: unknown) {
+  const value = data as ClientDetail | null;
+  return (
+    !!value?.client?.id &&
+    typeof value.client.full_name === "string" &&
+    (value.balance === null || typeof value.balance === "number") &&
+    typeof value.card === "string" &&
+    Array.isArray(value.visits) &&
+    Array.isArray(value.events) &&
+    Array.isArray(value.payments)
+  );
 }
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -58,74 +66,45 @@ export function ClientsPanel({
   isDemo: boolean;
 }) {
   const { locale } = useDictionary();
-  const [directory, setDirectory] = useState<Directory>({ rows: [], total: 0 });
-  const [options, setOptions] = useState<CrmOptions>(emptyOptions);
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
-  const [detail, setDetail] = useState<ClientDetail | null>(null);
   const [scanToken, setScanToken] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [revision, setRevision] = useState(0);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
-  const [loadedKey, setLoadedKey] = useState("");
-  const requestKey = JSON.stringify([query, category, offset, revision]);
-  const loading = !isDemo && loadedKey !== requestKey;
-  useEffect(() => {
-    if (isDemo) return;
-    const ctl = new AbortController();
-    crmRequest<CrmOptions>(
-      "/api/admin/clients?mode=options",
-      undefined,
-      ctl.signal,
-    )
-      .then(setOptions)
-      .catch((e) => {
-        if (!ctl.signal.aborted) setError(e.message);
-      });
-    return () => ctl.abort();
-  }, [isDemo]);
-  useEffect(() => {
-    if (isDemo) return;
-    const ctl = new AbortController();
-    const params = new URLSearchParams({
-      search: query,
-      category,
-      offset: String(offset),
-    });
-    crmRequest<Directory>(`/api/admin/clients?${params}`, undefined, ctl.signal)
-      .then((d) => {
-        setDirectory(d);
-        setError("");
-      })
-      .catch((e) => {
-        if (!ctl.signal.aborted) setError(e.message);
-      })
-      .finally(() => {
-        if (!ctl.signal.aborted) setLoadedKey(requestKey);
-      });
-    return () => ctl.abort();
-  }, [query, category, offset, revision, isDemo, requestKey]);
-  useEffect(() => {
-    if (!selected || isDemo) return;
-    const ctl = new AbortController();
-    crmRequest<ClientDetail>(
-      `/api/admin/clients?id=${selected}`,
-      undefined,
-      ctl.signal,
-    )
-      .then(setDetail)
-      .catch((e) => {
-        if (!ctl.signal.aborted) setError(e.message);
-      });
-    return () => ctl.abort();
-  }, [selected, revision, isDemo]);
+  const [detailAttempt, setDetailAttempt] = useState(0);
+  const [optionsAttempt, setOptionsAttempt] = useState(0);
+  const [showScanner, setShowScanner] = useState(false);
+  const searchInput = useRef<HTMLInputElement>(null);
+  const directoryResource = useCrmResource<Directory>(
+    `/api/admin/clients?${new URLSearchParams({ search: query, category, offset: String(offset) })}`,
+    revision,
+    !isDemo,
+    validDirectory,
+  );
+  const optionsResource = useCrmResource<CrmOptions>(
+    "/api/admin/clients?mode=options",
+    optionsAttempt,
+    !isDemo,
+    validOptions,
+  );
+  const detailResource = useCrmResource<ClientDetail>(
+    selected ? `/api/admin/clients?id=${selected}` : null,
+    `${revision}:${detailAttempt}`,
+    !isDemo,
+    validDetail,
+  );
+  const directory = directoryResource.data ?? { rows: [], total: 0 };
+  const options = optionsResource.data ?? emptyOptions;
+  const detail = detailResource.data;
+  const loading = directoryResource.loading;
+  const detailBusy = busy || detailResource.loading || !!detailResource.error;
   function select(id: string, token: string | null = null) {
-    setDetail(null);
     setSelected(id);
     setRevision((n) => n + 1);
     setScanToken(token);
@@ -185,26 +164,43 @@ export function ClientsPanel({
         manualmente. Las etiquetas sirven para futuras promociones; no cambian
         precios ni se asignan por frecuencia automáticamente.
       </p>
-      {isDemo ? (
+      {isDemo && (
         <p className="rounded-xl border border-brand/40 bg-card p-5 text-brand-300">
-          Vista de demostración sin escritura. Para probar el CRM real,
-          configurá Supabase y aplicá FASE2.sql. Los ejemplos opcionales están
-          separados en 00021_clients_seed.sql.
+          Este despliegue está en modo demo sin base configurada: no guarda
+          clientes ni cobros. Una demostración comercial puede usar una base
+          real de pruebas con datos de ejemplo.
         </p>
-      ) : (
-        <QrScanner
-          key={busy ? "locked" : "ready"}
-          onRead={scan}
-          disabled={busy}
-        />
+      )}
+      {!isDemo && (
+        <p className="text-xs text-fog">
+          Entorno con Supabase configurado. Cada sección confirma su propia
+          lectura; un error de ficha no significa que se haya perdido toda la
+          conexión.
+        </p>
       )}
       {error && (
         <p
           role="alert"
           className="rounded-xl border border-alert bg-card p-4 text-alert"
         >
-          {error}
+          Operación: {error}
         </p>
+      )}
+      {optionsResource.error && (
+        <div
+          role="alert"
+          className="rounded-xl border border-alert/40 p-4 text-alert"
+        >
+          <p>Planes y métodos de cobro: {optionsResource.error}</p>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={busy}
+            onClick={() => setOptionsAttempt((n) => n + 1)}
+          >
+            Reintentar planes y métodos
+          </Button>
+        </div>
       )}
       {notice && (
         <p
@@ -214,13 +210,162 @@ export function ClientsPanel({
           {notice}
         </p>
       )}
+      <section className="rounded-2xl border border-line bg-card p-5 space-y-4">
+        <h2 className="text-xl font-bold">Buscar por nombre · sin QR</h2>
+        <p className="text-sm text-fog">
+          Escribí parte del nombre, tocá Buscar y después elegí la tarjeta del
+          cliente. También sirve teléfono o número.
+        </p>
+        <form
+          className="grid gap-3 sm:grid-cols-[1fr_auto_auto]"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setQuery(search.trim());
+            setOffset(0);
+            setRevision((n) => n + 1);
+          }}
+        >
+          <Field label="Nombre, teléfono o número de cliente">
+            <input
+              ref={searchInput}
+              className={input}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              maxLength={120}
+              placeholder="Escribí el nombre del cliente…"
+            />
+          </Field>
+          <Field label="Etiqueta">
+            <select
+              className={input}
+              value={category}
+              onChange={(e) => {
+                setCategory(e.target.value);
+                setOffset(0);
+              }}
+            >
+              <option value="">Todas las etiquetas</option>
+              {Object.entries(categories).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Button className="self-end" disabled={isDemo || busy}>
+            Buscar
+          </Button>
+        </form>
+        {directoryResource.error && (
+          <div
+            role="alert"
+            className="rounded-xl border border-alert/40 p-4 text-alert"
+          >
+            <p>Listado de clientes: {directoryResource.error}</p>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy}
+              onClick={() => setRevision((n) => n + 1)}
+            >
+              Reintentar listado
+            </Button>
+          </div>
+        )}
+        <p role="status" className="text-xs text-fog">
+          {loading
+            ? "Cargando…"
+            : directoryResource.error
+              ? "No se pudo confirmar el listado. No vuelvas a registrar clientes por este aviso."
+              : `${directory.total} ${directory.total === 1 ? "cliente" : "clientes"} · hasta 30 por página`}
+        </p>
+        <div className="grid gap-3 lg:grid-cols-2">
+          {directory.rows.map((c) => (
+            <button
+              disabled={busy}
+              key={c.id}
+              onClick={() => select(c.id)}
+              className={`rounded-xl border p-4 text-left transition-colors hover:border-brand ${selected === c.id ? "border-brand bg-brand/10" : "border-line bg-paper"}`}
+            >
+              <p className="font-bold">
+                #{c.client_number} · {c.full_name}
+              </p>
+              <p className="mt-1 text-sm text-brand-300">
+                {categories[c.category]}
+                {c.is_demo ? " · EJEMPLO" : ""}
+              </p>
+              <p className="text-xs text-fog">
+                {c.phone || "Sin teléfono"} · {c.plan_name || "Sin plan"} ·{" "}
+                {c.status === "active"
+                  ? "Activo"
+                  : c.status === "frozen"
+                    ? "Congelado"
+                    : "Cancelado"}
+              </p>
+              <p className="mt-2 text-xs text-fog">
+                {frequency(c.visits_30 ?? 0)}
+              </p>
+              <p className="text-xs text-fog">
+                Última visita:{" "}
+                {c.last_visit ? fmt(c.last_visit) : "Sin registro"}
+              </p>
+            </button>
+          ))}
+        </div>
+        {!loading && !directoryResource.error && !directory.rows.length && (
+          <p className="py-5 text-fog">
+            No hay resultados. Revisá otro nombre antes de crear una ficha
+            nueva.
+          </p>
+        )}
+        <div className="flex justify-between gap-3">
+          <Button
+            variant="outline"
+            disabled={!offset || loading || busy}
+            onClick={() => setOffset(Math.max(0, offset - 30))}
+          >
+            Anterior
+          </Button>
+          <Button
+            variant="outline"
+            disabled={offset + 30 >= directory.total || loading || busy}
+            onClick={() => setOffset(offset + 30)}
+          >
+            Siguiente
+          </Button>
+        </div>
+      </section>
+      <div className="rounded-2xl border border-line bg-card p-4 space-y-3">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={isDemo || busy}
+          aria-expanded={showScanner}
+          onClick={() => setShowScanner((v) => !v)}
+        >
+          {showScanner ? "Cerrar escáner QR" : "Usar QR o lector (opcional)"}
+        </Button>
+        <p className="text-xs text-fog">
+          No hace falta carnet ni celular para buscar por nombre.
+        </p>
+        {showScanner && !isDemo && (
+          <QrScanner
+            key={busy ? "locked" : "ready"}
+            onRead={scan}
+            disabled={busy}
+            onManual={() => {
+              setShowScanner(false);
+              searchInput.current?.focus();
+            }}
+          />
+        )}
+      </div>
       <div className="flex flex-wrap gap-3">
         <Button
           disabled={isDemo || busy}
           onClick={() => {
             setCreating(!creating);
             setSelected(null);
-            setDetail(null);
           }}
         >
           Nuevo cliente
@@ -250,7 +395,7 @@ export function ClientsPanel({
               if (typeof id === "string") {
                 select(id);
                 setNotice(
-                  "Cliente creado. Revisá su nombre; ya podés registrar entrada o cobrar.",
+                  "Cliente creado. No lo registres de nuevo si falla la lectura de su ficha.",
                 );
               }
             } catch {}
@@ -303,115 +448,59 @@ export function ClientsPanel({
           <Button disabled={busy}>Guardar cliente</Button>
         </form>
       )}
-      <section className="rounded-2xl border border-line bg-card p-5 space-y-4">
-        <form
-          className="grid gap-3 sm:grid-cols-[1fr_auto_auto]"
-          onSubmit={(e) => {
-            e.preventDefault();
-            setQuery(search.trim());
-            setOffset(0);
-          }}
-        >
-          <Field label="Nombre, teléfono o número de cliente">
-            <input
-              className={input}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              maxLength={120}
-              placeholder="Buscar antes de crear…"
-            />
-          </Field>
-          <Field label="Etiqueta">
-            <select
-              className={input}
-              value={category}
-              onChange={(e) => {
-                setCategory(e.target.value);
-                setOffset(0);
-              }}
-            >
-              <option value="">Todas las etiquetas</option>
-              {Object.entries(categories).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Button className="self-end" disabled={isDemo || busy}>
-            Buscar
-          </Button>
-        </form>
-        <p role="status" className="text-xs text-fog">
-          {loading
-            ? "Cargando…"
-            : `${directory.total} clientes · hasta 30 por página`}
+      {selected && detailResource.loading && (
+        <p role="status">
+          {detail ? "Actualizando ficha…" : "Cargando ficha…"}
         </p>
-        <div className="grid gap-3 lg:grid-cols-2">
-          {directory.rows.map((c) => (
-            <button
-              disabled={busy}
-              key={c.id}
-              onClick={() => select(c.id)}
-              className={`rounded-xl border p-4 text-left transition-colors hover:border-brand ${selected === c.id ? "border-brand bg-brand/10" : "border-line bg-paper"}`}
-            >
-              <p className="font-bold">
-                #{c.client_number} · {c.full_name}
-              </p>
-              <p className="mt-1 text-sm text-brand-300">
-                {categories[c.category]}
-                {c.is_demo ? " · EJEMPLO" : ""}
-              </p>
-              <p className="text-xs text-fog">
-                {c.phone || "Sin teléfono"} · {c.plan_name || "Sin plan"} ·{" "}
-                {c.status === "active"
-                  ? "Activo"
-                  : c.status === "frozen"
-                    ? "Congelado"
-                    : "Cancelado"}
-              </p>
-              <p className="mt-2 text-xs text-fog">
-                {frequency(c.visits_30 ?? 0)}
-              </p>
-              <p className="text-xs text-fog">
-                Última visita:{" "}
-                {c.last_visit ? fmt(c.last_visit) : "Sin registro"}
-              </p>
-            </button>
-          ))}
-        </div>
-        {!loading && !directory.rows.length && (
-          <p className="py-5 text-fog">
-            No hay resultados. Revisá otro nombre antes de crear una ficha
-            nueva.
+      )}
+      {selected && detailResource.error && (
+        <section
+          role="alert"
+          className="rounded-2xl border border-alert/50 bg-card p-5 space-y-3"
+        >
+          <h2 className="text-xl font-bold">No pudimos abrir esta ficha</h2>
+          <p>{detailResource.error}</p>
+          {detail && (
+            <p className="text-sm text-alert">
+              Los datos visibles son de la última lectura y pueden estar
+              desactualizados. Las acciones están bloqueadas hasta confirmar la
+              ficha.
+            </p>
+          )}
+          <p className="text-sm text-fog">
+            La tarjeta del listado no se eliminó. No vuelvas a registrar al
+            cliente: podés reintentar o volver a buscar por nombre.
           </p>
-        )}
-        <div className="flex justify-between gap-3">
           <Button
-            variant="outline"
-            disabled={!offset || loading || busy}
-            onClick={() => setOffset(Math.max(0, offset - 30))}
+            disabled={busy}
+            onClick={() => setDetailAttempt((n) => n + 1)}
           >
-            Anterior
+            Reintentar ficha
           </Button>
           <Button
+            disabled={busy}
             variant="outline"
-            disabled={offset + 30 >= directory.total || loading || busy}
-            onClick={() => setOffset(offset + 30)}
+            onClick={() => {
+              setSelected(null);
+              setScanToken(null);
+              searchInput.current?.focus();
+            }}
           >
-            Siguiente
+            Volver al listado
           </Button>
-        </div>
-      </section>
-      {selected && !detail && <p role="status">Cargando ficha…</p>}
+        </section>
+      )}
       {detail && (
-        <section className="rounded-2xl border border-brand/30 bg-card p-5 space-y-6">
+        <section
+          aria-busy={detailResource.loading}
+          className="rounded-2xl border border-brand/30 bg-card p-5 space-y-6"
+        >
           <h2 className="display-xl text-2xl">
             #{detail.client.client_number} · {detail.client.full_name}
           </h2>
           <div className="flex flex-wrap gap-3">
             <Button
-              disabled={busy || detail.client.status !== "active"}
+              disabled={detailBusy || detail.client.status !== "active"}
               onClick={async () => {
                 try {
                   const r = (await action({
@@ -458,7 +547,7 @@ export function ClientsPanel({
             client={detail.client}
             options={options}
             isAdmin={isAdmin}
-            busy={busy}
+            busy={detailBusy}
             save={async (body) => {
               await action(body);
               setNotice("Ficha guardada. Las etiquetas no cambian precios.");
@@ -467,13 +556,19 @@ export function ClientsPanel({
           <div className="grid gap-8 xl:grid-cols-2">
             <div className="space-y-3">
               <h3 className="text-lg font-bold">Carnet digital o impreso</h3>
-              <ClientCard
-                name={detail.client.full_name}
-                number={detail.client.client_number}
-                token={detail.card}
-              />
+              {!detailResource.loading && !detailResource.error ? (
+                <ClientCard
+                  name={detail.client.full_name}
+                  number={detail.client.client_number}
+                  token={detail.card}
+                />
+              ) : (
+                <p className="text-sm text-fog">
+                  Carnet oculto hasta confirmar la lectura actual de la ficha.
+                </p>
+              )}
               <Button
-                disabled={busy}
+                disabled={detailBusy}
                 variant="outline"
                 onClick={async () => {
                   if (
@@ -501,7 +596,9 @@ export function ClientsPanel({
               key={detail.client.id}
               clientId={detail.client.id}
               options={options}
-              blocked={busy}
+              blocked={
+                detailBusy || optionsResource.loading || !!optionsResource.error
+              }
               onBusy={setBusy}
               onRefresh={() => setRevision((n) => n + 1)}
             />
