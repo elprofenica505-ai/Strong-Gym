@@ -184,6 +184,8 @@ const migracionNueva = sincronizar(UPDATE_MIGRATION);
 const financeNuevo = readFileSync(join(ROOT, "supabase/migrations/00010_finance.sql"), "utf8");
 const financeSeedNuevo = readFileSync(join(ROOT, "supabase/migrations/00011_finance_seed.sql"), "utf8");
 
+const profilesReadFix = readFileSync(join(ROOT, "supabase/migrations/00012_profiles_self_read.sql"), "utf8");
+
 /* --- 3b. SETUP.sql: instalación desde cero --- */
 const cabecera = `-- ============================================================
 --  STRONG FITNESS GYM — CONFIGURACIÓN COMPLETA DE SUPABASE
@@ -235,7 +237,9 @@ const setupNuevo =
   "-- ############################################################\n\n" +
   financeNuevo.trimStart() +
   "\n\n" +
-  financeSeedNuevo.trimStart();
+  financeSeedNuevo.trimStart() +
+  "\n\n-- Corrección de lectura del perfil propio (00012_profiles_self_read.sql)\n" +
+  profilesReadFix.trimStart();
 
 /* --- 3c. ACTUALIZAR.sql: para una base que ya está en uso --- */
 const actualizarNuevo =
@@ -271,7 +275,9 @@ const actualizarNuevo =
   "-- ############################################################\n\n" +
   financeNuevo.trimStart() +
   "\n\n" +
-  financeSeedNuevo.trimStart();
+  financeSeedNuevo.trimStart() +
+  "\n\n-- Corrección de lectura del perfil propio (00012_profiles_self_read.sql)\n" +
+  profilesReadFix.trimStart();
 
 function sincronizarGenerado(archivo, contenido) {
   let anterior = "";

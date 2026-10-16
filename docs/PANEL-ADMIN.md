@@ -88,3 +88,41 @@ simulados, alias ES/EN, refresco de cookies con el SDK real y caché del SW.
 No sustituye una prueba en navegador con la cuenta real. `test:sql` también
 comprueba que admin y member pueden leer su propio rol bajo RLS y que el socio
 no puede leer el perfil del admin.
+
+## Caso observado: rol_visible NULL, permiso_staff true
+
+Las capturas aportadas muestran `admin` como dueño del SQL Editor, pero
+`rol_visible = NULL` y `permiso_staff = true` con `authenticated` y el mismo ID.
+Eso confirma que esa sesión SQL no puede leer su propia fila bajo RLS. No
+identifica qué política falta o qué restricción existe; tampoco prueba por sí
+solo las variables del deploy Preview.
+
+Para restaurar únicamente la lectura propia, ejecutar **sólo**
+`supabase/migrations/00012_profiles_self_read.sql` en ese proyecto. No requiere
+merge ni redeploy. No volver a ejecutar SETUP o ACTUALIZAR para este incidente:
+son paquetes completos y pueden cargar seeds u otros cambios ajenos al arreglo.
+
+La migración crea una política SELECT para `authenticated`, limitada a
+`id = auth.uid()`. No cambia roles/datos ni permite escribir o leer perfiles
+ajenos. Conserva las políticas existentes y RLS activo. Repetir luego la consulta
+con `authenticated` de esta guía: debe devolver `admin`/`true` si ninguna política
+restrictiva impide la lectura. Después tocar Reintentar en el Preview y comprobar
+menú Panel, Caja y cuentas y Herramientas. La base cambia inmediatamente para todos
+los despliegues que usen ese proyecto; el PR sigue requiriendo aprobación aparte.
+
+Si `rol_visible` sigue siendo NULL, NO eliminar políticas a ciegas. Obtener su
+inventario para revisar las condiciones exactas:
+
+```sql
+select policyname, permissive, roles, cmd, qual, with_check
+from pg_policies
+where schemaname = 'public' and tablename = 'profiles'
+order by policyname;
+```
+
+Una política permisiva nueva no anula políticas AS RESTRICTIVE. Esto se verifica
+explícitamente en `test:sql`. La prueba de regresión reproduce el resultado de
+las capturas mediante una base local sin política SELECT aplicable y un helper
+SECURITY DEFINER de prueba; no asume que ésa sea la definición real de producción.
+Si el panel abre pero faltan nombres/listados, revisar por separado la política
+staff de lectura de perfiles ajenos: este fix mínimo no amplía ese acceso.

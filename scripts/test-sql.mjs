@@ -389,6 +389,86 @@ try {
 }
 await loginAs(userB);
 
+console.log("\n▶ Regresión del panel: is_staff=true pero el perfil no es visible");
+const selfReadFix = readFileSync(`${REPO}/supabase/migrations/00012_profiles_self_read.sql`, "utf8");
+const profilesBeforeFix = (await db.query(`select id, role from public.profiles order by id`)).rows;
+const helperWasDefiner = (await db.query(`select prosecdef from pg_proc
+  where oid = 'public.is_staff()'::regprocedure`)).rows[0].prosecdef;
+// Fixture: un helper SECURITY DEFINER permite reproducir el true observado
+// aunque la lectura directa esté oculta. No presupone la definición real
+// de la función de producción y la migración no altera esta función.
+await db.exec(`alter function public.is_staff() security definer;`);
+// Simular una base con la política SELECT original ausente. El SQL del
+// dueño sigue viendo admin, como en las capturas; authenticated no ve su fila.
+await db.exec(`drop policy "perfil: leer el propio" on public.profiles;`);
+await db.exec(`set role authenticated;`);
+try {
+  const observed = (await db.query(`
+    select (select role::text from public.profiles where id = auth.uid()) as rol_visible,
+           public.is_staff() as permiso_staff
+  `)).rows[0];
+  check("reproduce la captura: rol_visible=NULL y permiso_staff=true",
+    observed.rol_visible === null && observed.permiso_staff === true, JSON.stringify(observed));
+} finally {
+  await db.exec(`reset role;`);
+}
+await db.exec(selfReadFix);
+await db.exec(selfReadFix);
+check("00012 es idempotente: una sola política de lectura propia",
+  (await db.query(`select count(*)::int as n from pg_policies
+    where schemaname = 'public' and tablename = 'profiles'
+      and policyname = 'profiles_select_own_authenticated'`)).rows[0].n === 1);
+await db.exec(`set role authenticated;`);
+try {
+  const fixed = (await db.query(`
+    select (select role::text from public.profiles where id = auth.uid()) as rol_visible,
+           public.is_staff() as permiso_staff
+  `)).rows[0];
+  check("00012 corrige el caso reproducido: admin visible y permiso_staff=true",
+    fixed.rol_visible === "admin" && fixed.permiso_staff === true);
+  const others = await db.query(`select id from public.profiles where id <> auth.uid()`);
+  check("la nueva política no concede lectura de perfiles ajenos", others.rows.length === 0);
+} finally {
+  await db.exec(`reset role;`);
+}
+await loginAs(userA);
+await db.exec(`set role authenticated;`);
+try {
+  const self = (await db.query(`select role::text from public.profiles where id = auth.uid()`)).rows[0];
+  check("con 00012 el member sigue leyendo sólo su perfil sin convertirse en admin", self?.role === "member");
+  const other = await db.query(`select id from public.profiles where id = $1`, [userB]);
+  check("con 00012 el member no puede leer el perfil del admin", other.rows.length === 0);
+} finally {
+  await db.exec(`reset role;`);
+}
+check("00012 no modifica perfiles ni roles",
+  JSON.stringify((await db.query(`select id, role from public.profiles order by id`)).rows) === JSON.stringify(profilesBeforeFix));
+check("00012 conserva RLS activado",
+  (await db.query(`select relrowsecurity from pg_class where oid = 'public.profiles'::regclass`)).rows[0].relrowsecurity === true);
+// Una política permisiva no debe anular restricciones explícitas existentes.
+await db.exec(`create policy regression_restrictive on public.profiles as restrictive
+  for select to authenticated using (false);`);
+await db.exec(`set role authenticated;`);
+try {
+  const blocked = await db.query(`select id from public.profiles where id = auth.uid()`);
+  check("00012 no elude una política RESTRICTIVE existente", blocked.rows.length === 0);
+} finally {
+  await db.exec(`reset role; drop policy regression_restrictive on public.profiles;`);
+}
+// Restaurar la política original para verificar coexistencia y permiso del staff.
+await db.exec(`create policy "perfil: leer el propio" on public.profiles
+  for select using (id = auth.uid() or public.is_staff());`);
+await loginAs(userB);
+await db.exec(`set role authenticated;`);
+try {
+  const staffRows = await db.query(`select id from public.profiles where id = $1`, [userA]);
+  check("00012 conserva el acceso staff de la política original", staffRows.rows.length === 1);
+} finally {
+  await db.exec(`reset role;`);
+}
+
+if (!helperWasDefiner) await db.exec(`alter function public.is_staff() security invoker;`);
+
 console.log("\n▶ Cerrar clases pasadas (ausentes)");
 const closed = await db.query(`select public.close_past_sessions() as n`);
 check("la función corre sin errores", typeof closed.rows[0].n === "number", `${closed.rows[0].n} marcadas`);
