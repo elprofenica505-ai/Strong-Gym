@@ -274,3 +274,17 @@ prueban lectura, monedas, permisos, bloqueo de cobro, conservación de datos y
 reaplicación. La estructura original del repositorio mantiene sus pruebas de
 pago idempotente mediante el wrapper. Pendiente ejecutar/validar el incremental
 en la base remota con autorización del usuario.
+
+### Aviso de entrada repetida junto al botón
+
+El usuario confirmó que repetir la entrada no agregaba otra visita, pero no veía
+el aviso. El código enviaba la confirmación al banner del principio del panel,
+lejos del botón de la ficha en celular. Ahora el resultado se muestra debajo de
+«Confirmar entrada», con región accesible: confirmación, «ya tiene una visita
+registrada hoy; no se duplicó», o error. Permanece durante el refresh de la misma
+ficha y se limpia al seleccionar otro cliente. Una respuesta sin booleano
+`already` no se presenta como éxito ni dispara un reintento automático.
+Este ajuste no modifica SQL ni habilita cobros. La no duplicación conserva las
+pruebas SQL originales; la posición del mensaje se prueba con componentes reales
+y respuestas simuladas. Falta la comprobación visual del Preview actualizado en
+el teléfono del usuario.

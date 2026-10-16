@@ -82,6 +82,11 @@ export function ClientsPanel({
   const [revision, setRevision] = useState(0);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [entryFeedback, setEntryFeedback] = useState<{
+    clientId: string;
+    message: string;
+    failed: boolean;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   const [detailAttempt, setDetailAttempt] = useState(0);
   const [optionsAttempt, setOptionsAttempt] = useState(0);
@@ -111,6 +116,7 @@ export function ClientsPanel({
   const loading = directoryResource.loading;
   const detailBusy = busy || detailResource.loading || !!detailResource.error;
   function select(id: string, token: string | null = null) {
+    setEntryFeedback(null);
     setSelected(id);
     setRevision((n) => n + 1);
     setScanToken(token);
@@ -507,21 +513,43 @@ export function ClientsPanel({
           <div className="flex flex-wrap gap-3">
             <Button
               disabled={detailBusy || detail.client.status !== "active"}
+              aria-describedby="crm-entry-feedback"
               onClick={async () => {
+                if (detailBusy || detail.client.status !== "active") return;
+                const clientId = detail.client.id;
+                setEntryFeedback({
+                  clientId,
+                  message: "Confirmando entrada…",
+                  failed: false,
+                });
                 try {
                   const r = (await action({
                     action: "check-in",
-                    id: detail.client.id,
+                    id: clientId,
                     source: scanToken ? "qr" : "manual",
                     ...(scanToken ? { token: scanToken } : {}),
-                  })) as { already: boolean };
-                  if (r)
-                    setNotice(
-                      r.already
-                        ? "Este cliente ya tiene una visita registrada hoy. No se duplicó."
-                        : "Entrada registrada. No se realizó ningún cobro.",
+                  })) as { already?: unknown } | null;
+                  if (!r || typeof r.already !== "boolean")
+                    throw new Error(
+                      "El servidor no confirmó el resultado. Revisá Últimas 60 entradas antes de repetir.",
                     );
-                } catch {}
+                  setEntryFeedback({
+                    clientId,
+                    failed: false,
+                    message: r.already
+                      ? "Este cliente ya tiene una visita registrada hoy. No se duplicó."
+                      : "Entrada registrada. No se realizó ningún cobro.",
+                  });
+                } catch (error) {
+                  setEntryFeedback({
+                    clientId,
+                    failed: true,
+                    message:
+                      error instanceof Error
+                        ? error.message
+                        : "No se pudo confirmar la entrada. Revisá el historial antes de repetir.",
+                  });
+                }
               }}
             >
               Confirmar entrada {scanToken ? "por QR" : "manual"}
@@ -529,6 +557,16 @@ export function ClientsPanel({
             <span className="self-center text-xs text-fog">
               Una visita por día · hora de Nicaragua
             </span>
+          </div>
+          <div id="crm-entry-feedback" aria-live="polite" aria-atomic="true">
+            {entryFeedback?.clientId === detail.client.id && (
+              <p
+                role={entryFeedback.failed ? "alert" : "status"}
+                className={`rounded-xl border p-4 text-sm ${entryFeedback.failed ? "border-alert/50 text-alert" : "border-brand/40 text-brand-300"}`}
+              >
+                {entryFeedback.message}
+              </p>
+            )}
           </div>
           {detail.client.status !== "active" && (
             <p className="text-alert">

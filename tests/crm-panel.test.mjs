@@ -413,3 +413,117 @@ test("cobro pendiente conserva referencia pero no puede reintentarse en modelo b
     pending,
   );
 });
+
+test("primera entrada y reintento muestran confirmación junto al botón, no sólo arriba", async () => {
+  let writes = 0;
+  const visits = [
+    {
+      id: other,
+      visited_at: "2026-10-16T04:01:00Z",
+      local_day: "2026-10-15",
+      source: "manual",
+    },
+  ];
+  const calls = setup((_url, init) => {
+    if (init.method === "POST")
+      return json({ data: { already: ++writes > 1, id: other } });
+    return json({ ...detail(), visits: writes ? visits : [] });
+  });
+  await open();
+  await heading();
+  const entry = screen.getByRole("button", {
+    name: "Confirmar entrada manual",
+  });
+  fireEvent.click(entry);
+  const first = await screen.findByText(
+    "Entrada registrada. No se realizó ningún cobro.",
+  );
+  assert.equal(first.parentElement.id, entry.getAttribute("aria-describedby"));
+  assert.equal(first.closest("section"), entry.closest("section"));
+  await waitFor(() => assert.equal(entry.disabled, false));
+  fireEvent.click(entry);
+  const repeated = await screen.findByText(
+    "Este cliente ya tiene una visita registrada hoy. No se duplicó.",
+  );
+  assert.equal(repeated.parentElement.id, "crm-entry-feedback");
+  await waitFor(() => assert.equal(entry.disabled, false));
+  assert.ok(screen.getByText(/10:01 p/));
+  assert.equal(calls.filter((c) => c.body?.action === "check-in").length, 2);
+  assert.equal(calls.filter((c) => c.body?.action === "payment").length, 0);
+  assert.equal(screen.getAllByText(/10:01 p/).length, 1);
+});
+test("error de entrada es visible en su botón y no se confunde con registro confirmado", async () => {
+  setup((_url, init) =>
+    init.method === "POST"
+      ? json({ error: "No se pudo confirmar la entrada." }, 503)
+      : json(detail()),
+  );
+  await open();
+  await heading();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Confirmar entrada manual" }),
+  );
+  await waitFor(() =>
+    assert.match(
+      document.getElementById("crm-entry-feedback").textContent,
+      /No se pudo confirmar/,
+    ),
+  );
+  assert.equal(
+    document
+      .getElementById("crm-entry-feedback")
+      .querySelector('[role="alert"]').textContent,
+    "No se pudo confirmar la entrada.",
+  );
+  assert.equal(
+    screen.queryByText("Entrada registrada. No se realizó ningún cobro."),
+    null,
+  );
+});
+test("respuesta de entrada incompleta no muestra éxito ni provoca repetición automática", async () => {
+  const calls = setup((_url, init) =>
+    init.method === "POST" ? json({ data: {} }) : json(detail()),
+  );
+  await open();
+  await heading();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Confirmar entrada manual" }),
+  );
+  await screen.findByText(/El servidor no confirmó el resultado/);
+  assert.equal(calls.filter((c) => c.body).length, 1);
+  assert.equal(
+    screen.queryByText("Entrada registrada. No se realizó ningún cobro."),
+    null,
+  );
+});
+test("cambiar de cliente limpia el aviso de entrada anterior", async () => {
+  const calls = setup(
+    (u, init) =>
+      init.method === "POST"
+        ? json({ data: { already: true } })
+        : json(
+            detail(
+              u.searchParams.get("id") === other
+                ? client(other, "Carlos Prueba", 2)
+                : client(),
+            ),
+          ),
+    [client(), client(other, "Carlos Prueba", 2)],
+  );
+  await open();
+  await heading();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Confirmar entrada manual" }),
+  );
+  await screen.findByText(/ya tiene una visita registrada hoy/);
+  await waitFor(() =>
+    assert.equal(
+      screen.getByRole("button", { name: "Confirmar entrada manual" }).disabled,
+      false,
+    ),
+  );
+  await open("Carlos Prueba");
+  await heading("Carlos Prueba");
+  assert.equal(screen.queryByText(/ya tiene una visita registrada hoy/), null);
+  assert.equal(calls.filter((c) => c.body).length, 1);
+});
