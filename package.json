@@ -9,7 +9,7 @@
     "dev": "next dev",
     "lint": "eslint .",
     "start": "next start",
-    "test:sql": "node scripts/test-sql.mjs",
+    "test:sql": "node scripts/test-sql.mjs && node scripts/test-crm-sql.mjs",
     "typecheck": "tsc --noEmit",
     "test:auth": "node --experimental-strip-types --test tests/*.test.mjs"
   },
@@ -18,8 +18,11 @@
     "@fontsource/anton": "^5.3.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.3",
+    "@zxing/browser": "^0.1.5",
+    "@zxing/library": "^0.21.3",
     "lucide-react": "^1.55.0",
     "next": "^16.4.0",
+    "qrcode.react": "^4.2.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "server-only": "^0.0.1",
@@ -33,6 +36,7 @@
     "@types/react-dom": "^19.2.5",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.4.0",
+    "sharp": "^0.35.5",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3"
   },

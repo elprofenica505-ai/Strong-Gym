@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
  *
  * Borra datos de EJEMPLO de la base. Lo que se borra es lo que
  * insertó la migración 00011_finance_seed.sql (conceptos que
- * empiezan con [SEED-GASTO]) y los socios con email
+ * empiezan con [SEED-GASTO]) y los clientes con email
  * @stronggym-ejemplo.com. NO se tocan:
  *
  *   - Las tablas, funciones, vistas ni políticas de seguridad.
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
   const result: Record<string, number> = {};
 
   if (parsed.data.scope === "members" || parsed.data.scope === "all") {
-    // 1) IDs de los socios de ejemplo.
+    // 1) IDs de los clientes de ejemplo.
     const { data: seedProfiles } = await supabase
       .from("profiles")
       .select("id")

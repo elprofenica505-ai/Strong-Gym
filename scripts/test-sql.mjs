@@ -695,12 +695,12 @@ try {
   ).rows[0];
 
   check(
-    "crea 16 tablas (8 base + 8 de Fase 1)",
+    "crea 20 tablas (base + Fase 1 + CRM)",
     (
       await unico.query(
         `select count(*)::int as n from pg_tables where schemaname = 'public'`,
       )
-    ).rows[0].n === 16,
+    ).rows[0].n === 20,
   );
   check("carga 3 disciplinas", Number(resumen.clases) === 3);
   check("3 coaches cargados (seed de Fase 1)", Number(resumen.profes) === 3);

@@ -7,7 +7,7 @@ import { getCurrentUser } from "@/lib/data/queries";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 export async function generateMetadata(): Promise<Metadata> {
-  return { title: "Importar socios", robots: { index: false, follow: false } };
+  return { title: "Importar clientes", robots: { index: false, follow: false } };
 }
 
 export default async function ImportarPage({
@@ -39,14 +39,14 @@ export default async function ImportarPage({
             Herramientas · Importar
           </span>
           <h1 className="display-xl mt-2 text-[1.75rem] sm:text-[2.25rem]">
-            Importar socios desde CSV
+            Importar clientes desde CSV
           </h1>
         </div>
       </div>
 
       {isDemo ? (
         <div className="rounded-2xl border border-brand/35 bg-brand-soft p-6 text-center text-[0.875rem] text-brand-300">
-          El importador funciona con Supabase conectado. En modo demo, los socios se manejan en el navegador.
+          El importador funciona con Supabase conectado. En modo demo, los clientes se manejan en el navegador.
         </div>
       ) : (
         <ImportMembersTool />

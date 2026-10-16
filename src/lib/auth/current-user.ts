@@ -7,7 +7,7 @@ export interface AuthUser {
   id: string;
   email: string;
   fullName: string;
-  // Un perfil que no se pudo leer NO equivale a un socio sin permisos.
+  // Un perfil que no se pudo leer NO equivale a un cliente sin permisos.
   role: UserRole | null;
   profileStatus: ProfileStatus;
   phone: string | null;
@@ -29,7 +29,7 @@ export async function resolveCurrentUser(supabase: SupabaseClient): Promise<Auth
   const result: AuthUser = {
     id: user.id,
     email: user.email ?? "",
-    fullName: (user.user_metadata?.full_name as string | undefined) ?? user.email?.split("@")[0] ?? "Socio",
+    fullName: (user.user_metadata?.full_name as string | undefined) ?? user.email?.split("@")[0] ?? "Cliente",
     role: null,
     profileStatus: "error",
     phone: null,

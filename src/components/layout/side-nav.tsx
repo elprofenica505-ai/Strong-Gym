@@ -138,6 +138,7 @@ export function SideNav({ open, onClose }: { open: boolean; onClose: () => void 
           );
         })}
 
+        {canAccessPanel(user) ? <Link href={`/${locale}/panel/clientes`} onClick={onClose} className="flex items-center gap-3 rounded-xl px-4 py-3 text-[0.9375rem] font-medium text-mist hover:bg-cloud hover:text-ink"><Users className="size-5" aria-hidden="true" />Clientes y recepción</Link> : null}
         {canAccessPanel(user) ? (
           <Link
             href={`/${locale}/panel`}

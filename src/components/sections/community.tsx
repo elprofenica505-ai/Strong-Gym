@@ -57,7 +57,7 @@ export function Community({ locale }: { locale: Locale }) {
           </figure>
         </Reveal>
 
-        {/* Socios */}
+        {/* Clientes */}
         <Reveal delay={150} className="lg:col-span-12">
           <figure className="overflow-hidden rounded-3xl border border-line bg-card">
             <div className="relative aspect-[16/10] w-full sm:aspect-[21/9]">

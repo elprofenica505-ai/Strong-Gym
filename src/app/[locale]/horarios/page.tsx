@@ -114,7 +114,7 @@ export default async function SchedulePage({
             <Info className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden="true" />
             <p className="text-[0.8125rem] leading-relaxed text-fog">
               {locale === "es"
-                ? `Las reservas se abren con 7 días de anticipación. Cada socio puede tener hasta 3 reservas activas al mismo tiempo y cancelar sin costo hasta ${siteConfig.cancellationWindowHours} horas antes del inicio.`
+                ? `Las reservas se abren con 7 días de anticipación. Cada cliente puede tener hasta 3 reservas activas al mismo tiempo y cancelar sin costo hasta ${siteConfig.cancellationWindowHours} horas antes del inicio.`
                 : `Bookings open 7 days in advance. Each member can hold up to 3 active bookings at the same time and cancel free of charge up to ${siteConfig.cancellationWindowHours} hours before the start.`}
             </p>
           </div>

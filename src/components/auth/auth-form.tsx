@@ -64,7 +64,7 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
       return;
     }
 
-    // Login/registro exitoso: al panel del socio o a la página pedida.
+    // Login/registro exitoso: al panel del cliente o a la página pedida.
     const target = redirectTo || `/${locale}/mi-cuenta`;
     router.replace(target);
     router.refresh();

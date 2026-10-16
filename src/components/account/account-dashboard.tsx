@@ -34,7 +34,7 @@ import type { BookingDetail, Plan, SessionDetail } from "@/lib/types";
 import { accentOnDark, cn, textOnAccent } from "@/lib/utils";
 
 /**
- * Panel del socio.
+ * Panel del cliente.
  *  - Con Supabase las reservas llegan resueltas desde el servidor.
  *  - En modo demo viven en el navegador (AppProvider) y acá las cruzamos
  *    con los horarios de ejemplo para poder mostrarlas.

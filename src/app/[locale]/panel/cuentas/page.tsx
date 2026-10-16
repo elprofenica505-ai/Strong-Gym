@@ -60,7 +60,7 @@ export default async function CuentasPage({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <Stat label="Socios con deuda" value={String(rows.length)} />
+        <Stat label="Clientes con deuda" value={String(rows.length)} />
         <Stat label="Total adeudado" value={formatMoney(totalOwed)} />
         <Stat
           label="Más antiguo"

@@ -203,6 +203,11 @@ export function CashPanel({
         </div>
       </div>
 
+      <a href={`/${useLocale()}/panel/clientes`} className="flex flex-col gap-1 rounded-2xl border border-brand/40 bg-brand/10 p-5 hover:border-brand">
+        <span className="font-bold text-ink">Identificar cliente · escáner o búsqueda manual →</span>
+        <span className="text-sm text-fog">Crear ficha, consultar historial, registrar entrada o confirmar un cobro. Sin celular también te atendemos.</span>
+      </a>
+
       {/* ---------- KPIs principales ---------- */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi
@@ -405,7 +410,7 @@ export function CashPanel({
             <QuickLink
               href={`/${useLocale()}/panel/cuentas`}
               label="Ver cuentas por cobrar"
-              hint="Socios con cuotas pendientes"
+              hint="Clientes con cuotas pendientes"
             />
             <QuickLink
               href={`/${useLocale()}/panel/gastos`}

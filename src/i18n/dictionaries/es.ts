@@ -147,7 +147,7 @@ const es = {
     subtitle:
       "Acá entrena gente de todas las edades, cada quien a su ritmo y con su objetivo.",
     groupCaption: "Clases grupales y actividades del gimnasio.",
-    membersCaption: "Socios de Strong Fitness Gym.",
+    membersCaption: "Clientes de Strong Fitness Gym.",
     changeTitle: "De 2022 a 2026",
     changeCaption:
       "Resultado real de una socia del gimnasio, publicado con su permiso.",
@@ -284,7 +284,7 @@ const es = {
     nextClass: "Próxima clase",
     noNextClass: "Todavía no tenés una próxima clase reservada.",
     viewAccount: "Ver mi cuenta",
-    guestTitle: "¿Ya sos socio?",
+    guestTitle: "¿Ya sos cliente?",
     guestText:
       "Entrá a tu cuenta para ver tus clases reservadas, tus clases asistidas y tu próxima clase, o creá una cuenta para empezar.",
   },
@@ -435,7 +435,7 @@ const es = {
     confirmed: "Confirmada",
     attended: "Asistida",
     noShow: "Ausente",
-    memberSince: "Socio desde",
+    memberSince: "Cliente desde",
     plan: "Plan actual",
     noPlan: "Sin plan asignado",
     stats: {
@@ -460,7 +460,7 @@ const es = {
     stats: {
       bookingsToday: "Reservas hoy",
       bookingsWeek: "Reservas esta semana",
-      members: "Socios registrados",
+      members: "Clientes registrados",
       messages: "Consultas sin leer",
       occupancy: "Ocupación media",
     },
@@ -471,7 +471,7 @@ const es = {
       classes: "Clases",
     },
     table: {
-      member: "Socio",
+      member: "Cliente",
       email: "Email",
       class: "Clase",
       date: "Fecha",

@@ -186,6 +186,8 @@ const financeSeedNuevo = readFileSync(join(ROOT, "supabase/migrations/00011_fina
 
 const profilesReadFix = readFileSync(join(ROOT, "supabase/migrations/00012_profiles_self_read.sql"), "utf8");
 
+const crmSql = readFileSync(join(ROOT, "supabase/migrations/00020_clients_crm.sql"), "utf8");
+
 /* --- 3b. SETUP.sql: instalación desde cero --- */
 const cabecera = `-- ============================================================
 --  STRONG FITNESS GYM — CONFIGURACIÓN COMPLETA DE SUPABASE
@@ -239,7 +241,7 @@ const setupNuevo =
   "\n\n" +
   financeSeedNuevo.trimStart() +
   "\n\n-- Corrección de lectura del perfil propio (00012_profiles_self_read.sql)\n" +
-  profilesReadFix.trimStart();
+  profilesReadFix.trimStart() + "\n\n-- FASE 2: CLIENTES Y RECEPCIÓN (sin seed opcional)\n" + crmSql.trimStart();
 
 /* --- 3c. ACTUALIZAR.sql: para una base que ya está en uso --- */
 const actualizarNuevo =
@@ -277,7 +279,7 @@ const actualizarNuevo =
   "\n\n" +
   financeSeedNuevo.trimStart() +
   "\n\n-- Corrección de lectura del perfil propio (00012_profiles_self_read.sql)\n" +
-  profilesReadFix.trimStart();
+  profilesReadFix.trimStart() + "\n\n-- FASE 2: CLIENTES Y RECEPCIÓN (sin seed opcional)\n" + crmSql.trimStart();
 
 function sincronizarGenerado(archivo, contenido) {
   let anterior = "";
@@ -289,6 +291,7 @@ function sincronizarGenerado(archivo, contenido) {
   if (contenido !== anterior) cambios.push([archivo, contenido]);
 }
 
+sincronizarGenerado(join(ROOT, "supabase/FASE2.sql"), "-- ACTUALIZACIÓN FASE 2. Base con Fase 1 y fix 00012 aplicados.\n-- Sólo estructura CRM y vinculación de perfiles existentes; no borra ni carga ejemplos.\n-- Seed opcional separado: migrations/00021_clients_seed.sql.\n\n" + crmSql);
 sincronizarGenerado(SETUP, setupNuevo);
 sincronizarGenerado(UPDATE, actualizarNuevo);
 
