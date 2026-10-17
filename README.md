@@ -13,6 +13,22 @@ y el código en **GitHub**.
 
 ---
 
+## Desarrollo del sistema de gestión
+
+El objetivo es completar el producto conectado y probarlo con datos inventados;
+no limitarlo al modo local de demostración. La limpieza final se realizará sólo
+tras aprobar la demostración, sin eliminar estructura ni funcionalidades.
+
+- [Plan de producto y criterios de entrega](./docs/PLAN-PRODUCTO.md).
+- [Inventario funcional y bloqueantes reales](./docs/INVENTARIO-FUNCIONAL.md).
+- [Resultados de la validación del inventario](./docs/VALIDACION-INVENTARIO.md).
+
+Estas referencias distinguen las funciones implementadas de las parciales o
+pendientes. La descripción histórica que sigue no certifica que cada acción del
+panel persista ni que el reset legado prepare por sí solo la entrega al dueño.
+
+---
+
 ## Qué incluye
 
 ### Público (cualquiera puede entrar)
