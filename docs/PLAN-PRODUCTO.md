@@ -131,6 +131,21 @@ Trabajar en `arena/9bdd978c-strong-gym`, PR #10 sin merge automático.
 Documentar cada bloque: cambios, pruebas, pendientes y SQL si corresponde.
 Revisión inicial: 2026-10-17, código base `9910268`.
 
-Reparación posterior a B.1: [reservas sin embeddings, shell móvil y seguridad de entrega](./REPARACION-RESERVAS-MOVIL.md). Cobros/gastos siguen pendientes de escritura compatible y validación remota; la autorización para desarrollarlos está confirmada.
+Reparación posterior a B.1: [reservas sin embeddings, shell móvil y seguridad de entrega](./REPARACION-RESERVAS-MOVIL.md). La escritura compatible de C.1 se entregó después de esta reparación.
 
-C.1: diagnóstico de escritura recibido y revisado; nuevo registro de cobros por servicio y gastos, comprobantes, idempotencia y permisos implementados/probados localmente. [Instalación y límites](./COBROS-GASTOS.md). Pendientes: aplicar SQL y validar persistencia remota, deudas/créditos explícitos, vigencias y los demás bloques del plan.
+C.1: SQL instalado por el usuario; cobro NIO10, gasto NIO4 y cobro USD1
+contrastados mediante capturas, con separación de cuentas/monedas. También se
+comprobaron redirecciones de Caja/Gastos como cliente, rechazos de lectura API y
+recuperación del gasto desde el historial actualizado. No repetir la instalación.
+[Instalación y límites](./COBROS-GASTOS.md).
+
+Concurrencia: seis controles con conexiones PostgreSQL separadas pasaron en local
+y CI. Recuperación integrada: formulario real en JSDOM → API real → funciones SQL
+reales en PostgreSQL local, con respuesta perdida después del COMMIT y reintento
+sin duplicar en NIO/USD. No equivale a una prueba HTTP/Next/PostgREST ni remota.
+[Evidencia y pendientes](./VALIDACION-FINANCIERA-2026-10-17.md).
+
+Pendientes: escritura denegada y respuesta perdida en Supabase remoto bajo
+identidades reales, aceptación integral B–F, deudas/créditos con reglas explícitas,
+vigencias y demás módulos del plan. C.1 no aplica deudas/créditos ni renueva planes.
+Sin merge, limpieza o cambios de acceso del dueño todavía.

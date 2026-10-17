@@ -126,3 +126,84 @@ No se incluyen los binarios ni los archivos de la base local en el repositorio.
 Se repitieron también typecheck (exit 0), lint (0 errores/10 advertencias), build
 (40/40 páginas, compilación 2.2s), auth (301/301) y SQL (49/69/86 más base), todos
 con código 0. Los nuevos logs están en `/home/user/finance-concurrency-*.log`.
+
+
+## Recuperación integrada después del COMMIT (continuación posterior)
+
+El runner de concurrencia ahora ejecuta también siete comprobaciones de
+recuperación usando `tests/helpers/finance-recovery.mjs`:
+
+- Renderiza `MovementForm` real con React/JSDOM y carga GET/POST reales de la API.
+- Sólo sustituye las fronteras de Next/Supabase: consulta el rol real en profiles
+  y transporta cada RPC a las funciones SQL reales, bajo `authenticated`, en una
+  conexión PostgreSQL separada con transacción e identidad local.
+- Envía un gasto NIO4 (cuenta local inicial10) y un cobro USD1 (cuenta local inicial0),
+  ambos FX40 ficticia. Cada primer envío hace COMMIT y **después** se pierde la
+  respuesta antes de llegar al formulario. No es sólo un mock que lanza error sin guardar.
+- Comprueba saldo, transacción, snapshot y evento persistidos; no aparece éxito
+  falso y la referencia completa permanece en sessionStorage.
+- Desmonta/remonta el formulario conservando la pestaña: el historial recupera
+  el comprobante, y el reintento envía el mismo UUID/payload. Se obtiene el mismo
+  recibo y no cambian por segunda vez saldo, conteos ni eventos.
+- Consulta el recibo por API y contrasta snapshots 10→6 y 0→1, equivalentes
+  NIO4/USD0.1000 y NIO40/USD1, respectivamente.
+- Retira el rol en profiles local y comprueba POST403 antes del RPC y sin cambios.
+
+**Límites:** no se ejecuta Next por HTTP, PostgREST, cookies de Supabase ni un
+navegador Chromium. El remontaje conserva sessionStorage: no demuestra recuperar
+un pendiente tras cerrar la pestaña/borrar su almacenamiento. No hubo operaciones
+ni SQL ejecutados en Supabase remoto. El caso remoto sigue pendiente.
+
+### Corrección productiva descubierta
+
+Tras un movimiento exitoso, un segundo envío con resultado incierto podía dejar
+visible el enlace «Abrir comprobante interno» del movimiento anterior. No alteraba
+el saldo, pero podía confundir el resultado del segundo intento. Ahora se limpia
+ese enlace al comenzar cada envío. El historial sigue disponible para consultar
+los comprobantes previos.
+
+Se añadió una regresión que falla sin la corrección y pasa con ella: primer envío
+exitoso → segundo envío con respuesta perdida → no aparece el recibo anterior ni
+un mensaje de confirmación, y se conserva el nuevo intento pendiente. El cambio
+no modifica el SQL instalado ni exige migración.
+
+### Salidas reales de esta continuación
+
+```text
+npm run typecheck
+> tsc --noEmit
+(exit 0)
+
+npm run lint
+✖ 10 problems (0 errors, 10 warnings)
+(exit 0)
+
+npm run build
+✓ Compiled successfully in 26.8s
+✓ Generating static pages using 1 worker (40/40) in 189ms
+(exit 0)
+
+npm run test:auth
+# tests 302
+# pass 302
+# fail 0
+(exit 0)
+
+npm run test:sql
+🎉 Todo pasó
+🎉 CRM: 49 comprobaciones pasaron
+🎉 Compatibilidad CRM: 69 comprobaciones pasaron
+🎉 Escritura financiera: 86 comprobaciones pasaron (PGlite; sin concurrencia multiconexión ni SQL remoto)
+(exit 0)
+
+npm run test:finance:concurrency
+PostgreSQL 18.4, tres conexiones independientes, base local desechable.
+🎉 Concurrencia PostgreSQL: 6 comprobaciones pasaron. No se accedió a Supabase.
+🎉 Recuperación UI/API/SQL: 7 comprobaciones pasaron (JSDOM + PostgreSQL local, sin Supabase remoto).
+(exit 0)
+```
+
+Logs: `/home/user/recovery-{integration,form,auth,sql,typecheck,lint,build}.log`.
+La prueba integrada no produjo advertencias de React act en su ejecución final.
+El job CI conserva PostgreSQL17 y ejecuta también la recuperación; consultar el
+resultado del commit correspondiente, no extrapolar el CI del commit anterior.

@@ -243,3 +243,22 @@ test("403 en reintento conserva referencia y no anuncia confirmación ni crea ot
   assert.equal(screen.queryByText(/Movimiento confirmado/), null);
   assert.equal(screen.getByRole("button", { name: "Confirmar gasto" }).disabled, true);
 });
+
+test("un segundo envío incierto no conserva el enlace del comprobante anterior", async () => {
+  let sends = 0;
+  const { posts } = mount(() => {
+    if (++sends === 1) return json({ id });
+    throw new TypeError("respuesta perdida del segundo movimiento");
+  });
+  await fill();
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar gasto" }));
+  await screen.findByRole("link", { name: /Abrir comprobante interno/ });
+  await fill();
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar gasto" }));
+  await screen.findByText(/Conservá esta referencia/);
+  assert.equal(posts.length, 2);
+  assert.notEqual(posts[0].requestId, posts[1].requestId);
+  assert.equal(screen.queryByRole("link", { name: /Abrir comprobante interno/ }), null);
+  assert.equal(screen.queryByText(/Movimiento confirmado/), null);
+  assert.deepEqual(JSON.parse(sessionStorage.getItem(key)), posts[1]);
+});

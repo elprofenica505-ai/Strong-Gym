@@ -123,6 +123,8 @@ export function MovementForm({
     setBusy(true);
     onBusy?.(true);
     setMessage("");
+    // Un resultado anterior no es el comprobante del intento que ahora se envía.
+    setReceipt(null);
     try {
       try {
         sessionStorage.setItem(key, JSON.stringify(body));

@@ -104,7 +104,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Probar contención, idempotencia, rollback y cambio de rol
+      - name: Probar contención y recuperación formulario/API/SQL
         run: npm run test:finance:concurrency
         env:
           # Credenciales públicas del contenedor desechable; nunca Supabase.

@@ -165,6 +165,11 @@ try {
   await expectState(38, 6);
   check("cambio de rol concurrente espera al writer y bloquea el reintento posterior", true);
   console.log(`\n🎉 Concurrencia PostgreSQL: ${checks} comprobaciones pasaron. No se accedió a Supabase.`);
+  const concurrencyChecks = checks;
+  const { testFinanceRecovery } = await import("../tests/helpers/finance-recovery.mjs");
+  await testFinanceRecovery({ control, connect, actor, client, check });
+  console.log(`\n🎉 Recuperación UI/API/SQL: ${checks - concurrencyChecks} comprobaciones pasaron (JSDOM + PostgreSQL local, sin Supabase remoto).`);
+
 } finally {
   await Promise.allSettled(connections.map(async db => {
     await db.query("rollback").catch(() => {});
