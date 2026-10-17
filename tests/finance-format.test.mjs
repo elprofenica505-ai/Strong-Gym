@@ -71,7 +71,7 @@ for (const page of ["cuentas", "reportes"])
       else
         assert.match(
           html,
-          empty ? /Sin movimientos en los últimos 12 meses/ : /86,600/,
+          empty ? /Sin resultados mensuales informados en esta consulta/ : /86,600/,
         );
     });
   }

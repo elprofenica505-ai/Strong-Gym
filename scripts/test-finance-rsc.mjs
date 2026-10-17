@@ -124,11 +124,17 @@ export const getPaymentMethodsBreakdown=async()=>empty?[]:[{paymentMethodId:null
     );
     assert.match(
       reportes,
-      empty === "1" ? /Sin movimientos en los últimos 12 meses/ : /86,600/,
+      empty === "1"
+        ? /Sin resultados mensuales informados en esta consulta/
+        : /86,600/,
     );
     if (empty === "0") {
       assert.match(cuentas, /Deuda informada USD/);
       assert.match(cuentas, /Facturas no informadas/);
+      assert.match(reportes, /Sin método informado/);
+      assert.match(reportes, /Ingresos NIO/);
+      assert.match(reportes, /Egresos NIO/);
+      assert.match(reportes, /Volumen NIO/);
     }
   }
   console.log(

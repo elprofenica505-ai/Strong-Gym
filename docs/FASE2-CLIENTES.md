@@ -557,3 +557,46 @@ test:finance:rsc «Cuentas y Reportes prerenderizados con filas y vacíos»;
 build principal `Compiled successfully` y `41/41`, con aviso previo metadataBase;
 test:sql «Todo pasó», CRM 48 y compatibilidad 67; build-sql --check al día y
 diff --check sin errores. Ningún SQL remoto ejecutado. Validación remota pendiente.
+
+## Capturas posteriores: Cuentas vacía y Reportes con filas (2026-10-16)
+
+El usuario compartió Cuentas por cobrar (22:28) sin error de servidor: cero filas,
+NIO cero, mora no informada y mensaje de consulta sin deudas informadas. Se
+confirma el caso de render/lectura vacía, no que todos los clientes estén al día.
+Reportes (22:40) muestra octubre con egresos 86,600 y septiembre 166,500,
+ingresos cero y resultados negativos; total del desglose 253,100. Son valores
+mostrados en las capturas, no una auditoría ni una pérdida real certificada;
+Caja ya había mostrado movimientos con conceptos `[SEED-GASTO]`.
+
+Se detectó una presentación engañosa: «Qué método se usa más para cobrar» y
+«Otros» presentaban el volumen de egresos como si fueran cobros. Ahora Reportes
+muestra ingresos, egresos y volumen de los campos ya leídos, todos NIO, y explica
+que volumen = ingresos + egresos, no resultado ni saldo de cuenta. Sin nombre:
+«Sin método informado», sin asignar un método a transacciones. El desglose aclara
+que abarca todo el historial de movimientos completados, no sólo el mes de la
+tabla. No hay nuevas conversiones, compensaciones, consultas ni exclusión de seeds.
+
+Tabla mensual: mes y cantidades/signo sin salto de línea, ancho mínimo sólo en
+la tabla y scroll horizontal interno con foco/nombre accesible. No se oculta el
+overflow de la página. Mensaje vacío acotado a los resultados de esta consulta,
+no afirmación de ausencia de movimientos durante doce meses completos.
+
+Pruebas añadidas: egresos sin método, mezcla ingreso/egreso sin netear campos,
+mes/signo juntos, contención DOM y estado vacío. Next/RSC mantiene verificación
+con filas/vacío y ahora comprueba etiquetas de los tres importes por método.
+Chromium local real con markup de la página, lecturas/sesión simuladas y CSS de
+producción: en 320/360/393/414/768/1280px, ancho del documento igual al viewport,
+antes y después de desplazar la tabla; cada celda de datos permanece en una
+línea. En móvil la tabla mide 512px y sólo su contenedor se desplaza. Sin cabecera,
+sin navegación o sesión real de Supabase: no es E2E remoto ni valida importes.
+
+Este ajuste es sólo presentación, sin SQL nuevo, permisos ni habilitación de
+cobros. Pendiente revisar Gastos; PR #10 permanece sin merge.
+
+Salida real local del ajuste de Reportes: typecheck `tsc --noEmit`, exit 0;
+lint `10 problems (0 errors, 10 warnings)` previos; test:auth `tests 125`,
+`pass 125`, `fail 0`; Next/RSC Cuentas y Reportes con filas/vacíos PASS;
+build `Compiled successfully` y `41/41` (aviso previo metadataBase);
+test:sql «Todo pasó», CRM 48 y compatibilidad 67; build-sql --check y
+diff --check PASS. No se ejecutó SQL remoto. Ajuste visual nuevo pendiente
+comprobar en Preview; carga anterior con filas confirmada por captura.
