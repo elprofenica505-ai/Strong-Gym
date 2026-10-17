@@ -10,7 +10,7 @@ import {
   getPaymentMethodsBreakdown,
 } from "@/lib/data/queries";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { formatMoney } from "@/components/admin/cash-panel";
+import { formatMoney } from "@/lib/finance/format-money";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {

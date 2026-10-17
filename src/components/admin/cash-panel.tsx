@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { formatMoney } from "@/lib/finance/format-money";
 import {
   type CashSummary,
   type Currency,
@@ -25,37 +26,6 @@ import {
   type PaymentMethodBreakdown,
   type Transaction,
 } from "@/lib/data/queries";
-
-/* ============================================================
-   Formateo de moneda
-   ============================================================ */
-
-export function formatMoney(
-  amount: number,
-  currency: Currency = "NIO",
-  opts: { compact?: boolean } = {},
-): string {
-  const { compact = false } = opts;
-  if (!Number.isFinite(amount)) return "—";
-  if (currency === "USD") {
-    if (compact && Math.abs(amount) >= 1000) {
-      return `US$ ${(amount / 1000).toFixed(1)}K`;
-    }
-    return new Intl.NumberFormat("es-NI", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: amount % 1 === 0 ? 0 : 2,
-    }).format(amount);
-  }
-  if (compact && Math.abs(amount) >= 1000) {
-    return `C$ ${(amount / 1000).toFixed(1)}K`;
-  }
-  return new Intl.NumberFormat("es-NI", {
-    style: "currency",
-    currency: "NIO",
-    maximumFractionDigits: amount % 1 === 0 ? 0 : 2,
-  }).format(amount);
-}
 
 /* ============================================================
    Tarjeta de KPI

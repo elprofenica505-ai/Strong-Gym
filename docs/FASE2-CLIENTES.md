@@ -503,3 +503,57 @@ lint `10 problems (0 errors, 10 warnings)` previos; test:auth `tests 113`,
 `pass 113`, `fail 0`; build `Compiled successfully` y `41/41`, con aviso previo
 metadataBase; test:sql «Todo pasó», CRM 48 y compatibilidad 67; build-sql --check
 al día y diff --check sin errores.
+
+## Error de servidor al abrir otra pantalla financiera (2026-10-16)
+
+Capturas del Preview `2797tstu0`: Caja muestra el scroll interno del gráfico,
+tablas abiertas/cerradas, tipos de cuenta traducidos y enlace «Ver categorías de
+gastos». También aparecen Administración y Clientes; no se dan por validados
+sus KPI/datos por abrir. La última captura muestra error de servidor con digest
+`3219287748`, sin ruta visible. Por el flujo solicitado se revisa Cuentas, sin
+atribuir ese digest a una causa sólo por su número ni certificar todos los enlaces.
+
+Se encontró un defecto concreto en Cuentas **y** Reportes: ambas páginas servidor
+importaban y ejecutaban `formatMoney` desde `cash-panel.tsx`, marcado `use client`.
+La lectura podía completarse y después fallar el render, fuera de readFinance.
+Reproducción antes del arreglo con Next 16 en producción (fixture aislada):
+«Attempted to call formatMoney() from the server but formatMoney is on the client».
+El digest local es distinto del remoto: no se usa como identificación del origen.
+
+Corrección: mover la implementación sin cambios de comportamiento a
+`src/lib/finance/format-money.ts`, sin directiva cliente, React, datos, sesión ni
+conversión FX. Caja, Cuentas y Reportes importan esa misma función pura. No se
+cambian saldos, deuda, consultas, permisos, cobros ni SQL. No se convierte la
+página entera en cliente ni se oculta el fallo como lectura vacía.
+
+### Por qué no bastaban las pruebas anteriores
+
+El build habitual sin Supabase renderiza el placeholder y no ejercita el camino
+con lecturas exitosas. El loader SSR de tests compila módulos como JS y no aplica
+la frontera RSC de Next a `use client`; por eso podía ejecutar el formateador y
+pasar aunque producción fallara. Se reconoce ese hueco de cobertura.
+
+- Pruebas unitarias: mismo formato NIO/USD, signo, decimales, compacto y valores
+  desconocidos; páginas con filas y vacías bajo un módulo cliente trampa que
+  falla si se llama desde servidor.
+- **`npm run test:finance:rsc`**, agregado a CI: genera una aplicación Next
+  temporal dentro de .next, reutiliza las páginas originales y sus componentes,
+  y sustituye únicamente lecturas/sesión/configuración por fixtures explícitas.
+  Construye/prerenderiza con Next en producción y webpack, con filas y vacío,
+  y verifica HTML financiero esperado en Cuentas/Reportes, sin aviso de fallo.
+  Limpia los archivos temporales; no agrega rutas, bypass de permisos ni datos
+  de ejemplo al producto, no usa credenciales y no accede a Supabase.
+- El prerender real falló antes del cambio y pasa después en los cuatro casos
+  (dos páginas por dos estados). Es prueba de render/frontera RSC, no E2E de la
+  instalación remota, RLS o contenido comercial. Build principal sigue Turbopack.
+
+Pendiente abrir Cuentas y Reportes en el nuevo Preview, confirmar cuál enlace
+mostró el error si no fue Cuentas y luego revisar Gastos. No pedir ejecutar otra
+vez SQL por un fallo de render. Cobros sin habilitar; PR #10 sin merge.
+
+Salida real local posterior: typecheck `tsc --noEmit`, exit 0; lint `10 problems
+(0 errors, 10 warnings)` previos; test:auth `tests 121`, `pass 121`, `fail 0`;
+test:finance:rsc «Cuentas y Reportes prerenderizados con filas y vacíos»;
+build principal `Compiled successfully` y `41/41`, con aviso previo metadataBase;
+test:sql «Todo pasó», CRM 48 y compatibilidad 67; build-sql --check al día y
+diff --check sin errores. Ningún SQL remoto ejecutado. Validación remota pendiente.

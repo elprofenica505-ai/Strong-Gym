@@ -11,6 +11,7 @@
     "start": "next start",
     "test:sql": "node scripts/test-sql.mjs && node scripts/test-crm-sql.mjs && node scripts/test-crm-compat-sql.mjs",
     "typecheck": "tsc --noEmit",
+    "test:finance:rsc": "node scripts/test-finance-rsc.mjs",
     "test:auth": "node --experimental-strip-types --test tests/*.test.mjs"
   },
   "dependencies": {

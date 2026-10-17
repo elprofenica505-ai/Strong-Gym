@@ -35,6 +35,9 @@ jobs:
       - name: Probar autenticación, CRM y QR
         run: npm run test:auth
 
+      - name: Probar Cuentas y Reportes con Next/RSC
+        run: npm run test:finance:rsc
+
       - name: Compilar
         run: npm run build
         env:
