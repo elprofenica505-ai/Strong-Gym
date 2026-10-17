@@ -76,5 +76,36 @@ jobs:
       - name: El SQL tiene que estar sincronizado con la web
         run: node scripts/build-sql.mjs --check
 
-      - name: Probar el SQL contra un PostgreSQL real
+      - name: Probar el SQL con PGlite (una conexión)
         run: npm run test:sql
+
+  finance-concurrency:
+    name: Concurrencia PostgreSQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: strong_gym_test_concurrency
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Probar contención, idempotencia, rollback y cambio de rol
+        run: npm run test:finance:concurrency
+        env:
+          # Credenciales públicas del contenedor desechable; nunca Supabase.
+          TEST_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/strong_gym_test_concurrency

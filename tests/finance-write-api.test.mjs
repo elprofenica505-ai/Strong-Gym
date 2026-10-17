@@ -198,3 +198,30 @@ test("sin Supabase responde 503 y jamás simula guardado", async () => {
   })("app/api/admin/finance/route.ts");
   assert.equal((await POST(req())).status, 503);
 });
+
+// Un UUID conocido y metadatos manipulados no sustituyen el rol de profiles.
+for (const role of [null, "member", "coach", "owner", "ADMIN"])
+  test(`finanzas: ${role ?? "anónimo"} no consulta recibos/historial ni escribe gastos`, async () => {
+    setup(role);
+    for (const query of [
+      `receipt=${id}`,
+      "history=expense",
+      `history=service_income&client=${id}`,
+    ]) {
+      const r = await GET(new Request(`https://gym.example/api/admin/finance?${query}`));
+      assert.equal(r.status, 403);
+      assert.equal(r.headers.get("cache-control"), "private, no-store");
+      assert.deepEqual(await r.json(), { error: "No tenés acceso a movimientos financieros." });
+    }
+    const { clientId, ...body } = intent;
+    const r = await POST(req({ ...body, kind: "expense", category: "alquiler", role: "admin", createdBy: id }));
+    assert.equal(r.status, 403);
+    assert.equal(calls.length, 0);
+  });
+test("rol retirado entre envío y reintento: no vuelve a llamar al writer", async () => {
+  setup("staff");
+  assert.equal((await POST(req())).status, 200);
+  globalThis.__financeUser = { id, role: "member" };
+  assert.equal((await POST(req())).status, 403);
+  assert.equal(calls.length, 1);
+});

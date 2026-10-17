@@ -205,6 +205,13 @@ for (const who of [null, member]) {
     who ? /AUTH/ : /permission denied/,
   );
 }
+// Una referencia confirmada no permite eludir un rol retirado posteriormente.
+await db.query("update profiles set role='member' where id=$1", [staff]);
+await reject(staff, call, args, /AUTH/);
+await reject(staff, "select finance_receipt($1)", [tx], /AUTH/);
+check("rol retirado: reintento y lectura no alteran saldo, transacción ni evento", (await state()) === snapshot);
+await db.query("update profiles set role='staff' where id=$1", [staff]);
+check("rol restaurado: misma referencia recupera el recibo original sin duplicar", (await as(staff, call, args)).rows[0].id === tx && (await state()) === snapshot);
 check(
   "RLS oculta comprobantes al cliente",
   (await as(member, "select * from finance_entries")).rows.length === 0,

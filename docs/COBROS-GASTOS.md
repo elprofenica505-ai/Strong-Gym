@@ -173,3 +173,11 @@ No hay afirmación de CI remoto terminado ni de aceptación en Supabase real.
 Los 5 avisos high de npm audit en la cadena DEV de ESLint documentados en la
 entrega anterior siguen pendientes de una actualización compatible; este bloque
 no añade dependencias ni aplica audit fix --force.
+
+
+### Validación posterior
+
+Ver [validación del 17 de octubre de 2026](VALIDACION-FINANCIERA-2026-10-17.md):
+recorridos remotos comprobados por el usuario, refuerzo de permisos/reintentos y
+seis comprobaciones de contención con conexiones separadas en PostgreSQL local.
+La prueba local de concurrencia no certifica por sí sola la instalación remota.

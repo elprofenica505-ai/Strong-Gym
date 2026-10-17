@@ -230,3 +230,16 @@ test("opciones sin cuenta activa explican el faltante y no habilitan submit", as
   );
   assert.equal(posts.length, 0);
 });
+
+test("403 en reintento conserva referencia y no anuncia confirmación ni crea otro intento", async () => {
+  sessionStorage.setItem(key, JSON.stringify(pending));
+  const { posts } = mount(() => json({ error: "No tenés acceso a movimientos financieros." }, 403));
+  const retry = await screen.findByRole("button", { name: "Reintentar exactamente el mismo movimiento" });
+  fireEvent.click(retry);
+  await screen.findByText(/Conservá esta referencia/);
+  assert.deepEqual(posts, [pending]);
+  assert.deepEqual(JSON.parse(sessionStorage.getItem(key)), pending);
+  assert.equal(screen.queryByRole("link", { name: /Abrir comprobante/ }), null);
+  assert.equal(screen.queryByText(/Movimiento confirmado/), null);
+  assert.equal(screen.getByRole("button", { name: "Confirmar gasto" }).disabled, true);
+});
