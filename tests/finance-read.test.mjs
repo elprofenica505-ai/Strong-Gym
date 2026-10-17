@@ -452,12 +452,16 @@ test("Caja renderiza bloqueo, saldos en su moneda y estados sin prometer cobros"
       isDemo: false,
     }),
   );
-  assert.match(html, /cobros continúan bloqueados/);
+  assert.match(html, /escritor financiero compatible/);
+  assert.doesNotMatch(html, /bloqueados por decisión del administrador/);
   assert.match(html, /Saldo informado/);
   assert.match(html, /Ver categorías de gastos/);
   assert.match(html, /registro de egresos no habilitado/);
   assert.match(html, /Deudas informadas por moneda/);
-  assert.doesNotMatch(html, /Registrar un gasto|cuotas pendientes|P&amp;L y desglose por método/);
+  assert.doesNotMatch(
+    html,
+    /Registrar un gasto|cuotas pendientes|P&amp;L y desglose por método/,
+  );
   assert.match(html, /USD/);
   assert.match(html, /Transferencia/);
   assert.match(html, /Cancelado/);

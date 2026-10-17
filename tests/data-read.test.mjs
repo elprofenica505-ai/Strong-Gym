@@ -136,6 +136,7 @@ test("conteo legacy también propaga error", async () => {
 const session = {
   id: "session",
   class_id: "class",
+  coach_id: null,
   starts_at: "2026-10-19T12:00:00Z",
   ends_at: "2026-10-19T13:00:00Z",
   capacity: 10,
@@ -153,7 +154,15 @@ test("ocupación fallida no fabrica cupos disponibles", async () => {
   );
 });
 test("ocupación sin filas tras lectura correcta sí representa cero reservas", async () => {
-  db((table) => ({ data: table === "sessions" ? [session] : [], error: null }));
+  db((table) => ({
+    data:
+      table === "sessions"
+        ? [session]
+        : table === "classes"
+          ? [session.gymClass]
+          : [],
+    error: null,
+  }));
   const { sessions } = await queries.getSessionsForWeek();
   assert.equal(sessions[0].bookedCount, 0);
   assert.equal(sessions[0].spotsLeft, 10);
@@ -163,7 +172,9 @@ test("ocupación válida se aplica a capacidad", async () => {
     data:
       table === "sessions"
         ? [session]
-        : [{ session_id: "session", booked_count: 8 }],
+        : table === "classes"
+          ? [session.gymClass]
+          : [{ session_id: "session", booked_count: 8 }],
     error: null,
   }));
   assert.equal((await queries.getSessionsForWeek()).sessions[0].spotsLeft, 2);

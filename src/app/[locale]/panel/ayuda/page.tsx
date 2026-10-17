@@ -12,7 +12,10 @@ import {
 } from "lucide-react";
 
 export async function generateMetadata(): Promise<Metadata> {
-  return { title: "Guía para cargar datos", robots: { index: false, follow: false } };
+  return {
+    title: "Guía para cargar datos",
+    robots: { index: false, follow: false },
+  };
 }
 
 const STEPS = [
@@ -21,15 +24,27 @@ const STEPS = [
     title: "Recibí los datos del dueño",
     body: (
       <>
-        <p>El dueño te puede pasar los datos de tres formas. Cualquiera funciona:</p>
+        <p>
+          El dueño te puede pasar los datos de tres formas. Cualquiera funciona:
+        </p>
         <ul className="list-disc space-y-1 pl-5">
-          <li><strong>En papel o por WhatsApp</strong> (fotos de planillas, mensajes, audios).</li>
-          <li><strong>En un Excel / CSV</strong> — el dueño abre su planilla y te la manda.</li>
-          <li><strong>Dictándotelos</strong> — él te dice los datos y vos los cargás.</li>
+          <li>
+            <strong>En papel o por WhatsApp</strong> (fotos de planillas,
+            mensajes, audios).
+          </li>
+          <li>
+            <strong>En un Excel / CSV</strong> — el dueño abre su planilla y te
+            la manda.
+          </li>
+          <li>
+            <strong>Dictándotelos</strong> — él te dice los datos y vos los
+            cargás.
+          </li>
         </ul>
         <p className="mt-2">
-          Los datos típicos que necesitás: <strong>nombre, email, teléfono, plan</strong>.
-          Opcionales pero útiles: fecha de nacimiento, contacto de emergencia, notas médicas.
+          Los datos típicos que necesitás:{" "}
+          <strong>nombre, email, teléfono, plan</strong>. Opcionales pero
+          útiles: fecha de nacimiento, contacto de emergencia, notas médicas.
         </p>
       </>
     ),
@@ -41,18 +56,24 @@ const STEPS = [
     body: (
       <>
         <p>
-          Si los datos están en papel o en audio, armá una <strong>planilla de Google Sheets</strong>
-          (es gratis, no necesitás Excel). Poné una columna por dato y un cliente por fila.
+          Si los datos están en papel o en audio, armá una{" "}
+          <strong>planilla de Google Sheets</strong>
+          (es gratis, no necesitás Excel). Poné una columna por dato y un
+          cliente por fila.
         </p>
         <p className="mt-2">
-          Si los datos ya están en Excel, pasalos a Google Sheets (o exportá como CSV directamente).
+          Si los datos ya están en Excel, pasalos a Google Sheets (o exportá
+          como CSV directamente).
         </p>
         <p className="mt-2">
-          La columna mínima es <code>fullName</code>. Correo y teléfono son opcionales. El resto es opcional
-          y podés dejarlo vacío.
+          La columna mínima es <code>fullName</code>. Correo y teléfono son
+          opcionales. El resto es opcional y podés dejarlo vacío.
         </p>
         <p className="mt-2 text-fog">
-          En la sección <Link href="." className="text-brand-300 underline">Importar clientes</Link>{" "}
+          En la sección{" "}
+          <Link href="." className="text-brand-300 underline">
+            Importar clientes
+          </Link>{" "}
           podés bajar una plantilla de ejemplo con todas las columnas.
         </p>
       </>
@@ -65,12 +86,16 @@ const STEPS = [
     body: (
       <>
         <p>
-          En Google Sheets: <strong>Archivo → Descargar → Valores separados por comas (.csv)</strong>.
-          En Excel: <strong>Archivo → Guardar como → CSV (separado por comas)</strong>.
+          En Google Sheets:{" "}
+          <strong>
+            Archivo → Descargar → Valores separados por comas (.csv)
+          </strong>
+          . En Excel:{" "}
+          <strong>Archivo → Guardar como → CSV (separado por comas)</strong>.
         </p>
         <p className="mt-2">
-          Te queda un archivo <code>.csv</code> en tu computadora. Ese es el archivo que subís
-          al sistema.
+          Te queda un archivo <code>.csv</code> en tu computadora. Ese es el
+          archivo que subís al sistema.
         </p>
       </>
     ),
@@ -82,18 +107,21 @@ const STEPS = [
     body: (
       <>
         <p>
-          Andá a <strong>Panel → Herramientas → Importar clientes</strong>, tocá el botón para elegir
-          el archivo y revisá la vista previa. Cuando esté bien, tocá{" "}
-          <strong>Importar</strong>.
+          Andá a <strong>Panel → Herramientas → Importar clientes</strong>, tocá
+          el botón para elegir el archivo y revisá la vista previa. Cuando esté
+          bien, tocá <strong>Importar</strong>.
         </p>
         <p className="mt-2">
-          El sistema te dice cuántos cargó bien y cuántos saltó (por email duplicado, datos
-          incompletos, etc.).
+          El sistema te dice cuántos cargó bien y cuántos saltó (por email
+          duplicado, datos incompletos, etc.).
         </p>
         <p className="mt-2 text-fog">
-          <strong>Importante</strong>: este paso crea fichas CRM independientes, pero{" "}
-          <strong>no crea la cuenta de login</strong>. Sólo si quiere una cuenta web, el cliente debe entrar
-          al sitio y registrarse. Por seguridad, no se vinculan fichas por coincidencia de correo: la vinculación posterior de una ficha de recepción requiere revisión administrativa.
+          <strong>Importante</strong>: este paso crea fichas CRM independientes,
+          pero <strong>no crea la cuenta de login</strong>. Sólo si quiere una
+          cuenta web, el cliente debe entrar al sitio y registrarse. Por
+          seguridad, no se vinculan fichas por coincidencia de correo: la
+          vinculación posterior de una ficha de recepción requiere revisión
+          administrativa.
         </p>
       </>
     ),
@@ -101,30 +129,24 @@ const STEPS = [
   },
   {
     n: 5,
-    title: "Borrá los datos de ejemplo",
+    title: "Prepará la entrega antes de limpiar",
     body: (
       <>
         <p>
-          Una vez que los clientes reales están cargados, andá a{" "}
-          <strong>Panel → Herramientas → Reset</strong> y tocá <strong>Borrar TODO lo de ejemplo</strong>.
+          Primero hay que terminar y probar los módulos con los datos de
+          ejemplo, obtener la aprobación del dueño y verificar su acceso de
+          administrador.
         </p>
-        <p className="mt-2">
-          Eso borra los clientes ficticios, los 3 coaches de ejemplo y los 13 gastos del mes.
-          <strong>No toca la estructura de la base ni tu usuario admin.</strong>
+        <p>
+          Después: respaldo, revisión de relaciones y saldos por moneda, y SQL
+          de limpieza aprobado dentro de una transacción. Sólo entonces se
+          cargan los datos reales y saldos iniciales.
         </p>
-        <p className="mt-2 text-fog">
-          Si querés hacerlo a mano, en Supabase SQL Editor podés correr:
+        <p>
+          El borrado automático anterior fue retirado por seguridad. No borres
+          por correo, prefijo o ID: esas coincidencias no demuestran que un
+          registro siga siendo ficticio.
         </p>
-        <pre className="mt-2 overflow-x-auto rounded-xl border border-line bg-night-3 p-3 text-[0.75rem] text-fog">
-{`delete from public.profiles
- where email like '%@stronggym-ejemplo.com';
-
-delete from public.transactions
- where concept like '[SEED-GASTO]%';
-
-delete from public.coaches
- where id in ('coa_dg', 'coa_mr', 'coa_jl');`}
-        </pre>
       </>
     ),
     icon: Trash2,
@@ -135,11 +157,12 @@ delete from public.coaches
     body: (
       <>
         <p>
-          Los coaches de ejemplo (Douglas, María, José Luis) también se borran con el reset.
-          Cuando tengas los datos reales, cargalos desde el SQL Editor con algo como:
+          El retiro de entrenadores de ejemplo debe revisar también sus horarios
+          y reservas. Cuando estén confirmados los datos reales, se puede
+          preparar su carga desde SQL. Este es sólo un ejemplo de formato:
         </p>
         <pre className="mt-2 overflow-x-auto rounded-xl border border-line bg-night-3 p-3 text-[0.75rem] text-fog">
-{`insert into public.coaches
+          {`insert into public.coaches
   (id, slug, name, role_es, role_en, bio_es, bio_en,
    specialties, initials, color, sort_order, is_active)
 values
@@ -157,17 +180,29 @@ values
   },
   {
     n: 7,
-    title: "Listo · empeza a usar el sistema",
+    title: "Verificá antes de usar datos reales",
     body: (
       <>
         <p>
-          Con los datos reales cargados, ya podés:
+          La entrega no se valida sólo porque abran las pantallas. Hay que
+          comprobar:
         </p>
         <ul className="list-disc space-y-1 pl-5">
-          <li>Cobrar mensualidades desde <strong>Panel → Caja y cuentas</strong>.</li>
-          <li>Ver las cuentas por cobrar y los días de mora.</li>
-          <li>Generar reportes mensuales de P&L.</li>
-          <li>Cada cliente se registra desde el sitio y ya puede reservar clases.</li>
+          <li>
+            Cobros y gastos persistidos, comprobantes internos, permisos e
+            idempotencia.
+          </li>
+          <li>
+            Deudas y créditos separados en NIO y USD, con vencimientos
+            conocidos.
+          </li>
+          <li>
+            Reportes y exportaciones conciliados con movimientos y cuentas.
+          </li>
+          <li>
+            Entradas manuales y reservas; una cuenta web sólo si el cliente la
+            necesita.
+          </li>
         </ul>
       </>
     ),
@@ -177,7 +212,7 @@ values
 
 export default function AyudaPage() {
   return (
-    <div className="space-y-6">
+    <div className="container-x min-w-0 space-y-6 py-6">
       <div>
         <Link
           href="."
@@ -213,7 +248,9 @@ export default function AyudaPage() {
               <p className="hidden text-[0.6875rem] font-semibold uppercase tracking-wider text-fog sm:block">
                 Paso {n}
               </p>
-              <h2 className="mt-0.5 text-[1.0625rem] font-semibold text-ink">{title}</h2>
+              <h2 className="mt-0.5 text-[1.0625rem] font-semibold text-ink">
+                {title}
+              </h2>
               <div className="mt-2 text-[0.875rem] leading-relaxed text-mist [&_p+p]:mt-2 [&_ul]:mt-2">
                 {body}
               </div>
@@ -226,11 +263,10 @@ export default function AyudaPage() {
         <p className="flex items-start gap-2">
           <ShieldCheck className="mt-0.5 size-4 shrink-0" />
           <span>
-            <strong>Tranquilo, no se puede romper nada</strong>: las herramientas de
-            carga y reset solo tocan los datos de ejemplo. La estructura de la base
-            de datos, tu usuario admin y cualquier dato real se preservan. Si algo sale
-            mal, volvé a correr el <code>supabase/ACTUALIZAR.sql</code> y se regenera
-            todo como al principio.
+            <strong>Respaldá y revisá antes de cambiar datos.</strong> Una carga
+            o limpieza puede afectar relaciones y saldos. No vuelvas a ejecutar
+            instaladores o seeds como forma de recuperar datos: prepará la
+            recuperación desde un respaldo y verificá sus resultados.
           </span>
         </p>
       </div>
@@ -239,8 +275,9 @@ export default function AyudaPage() {
         <p className="flex items-start gap-2">
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-alert" />
           <span>
-            <strong>Si te trabás en cualquier paso</strong>, abrí una sesión nueva de chat
-            conmigo y contame: &quot;estoy en el paso N de la guía, no me anda X&quot;. Te ayudo.
+            <strong>Si te trabás en cualquier paso</strong>, abrí una sesión
+            nueva de chat conmigo y contame: &quot;estoy en el paso N de la
+            guía, no me anda X&quot;. Te ayudo.
           </span>
         </p>
       </div>

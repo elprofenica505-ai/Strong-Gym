@@ -46,6 +46,12 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ""
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ""
 
+      - name: Preparar Chromium para pruebas de diseño
+        run: npx playwright-core install --with-deps chromium
+
+      - name: Probar shell y pantallas financieras en celular y escritorio
+        run: npm run test:layout
+
       - name: Verificar metadatos e imágenes para compartir
         run: npm run test:metadata
 

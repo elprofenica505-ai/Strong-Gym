@@ -1,5 +1,11 @@
 import "server-only";
 import {
+  BOOKING_COLUMNS,
+  SESSION_COLUMNS,
+  rowsByIds,
+  resolveSessions,
+} from "@/lib/data/relations";
+import {
   DataReadError,
   checkedRead,
   requireRows,
@@ -25,6 +31,7 @@ import type {
   GymClass,
   Plan,
   SessionDetail,
+  Session,
   WeekRange,
 } from "@/lib/types";
 import { demoClasses, demoCoaches, demoPlans } from "./demo-content";
@@ -84,19 +91,6 @@ export async function getPlans(): Promise<Plan[]> {
    Clases de la semana
    ------------------------------------------------------------ */
 
-interface RawSessionRow {
-  id: string;
-  class_id: string;
-  coach_id: string | null;
-  starts_at: string;
-  ends_at: string;
-  capacity: number;
-  room: string;
-  status: "scheduled" | "cancelled";
-  gymClass?: GymClass | null;
-  coach?: Coach | null;
-}
-
 export async function getSessionsForWeek(weekKey?: string | null): Promise<{
   week: WeekRange;
   sessions: SessionDetail[];
@@ -111,11 +105,7 @@ export async function getSessionsForWeek(weekKey?: string | null): Promise<{
   try {
     const { data, error } = await supabase
       .from("sessions")
-      .select(
-        `id, class_id, coach_id, starts_at, ends_at, capacity, room, status,
-         gymClass:classes (*),
-         coach:coaches (*)`,
-      )
+      .select(SESSION_COLUMNS)
       .gte("starts_at", week.start.toISOString())
       .lte("starts_at", week.end.toISOString())
       .order("starts_at", { ascending: true })
@@ -124,7 +114,7 @@ export async function getSessionsForWeek(weekKey?: string | null): Promise<{
     const rows = requireRows("SESSIONS", {
       data,
       error,
-    }) as unknown as RawSessionRow[];
+    }) as unknown as Session[];
 
     // La ocupación la da una vista pública que sólo expone conteos
     // (las reservas están protegidas por RLS).
@@ -156,25 +146,14 @@ export async function getSessionsForWeek(weekKey?: string | null): Promise<{
       }
     }
 
-    const sessions: SessionDetail[] = rows.map((row) => {
-      if (!row.gymClass) throw new DataReadError("SESSIONS", "RELATION");
+    const resolved = await resolveSessions(supabase, rows);
+    const sessions = rows.map((row) => {
+      const session = resolved.get(row.id)!;
       const bookedCount = occupancy.get(row.id) ?? 0;
-      const capacity = row.capacity ?? row.gymClass.capacity;
-      if (!Number.isSafeInteger(capacity) || capacity < 0)
-        throw new DataReadError("SESSIONS", "INVALID");
       return {
-        id: row.id,
-        class_id: row.class_id,
-        coach_id: row.coach_id,
-        starts_at: row.starts_at,
-        ends_at: row.ends_at,
-        capacity,
-        room: row.room,
-        status: row.status,
-        gymClass: row.gymClass as GymClass,
-        coach: row.coach ?? null,
+        ...session,
         bookedCount,
-        spotsLeft: Math.max(0, capacity - bookedCount),
+        spotsLeft: Math.max(0, session.capacity - bookedCount),
       };
     });
 
@@ -202,61 +181,38 @@ export const getCurrentUser = cache(async () => {
   }
 });
 
-export async function getMyBookings(userId: string): Promise<BookingDetail[]> {
-  const supabase = await operationalClient();
-  if (!supabase) return [];
+/** Carga de reservas y relaciones por IDs bajo la misma sesión/RLS. */
+async function bookingSessions(
+  db: NonNullable<Awaited<ReturnType<typeof operationalClient>>>,
+  bookings: Booking[],
+) {
+  const rows = await rowsByIds<Session>(
+    db,
+    "sessions",
+    SESSION_COLUMNS,
+    bookings.map((row) => row.session_id),
+    "BOOKING_SESSIONS",
+  );
+  return resolveSessions(db, [...rows.values()]);
+}
 
-  try {
-    const { data, error } = await supabase
+export async function getMyBookings(userId: string): Promise<BookingDetail[]> {
+  return checkedRead("BOOKINGS", async () => {
+    const db = await operationalClient();
+    if (!db) return [];
+    const result = await db
       .from("bookings")
-      .select(
-        `id, session_id, user_id, status, created_at, cancelled_at,
-         session:sessions (
-           id, class_id, coach_id, starts_at, ends_at, capacity, room, status,
-           gymClass:classes (*),
-           coach:coaches (*)
-         )`,
-      )
+      .select(BOOKING_COLUMNS)
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .abortSignal(AbortSignal.timeout(15000));
-
-    const rows = requireRows("BOOKINGS", { data, error });
-
-    type Row = Booking & {
-      session: Omit<
-        SessionDetail,
-        "bookedCount" | "spotsLeft" | "gymClass" | "coach"
-      > & {
-        gymClass: GymClass;
-        coach: Coach | null;
-      };
-    };
-
-    return (rows as unknown as Row[]).map((row) => {
-      if (!row.session?.gymClass)
-        throw new DataReadError("BOOKINGS", "RELATION");
-      return {
-        id: row.id,
-        session_id: row.session_id,
-        user_id: row.user_id,
-        status: row.status,
-        created_at: row.created_at,
-        cancelled_at: row.cancelled_at,
-        session: {
-          ...row.session,
-          capacity: row.session.capacity ?? row.session.gymClass.capacity,
-          gymClass: row.session.gymClass,
-          coach: row.session.coach ?? null,
-          bookedCount: 0,
-          spotsLeft: 0,
-        },
-      };
-    });
-  } catch (error) {
-    if (error instanceof DataReadError) throw error;
-    throw new DataReadError("BOOKINGS");
-  }
+    const rows = requireRows("BOOKINGS", result) as unknown as Booking[];
+    const sessions = await bookingSessions(db, rows);
+    return rows.map((row) => ({
+      ...row,
+      session: sessions.get(row.session_id)!,
+    }));
+  });
 }
 
 /** IDs de las clases en las que el usuario ya tiene reserva. */
@@ -288,59 +244,33 @@ export async function getAllBookings(): Promise<
     session: SessionDetail;
   })[]
 > {
-  const supabase = await operationalClient();
-  if (!supabase) return [];
-
-  try {
-    const { data, error } = await supabase
+  return checkedRead("BOOKINGS", async () => {
+    const db = await operationalClient();
+    if (!db) return [];
+    const result = await db
       .from("bookings")
-      .select(
-        `id, session_id, user_id, status, created_at, cancelled_at,
-         profile:profiles (full_name, email),
-         session:sessions (
-           id, class_id, coach_id, starts_at, ends_at, capacity, room, status,
-           gymClass:classes (*), coach:coaches (*)
-         )`,
-      )
+      .select(BOOKING_COLUMNS)
       .order("created_at", { ascending: false })
       .limit(500)
       .abortSignal(AbortSignal.timeout(15000));
-
-    const rows = requireRows("BOOKINGS", { data, error });
-
-    type Row = Booking & {
-      profile: { full_name: string | null; email: string | null } | null;
-      session:
-        | (Omit<SessionDetail, "bookedCount" | "spotsLeft"> & {
-            gymClass: GymClass;
-          })
-        | null;
-    };
-
-    return (rows as unknown as Row[]).map((row) => {
-      if (!row.session?.gymClass)
-        throw new DataReadError("BOOKINGS", "RELATION");
-      return {
-        id: row.id,
-        session_id: row.session_id,
-        user_id: row.user_id,
-        status: row.status,
-        created_at: row.created_at,
-        cancelled_at: row.cancelled_at,
-        memberName: row.profile?.full_name ?? "Cliente",
-        memberEmail: row.profile?.email ?? "",
-        session: {
-          ...(row.session as SessionDetail),
-          capacity: row.session!.capacity ?? row.session!.gymClass.capacity,
-          bookedCount: 0,
-          spotsLeft: 0,
-        },
-      };
-    });
-  } catch (error) {
-    if (error instanceof DataReadError) throw error;
-    throw new DataReadError("BOOKINGS");
-  }
+    const rows = requireRows("BOOKINGS", result) as unknown as Booking[];
+    const [sessions, profiles] = await Promise.all([
+      bookingSessions(db, rows),
+      rowsByIds<{ id: string; full_name: string | null; email: string | null }>(
+        db,
+        "profiles",
+        "id,full_name,email",
+        rows.map((row) => row.user_id),
+        "BOOKING_PROFILES",
+      ),
+    ]);
+    return rows.map((row) => ({
+      ...row,
+      memberName: profiles.get(row.user_id)?.full_name ?? "Cliente",
+      memberEmail: profiles.get(row.user_id)?.email ?? "",
+      session: sessions.get(row.session_id)!,
+    }));
+  });
 }
 
 export async function getContactMessages(): Promise<ContactMessage[]> {
@@ -506,7 +436,8 @@ export async function getPaymentMethods(): Promise<PaymentMethod[]> {
     .eq("is_active", true)
     .order("sort_order");
   if (error) {
-    if (!isFinanceSchemaError(error.code)) throw new FinanceReadError("METHODS", error.code);
+    if (!isFinanceSchemaError(error.code))
+      throw new FinanceReadError("METHODS", error.code);
     data = await readBankFinance<NonNullable<typeof data>>(supabase, "methods");
   }
   return (data ?? []).map(mapPaymentMethod);
@@ -525,8 +456,12 @@ export async function getExpenseCategories(): Promise<ExpenseCategory[]> {
     .eq("is_active", true)
     .order("sort_order");
   if (error) {
-    if (!isFinanceSchemaError(error.code)) throw new FinanceReadError("CATEGORIES", error.code);
-    data = await readBankFinance<NonNullable<typeof data>>(supabase, "categories");
+    if (!isFinanceSchemaError(error.code))
+      throw new FinanceReadError("CATEGORIES", error.code);
+    data = await readBankFinance<NonNullable<typeof data>>(
+      supabase,
+      "categories",
+    );
   }
   return (data ?? []).map(mapExpenseCategory);
 }
@@ -546,8 +481,12 @@ export async function getAccounts(): Promise<Account[]> {
     .eq("is_active", true)
     .order("name");
   if (error) {
-    if (!isFinanceSchemaError(error.code)) throw new FinanceReadError("ACCOUNTS", error.code);
-    data = await readBankFinance<NonNullable<typeof data>>(supabase, "accounts");
+    if (!isFinanceSchemaError(error.code))
+      throw new FinanceReadError("ACCOUNTS", error.code);
+    data = await readBankFinance<NonNullable<typeof data>>(
+      supabase,
+      "accounts",
+    );
   }
   return (data ?? []).map(mapAccount);
 }
@@ -583,8 +522,13 @@ export async function getRecentTransactions(
     error = legacy.error;
   }
   if (error) {
-    if (!isFinanceSchemaError(error.code)) throw new FinanceReadError("TRANSACTIONS", error.code);
-    data = await readBankFinance<NonNullable<typeof data>>(supabase, "transactions", limit);
+    if (!isFinanceSchemaError(error.code))
+      throw new FinanceReadError("TRANSACTIONS", error.code);
+    data = await readBankFinance<NonNullable<typeof data>>(
+      supabase,
+      "transactions",
+      limit,
+    );
   }
   return (data ?? []).map((row) => mapTransaction(row));
 }
@@ -601,8 +545,13 @@ export async function getDailyCash(days = 14): Promise<DailyCashRow[]> {
     .select("day,income_nio,expense_nio,net_nio,tx_count")
     .limit(days);
   if (error) {
-    if (!isFinanceSchemaError(error.code)) throw new FinanceReadError("DAILY", error.code);
-    data = await readBankFinance<NonNullable<typeof data>>(supabase, "daily", days);
+    if (!isFinanceSchemaError(error.code))
+      throw new FinanceReadError("DAILY", error.code);
+    data = await readBankFinance<NonNullable<typeof data>>(
+      supabase,
+      "daily",
+      days,
+    );
   }
   return (data ?? []).map((r) => ({
     day: String(r.day),
@@ -625,8 +574,13 @@ export async function getMonthlyPnl(months = 6): Promise<MonthlyPnlRow[]> {
     .select("month,income_nio,expense_nio,net_nio")
     .limit(months);
   if (error) {
-    if (!isFinanceSchemaError(error.code)) throw new FinanceReadError("MONTHLY", error.code);
-    data = await readBankFinance<NonNullable<typeof data>>(supabase, "monthly", months);
+    if (!isFinanceSchemaError(error.code))
+      throw new FinanceReadError("MONTHLY", error.code);
+    data = await readBankFinance<NonNullable<typeof data>>(
+      supabase,
+      "monthly",
+      months,
+    );
   }
   return (data ?? []).map((r) => ({
     month: String(r.month),
@@ -651,8 +605,12 @@ export async function getPaymentMethodsBreakdown(): Promise<
       "payment_method_id,name_es,icon,tx_count,total_nio,income_nio,expense_nio",
     );
   if (error) {
-    if (!isFinanceSchemaError(error.code)) throw new FinanceReadError("METHOD_TOTALS", error.code);
-    data = await readBankFinance<NonNullable<typeof data>>(supabase, "method_totals");
+    if (!isFinanceSchemaError(error.code))
+      throw new FinanceReadError("METHOD_TOTALS", error.code);
+    data = await readBankFinance<NonNullable<typeof data>>(
+      supabase,
+      "method_totals",
+    );
   }
   return (data ?? []).map((r) => ({
     paymentMethodId: r.payment_method_id,
@@ -680,17 +638,24 @@ export async function getAccountsReceivable(): Promise<
       "member_id,full_name,email,phone,invoices_open,total_owed_nio,oldest_due,days_overdue",
     );
   if (error) {
-    if (!isFinanceSchemaError(error.code)) throw new FinanceReadError("RECEIVABLES", error.code);
-    data = await readBankFinance<NonNullable<typeof data>>(supabase, "receivables");
+    if (!isFinanceSchemaError(error.code))
+      throw new FinanceReadError("RECEIVABLES", error.code);
+    data = await readBankFinance<NonNullable<typeof data>>(
+      supabase,
+      "receivables",
+    );
   }
   return (data ?? []).map((r) => ({
     memberId: r.member_id,
     fullName: r.full_name ?? "—",
     email: r.email ?? "",
     phone: r.phone,
-    invoicesOpen: r.invoices_open === null ? null : Number(r.invoices_open ?? 0),
+    invoicesOpen:
+      r.invoices_open === null ? null : Number(r.invoices_open ?? 0),
     totalOwedNio: Number(r.total_owed_nio ?? 0),
-    ...("total_owed_usd" in r ? {totalOwedUsd: Number(r.total_owed_usd)} : {}),
+    ...("total_owed_usd" in r
+      ? { totalOwedUsd: Number(r.total_owed_usd) }
+      : {}),
     oldestDue: r.oldest_due,
     daysOverdue: r.days_overdue === null ? null : Number(r.days_overdue ?? 0),
   }));
@@ -766,13 +731,17 @@ export async function getCashSummary(): Promise<CashSummary> {
     .maybeSingle();
 
   const failures = [
-    ["SUMMARY_DAY", todayError], ["SUMMARY_MONTH", monthError],
-    ["SUMMARY_DEBT", arError], ["SUMMARY_REGISTER", openError],
+    ["SUMMARY_DAY", todayError],
+    ["SUMMARY_MONTH", monthError],
+    ["SUMMARY_DEBT", arError],
+    ["SUMMARY_REGISTER", openError],
   ] as const;
   for (const [operation, error] of failures) {
-    if (error && !isFinanceSchemaError(error.code)) throw new FinanceReadError(operation, error.code);
+    if (error && !isFinanceSchemaError(error.code))
+      throw new FinanceReadError(operation, error.code);
   }
-  if (failures.some(([,error]) => !!error)) return readBankFinance<CashSummary>(supabase, "summary");
+  if (failures.some(([, error]) => !!error))
+    return readBankFinance<CashSummary>(supabase, "summary");
 
   return {
     incomeToday: Number(todayRows?.income_nio ?? 0),
@@ -824,7 +793,7 @@ function mapExpenseCategory(r: Record<string, unknown>): ExpenseCategory {
     nameEs: r.name_es as string,
     nameEn: r.name_en as string,
     icon: (r.icon as string) ?? "Receipt",
-    isActive: r.is_active === null ? null : r.is_active as boolean,
+    isActive: r.is_active === null ? null : (r.is_active as boolean),
     sortOrder: Number(r.sort_order ?? 0),
   };
 }
@@ -839,7 +808,7 @@ function mapAccount(r: Record<string, unknown>): Account {
     bankName: (r.bank_name as string) ?? null,
     accountNumber: (r.account_number as string) ?? null,
     holderName: (r.holder_name as string) ?? null,
-    ...(r.balance !== undefined ? {balance: Number(r.balance)} : {}),
+    ...(r.balance !== undefined ? { balance: Number(r.balance) } : {}),
     isActive: r.is_active as boolean,
   };
 }
@@ -858,7 +827,10 @@ function mapTransaction(r: Record<string, unknown>): Transaction {
     paymentMethodId: (r.payment_method_id as string) ?? null,
     accountId: (r.account_id as string) ?? null,
     memberId: (r.member_id as string) ?? null,
-    memberName: (r.client as {full_name?:string}|null)?.full_name ?? member?.full_name ?? null,
+    memberName:
+      (r.client as { full_name?: string } | null)?.full_name ??
+      member?.full_name ??
+      null,
     invoiceId: (r.invoice_id as string) ?? null,
     expenseCategoryId: (r.expense_category_id as string) ?? null,
     concept: r.concept as string,

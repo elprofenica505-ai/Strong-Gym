@@ -23,6 +23,7 @@ tras aprobar la demostración, sin eliminar estructura ni funcionalidades.
 - [Inventario funcional y bloqueantes reales](./docs/INVENTARIO-FUNCIONAL.md).
 - [Resultados de la validación del inventario](./docs/VALIDACION-INVENTARIO.md).
 - [B.1: lecturas conectadas sin datos ficticios ni vacíos falsos](./docs/B1-LECTURAS.md).
+- [Reparación de reservas/móvil, pruebas y siguiente paso financiero](./docs/REPARACION-RESERVAS-MOVIL.md).
 
 Estas referencias distinguen las funciones implementadas de las parciales o
 pendientes. La descripción histórica que sigue no certifica que cada acción del
@@ -109,7 +110,8 @@ npm run build      # compilar para producción
 npm start          # correr la versión compilada
 npm run typecheck  # revisar los tipos de TypeScript
 npm run test:metadata # tras build demo: verificar URLs e imágenes para compartir
-npm run test:sql   # probar el SQL de Supabase en un Postgres real (34 pruebas)
+npm run test:sql   # base, CRM y compatibilidad contra PostgreSQL embebido (PGlite)
+npm run test:layout # tras build e instalar Chromium: shell y finanzas, 96 casos
 npm run build:sql  # regenerar supabase/SETUP.sql tras cambiar los horarios
 ```
 

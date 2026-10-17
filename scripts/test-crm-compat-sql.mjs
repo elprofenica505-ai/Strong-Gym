@@ -493,6 +493,12 @@ check(
   "implementación privada nativa idéntica a FASE2 original",
   compat.includes(original),
 );
+await db.exec(`
+create function public.diagnostic_test_trigger() returns trigger language plpgsql as $$
+begin raise exception 'DIAGNOSTIC_EXECUTED_A_TRIGGER'; end; $$;
+create trigger diagnostic_test_trigger before insert on public.transactions
+for each row execute function public.diagnostic_test_trigger();
+`);
 await db.exec("begin read only");
 const metadata = await db.query(
   sql("supabase/DIAGNOSTICO-ESCRITURA-FINANCIERA.sql"),
@@ -505,6 +511,18 @@ check(
     Array.isArray(exported.vistas) &&
     Array.isArray(exported.politicas) &&
     !metadata.rows[0].diagnostico.includes("Movimiento ficticio previo"),
+);
+check(
+  "diagnóstico incluye disparadores y su implementación sin ejecutarlos",
+  exported.disparadores.some((t) => t.nombre === "diagnostic_test_trigger") &&
+    exported.funciones.some((f) =>
+      f.definicion.includes("DIAGNOSTIC_EXECUTED_A_TRIGGER"),
+    ),
+);
+check(
+  "diagnóstico incluye restricciones y valores por defecto para revisar escritura",
+  exported.restricciones.length > 0 &&
+    exported.columnas.some((c) => c.column_default !== null),
 );
 await db.exec("rollback");
 await db.close();

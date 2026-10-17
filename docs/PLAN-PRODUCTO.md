@@ -130,3 +130,5 @@ implementadas ni se inventan reglas laborales, fiscales o comerciales para ellas
 Trabajar en `arena/9bdd978c-strong-gym`, PR #10 sin merge automático.
 Documentar cada bloque: cambios, pruebas, pendientes y SQL si corresponde.
 Revisión inicial: 2026-10-17, código base `9910268`.
+
+Reparación posterior a B.1: [reservas sin embeddings, shell móvil y seguridad de entrega](./REPARACION-RESERVAS-MOVIL.md). Cobros/gastos siguen pendientes de escritura compatible y validación remota; la autorización para desarrollarlos está confirmada.

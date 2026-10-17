@@ -46,7 +46,7 @@ export default async function GastosPage({
   const categories = result.data;
 
   return (
-    <div className="space-y-6">
+    <div className="container-x min-w-0 space-y-6 py-6">
       <div className="flex items-center gap-3">
         <Link
           href={`/${locale}/panel`}
@@ -80,11 +80,11 @@ export default async function GastosPage({
             <span className="grid size-10 place-items-center rounded-xl bg-brand-soft text-brand-300">
               <Receipt className="size-4" />
             </span>
-            <div>
-              <p className="text-[0.875rem] font-semibold text-ink">
+            <div className="min-w-0">
+              <p className="break-words text-[0.875rem] font-semibold text-ink">
                 {c.nameEs}
               </p>
-              <p className="text-[0.6875rem] text-fog uppercase tracking-wider">
+              <p className="break-all text-[0.6875rem] text-fog uppercase tracking-wider">
                 {c.slug}
               </p>
             </div>

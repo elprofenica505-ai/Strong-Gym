@@ -51,12 +51,14 @@ export default async function CuentasPage({
     );
   const rows = result.data;
   const totalOwed = rows.reduce((acc, r) => acc + r.totalOwedNio, 0);
-  const hasSplit = rows.some(r => r.totalOwedUsd !== undefined);
-  const totalOwedUsd = rows.reduce((acc,r) => acc+(r.totalOwedUsd ?? 0),0);
-  const ages = rows.flatMap(r => r.daysOverdue === null ? [] : [r.daysOverdue]);
+  const hasSplit = rows.some((r) => r.totalOwedUsd !== undefined);
+  const totalOwedUsd = rows.reduce((acc, r) => acc + (r.totalOwedUsd ?? 0), 0);
+  const ages = rows.flatMap((r) =>
+    r.daysOverdue === null ? [] : [r.daysOverdue],
+  );
 
   return (
-    <div className="space-y-6">
+    <div className="container-x min-w-0 space-y-6 py-6">
       <div className="flex items-center gap-3">
         <Link
           href={`/${locale}/panel`}
@@ -84,8 +86,16 @@ export default async function CuentasPage({
         />
       </div>
 
-      {hasSplit && <Stat label="Deuda informada USD · sin convertir" value={formatMoney(totalOwedUsd,"USD")} />}
-      <p className="text-sm text-fog">Montos informados por la base, sin compensar créditos ni convertir entre monedas. Si no hay vencimiento o factura, no se inventan días de mora.</p>
+      {hasSplit && (
+        <Stat
+          label="Deuda informada USD · sin convertir"
+          value={formatMoney(totalOwedUsd, "USD")}
+        />
+      )}
+      <p className="text-sm text-fog">
+        Montos informados por la base, sin compensar créditos ni convertir entre
+        monedas. Si no hay vencimiento o factura, no se inventan días de mora.
+      </p>
       {rows.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-line bg-card py-12 text-center text-[0.875rem] text-fog">
           No hay deudas informadas en esta consulta.
@@ -95,11 +105,11 @@ export default async function CuentasPage({
           {rows.map((r) => (
             <li
               key={r.memberId}
-              className="grid gap-3 rounded-2xl border border-line bg-card p-4 sm:grid-cols-[1fr,auto] sm:items-center"
+              className="grid gap-3 rounded-2xl border border-line bg-card p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
             >
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="truncate text-[0.9375rem] font-semibold text-ink">
+                  <p className="break-words text-[0.9375rem] font-semibold text-ink">
                     {r.fullName}
                   </p>
                   {r.daysOverdue !== null && r.daysOverdue > 0 && (
@@ -109,17 +119,19 @@ export default async function CuentasPage({
                   )}
                 </div>
                 <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[0.75rem] text-fog">
-                  <span className="inline-flex items-center gap-1">
+                  <span className="inline-flex min-w-0 max-w-full items-center gap-1 break-all">
                     <Mail className="size-3" /> {r.email}
                   </span>
                   {r.phone && (
-                    <span className="inline-flex items-center gap-1">
+                    <span className="inline-flex min-w-0 max-w-full items-center gap-1 break-all">
                       <Phone className="size-3" /> {r.phone}
                     </span>
                   )}
-                  <span className="inline-flex items-center gap-1">
+                  <span className="inline-flex min-w-0 max-w-full items-center gap-1 break-all">
                     <Clock className="size-3" />
-                    {r.invoicesOpen === null ? "Facturas no informadas" : `${r.invoicesOpen} factura${r.invoicesOpen === 1 ? "" : "s"}`}
+                    {r.invoicesOpen === null
+                      ? "Facturas no informadas"
+                      : `${r.invoicesOpen} factura${r.invoicesOpen === 1 ? "" : "s"}`}
                   </span>
                 </div>
               </div>
@@ -127,7 +139,11 @@ export default async function CuentasPage({
                 <p className="font-mono text-[1.0625rem] font-semibold text-brand tabular-nums">
                   {formatMoney(r.totalOwedNio)}
                 </p>
-                {r.totalOwedUsd !== undefined && <p className="font-mono text-brand">{formatMoney(r.totalOwedUsd,"USD")}</p>}
+                {r.totalOwedUsd !== undefined && (
+                  <p className="font-mono text-brand">
+                    {formatMoney(r.totalOwedUsd, "USD")}
+                  </p>
+                )}
                 <p className="mt-0.5 text-[0.6875rem] text-fog">
                   Vence: {r.oldestDue ?? "—"}
                 </p>
