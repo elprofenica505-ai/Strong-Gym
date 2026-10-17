@@ -1,9 +1,10 @@
+import { MovementForm } from "@/components/admin/movement-form";
 import { FinanceUnavailable } from "@/components/admin/finance-unavailable";
 import { readFinance } from "@/lib/finance/read-result";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Receipt, Wallet } from "lucide-react";
+import { ArrowLeft, Receipt, Wallet } from "lucide-react";
 import { getCurrentUser, getExpenseCategories } from "@/lib/data/queries";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
@@ -60,46 +61,43 @@ export default async function GastosPage({
             Caja · Gastos
           </span>
           <h1 className="display-xl mt-2 text-[1.75rem] sm:text-[2.25rem]">
-            Categorías de gastos
+            Gastos y comprobantes
           </h1>
         </div>
       </div>
 
       <p className="max-w-2xl text-[0.875rem] leading-relaxed text-fog">
-        Cuando registrás un egreso desde el panel, lo encajás en una de estas
-        categorías. Cada una alimenta los reportes mensuales para que sepas a
-        dónde se va la plata.
+        Registrá un egreso con categoría, cuenta, método y moneda. El registro
+        actualiza el saldo y guarda su comprobante en una misma operación. No lo
+        uses para transferencias entre cuentas.
       </p>
 
-      <ul className="grid gap-2.5 sm:grid-cols-2">
-        {categories.map((c) => (
-          <li
-            key={c.id}
-            className="flex items-center gap-3 rounded-2xl border border-line bg-card p-4"
-          >
-            <span className="grid size-10 place-items-center rounded-xl bg-brand-soft text-brand-300">
-              <Receipt className="size-4" />
-            </span>
-            <div className="min-w-0">
-              <p className="break-words text-[0.875rem] font-semibold text-ink">
-                {c.nameEs}
-              </p>
-              <p className="break-all text-[0.6875rem] text-fog uppercase tracking-wider">
-                {c.slug}
-              </p>
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      <div className="rounded-2xl border border-dashed border-line bg-card-2 p-6 text-center">
-        <Plus className="mx-auto size-6 text-fog" />
-        <p className="mt-2 text-[0.8125rem] text-fog">
-          El formulario para registrar gastos todavía no está implementado en
-          esta pantalla. Tener Supabase conectado no lo habilita
-          automáticamente.
-        </p>
-      </div>
+      <MovementForm kind="expense" locale={locale} />
+      <details className="rounded-xl border border-line p-4">
+        <summary className="cursor-pointer text-brand-300">
+          Ver categorías disponibles
+        </summary>
+        <ul className="mt-3 grid gap-2.5 sm:grid-cols-2">
+          {categories.map((c) => (
+            <li
+              key={c.id}
+              className="flex items-center gap-3 rounded-2xl border border-line bg-card p-4"
+            >
+              <span className="grid size-10 place-items-center rounded-xl bg-brand-soft text-brand-300">
+                <Receipt className="size-4" />
+              </span>
+              <div className="min-w-0">
+                <p className="break-words text-[0.875rem] font-semibold text-ink">
+                  {c.nameEs}
+                </p>
+                <p className="break-all text-[0.6875rem] text-fog uppercase tracking-wider">
+                  {c.slug}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </details>
     </div>
   );
 }

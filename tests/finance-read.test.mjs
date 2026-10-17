@@ -179,7 +179,7 @@ function pageLoader(role) {
     "@/lib/supabase/env": "export const isSupabaseConfigured=true;",
     "@/lib/data/queries": code,
     "next/navigation":
-      "export function redirect(path){throw new Error('REDIRECT:'+path);}",
+      "export const useRouter=()=>({refresh(){}});export function redirect(path){throw new Error('REDIRECT:'+path);}",
   });
 }
 for (const page of ["caja", "cuentas", "reportes", "gastos"]) {
@@ -435,7 +435,7 @@ test("límites solicitados se pasan a RPC de días, meses e historial", async ()
     [20, 12, 8],
   );
 });
-test("Caja renderiza bloqueo, saldos en su moneda y estados sin prometer cobros", async () => {
+test("Caja guía a formularios verificados y muestra saldos por moneda", async () => {
   const { CashPanel } = await load("components/admin/cash-panel.tsx");
   legacyDb();
   const tx = (await queries.getRecentTransactions())[0];
@@ -452,11 +452,11 @@ test("Caja renderiza bloqueo, saldos en su moneda y estados sin prometer cobros"
       isDemo: false,
     }),
   );
-  assert.match(html, /escritor financiero compatible/);
+  assert.match(html, /verifica la actualización y los permisos/);
   assert.doesNotMatch(html, /bloqueados por decisión del administrador/);
   assert.match(html, /Saldo informado/);
-  assert.match(html, /Ver categorías de gastos/);
-  assert.match(html, /registro de egresos no habilitado/);
+  assert.match(html, /Registrar gasto y ver comprobantes/);
+  assert.match(html, /requiere actualización financiera/);
   assert.match(html, /Deudas informadas por moneda/);
   assert.doesNotMatch(
     html,

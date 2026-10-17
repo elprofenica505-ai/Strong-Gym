@@ -22,10 +22,10 @@ for (const key of [
   });
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 globalThis.self = dom.window;
-const { render, screen, fireEvent, waitFor, cleanup, act } = await import(
-  "@testing-library/react"
-);
+const { render, screen, fireEvent, waitFor, cleanup, act } =
+  await import("@testing-library/react");
 const { ClientsPanel } = await createLoader({
+  "next/navigation": "export const useRouter=()=>({refresh(){}});",
   "@/components/providers/dictionary-provider":
     'export const useDictionary = () => ({locale:"es"});',
 })("components/crm/clients-panel.tsx");
@@ -83,6 +83,7 @@ function setup(
       body: init.body ? JSON.parse(init.body) : null,
     });
     const u = new URL(url, "https://strong.test");
+    if (u.pathname === "/api/admin/finance") return handler(u, init);
     if (u.searchParams.get("mode") === "options") return optionsResponse();
     if (!u.searchParams.has("id") && init.method !== "POST")
       return json({ rows, total: rows.length });
@@ -526,4 +527,39 @@ test("cambiar de cliente limpia el aviso de entrada anterior", async () => {
   await heading("Carlos Prueba");
   assert.equal(screen.queryByText(/ya tiene una visita registrada hoy/), null);
   assert.equal(calls.filter((c) => c.body).length, 1);
+});
+
+test("ficha bancaria usa el nuevo protocolo de cobro sin depender del escritor legacy bloqueado", async () => {
+  const bank = {
+    ...options,
+    finance_layout: "bank_accounts_split",
+    payments_enabled: false,
+  };
+  const calls = setup(
+    (url, init) => {
+      if (url.pathname === "/api/admin/finance")
+        return json(
+          url.searchParams.has("history")
+            ? []
+            : {
+                ...bank,
+                protocol: "service-v1",
+                writes_enabled: true,
+                categories: [],
+              },
+        );
+      return json({ ...detail(), finance_layout: "bank_accounts_split" });
+    },
+    [client()],
+    () => json(bank),
+  );
+  await open();
+  await screen.findByRole("heading", { name: "Cobro por servicio" });
+  const submit = screen.getByRole("button", {
+    name: "Confirmar cobro por servicio",
+  });
+  await waitFor(() => assert.equal(submit.disabled, false));
+  assert.ok(screen.getByText(/No reduce deudas/));
+  assert.equal(screen.queryByText(/Los cobros están bloqueados/), null);
+  assert.ok(calls.some((c) => c.url === "/api/admin/finance"));
 });

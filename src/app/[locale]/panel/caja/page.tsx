@@ -73,12 +73,6 @@ export default async function CajaPage({
   const paymentMethodIcons = Object.fromEntries(
     paymentMethods.map((m) => [m.id, m.icon]),
   );
-  const accountsForPanel = accounts.map((a) => ({
-    id: a.id,
-    name: a.name,
-    currency: a.currency,
-    kind: a.kind,
-  }));
 
   return (
     <CashPanel

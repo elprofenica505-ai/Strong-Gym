@@ -321,9 +321,10 @@ export function CashPanel({
       {summary.sourceModel === "bank_accounts_split" && (
         <div className="rounded-xl border border-line bg-card p-4 text-sm text-fog space-y-2">
           <p>
-            Caja en modo lectura. El registro de cobros requiere el escritor
-            financiero compatible, todavía pendiente en esta versión. No es un
-            bloqueo solicitado por el administrador.
+            Cobros por servicio: desde la ficha del cliente. Gastos: desde
+            Registrar gasto. Cada formulario verifica la actualización y los
+            permisos antes de habilitarse. No aplica deudas, créditos ni
+            renovaciones automáticamente.
           </p>
           <p>
             Ingresos, egresos y resultados: equivalentes NIO guardados en cada
@@ -645,8 +646,8 @@ export function CashPanel({
             />
             <QuickLink
               href={`/${useLocale()}/panel/gastos`}
-              label="Ver categorías de gastos"
-              hint="Sólo consulta · registro de egresos no habilitado"
+              label="Registrar gasto y ver comprobantes"
+              hint="Gastos por cuenta y moneda · requiere actualización financiera"
             />
             <QuickLink
               href={`/${useLocale()}/panel/reportes`}

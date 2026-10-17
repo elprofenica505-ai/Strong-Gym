@@ -439,5 +439,23 @@ check(
   "seed de cuentas bank_accounts rechaza esquema nativo sin crear tabla paralela",
   !(await row("select to_regclass('public.bank_accounts') as t")).t,
 );
+await assert.rejects(
+  db.exec(
+    readFileSync(
+      new URL(
+        "../supabase/migrations/00024_finance_movements.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  ),
+  /FINANCE_SCHEMA_UNSUPPORTED/,
+);
+await db.exec("rollback");
+check(
+  "actualización bancaria rechaza esquema nativo sin instalación parcial",
+  !(await db.query("select to_regclass('public.finance_entries') as t")).rows[0]
+    .t,
+);
 await db.close();
 console.log(`\n🎉 CRM: ${count} comprobaciones pasaron\n`);

@@ -2,7 +2,7 @@
 
 -- Sólo nombres/tipos/defaults/constraints/vista; NO contiene registros del negocio.
 
--- Ampliado con columnas del segundo CSV. Precisión sólo cuando fue exportada.
+-- Ampliado con el diagnóstico de escritura recibido 2026-10-17 (precisiones confirmadas).
 -- Los defaults nuevos y el escritor centinela son exclusivamente de prueba.
 
 -- No usar como migración ni como instalación. Datos de prueba se agregan aparte.
@@ -36,7 +36,7 @@ create table public.bank_accounts (
   currency text not null,
   bank_name text,
   account_number text,
-  balance numeric not null default 0,
+  balance numeric(12,2) not null default 0,
   is_active boolean not null default true,
   display_order integer not null default 0,
   constraint bank_accounts_account_type_check CHECK (account_type = ANY (ARRAY['caja_fuerte'::text, 'banco'::text, 'billetera'::text])),
@@ -46,10 +46,10 @@ create table public.bank_accounts (
 
 create table public.member_balances (
   member_id uuid not null,
-  credit_nio numeric not null default 0,
-  credit_usd numeric not null default 0,
-  debt_nio numeric not null default 0,
-  debt_usd numeric not null default 0,
+  credit_nio numeric(12,2) not null default 0,
+  credit_usd numeric(12,2) not null default 0,
+  debt_nio numeric(12,2) not null default 0,
+  debt_usd numeric(12,2) not null default 0,
   last_payment_date timestamp with time zone,
   updated_at timestamp with time zone not null default now(),
   constraint member_balances_member_id_fkey FOREIGN KEY (member_id) REFERENCES profiles(id) ON DELETE CASCADE,
@@ -79,11 +79,11 @@ create table public.transactions (
   member_id uuid,
   coach_id text,
   plan_id text,
-  amount numeric not null,
+  amount numeric(12,2) not null,
   currency text not null,
-  amount_nio numeric not null,
-  amount_usd numeric not null,
-  fx_used numeric not null,
+  amount_nio numeric(12,2) not null,
+  amount_usd numeric(12,4) not null,
+  fx_used numeric(12,4) not null,
   concept text not null,
   reference text,
   receipt_url text,

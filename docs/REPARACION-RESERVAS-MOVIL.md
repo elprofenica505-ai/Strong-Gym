@@ -1,5 +1,7 @@
 # Reparación de reservas, diseño móvil y preparación de escritura financiera
 
+Esta es la entrega histórica `56df90e`. Estado posterior: [C.1 cobros y gastos](./COBROS-GASTOS.md); el CSV de escritura ya fue recibido y revisado.
+
 Fecha: 2026-10-17. Rama `arena/9bdd978c-strong-gym`. PR #10 sin merge.
 
 ## 1. Reservas: eliminar la dependencia de relaciones embebidas

@@ -14,6 +14,7 @@ import {
 import { crmActionSchema } from "@/lib/crm/schemas";
 import { ClientCard } from "./client-card";
 import { QrScanner } from "./qr-scanner";
+import { MovementForm } from "@/components/admin/movement-form";
 import { crmRequest } from "@/lib/crm/request";
 import { useCrmResource } from "./use-crm-resource";
 const input =
@@ -656,19 +657,31 @@ export function ClientsPanel({
                 Reemplazar QR perdido
               </Button>
             </div>
-            <PaymentForm
-              key={detail.client.id}
-              clientId={detail.client.id}
-              options={options}
-              blocked={
-                detailBusy ||
-                optionsResource.loading ||
-                !!optionsResource.error ||
-                options.payments_enabled !== true
-              }
-              onBusy={setBusy}
-              onRefresh={() => setRevision((n) => n + 1)}
-            />
+            {options.finance_layout === "bank_accounts_split" ? (
+              <MovementForm
+                key={detail.client.id}
+                kind="service_income"
+                clientId={detail.client.id}
+                locale={locale}
+                disabled={detailBusy}
+                onBusy={setBusy}
+                onRefresh={() => setRevision((n) => n + 1)}
+              />
+            ) : (
+              <PaymentForm
+                key={detail.client.id}
+                clientId={detail.client.id}
+                options={options}
+                blocked={
+                  detailBusy ||
+                  optionsResource.loading ||
+                  !!optionsResource.error ||
+                  options.payments_enabled !== true
+                }
+                onBusy={setBusy}
+                onRefresh={() => setRevision((n) => n + 1)}
+              />
+            )}
           </div>
           <div className="grid gap-6 lg:grid-cols-2">
             <div>

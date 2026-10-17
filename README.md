@@ -24,6 +24,7 @@ tras aprobar la demostración, sin eliminar estructura ni funcionalidades.
 - [Resultados de la validación del inventario](./docs/VALIDACION-INVENTARIO.md).
 - [B.1: lecturas conectadas sin datos ficticios ni vacíos falsos](./docs/B1-LECTURAS.md).
 - [Reparación de reservas/móvil, pruebas y siguiente paso financiero](./docs/REPARACION-RESERVAS-MOVIL.md).
+- [C.1: cobros por servicio, gastos, comprobantes e instalación](./docs/COBROS-GASTOS.md).
 
 Estas referencias distinguen las funciones implementadas de las parciales o
 pendientes. La descripción histórica que sigue no certifica que cada acción del
@@ -111,7 +112,7 @@ npm start          # correr la versión compilada
 npm run typecheck  # revisar los tipos de TypeScript
 npm run test:metadata # tras build demo: verificar URLs e imágenes para compartir
 npm run test:sql   # base, CRM y compatibilidad contra PostgreSQL embebido (PGlite)
-npm run test:layout # tras build e instalar Chromium: shell y finanzas, 96 casos
+npm run test:layout # tras build e instalar Chromium: shell, finanzas y comprobantes, 144 casos
 npm run build:sql  # regenerar supabase/SETUP.sql tras cambiar los horarios
 ```
 

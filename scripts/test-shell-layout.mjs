@@ -125,17 +125,75 @@ for (const variant of ["ejemplo", "vacio", "importes-largos"]) {
           slug: large ? "ejemplo".repeat(12) : "ejemplo",
         },
       ];
+  const financeOptions = {
+    protocol: "service-v1",
+    writes_enabled: true,
+    finance_layout: "bank_accounts_split",
+    methods: [
+      { id: "ejemplo", name_es: names, accepts_nio: true, accepts_usd: true },
+    ],
+    accounts: variantAccounts,
+    categories,
+  };
+  const exampleReceipt = {
+    id: "11111111-1111-4111-8111-111111111111",
+    requestId: "22222222-2222-4222-8222-222222222222",
+    kind: "expense",
+    occurredAt: "2026-10-17T12:00:00Z",
+    amount: large ? 99999999 : 10,
+    currency: "NIO",
+    amountNio: 10,
+    amountUsd: 0.2723,
+    fx: 36.7244,
+    concept: names,
+    clientId: null,
+    clientName: null,
+    categoryName: names,
+    accountId: "ejemplo",
+    accountName: names,
+    methodName: names,
+    actorId: "33333333-3333-4333-8333-333333333333",
+    actorName: "Personal EJEMPLO",
+    accountBefore: 100,
+    accountAfter: 90,
+    reference: "SG-EJEMPLO",
+  };
   const load = createLoader({
+    "server-only": "export {};",
+    "@/lib/supabase/server": `export const getSupabaseServerClient=async()=>({rpc(){return {abortSignal:async()=>({data:${JSON.stringify(exampleReceipt)},error:null})}}});`,
+    "@/components/crm/use-crm-resource": `export const useCrmResource=(url)=>({loading:false,error:'',data:url.includes('history=')?[]:${JSON.stringify(financeOptions)}});`,
     "@/lib/supabase/env": "export const isSupabaseConfigured=true;",
     "@/lib/data/queries": `export const getCurrentUser=async()=>({role:'admin'});export const getMonthlyPnl=async()=>${JSON.stringify(variantMonthly)};export const getPaymentMethodsBreakdown=async()=>${JSON.stringify(variantMethods)};export const getCashSummary=async()=>(${JSON.stringify(variantSummary)});export const getAccounts=async()=>${JSON.stringify(variantAccounts)};export const getRecentTransactions=async()=>${JSON.stringify(variantRecent)};export const getAccountsReceivable=async()=>${JSON.stringify(debts)};export const getExpenseCategories=async()=>${JSON.stringify(categories)};export const getDailyCash=async()=>[];export const getPaymentMethods=async()=>[];`,
     "@/components/providers/dictionary-provider": `export const useDictionary=()=>({locale:'es',dict:${JSON.stringify(dict)}});`,
     "@/components/providers/app-provider": `export const useApp=()=>({user:{role:'admin',fullName:'Admin EJEMPLO'},isDemo:false,hydrated:true,bookings:[],signOut(){},toast(){}});`,
-    "next/navigation": `export const usePathname=()=>'/es/panel/reportes';export const useRouter=()=>({});export function redirect(){throw Error('redirect')}`,
+    "next/navigation": `export function notFound(){throw Error("NOT_FOUND")};export const usePathname=()=>'/es/panel/reportes';export const useRouter=()=>({});export function redirect(){throw Error('redirect')}`,
   });
   const { SiteShell } = await load("components/layout/site-shell.tsx");
   const { SiteFooter } = await load("components/layout/site-footer.tsx");
-  for (const key of ["caja", "reportes", "cuentas", "gastos"]) {
-    const { default: Page } = await load(`app/[locale]/panel/${key}/page.tsx`);
+  for (const key of [
+    "caja",
+    "reportes",
+    "cuentas",
+    "gastos",
+    "cobro",
+    "comprobante",
+  ]) {
+    const Page =
+      key === "cobro"
+        ? () =>
+            React.createElement(MovementForm, {
+              kind: "service_income",
+              clientId: exampleReceipt.id,
+              locale: "es",
+            })
+        : (
+            await load(
+              key === "comprobante"
+                ? "app/[locale]/panel/comprobantes/[id]/page.tsx"
+                : `app/[locale]/panel/${key}/page.tsx`,
+            )
+          ).default;
+    const { MovementForm } = await load("components/admin/movement-form.tsx");
     pages[`${key}-${variant}`] =
       '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">' +
       readdirSync(root + "/.next/static/chunks")
@@ -147,7 +205,9 @@ for (const variant of ["ejemplo", "vacio", "importes-largos"]) {
         React.createElement(
           SiteShell,
           { footer: React.createElement(SiteFooter, { locale: "es" }) },
-          await Page({ params: Promise.resolve({ locale: "es" }) }),
+          await Page({
+            params: Promise.resolve({ locale: "es", id: exampleReceipt.id }),
+          }),
         ),
       ) +
       "</body></html>";
@@ -265,7 +325,7 @@ try {
       );
   }
   console.log(
-    `PASS: ${results.length} casos (4 pantallas × 3 fixtures EJEMPLO × 8 anchos, 320–1280 px). Sin overflow global, CTA responsive y tablas desplazables. Render SSR completo con CSS de producción; no certifica hidratación ni escrituras remotas.`,
+    `PASS: ${results.length} casos (6 pantallas/formularios × 3 fixtures EJEMPLO × 8 anchos, 320–1280 px). Sin overflow global, CTA responsive y tablas desplazables. Render SSR completo con CSS de producción; no certifica hidratación ni escrituras remotas.`,
   );
 } finally {
   if (browser) await browser.close();
