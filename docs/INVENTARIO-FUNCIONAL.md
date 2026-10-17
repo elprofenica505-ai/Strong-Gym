@@ -24,6 +24,17 @@ Estados:
 P0 = bloqueante de confianza/seguridad/persistencia; P1 = operación esencial;
 P2 = completar producto/control. No son fechas ni porcentajes de avance.
 
+## Avance posterior: B.1 implementada y probada localmente
+
+La tabla siguiente conserva el diagnóstico inicial como referencia. **B04, B05 y
+B07 tienen ahora corrección de código y pruebas locales**, detalladas en
+[B1-LECTURAS.md](./B1-LECTURAS.md). Todavía falta su aceptación conectada; no se
+reclasifica como producto completo. B01/B02/B03/B06 y B08 siguen pendientes.
+
+Se agregaron 100 pruebas; la suite alcanza 231 aprobadas. No se modificó SQL ni se
+habilitaron cobros. El siguiente bloque corresponde a persistencia administrativa
+y protección de la limpieza antigua, no a repetir el inventario.
+
 ## 2. Hallazgos bloqueantes con evidencia
 
 | ID | Prioridad | Hallazgo | Fuente concreta | Aceptación de la corrección |

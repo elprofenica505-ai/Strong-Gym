@@ -22,6 +22,7 @@ tras aprobar la demostración, sin eliminar estructura ni funcionalidades.
 - [Plan de producto y criterios de entrega](./docs/PLAN-PRODUCTO.md).
 - [Inventario funcional y bloqueantes reales](./docs/INVENTARIO-FUNCIONAL.md).
 - [Resultados de la validación del inventario](./docs/VALIDACION-INVENTARIO.md).
+- [B.1: lecturas conectadas sin datos ficticios ni vacíos falsos](./docs/B1-LECTURAS.md).
 
 Estas referencias distinguen las funciones implementadas de las parciales o
 pendientes. La descripción histórica que sigue no certifica que cada acción del

@@ -1,4 +1,12 @@
-import { CalendarCheck, Clock, DoorOpen, MessageCircle, Users } from "lucide-react";
+import { readData } from "@/lib/data/read-result";
+import { DataUnavailable } from "@/components/ui/data-unavailable";
+import {
+  CalendarCheck,
+  Clock,
+  DoorOpen,
+  MessageCircle,
+  Users,
+} from "lucide-react";
 import { getDictionary } from "@/i18n/dictionaries";
 import type { Locale } from "@/i18n/config";
 import { getClasses } from "@/lib/data/queries";
@@ -20,7 +28,14 @@ const ACCESS: Record<string, "book" | "free" | "ask"> = {
 
 export async function ClassesGrid({ locale }: { locale: Locale }) {
   const dict = getDictionary(locale);
-  const classes = await getClasses();
+  const result = await readData(() => getClasses());
+  if (!result.ok)
+    return (
+      <Section id="clases">
+        <DataUnavailable locale={locale} code={result.code} />
+      </Section>
+    );
+  const classes = result.data;
 
   return (
     <Section id="clases" className="border-b border-line bg-cloud">
@@ -45,7 +60,9 @@ export async function ClassesGrid({ locale }: { locale: Locale }) {
           {classes.map((gymClass, index) => {
             const name = locale === "es" ? gymClass.name_es : gymClass.name_en;
             const description =
-              locale === "es" ? gymClass.description_es : gymClass.description_en;
+              locale === "es"
+                ? gymClass.description_es
+                : gymClass.description_en;
             const level = intensityBars[gymClass.intensity] ?? 2;
             const access = ACCESS[gymClass.slug] ?? "ask";
 
@@ -60,7 +77,9 @@ export async function ClassesGrid({ locale }: { locale: Locale }) {
                   />
 
                   <header className="flex items-start justify-between gap-3">
-                    <h3 className="display-xl text-[1.5rem] leading-none text-ink">{name}</h3>
+                    <h3 className="display-xl text-[1.5rem] leading-none text-ink">
+                      {name}
+                    </h3>
 
                     <span
                       className="shrink-0 rounded-full px-2.5 py-1 text-[0.625rem] font-bold tracking-[0.1em] uppercase"
@@ -86,13 +105,20 @@ export async function ClassesGrid({ locale }: { locale: Locale }) {
                         size="sm"
                         className="w-full"
                       >
-                        <CalendarCheck className="size-3.5" aria-hidden="true" />
+                        <CalendarCheck
+                          className="size-3.5"
+                          aria-hidden="true"
+                        />
                         {dict.schedule.book}
                       </ButtonLink>
                     ) : access === "free" ? (
                       <span className="flex items-center gap-2 rounded-full border border-line bg-cloud px-3.5 py-2 text-[0.75rem] font-medium text-mist">
-                        <DoorOpen className="size-3.5 shrink-0 text-brand" aria-hidden="true" />
-                        {dict.classes.freeAccess} · {dict.classes.freeAccessHint}
+                        <DoorOpen
+                          className="size-3.5 shrink-0 text-brand"
+                          aria-hidden="true"
+                        />
+                        {dict.classes.freeAccess} ·{" "}
+                        {dict.classes.freeAccessHint}
                       </span>
                     ) : (
                       <ButtonLink
@@ -107,7 +133,10 @@ export async function ClassesGrid({ locale }: { locale: Locale }) {
                         size="sm"
                         className="w-full"
                       >
-                        <MessageCircle className="size-3.5" aria-hidden="true" />
+                        <MessageCircle
+                          className="size-3.5"
+                          aria-hidden="true"
+                        />
                         {dict.classes.askSchedule}
                       </ButtonLink>
                     )}
@@ -125,7 +154,10 @@ export async function ClassesGrid({ locale }: { locale: Locale }) {
                     </span>
 
                     {/* Barras de intensidad */}
-                    <span className="ml-auto flex items-end gap-0.5" aria-hidden="true">
+                    <span
+                      className="ml-auto flex items-end gap-0.5"
+                      aria-hidden="true"
+                    >
                       {[1, 2, 3].map((bar) => (
                         <span
                           key={bar}
@@ -133,7 +165,9 @@ export async function ClassesGrid({ locale }: { locale: Locale }) {
                           style={{
                             height: `${0.35 + bar * 0.28}rem`,
                             backgroundColor:
-                              bar <= level ? accentOnDark(gymClass.color) : "rgba(255,255,255,0.16)",
+                              bar <= level
+                                ? accentOnDark(gymClass.color)
+                                : "rgba(255,255,255,0.16)",
                           }}
                         />
                       ))}

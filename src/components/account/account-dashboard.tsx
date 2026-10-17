@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { DataUnavailable } from "@/components/ui/data-unavailable";
 import {
   CalendarCheck,
   CalendarX,
@@ -47,7 +48,17 @@ export function AccountDashboard({
   plans: Plan[];
 }) {
   const { dict, locale } = useDictionary();
-  const { user, bookings, signOut, updateProfile, toast, isDemo, hydrated } = useApp();
+  const {
+    user,
+    bookings,
+    signOut,
+    updateProfile,
+    toast,
+    isDemo,
+    hydrated,
+    bookingsError,
+    bookingsLoading,
+  } = useApp();
 
   const [editing, setEditing] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -58,8 +69,12 @@ export function AccountDashboard({
 
   const demo = useDemoBookings(isDemo ? bookings : []);
 
-  const resolvedUpcoming: BookingDetail[] = isDemo ? demo.upcoming : upcomingFrom(initialBookings, now);
-  const resolvedHistory: BookingDetail[] = isDemo ? [] : historyFrom(initialBookings, now);
+  const resolvedUpcoming: BookingDetail[] = isDemo
+    ? demo.upcoming
+    : upcomingFrom(initialBookings, now);
+  const resolvedHistory: BookingDetail[] = isDemo
+    ? []
+    : historyFrom(initialBookings, now);
   const totalBookings = isDemo ? bookings.length : initialBookings.length;
   const attendedCount = isDemo
     ? bookings.filter((b) => b.status === "attended").length
@@ -78,7 +93,10 @@ export function AccountDashboard({
     });
     setSavingProfile(false);
 
-    toast(ok ? dict.account.saved : dict.errors.generic, ok ? "success" : "error");
+    toast(
+      ok ? dict.account.saved : dict.errors.generic,
+      ok ? "success" : "error",
+    );
     if (ok) setEditing(false);
   }
 
@@ -106,7 +124,9 @@ export function AccountDashboard({
     return (
       <div className="flex flex-col items-center gap-4 rounded-2xl border border-line bg-card px-6 py-20 text-center">
         <UserIcon className="size-8 text-fog" aria-hidden="true" />
-        <p className="text-[0.9375rem] text-mist">{dict.schedule.loginToBook}</p>
+        <p className="text-[0.9375rem] text-mist">
+          {dict.schedule.loginToBook}
+        </p>
         <div className="flex gap-2">
           <ButtonLink href={`/${locale}/ingresar`} size="md">
             {dict.nav.login}
@@ -119,10 +139,27 @@ export function AccountDashboard({
     );
   }
 
+  if (bookingsError)
+    return <DataUnavailable locale={locale} code="DATA_BOOKINGS_UNAVAILABLE" />;
+  if (bookingsLoading)
+    return (
+      <p role="status">
+        {locale === "es" ? "Confirmando reservas…" : "Verifying bookings…"}
+      </p>
+    );
+
   const stats = [
-    { label: dict.account.stats.total, value: totalBookings, Icon: CalendarCheck },
+    {
+      label: dict.account.stats.total,
+      value: totalBookings,
+      Icon: CalendarCheck,
+    },
     { label: dict.account.stats.attended, value: attendedCount, Icon: Trophy },
-    { label: dict.account.stats.upcoming, value: resolvedUpcoming.length, Icon: Clock },
+    {
+      label: dict.account.stats.upcoming,
+      value: resolvedUpcoming.length,
+      Icon: Clock,
+    },
   ];
 
   return (
@@ -140,17 +177,27 @@ export function AccountDashboard({
 
           <div className="min-w-0">
             <h1 className="display-xl text-[1.5rem] leading-none">
-              {dict.account.greeting.replace("{name}", user.fullName.split(" ")[0])}
+              {dict.account.greeting.replace(
+                "{name}",
+                user.fullName.split(" ")[0],
+              )}
             </h1>
-            <p className="mt-1.5 truncate text-[0.8125rem] text-fog">{user.email}</p>
+            <p className="mt-1.5 truncate text-[0.8125rem] text-fog">
+              {user.email}
+            </p>
             <p className="mt-0.5 text-[0.75rem] text-fog">
-              {dict.account.memberSince} {formatDateNumeric(new Date(user.createdAt), locale)}
+              {dict.account.memberSince}{" "}
+              {formatDateNumeric(new Date(user.createdAt), locale)}
             </p>
           </div>
         </div>
 
         <div className="flex shrink-0 flex-wrap gap-2">
-          <Button variant="dark" size="sm" onClick={() => setEditing((v) => !v)}>
+          <Button
+            variant="dark"
+            size="sm"
+            onClick={() => setEditing((v) => !v)}
+          >
             <Pencil className="size-3.5" aria-hidden="true" />
             {dict.account.settings}
           </Button>
@@ -194,7 +241,12 @@ export function AccountDashboard({
               {dict.account.save}
             </Button>
 
-            <Button type="button" variant="ghost" size="md" onClick={() => setEditing(false)}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="md"
+              onClick={() => setEditing(false)}
+            >
               <X className="size-4" aria-hidden="true" />
               {dict.cta.back}
             </Button>
@@ -213,7 +265,9 @@ export function AccountDashboard({
               <Icon className="size-5" aria-hidden="true" />
             </span>
             <div>
-              <p className="display-xl text-[1.75rem] leading-none text-brand">{value}</p>
+              <p className="display-xl text-[1.75rem] leading-none text-brand">
+                {value}
+              </p>
               <p className="mt-1 text-[0.75rem] text-fog">{label}</p>
             </div>
           </div>
@@ -235,7 +289,12 @@ export function AccountDashboard({
           </p>
         </div>
 
-        <ButtonLink href={`/${locale}#planes`} variant="outline" size="sm" className="shrink-0">
+        <ButtonLink
+          href={`/${locale}#planes`}
+          variant="outline"
+          size="sm"
+          className="shrink-0"
+        >
           {dict.cta.viewPlans}
         </ButtonLink>
       </div>
@@ -260,7 +319,9 @@ export function AccountDashboard({
         ) : resolvedUpcoming.length === 0 ? (
           <div className="flex flex-col items-center gap-4 rounded-2xl border border-line bg-card px-6 py-14 text-center">
             <CalendarX className="size-8 text-fog" aria-hidden="true" />
-            <p className="max-w-sm text-[0.9375rem] text-mist">{dict.account.noUpcoming}</p>
+            <p className="max-w-sm text-[0.9375rem] text-mist">
+              {dict.account.noUpcoming}
+            </p>
             <ButtonLink href={`/${locale}/horarios`} size="md">
               {dict.account.browseClasses}
             </ButtonLink>
@@ -316,17 +377,25 @@ export function AccountDashboard({
 
 function upcomingFrom(bookings: BookingDetail[], now: Date): BookingDetail[] {
   return bookings
-    .filter((b) => b.status === "confirmed" && new Date(b.session.starts_at) >= now)
+    .filter(
+      (b) => b.status === "confirmed" && new Date(b.session.starts_at) >= now,
+    )
     .sort(
-      (a, b) => new Date(a.session.starts_at).getTime() - new Date(b.session.starts_at).getTime(),
+      (a, b) =>
+        new Date(a.session.starts_at).getTime() -
+        new Date(b.session.starts_at).getTime(),
     );
 }
 
 function historyFrom(bookings: BookingDetail[], now: Date): BookingDetail[] {
   return bookings
-    .filter((b) => b.status !== "confirmed" || new Date(b.session.starts_at) < now)
+    .filter(
+      (b) => b.status !== "confirmed" || new Date(b.session.starts_at) < now,
+    )
     .sort(
-      (a, b) => new Date(b.session.starts_at).getTime() - new Date(a.session.starts_at).getTime(),
+      (a, b) =>
+        new Date(b.session.starts_at).getTime() -
+        new Date(a.session.starts_at).getTime(),
     );
 }
 
@@ -338,7 +407,9 @@ function useDemoBookings(bookings: AppBooking[]): {
   upcoming: BookingDetail[];
   loading: boolean;
 } {
-  const [sessions, setSessions] = useState<Map<string, SessionDetail>>(new Map());
+  const [sessions, setSessions] = useState<Map<string, SessionDetail>>(
+    new Map(),
+  );
   const [loading, setLoading] = useState(false);
 
   const activeKey = bookings
@@ -362,11 +433,16 @@ function useDemoBookings(bookings: AppBooking[]): {
       try {
         const responses = await Promise.all(
           weekKeys.map(async (key) => {
-            const response = await fetch(`/api/sessions?week=${encodeURIComponent(key)}`, {
-              cache: "no-store",
-            });
+            const response = await fetch(
+              `/api/sessions?week=${encodeURIComponent(key)}`,
+              {
+                cache: "no-store",
+              },
+            );
             if (!response.ok) return [] as SessionDetail[];
-            const data = (await response.json()) as { sessions: SessionDetail[] };
+            const data = (await response.json()) as {
+              sessions: SessionDetail[];
+            };
             return data.sessions;
           }),
         );
@@ -400,11 +476,15 @@ function useDemoBookings(bookings: AppBooking[]): {
         if (!session) return null;
         return { booking, session };
       })
-      .filter((row): row is { booking: AppBooking; session: SessionDetail } => row !== null)
+      .filter(
+        (row): row is { booking: AppBooking; session: SessionDetail } =>
+          row !== null,
+      )
       .filter((row) => new Date(row.session.starts_at) >= now)
       .sort(
         (a, b) =>
-          new Date(a.session.starts_at).getTime() - new Date(b.session.starts_at).getTime(),
+          new Date(a.session.starts_at).getTime() -
+          new Date(b.session.starts_at).getTime(),
       )
       .map(({ booking, session }) => toBookingDetail(booking, session));
   }, [bookings, sessions, activeKey]);
@@ -412,7 +492,10 @@ function useDemoBookings(bookings: AppBooking[]): {
   return { upcoming, loading };
 }
 
-function toBookingDetail(booking: AppBooking, session: SessionDetail): BookingDetail {
+function toBookingDetail(
+  booking: AppBooking,
+  session: SessionDetail,
+): BookingDetail {
   return {
     id: booking.id,
     session_id: session.id,
@@ -450,7 +533,8 @@ function BookingRow({
   const [pending, setPending] = useState(false);
 
   const session = booking.session;
-  const name = locale === "es" ? session.gymClass.name_es : session.gymClass.name_en;
+  const name =
+    locale === "es" ? session.gymClass.name_es : session.gymClass.name_en;
   const startsAt = new Date(session.starts_at);
 
   const statusLabel = {
@@ -464,7 +548,10 @@ function BookingRow({
     setPending(true);
     const result = await cancelBySessionId(session.id);
     setPending(false);
-    toast(result.ok ? dict.schedule.cancelSuccess : dict.schedule.bookingError, result.ok ? "info" : "error");
+    toast(
+      result.ok ? dict.schedule.cancelSuccess : dict.schedule.bookingError,
+      result.ok ? "info" : "error",
+    );
   }
 
   return (
@@ -496,7 +583,9 @@ function BookingRow({
           </div>
 
           <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[0.75rem] text-fog">
-            <span className="capitalize">{formatLongDate(startsAt, locale)}</span>
+            <span className="capitalize">
+              {formatLongDate(startsAt, locale)}
+            </span>
             <span className="flex items-center gap-1">
               <Clock className="size-3" aria-hidden="true" />
               {formatTime(startsAt, locale)}

@@ -1,6 +1,14 @@
 import "server-only";
+import {
+  DataReadError,
+  checkedRead,
+  requireRows,
+} from "@/lib/data/read-result";
 import { FinanceReadError } from "@/lib/finance/read-result";
-import { isFinanceSchemaError, readBankFinance } from "@/lib/finance/legacy-reader";
+import {
+  isFinanceSchemaError,
+  readBankFinance,
+} from "@/lib/finance/legacy-reader";
 
 import { cache } from "react";
 import { resolveCurrentUser } from "@/lib/auth/current-user";
@@ -22,74 +30,54 @@ import type {
 import { demoClasses, demoCoaches, demoPlans } from "./demo-content";
 import { generateWeekSessions } from "./demo-sessions";
 
-/**
- * ============================================================
- *  Consultas de datos
- * ============================================================
- *  Cada función intenta leer de Supabase y, si no está configurado
- *  (o si algo falla), devuelve el contenido de ejemplo. Así la web
- *  nunca se rompe ni queda en blanco.
- */
+/** Demo sólo sin configuración; conectado: vacío real o error explícito. */
+async function operationalClient() {
+  return checkedRead("CONNECTION", async () => {
+    const db = await getSupabaseServerClient();
+    if (!db && isSupabaseConfigured)
+      throw new DataReadError("CONNECTION", "UNAVAILABLE");
+    return db;
+  });
+}
 
-/* ------------------------------------------------------------
-   Contenido estático
-   ------------------------------------------------------------ */
+async function activeRows<T>(
+  table: string,
+  operation: string,
+  demo: T[],
+): Promise<T[]> {
+  return checkedRead(operation, async () => {
+    const db = await operationalClient();
+    if (!db) return demo;
+    const result = await db
+      .from(table)
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true })
+      .abortSignal(AbortSignal.timeout(15000));
+    return requireRows(operation, result) as T[];
+  });
+}
 
 export async function getClasses(): Promise<GymClass[]> {
-  const supabase = await getSupabaseServerClient();
-  if (supabase) {
-    try {
-      const { data, error } = await supabase
-        .from("classes")
-        .select("*")
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true });
-
-      if (!error && data && data.length > 0) return data as GymClass[];
-    } catch {
-      // cae al modo demo
-    }
-  }
-
-  return demoClasses.filter((c) => c.is_active);
+  return activeRows(
+    "classes",
+    "CLASSES",
+    demoClasses.filter((c) => c.is_active),
+  );
 }
-
 export async function getCoaches(): Promise<Coach[]> {
-  const supabase = await getSupabaseServerClient();
-  if (supabase) {
-    try {
-      const { data, error } = await supabase
-        .from("coaches")
-        .select("*")
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true });
-
-      if (!error && data && data.length > 0) return data as Coach[];
-    } catch {
-      // cae al modo demo
-    }
-  }
-
-  return demoCoaches.filter((c) => c.is_active);
+  return activeRows(
+    "coaches",
+    "COACHES",
+    demoCoaches.filter((c) => c.is_active),
+  );
 }
-
 export async function getPlans(): Promise<Plan[]> {
-  const supabase = await getSupabaseServerClient();
-  if (supabase) {
-    try {
-      const { data, error } = await supabase
-        .from("plans")
-        .select("*")
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true });
-
-      if (!error && data && data.length > 0) return data as Plan[];
-    } catch {
-      // cae al modo demo
-    }
-  }
-
-  return demoPlans.filter((p) => p.is_active);
+  return activeRows(
+    "plans",
+    "PLANS",
+    demoPlans.filter((p) => p.is_active),
+  );
 }
 
 /* ------------------------------------------------------------
@@ -114,7 +102,7 @@ export async function getSessionsForWeek(weekKey?: string | null): Promise<{
   sessions: SessionDetail[];
 }> {
   const week = weekRangeFromKey(weekKey);
-  const supabase = await getSupabaseServerClient();
+  const supabase = await operationalClient();
 
   if (!supabase) {
     return { week, sessions: generateWeekSessions(week) };
@@ -130,56 +118,70 @@ export async function getSessionsForWeek(weekKey?: string | null): Promise<{
       )
       .gte("starts_at", week.start.toISOString())
       .lte("starts_at", week.end.toISOString())
-      .order("starts_at", { ascending: true });
+      .order("starts_at", { ascending: true })
+      .abortSignal(AbortSignal.timeout(15000));
 
-    if (error || !data) throw error ?? new Error("sin datos");
+    const rows = requireRows("SESSIONS", {
+      data,
+      error,
+    }) as unknown as RawSessionRow[];
 
     // La ocupación la da una vista pública que sólo expone conteos
     // (las reservas están protegidas por RLS).
-    const rows = data as unknown as RawSessionRow[];
     const occupancy = new Map<string, number>();
 
     if (rows.length > 0) {
-      const { data: occupancyData } = await supabase
+      const occupancyResult = await supabase
         .from("session_occupancy")
         .select("session_id, booked_count")
         .in(
           "session_id",
           rows.map((row) => row.id),
-        );
+        )
+        .abortSignal(AbortSignal.timeout(15000));
 
-      for (const item of (occupancyData ?? []) as {
+      const occupancyData = requireRows("OCCUPANCY", occupancyResult);
+      for (const item of occupancyData as {
         session_id: string;
         booked_count: number;
       }[]) {
-        occupancy.set(item.session_id, Number(item.booked_count ?? 0));
+        const count = Number(item.booked_count);
+        if (
+          item.booked_count === null ||
+          !Number.isSafeInteger(count) ||
+          count < 0
+        )
+          throw new DataReadError("OCCUPANCY", "INVALID");
+        occupancy.set(item.session_id, count);
       }
     }
 
-    const sessions: SessionDetail[] = rows
-      .filter((row) => row.gymClass)
-      .map((row) => {
-        const bookedCount = occupancy.get(row.id) ?? 0;
-        const capacity = row.capacity ?? row.gymClass?.capacity ?? 0;
-        return {
-          id: row.id,
-          class_id: row.class_id,
-          coach_id: row.coach_id,
-          starts_at: row.starts_at,
-          ends_at: row.ends_at,
-          capacity,
-          room: row.room,
-          status: row.status,
-          gymClass: row.gymClass as GymClass,
-          coach: row.coach ?? null,
-          bookedCount,
-          spotsLeft: Math.max(0, capacity - bookedCount),
-        };
-      });
+    const sessions: SessionDetail[] = rows.map((row) => {
+      if (!row.gymClass) throw new DataReadError("SESSIONS", "RELATION");
+      const bookedCount = occupancy.get(row.id) ?? 0;
+      const capacity = row.capacity ?? row.gymClass.capacity;
+      if (!Number.isSafeInteger(capacity) || capacity < 0)
+        throw new DataReadError("SESSIONS", "INVALID");
+      return {
+        id: row.id,
+        class_id: row.class_id,
+        coach_id: row.coach_id,
+        starts_at: row.starts_at,
+        ends_at: row.ends_at,
+        capacity,
+        room: row.room,
+        status: row.status,
+        gymClass: row.gymClass as GymClass,
+        coach: row.coach ?? null,
+        bookedCount,
+        spotsLeft: Math.max(0, capacity - bookedCount),
+      };
+    });
 
     return { week, sessions };
-  } catch {
-    return { week, sessions: generateWeekSessions(week) };
+  } catch (error) {
+    if (error instanceof DataReadError) throw error;
+    throw new DataReadError("SESSIONS");
   }
 }
 
@@ -201,7 +203,7 @@ export const getCurrentUser = cache(async () => {
 });
 
 export async function getMyBookings(userId: string): Promise<BookingDetail[]> {
-  const supabase = await getSupabaseServerClient();
+  const supabase = await operationalClient();
   if (!supabase) return [];
 
   try {
@@ -216,20 +218,25 @@ export async function getMyBookings(userId: string): Promise<BookingDetail[]> {
          )`,
       )
       .eq("user_id", userId)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .abortSignal(AbortSignal.timeout(15000));
 
-    if (error || !data) return [];
+    const rows = requireRows("BOOKINGS", { data, error });
 
     type Row = Booking & {
-      session: Omit<SessionDetail, "bookedCount" | "spotsLeft" | "gymClass" | "coach"> & {
+      session: Omit<
+        SessionDetail,
+        "bookedCount" | "spotsLeft" | "gymClass" | "coach"
+      > & {
         gymClass: GymClass;
         coach: Coach | null;
       };
     };
 
-    return (data as unknown as Row[])
-      .filter((row) => row.session && row.session.gymClass)
-      .map((row) => ({
+    return (rows as unknown as Row[]).map((row) => {
+      if (!row.session?.gymClass)
+        throw new DataReadError("BOOKINGS", "RELATION");
+      return {
         id: row.id,
         session_id: row.session_id,
         user_id: row.user_id,
@@ -244,34 +251,44 @@ export async function getMyBookings(userId: string): Promise<BookingDetail[]> {
           bookedCount: 0,
           spotsLeft: 0,
         },
-      }));
-  } catch {
-    return [];
+      };
+    });
+  } catch (error) {
+    if (error instanceof DataReadError) throw error;
+    throw new DataReadError("BOOKINGS");
   }
 }
 
 /** IDs de las clases en las que el usuario ya tiene reserva. */
 export async function getBookedSessionIds(userId: string): Promise<string[]> {
-  const supabase = await getSupabaseServerClient();
+  const supabase = await operationalClient();
   if (!supabase) return [];
 
   try {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("bookings")
       .select("session_id")
       .eq("user_id", userId)
-      .in("status", ["confirmed", "attended"]);
+      .in("status", ["confirmed", "attended"])
+      .abortSignal(AbortSignal.timeout(15000));
 
-    return (data ?? []).map((row: { session_id: string }) => row.session_id);
-  } catch {
-    return [];
+    return requireRows("BOOKED_IDS", { data, error }).map(
+      (row: { session_id: string }) => row.session_id,
+    );
+  } catch (error) {
+    if (error instanceof DataReadError) throw error;
+    throw new DataReadError("BOOKED_IDS");
   }
 }
 
 export async function getAllBookings(): Promise<
-  (Booking & { memberName: string; memberEmail: string; session: SessionDetail })[]
+  (Booking & {
+    memberName: string;
+    memberEmail: string;
+    session: SessionDetail;
+  })[]
 > {
-  const supabase = await getSupabaseServerClient();
+  const supabase = await operationalClient();
   if (!supabase) return [];
 
   try {
@@ -286,18 +303,24 @@ export async function getAllBookings(): Promise<
          )`,
       )
       .order("created_at", { ascending: false })
-      .limit(500);
+      .limit(500)
+      .abortSignal(AbortSignal.timeout(15000));
 
-    if (error || !data) return [];
+    const rows = requireRows("BOOKINGS", { data, error });
 
     type Row = Booking & {
       profile: { full_name: string | null; email: string | null } | null;
-      session: (Omit<SessionDetail, "bookedCount" | "spotsLeft"> & { gymClass: GymClass }) | null;
+      session:
+        | (Omit<SessionDetail, "bookedCount" | "spotsLeft"> & {
+            gymClass: GymClass;
+          })
+        | null;
     };
 
-    return (data as unknown as Row[])
-      .filter((row) => row.session?.gymClass)
-      .map((row) => ({
+    return (rows as unknown as Row[]).map((row) => {
+      if (!row.session?.gymClass)
+        throw new DataReadError("BOOKINGS", "RELATION");
+      return {
         id: row.id,
         session_id: row.session_id,
         user_id: row.user_id,
@@ -312,14 +335,16 @@ export async function getAllBookings(): Promise<
           bookedCount: 0,
           spotsLeft: 0,
         },
-      }));
-  } catch {
-    return [];
+      };
+    });
+  } catch (error) {
+    if (error instanceof DataReadError) throw error;
+    throw new DataReadError("BOOKINGS");
   }
 }
 
 export async function getContactMessages(): Promise<ContactMessage[]> {
-  const supabase = await getSupabaseServerClient();
+  const supabase = await operationalClient();
   if (!supabase) return [];
 
   try {
@@ -327,25 +352,43 @@ export async function getContactMessages(): Promise<ContactMessage[]> {
       .from("messages")
       .select("*")
       .order("created_at", { ascending: false })
-      .limit(200);
+      .limit(200)
+      .abortSignal(AbortSignal.timeout(15000));
 
-    if (error || !data) return [];
-    return data as ContactMessage[];
-  } catch {
-    return [];
+    return requireRows("MESSAGES", { data, error }) as ContactMessage[];
+  } catch (error) {
+    if (error instanceof DataReadError) throw error;
+    throw new DataReadError("MESSAGES");
   }
 }
 
 export async function countMembers(): Promise<number> {
-  const supabase = await getSupabaseServerClient();
-  if (!supabase) return 0;
-  const { count, error } = await supabase.from("gym_clients").select("id", { count: "exact", head: true });
-  if (!error) return count ?? 0;
-  // Compatibilidad antes de instalar FASE2: no cuenta staff/admin como clientes.
-  const legacy = await supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "member");
-  return legacy.count ?? 0;
+  return checkedRead("CLIENT_COUNT", async () => {
+    const db = await operationalClient();
+    if (!db) return 0;
+    const result = await db
+      .from("gym_clients")
+      .select("id", { count: "exact", head: true })
+      .abortSignal(AbortSignal.timeout(15000));
+    // Compatibilidad sólo si falta la tabla CRM, no por RLS/red u otro error.
+    let count = result.count;
+    if (result.error) {
+      if (!["42P01", "PGRST205"].includes(result.error.code))
+        throw new DataReadError("CLIENT_COUNT", result.error.code);
+      const legacy = await db
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("role", "member")
+        .abortSignal(AbortSignal.timeout(15000));
+      if (legacy.error)
+        throw new DataReadError("CLIENT_COUNT", legacy.error.code);
+      count = legacy.count;
+    }
+    if (count === null || !Number.isSafeInteger(count) || count < 0)
+      throw new DataReadError("CLIENT_COUNT", "INVALID");
+    return count;
+  });
 }
-
 
 /* ============================================================
    FASE 1: Finanzas, caja y contabilidad

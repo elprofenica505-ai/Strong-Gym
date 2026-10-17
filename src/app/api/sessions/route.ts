@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { getBookedSessionIds, getCurrentUser, getSessionsForWeek } from "@/lib/data/queries";
+import {
+  getBookedSessionIds,
+  getCurrentUser,
+  getSessionsForWeek,
+} from "@/lib/data/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +40,9 @@ export async function GET(request: Request) {
       },
     );
   } catch {
-    return NextResponse.json({ error: "UNKNOWN" }, { status: 500 });
+    return NextResponse.json(
+      { error: "DATA_UNAVAILABLE" },
+      { status: 503, headers: { "Cache-Control": "private, no-store" } },
+    );
   }
 }

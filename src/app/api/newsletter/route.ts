@@ -20,22 +20,36 @@ export async function POST(request: Request) {
   }
 
   const parsed = schema.safeParse(payload);
-  if (!parsed.success) return NextResponse.json({ error: "INVALID" }, { status: 422 });
+  if (!parsed.success)
+    return NextResponse.json({ error: "INVALID" }, { status: 422 });
 
-  if (!isSupabaseConfigured) return NextResponse.json({ ok: true, mode: "demo" });
-
-  const supabase = await getSupabaseServerClient();
-  if (!supabase) return NextResponse.json({ ok: true, mode: "demo" });
-
-  // Si el email ya estaba, `upsert` evita el error de duplicado.
-  const { error } = await supabase
-    .from("subscribers")
-    .upsert(
-      { email: parsed.data.email, locale: parsed.data.locale },
-      { onConflict: "email", ignoreDuplicates: true },
+  if (!isSupabaseConfigured)
+    return NextResponse.json(
+      {
+        error: "DEMO",
+        message:
+          "Esta acción requiere Supabase conectado; no se guardó información.",
+      },
+      { status: 503 },
     );
 
-  if (error) return NextResponse.json({ error: "UNKNOWN" }, { status: 500 });
+  try {
+    const supabase = await getSupabaseServerClient();
+    if (!supabase)
+      return NextResponse.json({ error: "UNAVAILABLE" }, { status: 503 });
 
-  return NextResponse.json({ ok: true });
+    // Si el email ya estaba, `upsert` evita el error de duplicado.
+    const { error } = await supabase
+      .from("subscribers")
+      .upsert(
+        { email: parsed.data.email, locale: parsed.data.locale },
+        { onConflict: "email", ignoreDuplicates: true },
+      );
+
+    if (error) return NextResponse.json({ error: "UNKNOWN" }, { status: 500 });
+
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ error: "UNAVAILABLE" }, { status: 503 });
+  }
 }

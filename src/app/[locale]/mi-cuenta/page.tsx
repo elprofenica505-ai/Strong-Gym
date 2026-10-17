@@ -1,3 +1,5 @@
+import { readData } from "@/lib/data/read-result";
+import { DataUnavailable } from "@/components/ui/data-unavailable";
 import { ClientPass } from "@/components/crm/client-pass";
 import type { Metadata } from "next";
 import { AccountDashboard } from "@/components/account/account-dashboard";
@@ -32,15 +34,27 @@ export default async function AccountPage({
   const dict = getDictionary(locale);
 
   const user = await getCurrentUser();
-  const [bookings, plans] = await Promise.all([
-    user ? getMyBookings(user.id) : Promise.resolve([]),
-    getPlans(),
-  ]);
+  const result = await readData(() =>
+    Promise.all([
+      user ? getMyBookings(user.id) : Promise.resolve([]),
+      getPlans(),
+    ]),
+  );
+  if (!result.ok)
+    return (
+      <section className="container-x py-12">
+        <DataUnavailable locale={locale} code={result.code} />
+      </section>
+    );
+  const [bookings, plans] = result.data;
 
   return (
     <>
       <section className="relative overflow-hidden border-b border-brand/25 bg-cloud pt-12 pb-10 sm:pt-16 sm:pb-12 lg:pt-20">
-        <div className="absolute inset-0 bg-grid opacity-50" aria-hidden="true" />
+        <div
+          className="absolute inset-0 bg-grid opacity-50"
+          aria-hidden="true"
+        />
         <div className="container-x relative">
           <SectionHeading
             eyebrow={dict.nav.account}

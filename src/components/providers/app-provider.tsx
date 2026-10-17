@@ -64,11 +64,24 @@ interface AppContextValue {
   /** true cuando ya leímos la sesión del navegador (evita parpadeos). */
   hydrated: boolean;
   bookings: AppBooking[];
+  bookingsLoading: boolean;
+  bookingsError: boolean;
+  reloadBookings: () => Promise<void>;
   bookedSessionIds: Set<string>;
-  book: (sessionId: string) => Promise<{ ok: boolean; error?: BookingErrorCode }>;
-  cancelBooking: (bookingId: string, sessionId: string) => Promise<{ ok: boolean; error?: BookingErrorCode }>;
-  cancelBySessionId: (sessionId: string) => Promise<{ ok: boolean; error?: BookingErrorCode }>;
-  signIn: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  book: (
+    sessionId: string,
+  ) => Promise<{ ok: boolean; error?: BookingErrorCode }>;
+  cancelBooking: (
+    bookingId: string,
+    sessionId: string,
+  ) => Promise<{ ok: boolean; error?: BookingErrorCode }>;
+  cancelBySessionId: (
+    sessionId: string,
+  ) => Promise<{ ok: boolean; error?: BookingErrorCode }>;
+  signIn: (
+    email: string,
+    password: string,
+  ) => Promise<{ ok: boolean; error?: string }>;
   signUp: (data: {
     fullName: string;
     email: string;
@@ -76,7 +89,10 @@ interface AppContextValue {
     phone?: string;
   }) => Promise<{ ok: boolean; error?: string; needsConfirmation?: boolean }>;
   signOut: () => Promise<void>;
-  updateProfile: (data: { fullName?: string; phone?: string }) => Promise<boolean>;
+  updateProfile: (data: {
+    fullName?: string;
+    phone?: string;
+  }) => Promise<boolean>;
   toast: (message: string, type?: ToastType) => void;
   toasts: Toast[];
   dismissToast: (id: number) => void;
@@ -90,7 +106,8 @@ const AppContext = createContext<AppContextValue | null>(null);
 
 const DEMO_USERS_KEY = "strong-gym:demo-users";
 const DEMO_SESSION_KEY = "strong-gym:demo-session";
-const demoBookingsKey = (userId: string) => `strong-gym:demo-bookings:${userId}`;
+const demoBookingsKey = (userId: string) =>
+  `strong-gym:demo-bookings:${userId}`;
 
 /** Cuenta de ejemplo para que puedas ver el panel de administración. */
 const SEED_ADMIN = {
@@ -173,6 +190,28 @@ export function AppProvider({
   const [hydrated, setHydrated] = useState(!isDemo);
   const [authLoading, setAuthLoading] = useState(false);
   const [bookings, setBookings] = useState<AppBooking[]>([]);
+  const [bookingsRead, setBookingsRead] = useState<{
+    owner: string | null;
+    status: "loading" | "ready" | "error";
+  }>({ owner: null, status: "loading" });
+  const bookingsRequest = useRef(0);
+  const latestUser = useRef(user);
+  useEffect(() => {
+    latestUser.current = user;
+  }, [user]);
+  const invalidateRequests = useCallback(() => {
+    bookingsRequest.current++;
+  }, []);
+  const bookingsReady =
+    isDemo ||
+    !user ||
+    (bookingsRead.owner === user.id && bookingsRead.status === "ready");
+  const bookingsError =
+    !isDemo &&
+    !!user &&
+    bookingsRead.owner === user.id &&
+    bookingsRead.status === "error";
+  const bookingsLoading = !bookingsReady && !bookingsError;
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastId = useRef(0);
 
@@ -199,7 +238,9 @@ export function AppProvider({
 
     const sessionId = readJSON<string | null>(DEMO_SESSION_KEY, null);
     const users = demoUsers();
-    const stored = sessionId ? users.find((u) => u.id === sessionId) : undefined;
+    const stored = sessionId
+      ? users.find((u) => u.id === sessionId)
+      : undefined;
     setUser(stored ? toAppUser(stored) : null);
     setHydrated(true);
   }, [isDemo]);
@@ -212,6 +253,9 @@ export function AppProvider({
   }, [initialUser, isDemo]);
 
   const loadBookings = useCallback(async () => {
+    // Una mutación de la sesión anterior puede terminar después del cambio de usuario.
+    if (user?.id !== latestUser.current?.id) return;
+    const request = ++bookingsRequest.current;
     if (isDemo) {
       if (!user) {
         setBookings([]);
@@ -223,31 +267,60 @@ export function AppProvider({
 
     if (!user) {
       setBookings([]);
+      setBookingsRead({ owner: null, status: "ready" });
       return;
     }
 
+    setBookingsRead({ owner: user.id, status: "loading" });
     try {
-      const response = await fetch("/api/bookings", { cache: "no-store" });
-      if (!response.ok) return;
+      const response = await fetch("/api/bookings", {
+        cache: "no-store",
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!response.ok) throw new Error("BOOKINGS_UNAVAILABLE");
       const data = (await response.json()) as {
-        bookings: { id: string; session_id: string; status: BookingStatus; created_at: string }[];
+        bookings: {
+          id: string;
+          session_id: string;
+          status: BookingStatus;
+          created_at: string;
+        }[];
       };
+      if (
+        !Array.isArray(data.bookings) ||
+        data.bookings.some(
+          (b) =>
+            !b ||
+            typeof b.id !== "string" ||
+            typeof b.session_id !== "string" ||
+            !["confirmed", "attended", "cancelled", "no_show"].includes(
+              b.status,
+            ) ||
+            typeof b.created_at !== "string",
+        )
+      )
+        throw new Error("INVALID_BOOKINGS");
+      if (request !== bookingsRequest.current) return;
       setBookings(
-        (data.bookings ?? []).map((b) => ({
+        data.bookings.map((b) => ({
           id: b.id,
           sessionId: b.session_id,
           status: b.status,
           createdAt: b.created_at,
         })),
       );
+      setBookingsRead({ owner: user.id, status: "ready" });
     } catch {
-      // sin conexión: dejamos lo que había
+      if (request !== bookingsRequest.current) return;
+      // Conservamos el último valor, pero no lo presentamos como confirmado.
+      setBookingsRead({ owner: user.id, status: "error" });
     }
   }, [isDemo, user]);
 
   useEffect(() => {
     void loadBookings();
-  }, [loadBookings]);
+    return invalidateRequests;
+  }, [loadBookings, invalidateRequests]);
 
   const persistDemoBookings = useCallback(
     (next: AppBooking[]) => {
@@ -262,10 +335,13 @@ export function AppProvider({
   const book = useCallback<AppContextValue["book"]>(
     async (sessionId) => {
       if (!user) return { ok: false, error: "AUTH" };
+      if (!bookingsReady) return { ok: false, error: "UNKNOWN" };
 
       if (isDemo) {
         const existing = bookings.find(
-          (b) => b.sessionId === sessionId && (b.status === "confirmed" || b.status === "attended"),
+          (b) =>
+            b.sessionId === sessionId &&
+            (b.status === "confirmed" || b.status === "attended"),
         );
         if (existing) return { ok: false, error: "ALREADY_BOOKED" };
 
@@ -276,7 +352,10 @@ export function AppProvider({
           status: "confirmed",
           createdAt: new Date().toISOString(),
         };
-        persistDemoBookings([booking, ...bookings.filter((b) => b.sessionId !== sessionId)]);
+        persistDemoBookings([
+          booking,
+          ...bookings.filter((b) => b.sessionId !== sessionId),
+        ]);
         return { ok: true };
       }
 
@@ -290,18 +369,21 @@ export function AppProvider({
           await loadBookings();
           return { ok: true };
         }
-        const data = (await response.json().catch(() => ({}))) as { error?: BookingErrorCode };
+        const data = (await response.json().catch(() => ({}))) as {
+          error?: BookingErrorCode;
+        };
         return { ok: false, error: data.error ?? "UNKNOWN" };
       } catch {
         return { ok: false, error: "UNKNOWN" };
       }
     },
-    [isDemo, user, bookings, persistDemoBookings, loadBookings],
+    [isDemo, user, bookings, bookingsReady, persistDemoBookings, loadBookings],
   );
 
   const cancelBooking = useCallback<AppContextValue["cancelBooking"]>(
     async (bookingId, sessionId) => {
       if (!user) return { ok: false, error: "AUTH" };
+      if (!bookingsReady) return { ok: false, error: "UNKNOWN" };
 
       if (isDemo) {
         persistDemoBookings(
@@ -315,26 +397,33 @@ export function AppProvider({
       }
 
       try {
-        const response = await fetch(`/api/bookings?id=${encodeURIComponent(bookingId)}`, {
-          method: "DELETE",
-        });
+        const response = await fetch(
+          `/api/bookings?id=${encodeURIComponent(bookingId)}`,
+          {
+            method: "DELETE",
+          },
+        );
         if (response.ok) {
           await loadBookings();
           return { ok: true };
         }
-        const data = (await response.json().catch(() => ({}))) as { error?: BookingErrorCode };
+        const data = (await response.json().catch(() => ({}))) as {
+          error?: BookingErrorCode;
+        };
         return { ok: false, error: data.error ?? "UNKNOWN" };
       } catch {
         return { ok: false, error: "UNKNOWN" };
       }
     },
-    [isDemo, user, bookings, persistDemoBookings, loadBookings],
+    [isDemo, user, bookings, bookingsReady, persistDemoBookings, loadBookings],
   );
 
   const cancelBySessionId = useCallback<AppContextValue["cancelBySessionId"]>(
     async (sessionId) => {
       const booking = bookings.find(
-        (b) => b.sessionId === sessionId && (b.status === "confirmed" || b.status === "attended"),
+        (b) =>
+          b.sessionId === sessionId &&
+          (b.status === "confirmed" || b.status === "attended"),
       );
       if (!booking) return { ok: false, error: "NOT_FOUND" };
       return cancelBooking(booking.id, sessionId);
@@ -390,7 +479,11 @@ export function AppProvider({
       try {
         if (isDemo) {
           const users = demoUsers();
-          if (users.some((u) => u.email.toLowerCase() === email.trim().toLowerCase())) {
+          if (
+            users.some(
+              (u) => u.email.toLowerCase() === email.trim().toLowerCase(),
+            )
+          ) {
             return { ok: false, error: "emailInUse" };
           }
           const created: DemoStoredUser = {
@@ -418,7 +511,9 @@ export function AppProvider({
           options: {
             data: { full_name: fullName.trim(), phone: phone ?? null },
             emailRedirectTo:
-              typeof window !== "undefined" ? `${window.location.origin}/es/mi-cuenta` : undefined,
+              typeof window !== "undefined"
+                ? `${window.location.origin}/es/mi-cuenta`
+                : undefined,
           },
         });
 
@@ -427,7 +522,8 @@ export function AppProvider({
           if (message.includes("already") || message.includes("registered")) {
             return { ok: false, error: "emailInUse" };
           }
-          if (message.includes("password")) return { ok: false, error: "weakPassword" };
+          if (message.includes("password"))
+            return { ok: false, error: "weakPassword" };
           return { ok: false, error: "genericError" };
         }
 
@@ -445,7 +541,8 @@ export function AppProvider({
 
   const signOut = useCallback(async () => {
     if (isDemo) {
-      if (typeof window !== "undefined") window.localStorage.removeItem(DEMO_SESSION_KEY);
+      if (typeof window !== "undefined")
+        window.localStorage.removeItem(DEMO_SESSION_KEY);
       setUser(null);
       setBookings([]);
       return;
@@ -515,6 +612,9 @@ export function AppProvider({
       authLoading,
       hydrated,
       bookings,
+      bookingsLoading,
+      bookingsError,
+      reloadBookings: loadBookings,
       bookedSessionIds,
       book,
       cancelBooking,
@@ -533,6 +633,9 @@ export function AppProvider({
       authLoading,
       hydrated,
       bookings,
+      bookingsLoading,
+      bookingsError,
+      loadBookings,
       bookedSessionIds,
       book,
       cancelBooking,
@@ -552,6 +655,7 @@ export function AppProvider({
 
 export function useApp(): AppContextValue {
   const context = useContext(AppContext);
-  if (!context) throw new Error("useApp() tiene que usarse dentro de <AppProvider>");
+  if (!context)
+    throw new Error("useApp() tiene que usarse dentro de <AppProvider>");
   return context;
 }

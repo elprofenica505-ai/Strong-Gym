@@ -26,6 +26,8 @@ ejecutar SQL remoto, cambiar administradores ni mergear el PR**.
 ## 2. Punto de partida y seguimiento
 
 Inventario de código y pendientes: [INVENTARIO-FUNCIONAL.md](./INVENTARIO-FUNCIONAL.md).
+Avance B.1: [lecturas corregidas y pruebas locales](./B1-LECTURAS.md).
+
 Ese documento diferencia implementación, prueba local y evidencia remota; abrir
 una pantalla no implica que sus botones guarden ni que sus números concilien.
 
