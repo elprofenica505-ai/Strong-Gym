@@ -91,11 +91,14 @@ npm run dev        # servidor de desarrollo (localhost:3000)
 npm run build      # compilar para producción
 npm start          # correr la versión compilada
 npm run typecheck  # revisar los tipos de TypeScript
+npm run test:metadata # tras build demo: verificar URLs e imágenes para compartir
 npm run test:sql   # probar el SQL de Supabase en un Postgres real (34 pruebas)
 npm run build:sql  # regenerar supabase/SETUP.sql tras cambiar los horarios
 ```
 
 ---
+
+Configuración de URLs y pruebas de metadatos: [docs/METADATOS.md](./docs/METADATOS.md).
 
 ## Estructura del proyecto
 
