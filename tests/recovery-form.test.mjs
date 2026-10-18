@@ -34,7 +34,7 @@ async function withForm(props,run,Component=RecoveryForm) {
   const root=createRoot(dom.window.document.getElementById('root'));
   try {
     await act(async()=>root.render(React.createElement(Component,props)));
-    await run(dom.window.document,()=>new dom.window.Event('submit',{bubbles:true,cancelable:true}));
+    await run(dom.window.document,()=>new dom.window.Event('submit',{bubbles:true,cancelable:true}),async nextProps=>{await act(async()=>root.render(React.createElement(Component,nextProps)));});
   } finally {
     await act(async()=>root.unmount());dom.window.close();
     for(const [name,descriptor] of saved) if(descriptor)Object.defineProperty(globalThis,name,descriptor);else delete globalThis[name];
@@ -78,7 +78,7 @@ for(const failed of [false,true])test(`cambio confirmado: formulario retirado, c
     updateUser:async()=>{calls++;return {data:{user:{id:'expected'}},error:null};},
     signOut:async()=>({error:failed?{}:null}),
   }};
-  await withForm({mode:'update',expectedUserId:'expected',email:'example@test.invalid'},async(doc,event)=>{
+  await withForm({mode:'update',expectedUserId:'expected',email:'example@test.invalid'},async(doc,event,rerender)=>{
     doc.querySelector('[name=password]').value='example-new-password';doc.querySelector('[name=confirmPassword]').value='example-new-password';
     const form=doc.querySelector('form');
     await act(async()=>{form.dispatchEvent(event());form.dispatchEvent(event());});
@@ -86,6 +86,8 @@ for(const failed of [false,true])test(`cambio confirmado: formulario retirado, c
     assert.match(doc.body.textContent,/Contraseña actualizada/);
     assert.equal(!!doc.querySelector('[role=alert]'),failed);
     if(failed)assert.match(doc.body.textContent,/contraseña sí cambió/);
+    await rerender({mode:'update'}); // router.refresh: servidor ya no ve usuario tras logout.
+    assert.match(doc.body.textContent,/Contraseña actualizada/);assert.equal(doc.querySelector('form'),null);
   });
 });
 

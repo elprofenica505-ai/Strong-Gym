@@ -53,15 +53,15 @@ export function RecoveryForm({ mode, expectedUserId, email, invalidLink = false 
   }
 
   if (isDemo) return <p role="status">{dict.auth.demoNotice}</p>;
-  if (mode === "update" && !expectedUserId) return (
-    <div role="alert"><p>{copy.invalidLink}</p><Link className="text-brand-300 underline" href={`/${locale}/recuperar`}>{copy.requestNew}</Link></div>
-  );
   if (done) return (
     <div className="rounded-xl border border-brand/40 bg-card p-6" role="status">
       <p>{mode === "request" ? copy.sent : copy.changed}</p>
       {warning ? <p className="mt-3" role="alert">{copy.logoutFailed}</p> : null}
       <Link className="mt-4 inline-block text-brand-300 underline" href={`/${locale}/ingresar`}>{dict.auth.goLogin}</Link>
     </div>
+  );
+  if (mode === "update" && !expectedUserId) return (
+    <div role="alert"><p>{copy.invalidLink}</p><Link className="text-brand-300 underline" href={`/${locale}/recuperar`}>{copy.requestNew}</Link></div>
   );
   return (
     <form onSubmit={submit} className="flex flex-col gap-4 rounded-2xl border border-line bg-card p-6">
