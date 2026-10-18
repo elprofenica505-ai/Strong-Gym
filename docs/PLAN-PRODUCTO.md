@@ -168,3 +168,18 @@ remota tenía RLS activo y cero políticas, ocultándola en SELECT. Se prepara00
 LECTURA-RESERVAS: lectura propia o staff, sin escritura ni cambios de registros.
 42controles SQL adicionales pasan en ambos esquemas; instalación manual y lectura
 remota de esa misma reserva pendientes. No volver a reservar ni repetir FASE2.
+
+### Reservas: evidencia remota y actualización visual tras cancelar
+
+- Capturas190835/190843 del17-oct: reserva original recuperada en Mi cuenta,
+  confirmada, una próxima. Lectura RLS remota comprobada.
+- Capturas192250/192311: usuario canceló la reserva de prueba; historial CANCELADA,
+  sin próximas, ocupación0/20 y20libres. Persistencia/liberación del cupo comprobadas.
+- Usuario necesitó recargar: se identificó otra causa en la UI, no en internet.
+  Mi cuenta y resumen de Inicio dibujaban props SSR viejas mientras el provider
+  ya tenía la cancelación conciliada. Corregidos para usar la última lectura
+  autenticada, preservando privacidad y aviso de incertidumbre; pruebas de
+  regresión incluidas. Validación visual del arreglo publicado pendiente.
+- Catálogo de Inicio: «20 lugares» es capacidad, no cupos restantes. Aclarar
+  etiqueta/botón sin inventar disponibilidad global. Pendiente.
+- No SQL nuevo, reservas adicionales, cobros, roles, limpieza ni merge.

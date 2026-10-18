@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { resolveAccountBookings } from "@/lib/account-bookings";
 import type { AccountPlanRead } from "@/lib/crm/account-plan";
 import { ReloadButton } from "@/components/ui/reload-button";
 import { DataUnavailable } from "@/components/ui/data-unavailable";
@@ -38,7 +39,7 @@ import { accentOnDark, cn, textOnAccent } from "@/lib/utils";
 
 /**
  * Panel del cliente.
- *  - Con Supabase las reservas llegan resueltas desde el servidor.
+ *  - Con Supabase manda la última lectura autenticada, no el estado SSR inicial.
  *  - En modo demo viven en el navegador (AppProvider) y acá las cruzamos
  *    con los horarios de ejemplo para poder mostrarlas.
  */
@@ -73,16 +74,17 @@ export function AccountDashboard({
 
   const demo = useDemoBookings(isDemo ? bookings : []);
 
+  const currentDetails = isDemo ? [] : resolveAccountBookings(bookings, initialBookings, user?.id);
   const resolvedUpcoming: BookingDetail[] = isDemo
     ? demo.upcoming
-    : upcomingFrom(initialBookings, now);
+    : upcomingFrom(currentDetails ?? [], now);
   const resolvedHistory: BookingDetail[] = isDemo
     ? []
-    : historyFrom(initialBookings, now);
-  const totalBookings = isDemo ? bookings.length : initialBookings.length;
+    : historyFrom(currentDetails ?? [], now);
+  const totalBookings = bookings.length;
   const attendedCount = isDemo
     ? bookings.filter((b) => b.status === "attended").length
-    : initialBookings.filter((b) => b.status === "attended").length;
+    : (currentDetails ?? []).filter((b) => b.status === "attended").length;
 
   const demoPlan = plans.find((plan) => plan.id === user?.planId) ?? null;
   // No reutilizar el dato de una identidad anterior tras cambiar de sesión.
@@ -155,6 +157,9 @@ export function AccountDashboard({
         {locale === "es" ? "Confirmando reservas…" : "Verifying bookings…"}
       </p>
     );
+
+  if (!isDemo && currentDetails === null)
+    return <DataUnavailable locale={locale} code="DATA_BOOKINGS_DETAIL_UNAVAILABLE" />;
 
   const stats = [
     {
@@ -575,7 +580,9 @@ function BookingRow({
     const result = await cancelBySessionId(session.id);
     setPending(false);
     toast(
-      result.ok ? dict.schedule.cancelSuccess : dict.schedule.bookingError,
+      result.ok ? dict.schedule.cancelSuccess
+        : result.error === "UNCONFIRMED" ? dict.schedule.bookingUnconfirmed
+        : dict.schedule.bookingError,
       result.ok ? "info" : "error",
     );
   }

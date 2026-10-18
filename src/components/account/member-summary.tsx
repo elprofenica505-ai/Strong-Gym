@@ -1,5 +1,7 @@
 "use client";
 
+import { resolveAccountBookings } from "@/lib/account-bookings";
+import { DataUnavailable } from "@/components/ui/data-unavailable";
 import { useEffect, useMemo, useState } from "react";
 import { CalendarCheck, Clock, Trophy, UserRound } from "lucide-react";
 import { useApp } from "@/components/providers/app-provider";
@@ -13,13 +15,13 @@ import type { BookingDetail, SessionDetail } from "@/lib/types";
  * clases asistidas y próxima clase. Es el mismo resumen de Mi Cuenta.
  * Sin sesión iniciada muestra la invitación a entrar o registrarse.
  *
- * Con Supabase las reservas llegan desde el servidor
- * (`initialBookings`); en modo demo viven en el navegador y se cruzan
+ * Con Supabase manda la última lectura autenticada del AppProvider; la
+ * instantánea SSR sólo completa metadatos propios. En demo se cruzan
  * con los horarios de ejemplo, igual que en Mi Cuenta.
  */
 export function MemberSummary({ initialBookings }: { initialBookings: BookingDetail[] }) {
   const { dict, locale } = useDictionary();
-  const { user, bookings, isDemo, hydrated } = useApp();
+  const { user, bookings, isDemo, hydrated, bookingsLoading, bookingsError } = useApp();
 
   const demoUpcoming = useDemoUpcoming(isDemo ? bookings : []);
 
@@ -63,17 +65,23 @@ export function MemberSummary({ initialBookings }: { initialBookings: BookingDet
     );
   }
 
+  if (!isDemo && bookingsLoading)
+    return <p role="status">{locale === "es" ? "Confirmando reservas…" : "Verifying bookings…"}</p>;
+  const currentDetails = isDemo ? [] : resolveAccountBookings(bookings, initialBookings, user.id);
+  if (!isDemo && (bookingsError || currentDetails === null))
+    return <DataUnavailable locale={locale} code="DATA_BOOKINGS_UNAVAILABLE" />;
+
   const now = gymNow();
-  const serverUpcoming = initialBookings
+  const serverUpcoming = (currentDetails ?? [])
     .filter((b) => b.status === "confirmed" && new Date(b.session.starts_at) >= now)
     .sort((a, b) => new Date(a.session.starts_at).getTime() - new Date(b.session.starts_at).getTime());
 
   const upcoming = isDemo ? demoUpcoming : serverUpcoming;
   const next = upcoming[0] ?? null;
-  const totalBookings = isDemo ? bookings.length : initialBookings.length;
+  const totalBookings = bookings.length;
   const attendedCount = isDemo
     ? bookings.filter((b) => b.status === "attended").length
-    : initialBookings.filter((b) => b.status === "attended").length;
+    : (currentDetails ?? []).filter((b) => b.status === "attended").length;
 
   const stats = [
     { label: dict.account.stats.total, value: totalBookings, Icon: CalendarCheck },

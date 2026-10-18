@@ -167,3 +167,73 @@ npm run test:sql
 
 Logs: `/home/user/booking-read-{targeted,sql,auth,typecheck,lint,build}.log`.
 No se ejecutó SQL remoto por el agente. No merge ni limpieza.
+
+## Verificación remota y desincronización de Mi cuenta (17-oct-2026)
+
+El usuario envió `Screenshot_20261017-190835.jpg` y `190843.jpg`: la reserva
+original aparece en Mi cuenta, confirmada, martes20-oct06:00, una próxima.
+Esto comprueba la recuperación de la lectura después de aplicar el SQL de RLS.
+La imagen `190929.jpg` es el catálogo público: «20 lugares» representa capacidad
+configurada, no disponibilidad de una sesión (etiquetado ambiguo, pendiente).
+
+Después de la cancelación manual guiada, `Screenshot_20261017-192250.jpg` muestra
+la misma sesión con0/20 y20libres; `192311.jpg` muestra reserva CANCELADA en
+historial y ninguna próxima. La cancelación remota y liberación del cupo están
+comprobadas. El usuario reporta que debió recargar para ver el resultado; no hay
+evidencia para atribuirlo a su conexión.
+
+### Causa de la pantalla obsoleta y corrección
+
+`AppProvider` conciliaba DELETE con un nuevo GET y actualizaba sus reservas,
+pero `AccountDashboard` y `MemberSummary` seguían dibujando `initialBookings`
+recibido por SSR, incluso tras confirmar el nuevo estado. La recarga obtenía
+props nuevas y por eso revelaba la cancelación ya guardada.
+
+Ahora ambos componentes derivan estado, historial, próxima clase y estadísticas
+de la última lectura autenticada del provider. Éste conserva también el detalle
+completo que ya entrega el GET. La instantánea SSR sólo puede completar metadatos
+de una fila con la misma identidad, ID de reserva e ID de sesión, nunca restaurar
+su estado viejo ni filas que ya no aparecen en la lectura actual. Si no se
+puede resolver un detalle, se muestra dato no confirmado, no un cero ficticio.
+Se rechazan respuestas GET con filas de otra identidad. La cancelación incierta
+en Mi cuenta usa el aviso UNCONFIRMED, no un error genérico ni éxito.
+
+Regresión reproducida antes del arreglo: no aparecía CANCELADA con props SSR
+intactas; tampoco se mostraban reservas nuevas presentes en GET. Tras corregir,
+43/43 pruebas focalizadas pasan (10 nuevas): actualización sin recarga, lectura
+fallida tras DELETE, nuevas filas ausentes de SSR, descarte de SSR obsoleto,
+metadatos propios sin recuperar estado antiguo, aislamiento entre identidades,
+resumen de Inicio actualizado/error explícito, respuesta lenta sin segundo envío
+ni cancelación optimista. La corrección visual todavía necesita comprobación en
+el preview publicado; no requiere SQL nuevo. No se ejecutaron movimientos ni SQL
+remoto por el agente, no se borraron registros y no se mergeó el PR.
+
+### Validación local de la corrección visual
+
+```text
+npm run typecheck
+> tsc --noEmit
+(exit 0)
+npm run lint
+✖ 10 problems (0 errors, 10 warnings)
+(exit 0)
+npm run build
+✓ Compiled successfully in 7.0s
+✓ Generating static pages using 1 worker (40/40) in 200ms
+(exit 0)
+npm run test:auth
+# tests 350
+# pass 350
+# fail 0
+(exit 0)
+npm run test:sql
+🎉 Todo pasó
+🎉 CRM: 49 comprobaciones pasaron
+🎉 Compatibilidad CRM: 69 comprobaciones pasaron
+🎉 Escritura financiera: 86 comprobaciones pasaron (PGlite; sin concurrencia multiconexión ni SQL remoto)
+🎉 Plan propio: 22 comprobaciones pasaron (PGlite, dos esquemas; sin SQL remoto).
+🎉 Lectura de reservas: 42 comprobaciones pasaron (PGlite, dos esquemas; sin SQL remoto).
+(exit 0)
+```
+
+Logs `/home/user/account-cancel-{targeted,auth,typecheck,lint,build,sql}.log`.

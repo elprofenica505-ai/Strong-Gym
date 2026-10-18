@@ -11,6 +11,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { BookingDetail } from "@/lib/types";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 /* ============================================================
@@ -36,6 +37,8 @@ export interface AppBooking {
   sessionId: string;
   status: BookingStatus;
   createdAt: string;
+  /** Detalle de la última lectura autenticada; nunca de la respuesta de escritura. */
+  detail?: BookingDetail;
 }
 
 export type BookingErrorCode =
@@ -282,12 +285,7 @@ export function AppProvider({
       });
       if (!response.ok) throw new Error("BOOKINGS_UNAVAILABLE");
       const data = (await response.json()) as {
-        bookings: {
-          id: string;
-          session_id: string;
-          status: BookingStatus;
-          created_at: string;
-        }[];
+        bookings: BookingDetail[];
       };
       if (
         !Array.isArray(data.bookings) ||
@@ -299,7 +297,8 @@ export function AppProvider({
             !["confirmed", "attended", "cancelled", "no_show"].includes(
               b.status,
             ) ||
-            typeof b.created_at !== "string",
+            typeof b.created_at !== "string" ||
+            (b.user_id !== undefined && b.user_id !== user.id),
         )
       )
         throw new Error("INVALID_BOOKINGS");
@@ -313,6 +312,7 @@ export function AppProvider({
           sessionId: b.session_id,
           status: b.status,
           createdAt: b.created_at,
+          detail: b.user_id === user.id && b.session?.id === b.session_id ? b : undefined,
         })),
       );
       setBookingsRead({ owner: user.id, status: "ready" });

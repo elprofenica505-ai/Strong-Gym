@@ -39,6 +39,7 @@ const { ScheduleBoard } = await load("components/schedule/schedule-board.tsx");
 const { AccountDashboard } = await load(
   "components/account/account-dashboard.tsx",
 );
+const { MemberSummary } = await load("components/account/member-summary.tsx");
 const originalFetch = globalThis.fetch;
 afterEach(() => {
   cleanup();
@@ -442,4 +443,146 @@ test("rechazo UNCONFIRMED del servidor bloquea nuevos envíos hasta revisar lect
   assert.equal(app.bookingsError,true);
   await act(async()=>{await app.book('session')});
   assert.equal(sends,1);
+});
+
+const accountBooking = (status = "confirmed", owner = user.id, id = "saved") => ({
+  ...booking(id), user_id: owner, session_id: "session", status, cancelled_at: null,
+  session: {
+    id: "session", starts_at: "2099-01-06T12:00:00Z", ends_at: "2099-01-06T13:00:00Z",
+    capacity: 20, bookedCount: status === "confirmed" ? 1 : 0,
+    spotsLeft: status === "confirmed" ? 19 : 20, room: "Área EJEMPLO", status: "scheduled", coach: null,
+    gymClass: { slug: "test", name_es: "Boxeo prueba", name_en: "Test boxing", color: "#d81a22", duration_min: 60 },
+  },
+});
+
+test("Mi cuenta: cancelar mueve la reserva al historial sin recargar ni renovar props SSR", async () => {
+  let cancelled = false;
+  let sends = 0;
+  globalThis.fetch = async (_url, init = {}) => {
+    if (init.method === "DELETE") { sends++; cancelled = true; return json({ok: true}); }
+    return json({bookings: [accountBooking(cancelled ? "cancelled" : "confirmed")]});
+  };
+  render(tree(user, React.createElement(AccountDashboard, {
+    initialBookings: [accountBooking()], plans: [],
+  })));
+  fireEvent.click(await screen.findByRole("button", {name: dict.schedule.cancel}));
+  await screen.findByText(dict.account.cancelled);
+  assert.equal(screen.queryByRole("button", {name: dict.schedule.cancel}), null);
+  assert.equal(screen.queryByText(dict.account.confirmed), null);
+  assert.equal(sends, 1);
+  assert.ok(screen.getByText(dict.account.noUpcoming));
+});
+
+test("Mi cuenta: cancelación sin lectura confirmada muestra incertidumbre, no éxito", async () => {
+  let sends = 0;
+  globalThis.fetch = async (_url, init = {}) => {
+    if (init.method === "DELETE") { sends++; return json({ok:true}); }
+    return sends ? json({}, 503) : json({bookings:[accountBooking()]});
+  };
+  render(tree(user, React.createElement(AccountDashboard, {
+    initialBookings:[accountBooking()], plans:[],
+  })));
+  fireEvent.click(await screen.findByRole("button", {name: dict.schedule.cancel}));
+  await screen.findByRole("alert");
+  await waitFor(() => assert.ok(app.toasts.some(t => t.message === dict.schedule.bookingUnconfirmed)));
+  assert.equal(app.toasts.some(t => t.message === dict.schedule.cancelSuccess), false);
+  assert.equal(sends, 1);
+});
+
+test("Mi cuenta: lectura vigente prevalece sobre props antiguas incluso si hay nuevas reservas", async () => {
+  globalThis.fetch = async () => json({bookings:[accountBooking("confirmed",user.id,"new")]});
+  render(tree(user, React.createElement(AccountDashboard, {initialBookings:[], plans:[]})));
+  await screen.findByRole("button", {name:dict.schedule.cancel});
+  assert.ok(screen.getByText(dict.account.confirmed));
+  assert.equal(screen.queryByText(dict.account.noUpcoming), null);
+});
+
+test("Mi cuenta: metadatos de otra identidad nunca completan la lectura actual", async () => {
+  globalThis.fetch = async () => json({bookings:[{...booking("saved"),session_id:"session"}]});
+  render(tree(user, React.createElement(AccountDashboard, {
+    initialBookings:[accountBooking("confirmed","another-user")], plans:[],
+  })));
+  await screen.findByRole("alert");
+  assert.equal(screen.queryByText("Boxeo prueba"),null);
+});
+
+test("Inicio: próxima clase usa la lectura vigente y desaparece tras cancelar sin recarga SSR", async () => {
+  let cancelled = false;
+  globalThis.fetch = async (_url, init = {}) => {
+    if (init.method === "DELETE") { cancelled = true; return json({ok:true}); }
+    return json({bookings:[accountBooking(cancelled ? "cancelled" : "confirmed")]});
+  };
+  render(tree(user, React.createElement(MemberSummary, {initialBookings:[accountBooking()]})));
+  await screen.findByText("Boxeo prueba");
+  await act(async () => { assert.deepEqual(await app.cancelBooking("saved","session"), {ok:true}); });
+  await screen.findByText(dict.memberSummary.noNextClass);
+  assert.equal(screen.queryByText("Boxeo prueba"),null);
+});
+
+test("Inicio: no convierte lectura fallida en próxima clase vacía ni cifras cero", async () => {
+  globalThis.fetch = async () => json({},503);
+  render(tree(user, React.createElement(MemberSummary, {initialBookings:[]})));
+  await screen.findByRole("alert");
+  assert.equal(screen.queryByText(dict.memberSummary.noNextClass),null);
+  assert.equal(screen.queryByText(dict.account.stats.total),null);
+});
+
+test("Mi cuenta: la lectura autenticada vacía descarta reservas de props antiguas", async () => {
+  globalThis.fetch = async () => json({bookings:[]});
+  render(tree(user, React.createElement(AccountDashboard, {
+    initialBookings:[accountBooking()], plans:[],
+  })));
+  await screen.findByText(dict.account.noUpcoming);
+  assert.equal(screen.queryByText("Boxeo prueba"),null);
+  assert.equal(screen.queryByRole("button",{name:dict.schedule.cancel}),null);
+});
+
+test("Mi cuenta: metadatos propios completan lectura mínima sin recuperar estado SSR obsoleto", async () => {
+  globalThis.fetch = async () => json({bookings:[{
+    ...booking("saved"), session_id:"session", status:"cancelled",
+  }]});
+  render(tree(user, React.createElement(AccountDashboard, {
+    initialBookings:[accountBooking()], plans:[],
+  })));
+  await screen.findByText(dict.account.cancelled);
+  assert.equal(screen.queryByText(dict.account.confirmed),null);
+  assert.ok(screen.getByText(dict.account.noUpcoming));
+});
+
+test("Mi cuenta: respuesta lenta bloquea segundo clic y espera lectura antes de mostrar cancelada", async () => {
+  let resolveDelete;
+  let resolveRead;
+  let sends = 0;
+  globalThis.fetch = async (_url, init = {}) => {
+    if (init.method === "DELETE") {
+      sends++;
+      return new Promise(resolve => { resolveDelete = resolve; });
+    }
+    if (!sends) return json({bookings:[accountBooking()]});
+    return new Promise(resolve => { resolveRead = resolve; });
+  };
+  render(tree(user,React.createElement(AccountDashboard,{
+    initialBookings:[accountBooking()], plans:[],
+  })));
+  const button = await screen.findByRole("button",{name:dict.schedule.cancel});
+  fireEvent.click(button);
+  assert.equal(button.disabled,true);
+  fireEvent.click(button);
+  assert.equal(sends,1);
+  assert.equal(screen.queryByText(dict.account.cancelled),null);
+  await act(async()=> { resolveDelete(json({ok:true})); });
+  await screen.findByText("Confirmando reservas…");
+  assert.equal(screen.queryByText(dict.account.cancelled),null);
+  assert.equal(screen.queryByRole("button",{name:dict.schedule.cancel}),null);
+  await act(async()=> { resolveRead(json({bookings:[accountBooking("cancelled")]})); });
+  await screen.findByText(dict.account.cancelled);
+  assert.equal(sends,1);
+});
+
+test("lectura de reservas de otra identidad se rechaza aunque el GET responda 200", async () => {
+  globalThis.fetch = async () => json({bookings:[accountBooking("confirmed","another-user")]});
+  render(tree(user,React.createElement(AccountDashboard,{initialBookings:[],plans:[]})));
+  await screen.findByRole("alert");
+  assert.equal(app.bookingsError,true);
+  assert.equal(screen.queryByText("Boxeo prueba"),null);
 });
