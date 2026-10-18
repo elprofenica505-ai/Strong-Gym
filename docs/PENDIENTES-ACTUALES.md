@@ -148,6 +148,8 @@ explícita. No afirmar seguridad absoluta ni certificación externa por tener HT
 - [x] Gráficos de barras con datos reales; si una lectura falla se muestra "no disponible", nunca cero.
 - [x] Pantalla de personal y roles (sólo administrador con MFA), conectada a admin_set_role.
 - [ ] Revisión visual en navegador real de las páginas nuevas (la sandbox no tiene Chromium para la prueba de layout).
-- [ ] Vista del entrenador: lista de sus clientes con asistencia (pendiente de decidir si hay asignación entrenador-cliente).
+- [x] Asignación entrenador-cliente en base de datos: SQL 00035 probado (47/47). Aprobación sólo del administrador; caja registra pedidos.
+- [ ] Pantalla de pedidos de acceso para el administrador y vista del entrenador (sus clientes con asistencia).
+- [ ] Aplicar 00035 en Supabase después de 00034 (autorización expresa).
 - [ ] Aplicar 00034 en Supabase antes de desplegar este código (ver docs/ROLES-MIGRACION-PLAN.md).
 

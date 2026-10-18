@@ -34,7 +34,17 @@ Estado (18 oct 2026): **LISTA EN CÓDIGO, NO APLICADA EN SUPABASE.**
 - App (sin UI nueva, por la regla de no reorganizar el menú): permisos por página (caja/cuentas/gastos = admin o caja; reportes/importar/herramientas/reset = admin), tipos de rol, endpoint `POST /api/admin/roles` (admin con MFA).
 - Pruebas: `npm run test:auth` 551/551; `tsc` y eslint sin errores.
 - Pendiente antes de aplicar: autorización expresa para ejecutar 00034 en Supabase y verificación posterior en solo lectura.
-- Pendiente de UI (requiere aprobación del lugar en el menú): panel para asignar roles y vista del entrenador.
+- Pendiente de UI (requiere aprobación del lugar en el menú): vista del entrenador.
+
+## Asignación entrenador-cliente (00035)
+Estado: BORRADOR PROBADO LOCALMENTE (47/47), NO APLICADO. Se aplica después de 00034.
+- El entrenador sólo ve a los clientes con acceso APROBADO para él.
+- El entrenador pide clientes para sí mismo. Caja puede registrar un pedido en nombre de un entrenador.
+- Caja NO aprueba. Sólo el administrador con MFA aprueba, rechaza o revoca.
+- Cada pedido queda con quién lo pidió (entrenador o caja), motivo opcional y quién decidió.
+- El entrenador busca clientes por nombre (mínimo 3 letras, máximo 10) sólo para pedirlos: ve id, nombre y su estado.
+- Prueba: `node scripts/test-trainer-access-sql.mjs`.
+- Pendiente de UI: pantalla de pedidos para el administrador y vista del entrenador.
 - Finanzas (cobros, abonos, gastos, recibos): admin o caja.
 - Clientes: admin y caja ven datos de contacto; entrenador ve sólo nombre y asistencia
   (función aparte que no devuelve teléfono ni correo).
