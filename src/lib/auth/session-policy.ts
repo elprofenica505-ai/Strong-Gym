@@ -6,8 +6,9 @@
  */
 export const STAFF_INACTIVITY_MS = 2 * 60 * 60 * 1000;
 
+/** Sólo el administrador tiene cierre automático; personal y clientes cierran manualmente. */
 export function inactivityLimitMs(role: "member" | "staff" | "admin" | null | undefined): number | null {
-  return role === "admin" || role === "staff" ? STAFF_INACTIVITY_MS : null;
+  return role === "admin" ? STAFF_INACTIVITY_MS : null;
 }
 
 export function isInactive(lastActivityMs: number, nowMs: number, limitMs: number | null): boolean {

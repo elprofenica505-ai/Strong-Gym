@@ -32,7 +32,10 @@ Estado: DISEÑO. No hay SQL aplicado ni cambios de base de datos para esto.
 
 ## Pendiente de decisión
 1. El entrenador: ¿ve teléfono y correo de sus clientes o sólo nombre y asistencia?
-2. Confirmar el cierre de 2 horas también para el personal (hoy incluido).
+2. ~~Confirmar el cierre de 2 horas también para el personal~~: **resuelto, sólo administrador** (confirmado por el usuario).
+
+## Decisiones confirmadas adicionales
+- Entrenador: no ve teléfono ni correo de clientes; sólo nombre y asistencia.
 
 ## Pendiente de autorización
 - SQL: nuevos roles, tabla de permisos del administrador, reglas RLS por rol y función de anulación con bitácora.
