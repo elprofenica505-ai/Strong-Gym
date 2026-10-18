@@ -57,27 +57,44 @@ function context(user) {
       export const getAllBookings = async () => [];
       export const getClasses = async () => [];
       export const getContactMessages = async () => [];
-      export const getSessionsForWeek = async () => ({ sessions: [] });`,
+      export const getSessionsForWeek = async () => ({ sessions: [] });
+      export const getCashSummary = async () => ({ incomeToday: 0, expenseToday: 0, netToday: 0, txToday: 0, incomeMonth: 0, expenseMonth: 0, netMonth: 0, txMonth: 0, pendingInvoices: null });
+      export const getDailyCash = async () => [];
+      export const getMonthlyPnl = async () => [];
+      export const getProfilesForRoles = async () => [];`,
     "@/components/providers/app-provider": `export const useApp = () => ({ user: ${JSON.stringify(user)}, hydrated: true, signOut() {}, toast() {} });`,
   };
 }
 
-for (const role of ["admin", "cashier"]) {
-  test(`render real ${role}: tarjetas de caja/herramientas y enlace Panel en el menú móvil`, async () => {
-    const load = loader(context({ ...baseUser, role }));
-    const { default: Page } = await load("app/[locale]/panel/page.tsx");
-    const html = renderToStaticMarkup(await Page({ params: Promise.resolve({ locale: "es" }) }));
-    assert.ok(html.includes("Caja y cuentas"));
-    assert.ok(html.includes("Herramientas"));
-    assert.ok(html.includes('href="/es/panel/caja"'));
-    assert.ok(html.includes('href="/es/panel/herramientas"'));
-    assert.ok(!html.includes(dict.admin.noAccess));
-    const { SideNav } = await load("components/layout/side-nav.tsx");
-    const menu = renderToStaticMarkup(createElement(SideNav, { open: true, onClose() {} }));
-    assert.ok(menu.includes('href="/es/panel"'));
-    assert.ok(menu.includes(dict.nav.admin));
-  });
-}
+test("render real admin: inicio con módulos, Finanzas, Operación y Administración", async () => {
+  const load = loader(context({ ...baseUser, role: "admin" }));
+  const { default: Page } = await load("app/[locale]/panel/page.tsx");
+  const html = renderToStaticMarkup(await Page({ params: Promise.resolve({ locale: "es" }) }));
+  assert.ok(html.includes("Resumen del gimnasio"));
+  assert.ok(html.includes('href="/es/panel/finanzas"'));
+  assert.ok(html.includes('href="/es/panel/caja"'));
+  assert.ok(html.includes('href="/es/panel/operacion"'));
+  assert.ok(html.includes('href="/es/panel/administracion"'));
+  assert.ok(html.includes('href="/es/panel/herramientas"'));
+  assert.ok(html.includes('href="/es/panel/administracion/roles"'));
+  assert.ok(html.includes("Reservas por día"));
+  assert.ok(!html.includes(dict.admin.noAccess));
+  const { SideNav } = await load("components/layout/side-nav.tsx");
+  const menu = renderToStaticMarkup(createElement(SideNav, { open: true, onClose() {} }));
+  assert.ok(menu.includes('href="/es/panel"'));
+  assert.ok(menu.includes(dict.nav.admin));
+});
+
+test("render real cashier: inicio sin Administración ni Reportes", async () => {
+  const load = loader(context({ ...baseUser, role: "cashier" }));
+  const { default: Page } = await load("app/[locale]/panel/page.tsx");
+  const html = renderToStaticMarkup(await Page({ params: Promise.resolve({ locale: "es" }) }));
+  assert.ok(html.includes('href="/es/panel/finanzas"'));
+  assert.ok(html.includes('href="/es/panel/caja"'));
+  assert.ok(!html.includes('href="/es/panel/administracion"'));
+  assert.ok(!html.includes('href="/es/panel/herramientas"'));
+  assert.ok(!html.includes(dict.admin.noAccess));
+});
 
 test("render real member: denegado y sin Panel en el menú", async () => {
   const load = loader(context({ ...baseUser, role: "member" }));

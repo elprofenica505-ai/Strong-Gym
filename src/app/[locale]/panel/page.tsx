@@ -1,34 +1,34 @@
 import { readData } from "@/lib/data/read-result";
+import { readFinance } from "@/lib/finance/read-result";
 import { DataUnavailable } from "@/components/ui/data-unavailable";
+import { FinanceUnavailable } from "@/components/admin/finance-unavailable";
+import { CountBars } from "@/components/admin/count-bars";
+import { FinanceKpis } from "@/components/admin/finance-kpis";
+import { MiniBar } from "@/components/admin/cash-panel";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { canAccessPanel } from "@/lib/auth/current-user";
-import { ReloadButton } from "@/components/ui/reload-button";
+import { panelAccess, visibleModules, type PanelModule } from "@/lib/admin/modules";
 import { ShieldAlert } from "lucide-react";
-import {
-  AdminPanel,
-  type AdminBookingRow,
-  type AdminClassRow,
-} from "@/components/admin/admin-panel";
-import { SectionHeading } from "@/components/ui/section";
-import { ButtonLink } from "@/components/ui/button";
 import { getDictionary } from "@/i18n/dictionaries";
 import { isLocale, type Locale } from "@/i18n/config";
+import { redirect } from "next/navigation";
+import { SectionHeading } from "@/components/ui/section";
+import { ButtonLink } from "@/components/ui/button";
 import {
   countMembers,
   getAllBookings,
-  getClasses,
+  getCashSummary,
   getContactMessages,
   getCurrentUser,
+  getDailyCash,
+  getMonthlyPnl,
   getSessionsForWeek,
 } from "@/lib/data/queries";
-import {
-  demoAdminBookings,
-  demoAdminClasses,
-  demoAdminMessages,
-} from "@/lib/data/demo-admin";
+import { demoAdminBookings, demoAdminMessages } from "@/lib/data/demo-admin";
+import { formatDateNumeric, gymNow } from "@/lib/schedule";
 import { DEMO_MODE } from "@/lib/supabase/env";
+import { cn } from "@/lib/utils";
 
 export async function generateMetadata({
   params,
@@ -37,15 +37,15 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   if (!isLocale(locale)) return {};
-  const dict = getDictionary(locale);
-
   return {
-    title: dict.admin.title,
+    title: "Panel de gestión",
     robots: { index: false, follow: false },
   };
 }
 
-export default async function AdminPage({
+const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+
+export default async function PanelHomePage({
   params,
 }: {
   params: Promise<{ locale: string }>;
@@ -53,10 +53,8 @@ export default async function AdminPage({
   const { locale: rawLocale } = await params;
   const locale: Locale = isLocale(rawLocale) ? rawLocale : "es";
   const dict = getDictionary(locale);
-
   const demo = DEMO_MODE;
   const user = await getCurrentUser();
-  const isStaff = canAccessPanel(user);
 
   if (!demo && !user) redirect(`/${locale}/ingresar`);
 
@@ -67,56 +65,32 @@ export default async function AdminPage({
       <section className="container-x flex min-h-[70vh] flex-col items-center justify-center gap-5 py-24 text-center">
         <ShieldAlert className="size-8 text-alert" aria-hidden="true" />
         <h1 className="display-xl text-[1.75rem]">
-          {es
-            ? "No pudimos verificar tu perfil"
-            : "We could not verify your profile"}
+          {es ? "No pudimos verificar tu perfil" : "We could not verify your profile"}
         </h1>
         <p className="max-w-lg text-fog">
           {es
-            ? "Tu sesión está iniciada, pero no se pudo leer un perfil válido en public.profiles. No cambiamos tu rol ni habilitamos acceso sin verificarlo. Revisá las políticas RLS y que Vercel use el mismo proyecto de Supabase donde verificaste tu rol."
-            : "You are signed in, but a valid public.profiles record could not be read. Your role was not changed and access remains protected. Check RLS policies and that Vercel uses the correct Supabase project."}
+            ? "Tu sesión está iniciada, pero no se pudo leer un perfil válido en public.profiles. No cambiamos tu rol ni habilitamos acceso sin verificarlo."
+            : "You are signed in, but a valid public.profiles record could not be read. Your role was not changed and access remains protected."}
         </p>
         <p className="max-w-full break-all font-mono text-xs text-fog">
           ID: {user.id} ·{" "}
           {user.profileStatus === "missing"
-            ? es
-              ? "Perfil no visible o inexistente"
-              : "Profile missing or not visible"
-            : es
-              ? "Error al leer el perfil"
-              : "Profile read error"}
+            ? es ? "Perfil no visible o inexistente" : "Profile missing or not visible"
+            : es ? "Error al leer el perfil" : "Profile read error"}
         </p>
-        <ReloadButton label={es ? "Reintentar" : "Retry"} />
       </section>
     );
   }
 
-  /* ------------------------------------------------------------
-     Control de acceso: sólo staff/admin (en modo demo se puede
-     espiar el panel para ver cómo queda).
-     ------------------------------------------------------------ */
-  if (!demo && !isStaff) {
+  if (!demo && !canAccessPanel(user)) {
     return (
       <section className="container-x flex min-h-[70vh] flex-col items-center justify-center py-24 text-center">
         <span className="grid size-14 place-items-center rounded-full border border-alert/40 bg-alert/10 text-alert">
           <ShieldAlert className="size-6" aria-hidden="true" />
         </span>
-
-        <h1 className="display-xl mt-5 text-[1.75rem] sm:text-[2.25rem]">
-          {dict.admin.noAccess}
-        </h1>
-
-        <p className="mt-3 max-w-md text-[0.9375rem] leading-relaxed text-fog">
-          {dict.admin.noAccessHint}
-        </p>
-
-        {user ? (
-          <p className="mt-4 max-w-full break-all font-mono text-xs text-fog">
-            ID: {user.id} · public.profiles.role: {user.role}
-          </p>
-        ) : null}
-
-        <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+        <h1 className="display-xl mt-5 text-[1.75rem] sm:text-[2.25rem]">{dict.admin.noAccess}</h1>
+        <p className="mt-3 max-w-md text-[0.9375rem] leading-relaxed text-fog">{dict.admin.noAccessHint}</p>
+        <div className="mt-7">
           <ButtonLink href={`/${locale}/mi-cuenta`} variant="outline" size="lg">
             {dict.account.title}
           </ButtonLink>
@@ -125,130 +99,207 @@ export default async function AdminPage({
     );
   }
 
-  /* ------------------------------------------------------------
-     Datos del panel
-     ------------------------------------------------------------ */
+  const role = user?.role ?? null;
+  const access = panelAccess(role, demo);
+  const modules = visibleModules(role, demo).filter((m) => m.id !== "inicio");
 
-  let bookings: AdminBookingRow[];
-  let classes: AdminClassRow[];
-  let messages: Awaited<ReturnType<typeof getContactMessages>>;
-  let memberCount: number;
+  // Cuenta de entrenador: sin módulos de gestión todavía.
+  if (!demo && access === "none") {
+    return (
+      <TrainerNotice locale={locale} />
+    );
+  }
+
+  /* ---------- Operación: reservas, clientes y mensajes ---------- */
+  let bookingsRaw: Awaited<ReturnType<typeof getAllBookings>> = [];
+  let messages: Awaited<ReturnType<typeof getContactMessages>> = [];
+  let memberCount = 0;
+  let operationError: string | null = null;
 
   if (demo) {
-    bookings = demoAdminBookings();
-    classes = demoAdminClasses();
+    bookingsRaw = [];
     messages = demoAdminMessages();
     memberCount = 942;
   } else {
     const result = await readData(() =>
-      Promise.all([
-        getAllBookings(),
-        getClasses(),
-        getContactMessages(),
-        countMembers(),
-        getSessionsForWeek(),
-      ]),
+      Promise.all([getAllBookings(), getContactMessages(), countMembers(), getSessionsForWeek()]),
     );
-    if (!result.ok)
-      return (
-        <section className="container-x py-12">
-          <DataUnavailable locale={locale} code={result.code} />
-        </section>
-      );
-    const [rawBookings, rawClasses, rawMessages, members, week] = result.data;
-
-    messages = rawMessages;
-    memberCount = members;
-
-    const sessionsPerClass = new Map<string, number>();
-    for (const session of week.sessions) {
-      sessionsPerClass.set(
-        session.class_id,
-        (sessionsPerClass.get(session.class_id) ?? 0) + 1,
-      );
+    if (!result.ok) {
+      operationError = result.code;
+    } else {
+      [bookingsRaw, messages, memberCount] = [result.data[0], result.data[1], result.data[2]];
     }
-
-    bookings = rawBookings.map((booking) => ({
-      id: booking.id,
-      memberName: booking.memberName,
-      memberEmail: booking.memberEmail,
-      status: booking.status,
-      createdAt: booking.created_at,
-      className:
-        locale === "es"
-          ? booking.session.gymClass.name_es
-          : booking.session.gymClass.name_en,
-      classColor: booking.session.gymClass.color,
-      room: booking.session.room,
-      coachName: booking.session.coach?.name ?? null,
-      startsAt: booking.session.starts_at,
-      sessionId: booking.session_id,
-    }));
-
-    classes = rawClasses.map((gymClass) => ({
-      id: gymClass.id,
-      name: locale === "es" ? gymClass.name_es : gymClass.name_en,
-      slug: gymClass.slug,
-      color: gymClass.color,
-      capacity: gymClass.capacity,
-      duration: gymClass.duration_min,
-      intensity: gymClass.intensity,
-      isActive: gymClass.is_active,
-      sessionsThisWeek: sessionsPerClass.get(gymClass.id) ?? 0,
-    }));
   }
+
+  const now = gymNow();
+  const todayKey = formatDateNumeric(now, "es");
+  const day = now.getDay();
+  const startOfWeek = new Date(now.getTime() - (day === 0 ? 6 : day - 1) * 86_400_000);
+  const weekDays = Array.from({ length: 7 }, (_, i) => new Date(startOfWeek.getTime() + i * 86_400_000));
+
+  const activeBookings = demo
+    ? demoAdminBookings().filter((b) => b.status !== "cancelled")
+    : bookingsRaw.filter((b) => b.status !== "cancelled").map((b) => ({ startsAt: b.session.starts_at }));
+
+  const bookingsToday = activeBookings.filter(
+    (b) => formatDateNumeric(new Date(b.startsAt), "es") === todayKey,
+  ).length;
+  const bookingsWeek = activeBookings.filter((b) => new Date(b.startsAt) >= startOfWeek).length;
+  const messagesWeek = messages.filter((m) => new Date(m.created_at) >= startOfWeek).length;
+
+  const bookingsByDay = weekDays.map((d, i) => {
+    const key = formatDateNumeric(d, "es");
+    return {
+      label: WEEKDAYS[i],
+      value: activeBookings.filter((b) => formatDateNumeric(new Date(b.startsAt), "es") === key).length,
+      highlight: key === todayKey,
+    };
+  });
+
+  /* ---------- Finanzas: sólo caja y administración ---------- */
+  let finance: Awaited<ReturnType<typeof readFinance<[Awaited<ReturnType<typeof getCashSummary>>, Awaited<ReturnType<typeof getMonthlyPnl>>]>>> | null = null;
+  if (!demo && access !== "none") {
+    finance = await readFinance(() => Promise.all([getCashSummary(), getMonthlyPnl(6)]));
+  }
+
+  const kpis = [
+    { label: "Clientes", value: String(memberCount), hint: "Fichas activas" },
+    { label: "Reservas hoy", value: String(bookingsToday), hint: "Sin canceladas" },
+    { label: "Reservas esta semana", value: String(bookingsWeek), hint: "Lunes a hoy" },
+    { label: "Mensajes esta semana", value: String(messagesWeek), hint: "Contacto del sitio" },
+  ];
 
   return (
     <>
-      <section className="relative overflow-hidden border-b border-brand/25 bg-cloud pt-12 pb-10 sm:pt-16 sm:pb-12 lg:pt-20">
-        <div
-          className="absolute inset-0 bg-grid opacity-50"
-          aria-hidden="true"
-        />
-        <div
-          className="absolute -top-24 left-1/4 size-80 rounded-full bg-brand/8 blur-3xl"
-          aria-hidden="true"
-        />
-
+      <section className="relative overflow-hidden border-b border-brand/25 bg-cloud pt-10 pb-8 sm:pt-12 sm:pb-10">
+        <div className="absolute inset-0 bg-grid opacity-50" aria-hidden="true" />
         <div className="container-x relative">
           <SectionHeading
-            eyebrow={dict.nav.admin}
-            title={dict.admin.title}
-            subtitle={dict.admin.subtitle}
+            eyebrow="Panel de gestión"
+            title="Resumen del gimnasio"
+            subtitle="Cifras clave del día y del mes. Cada módulo tiene su detalle en el menú superior."
           />
-
           <p className="mt-4 text-[0.8125rem] text-fog">
             {user ? (
               <>
-                {user.fullName} ·{" "}
-                <span className="font-mono text-brand-300">{user.role}</span>
+                {user.fullName} · <span className="font-mono text-brand-300">{user.role}</span>
               </>
             ) : (
-              <>
-                {dict.demo.title} ·{" "}
-                <Link
-                  href={`/${locale}/ingresar`}
-                  className="text-brand-300 hover:opacity-80"
-                >
-                  {dict.nav.login}
-                </Link>
-              </>
+              <>{dict.demo.title}</>
             )}
           </p>
         </div>
       </section>
 
-      <section className="py-10 sm:py-12 lg:py-14">
-        <div className="container-x">
-          <AdminPanel
-            bookings={bookings}
-            messages={messages}
-            classes={classes}
-            memberCount={memberCount}
-            isDemo={demo}
-          />
+      <section className="py-8 sm:py-10">
+        <div className="container-x flex flex-col gap-8">
+          {demo ? (
+            <p className="rounded-xl border border-brand/30 bg-brand/[0.06] px-4 py-3 text-[0.75rem] leading-relaxed text-mist">
+              {dict.admin.demoNotice}
+            </p>
+          ) : null}
+
+          {/* Indicadores */}
+          {operationError ? (
+            <DataUnavailable locale={locale} code={operationError} />
+          ) : (
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {kpis.map((k) => (
+                <div key={k.label} className="rounded-2xl border border-line bg-card p-4">
+                  <p className="text-[0.6875rem] font-semibold tracking-[0.12em] text-fog uppercase">{k.label}</p>
+                  <p className="mt-2 font-display text-[1.75rem] leading-none text-ink">{k.value}</p>
+                  <p className="mt-1 text-[0.75rem] text-fog">{k.hint}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Finanzas del mes */}
+          {demo ? (
+            <p className="text-sm text-fog">
+              En modo demo las cifras financieras no se calculan. Con Supabase conectado aparecen aquí.
+            </p>
+          ) : finance && !finance.ok ? (
+            <FinanceUnavailable locale={locale} code={finance.code} message={finance.message} />
+          ) : finance && finance.ok ? (
+            <FinanceKpis summary={finance.data[0]} />
+          ) : null}
+
+          {/* Gráficos */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="rounded-2xl border border-line bg-card p-5">
+              <CountBars data={bookingsByDay} label="Reservas por día · esta semana" emptyText="Todavía no hay reservas esta semana." />
+            </div>
+            <div className="rounded-2xl border border-line bg-card p-5">
+              {finance && finance.ok ? (
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <MiniBar
+                    label="Ingresos por mes (NIO)"
+                    data={finance.data[1].map((m) => ({ label: m.month.slice(0, 7), value: m.incomeNio }))}
+                  />
+                  <MiniBar
+                    label="Egresos por mes (NIO)"
+                    data={finance.data[1].map((m) => ({ label: m.month.slice(0, 7), value: -m.expenseNio }))}
+                  />
+                </div>
+              ) : (
+                <p className="py-8 text-sm text-fog">
+                  {demo ? "Gráfico financiero disponible con Supabase conectado." : "El gráfico financiero no está disponible en este momento."}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Módulos */}
+          <div>
+            <h2 className="mb-3 text-[0.6875rem] font-semibold tracking-[0.14em] text-fog uppercase">Módulos</h2>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {modules.map((m) => (
+                <ModuleCard key={m.id} module={m} locale={locale} />
+              ))}
+            </div>
+          </div>
         </div>
       </section>
     </>
   );
 }
+
+function ModuleCard({ module, locale }: { module: PanelModule; locale: Locale }) {
+  return (
+    <div className={cn("flex flex-col rounded-2xl border border-line bg-card p-5")}>
+      <Link href={`/${locale}${module.href}`} className="group">
+        <p className="text-[1rem] font-semibold text-ink group-hover:text-brand-300">{module.label} →</p>
+      </Link>
+      <p className="mt-1 text-[0.8125rem] leading-relaxed text-fog">{module.description}</p>
+      {module.children.length > 0 ? (
+        <ul className="mt-3 flex flex-col gap-1.5 border-t border-line pt-3">
+          {module.children.map((c) => (
+            <li key={c.id}>
+              <Link href={`/${locale}${c.href}`} className="text-[0.8125rem] text-mist hover:text-brand-300">
+                {c.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+function TrainerNotice({ locale }: { locale: Locale }) {
+  const es = locale === "es";
+  return (
+    <section className="container-x flex min-h-[60vh] flex-col items-center justify-center gap-4 py-24 text-center">
+      <h1 className="display-xl text-[1.75rem]">{es ? "Vista de entrenador en preparación" : "Trainer view in preparation"}</h1>
+      <p className="max-w-lg text-fog">
+        {es
+          ? "Tu cuenta es de entrenador. La lista de tus clientes con asistencia se activará cuando se apruebe su ubicación en el menú. Mientras tanto no se muestran datos de gestión."
+          : "Your account is a trainer account. Your client attendance list will appear once its menu location is approved."}
+      </p>
+    </section>
+  );
+}
+
+/** Referencia a sesiones: el inicio no las usa todavía, se mantiene la lectura para la semana. */
+export const _dashboardDataKeys = ["getSessionsForWeek"] as const;

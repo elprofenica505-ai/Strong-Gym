@@ -16,7 +16,10 @@ const connected = createLoader({
  export const getContactMessages=async()=>globalThis.__dataRead();
  export const countMembers=async()=>globalThis.__dataRead();
  export const getBookedSessionIds=async()=>globalThis.__dataIds();
- export const getSessionsForWeek=async()=>globalThis.__dataWeek();`,
+ export const getSessionsForWeek=async()=>globalThis.__dataWeek();
+ export const getCashSummary=async()=>globalThis.__dataRead();
+ export const getDailyCash=async()=>globalThis.__dataRead();
+ export const getMonthlyPnl=async()=>globalThis.__dataRead();`,
   "@/lib/supabase/server":
     "export const getSupabaseServerClient=async()=>globalThis.__dataDb();",
   "next/navigation":

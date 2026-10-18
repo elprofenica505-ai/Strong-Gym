@@ -141,3 +141,13 @@ explícita. No afirmar seguridad absoluta ni certificación externa por tener HT
 - [x] Cabeceras (18 oct, rama arena/45b6501d): añadidas Strict-Transport-Security (1 año) y Permissions-Policy (cámara sólo para el sitio, para el lector de QR). Verificadas en build de producción local.
 - [ ] Política de contenido (CSP): pendiente; requiere probarla en modo informativo antes de activarla, para no romper páginas.
 - [ ] Llave de acceso (huella/rostro): cuando Supabase la saque de versión experimental.
+
+## Organización del panel de gestión (18 oct 2026)
+- [x] Módulos: Inicio (resumen y gráficos), Clientes, Finanzas (caja, cuentas, gastos, reportes), Operación (reservas, mensajes, clases) y Administración (personal y roles, importar, herramientas, guía).
+- [x] Menú de módulos por rol: administrador ve todo; caja ve finanzas, clientes y operación; entrenador sin módulos por ahora.
+- [x] Gráficos de barras con datos reales; si una lectura falla se muestra "no disponible", nunca cero.
+- [x] Pantalla de personal y roles (sólo administrador con MFA), conectada a admin_set_role.
+- [ ] Revisión visual en navegador real de las páginas nuevas (la sandbox no tiene Chromium para la prueba de layout).
+- [ ] Vista del entrenador: lista de sus clientes con asistencia (pendiente de decidir si hay asignación entrenador-cliente).
+- [ ] Aplicar 00034 en Supabase antes de desplegar este código (ver docs/ROLES-MIGRACION-PLAN.md).
+

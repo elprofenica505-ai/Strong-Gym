@@ -875,3 +875,25 @@ export { isSupabaseConfigured };
 export function currentWeek(): WeekRange {
   return getWeekRange();
 }
+
+/** Personas con perfil para asignar roles (sólo administrador; la base lo exige). */
+export async function getProfilesForRoles(): Promise<
+  { id: string; fullName: string; role: string }[]
+> {
+  return checkedRead("PROFILES_ROLES", async () => {
+    const supabase = await getSupabaseServerClient();
+    if (!supabase) return [];
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, full_name, role")
+      .order("full_name", { nullsFirst: false })
+      .limit(500)
+      .abortSignal(AbortSignal.timeout(15000));
+    if (error) throw new DataReadError("PROFILES_ROLES", error.code);
+    return (data ?? []).map((row) => ({
+      id: row.id as string,
+      fullName: (row.full_name as string | null) ?? "",
+      role: row.role as string,
+    }));
+  });
+}
