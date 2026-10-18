@@ -418,7 +418,7 @@ const en = {
     requiredField: "Please fill in this field",
     passwordMin: "At least 6 characters",
     demoNotice:
-      "You are in demo mode. Real login is enabled once you connect Supabase (see the README).",
+      "Read-only local demo. Login, registration and operations are disabled.",
   },
 
   account: {
@@ -499,7 +499,7 @@ const en = {
       classes: "No classes loaded.",
     },
     demoNotice:
-      "The dashboard is showing sample data. With Supabase connected you will see the real gym information.",
+      "Read-only local demonstration dashboard. Changes are disabled.",
   },
 
   footer: {
@@ -525,7 +525,7 @@ const en = {
 
   demo: {
     title: "Demo mode",
-    text: "The site is running on sample data. Connect Supabase to enable the database and real login.",
+    text: "Read-only local demonstration. Login, registration and writes are disabled.",
     hint: "Instructions in the repository README",
     dismiss: "Got it",
   },

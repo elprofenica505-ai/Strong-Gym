@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server.js";
 // Ejecutar el proxy real con el SDK real, sin contactar Supabase ni usar claves reales.
 const env = `export const SUPABASE_URL = "https://test-project.supabase.co";
 export const SUPABASE_ANON_KEY = "public-test-key-not-a-real-secret";
-export const isSupabaseConfigured = true;`;
+export const isSupabaseConfigured = true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;`;
 const dataUrl = (code) => `data:text/javascript;base64,${Buffer.from(code).toString("base64")}`;
 const source = readFileSync(new URL("../src/lib/supabase/proxy-client.ts", import.meta.url), "utf8");
 const compiled = ts.transpileModule(source, {

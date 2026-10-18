@@ -421,7 +421,7 @@ const es = {
     requiredField: "Complete este campo",
     passwordMin: "Mínimo 6 caracteres",
     demoNotice:
-      "Estás en modo demo. El login real se activa cuando conectás Supabase (mirá el README).",
+      "Demo local de sólo lectura. Ingreso, registro y operaciones deshabilitados.",
   },
 
   account: {
@@ -502,7 +502,7 @@ const es = {
       classes: "No hay clases cargadas.",
     },
     demoNotice:
-      "El panel muestra datos de ejemplo. Con Supabase conectado vas a ver la información real del gimnasio.",
+      "Panel de demostración local, sólo lectura. Los cambios están deshabilitados.",
   },
 
   footer: {
@@ -533,7 +533,7 @@ const es = {
 
   demo: {
     title: "Modo demo",
-    text: "La web está corriendo con datos de ejemplo. Conectá Supabase para activar la base de datos y el login real.",
+    text: "Demostración local de sólo lectura. No permite ingreso, registro ni guardar operaciones.",
     hint: "Instrucciones en el README del repositorio",
     dismiss: "Entendido",
   },

@@ -1,4 +1,15 @@
 import type { NextConfig } from "next";
+import { resolveAppMode } from "./src/lib/supabase/config-policy";
+
+// Rechazar configuración parcial/privilegiada ANTES de compilar NEXT_PUBLIC.
+const hasConnectionValues = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim());
+if (hasConnectionValues && resolveAppMode({
+  nodeEnv: process.env.NODE_ENV,
+  url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  key: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+}) !== "supabase") {
+  throw new Error("Configuración Supabase inválida: usar HTTPS y clave pública anon/publishable. No se muestran valores.");
+}
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,

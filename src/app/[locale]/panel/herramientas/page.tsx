@@ -9,7 +9,7 @@ import {
   Upload,
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/data/queries";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { DEMO_MODE } from "@/lib/supabase/env";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
@@ -24,7 +24,7 @@ export default async function HerramientasPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const isDemo = !isSupabaseConfigured;
+  const isDemo = DEMO_MODE;
 
   if (!isDemo) {
     const user = await getCurrentUser();

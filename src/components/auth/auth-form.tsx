@@ -94,6 +94,14 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
     );
   }
 
+  if (isDemo) return (
+    <p role="status" className="rounded-xl border border-line bg-card p-6 text-fog">
+      {locale === "en"
+        ? "Read-only demonstration. Login and registration are disabled. Do not enter personal information."
+        : "Demostración de sólo lectura. Ingreso y registro deshabilitados. No ingresés datos personales."}
+    </p>
+  );
+
   return (
     <form
       onSubmit={onSubmit}
@@ -195,18 +203,6 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
           {isLogin ? dict.auth.goRegister : dict.auth.goLogin}
         </Link>
       </p>
-
-      {isDemo ? (
-        <div className="rounded-xl border border-line bg-paper/50 px-4 py-3">
-          <p className="text-[0.75rem] leading-relaxed text-fog">{dict.auth.demoNotice}</p>
-
-          {isLogin ? (
-            <p className="mt-2 font-mono text-[0.6875rem] leading-relaxed text-brand-300">
-              admin@stronggym.com · admin123
-            </p>
-          ) : null}
-        </div>
-      ) : null}
     </form>
   );
 }

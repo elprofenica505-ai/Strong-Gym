@@ -105,75 +105,15 @@ interface AppContextValue {
 const AppContext = createContext<AppContextValue | null>(null);
 
 /* ============================================================
-   Almacenamiento local (modo demo)
+   Limpieza de almacenamiento demo legado
    ============================================================ */
 
-const DEMO_USERS_KEY = "strong-gym:demo-users";
-const DEMO_SESSION_KEY = "strong-gym:demo-session";
-const demoBookingsKey = (userId: string) =>
-  `strong-gym:demo-bookings:${userId}`;
-
-/** Cuenta de ejemplo para que puedas ver el panel de administración. */
-const SEED_ADMIN = {
-  id: "demo-admin",
-  email: "admin@stronggym.com",
-  password: "admin123",
-  fullName: "Administrador Strong",
-  role: "admin" as const,
-  phone: "+505 8888 1234",
-  planId: "pln_full",
-  createdAt: "2024-01-15T12:00:00.000Z",
-};
-
-interface DemoStoredUser {
-  id: string;
-  email: string;
-  password: string;
-  fullName: string;
-  role: "member" | "staff" | "admin";
-  phone: string | null;
-  planId: string | null;
-  createdAt: string;
-}
-
-function readJSON<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
+/** Retirar contraseñas demo antiguas; nunca tocar sesión Supabase ni intentos financieros. */
+function clearLegacyDemoStorage() {
   try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function writeJSON(key: string, value: unknown) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // almacenamiento lleno o bloqueado: seguimos sin persistir
-  }
-}
-
-function demoUsers(): DemoStoredUser[] {
-  const stored = readJSON<DemoStoredUser[]>(DEMO_USERS_KEY, []);
-  if (!stored.some((u) => u.email === SEED_ADMIN.email)) {
-    return [SEED_ADMIN, ...stored];
-  }
-  return stored;
-}
-
-function toAppUser(stored: DemoStoredUser): AppUser {
-  return {
-    id: stored.id,
-    email: stored.email,
-    fullName: stored.fullName,
-    role: stored.role,
-    phone: stored.phone,
-    planId: stored.planId,
-    createdAt: stored.createdAt,
-    isDemo: true,
-  };
+    const keys = Object.keys(window.localStorage);
+    for (const key of keys) if (key.startsWith("strong-gym:demo-")) window.localStorage.removeItem(key);
+  } catch { /* Almacenamiento bloqueado: sin persistencia nueva de credenciales. */ }
 }
 
 /* ============================================================
@@ -190,8 +130,8 @@ export function AppProvider({
   isDemo: boolean;
 }) {
   const router = useRouter();
-  const [user, setUser] = useState<AppUser | null>(initialUser);
-  const [hydrated, setHydrated] = useState(!isDemo);
+  const [user, setUser] = useState<AppUser | null>(isDemo ? null : initialUser);
+  const hydrated = true;
   const [authLoading, setAuthLoading] = useState(false);
   const [bookings, setBookings] = useState<AppBooking[]>([]);
   const [bookingsRead, setBookingsRead] = useState<{
@@ -237,17 +177,7 @@ export function AppProvider({
 
   /* ---------- carga inicial ---------- */
 
-  useEffect(() => {
-    if (!isDemo) return;
-
-    const sessionId = readJSON<string | null>(DEMO_SESSION_KEY, null);
-    const users = demoUsers();
-    const stored = sessionId
-      ? users.find((u) => u.id === sessionId)
-      : undefined;
-    setUser(stored ? toAppUser(stored) : null);
-    setHydrated(true);
-  }, [isDemo]);
+  useEffect(() => { clearLegacyDemoStorage(); }, []);
 
   // Con Supabase conectado, el usuario llega desde el servidor (layout)
   // y se actualiza cada vez que hacemos router.refresh() después del login.
@@ -262,14 +192,7 @@ export function AppProvider({
     // Una mutación de la sesión anterior puede terminar después del cambio de usuario.
     if (user?.id !== latestUser.current?.id) return false;
     const request = ++bookingsRequest.current;
-    if (isDemo) {
-      if (!user) {
-        setBookings([]);
-        return true;
-      }
-      setBookings(readJSON<AppBooking[]>(demoBookingsKey(user.id), []));
-      return true;
-    }
+    if (isDemo) { setBookings([]); return true; }
 
     if (!user) {
       setBookings([]);
@@ -330,14 +253,6 @@ export function AppProvider({
     return invalidateRequests;
   }, [loadBookings, invalidateRequests]);
 
-  const persistDemoBookings = useCallback(
-    (next: AppBooking[]) => {
-      setBookings(next);
-      if (user) writeJSON(demoBookingsKey(user.id), next);
-    },
-    [user],
-  );
-
   /* ---------- reservas ---------- */
 
   const book = useCallback<AppContextValue["book"]>(
@@ -345,27 +260,7 @@ export function AppProvider({
       if (!user) return { ok: false, error: "AUTH" };
       if (!bookingsReady) return { ok: false, error: "UNKNOWN" };
 
-      if (isDemo) {
-        const existing = bookings.find(
-          (b) =>
-            b.sessionId === sessionId &&
-            (b.status === "confirmed" || b.status === "attended"),
-        );
-        if (existing) return { ok: false, error: "ALREADY_BOOKED" };
-
-        const cancelled = bookings.find((b) => b.sessionId === sessionId);
-        const booking: AppBooking = {
-          id: cancelled?.id ?? `demo-bk-${sessionId}-${Date.now()}`,
-          sessionId,
-          status: "confirmed",
-          createdAt: new Date().toISOString(),
-        };
-        persistDemoBookings([
-          booking,
-          ...bookings.filter((b) => b.sessionId !== sessionId),
-        ]);
-        return { ok: true };
-      }
+      if (isDemo) return { ok: false, error: "AUTH" };
 
       try {
         const response = await fetch("/api/bookings", {
@@ -403,7 +298,7 @@ export function AppProvider({
         return { ok: false, error: "UNCONFIRMED" };
       }
     },
-    [isDemo, user, bookings, bookingsReady, persistDemoBookings, loadBookings],
+    [isDemo, user, bookingsReady, loadBookings],
   );
 
   const cancelBooking = useCallback<AppContextValue["cancelBooking"]>(
@@ -411,16 +306,7 @@ export function AppProvider({
       if (!user) return { ok: false, error: "AUTH" };
       if (!bookingsReady) return { ok: false, error: "UNKNOWN" };
 
-      if (isDemo) {
-        persistDemoBookings(
-          bookings.map((b) =>
-            b.id === bookingId
-              ? { ...b, status: "cancelled" as BookingStatus }
-              : b,
-          ),
-        );
-        return { ok: true };
-      }
+      if (isDemo) return { ok: false, error: "AUTH" };
 
       try {
         const response = await fetch(
@@ -451,7 +337,7 @@ export function AppProvider({
         return { ok: false, error: "UNCONFIRMED" };
       }
     },
-    [isDemo, user, bookings, bookingsReady, persistDemoBookings, loadBookings],
+    [isDemo, user, bookingsReady, loadBookings],
   );
 
   const cancelBySessionId = useCallback<AppContextValue["cancelBySessionId"]>(
@@ -473,17 +359,7 @@ export function AppProvider({
     async (email, password) => {
       setAuthLoading(true);
       try {
-        if (isDemo) {
-          const found = demoUsers().find(
-            (u) => u.email.toLowerCase() === email.trim().toLowerCase(),
-          );
-          if (!found || found.password !== password) {
-            return { ok: false, error: "invalidCredentials" };
-          }
-          writeJSON(DEMO_SESSION_KEY, found.id);
-          setUser(toAppUser(found));
-          return { ok: true };
-        }
+        if (isDemo) return { ok: false, error: "genericError" };
 
         const supabase = getSupabaseBrowserClient();
         if (!supabase) return { ok: false, error: "genericError" };
@@ -502,6 +378,8 @@ export function AppProvider({
 
         router.refresh();
         return { ok: true };
+      } catch {
+        return { ok: false, error: "genericError" };
       } finally {
         setAuthLoading(false);
       }
@@ -513,30 +391,7 @@ export function AppProvider({
     async ({ fullName, email, password, phone }) => {
       setAuthLoading(true);
       try {
-        if (isDemo) {
-          const users = demoUsers();
-          if (
-            users.some(
-              (u) => u.email.toLowerCase() === email.trim().toLowerCase(),
-            )
-          ) {
-            return { ok: false, error: "emailInUse" };
-          }
-          const created: DemoStoredUser = {
-            id: `demo-${Math.random().toString(36).slice(2, 10)}`,
-            email: email.trim(),
-            password,
-            fullName: fullName.trim(),
-            role: "member",
-            phone: phone ?? null,
-            planId: null,
-            createdAt: new Date().toISOString(),
-          };
-          writeJSON(DEMO_USERS_KEY, [...users, created]);
-          writeJSON(DEMO_SESSION_KEY, created.id);
-          setUser(toAppUser(created));
-          return { ok: true };
-        }
+        if (isDemo) return { ok: false, error: "genericError" };
 
         const supabase = getSupabaseBrowserClient();
         if (!supabase) return { ok: false, error: "genericError" };
@@ -568,6 +423,8 @@ export function AppProvider({
 
         router.refresh();
         return { ok: true };
+      } catch {
+        return { ok: false, error: "genericError" };
       } finally {
         setAuthLoading(false);
       }
@@ -576,13 +433,7 @@ export function AppProvider({
   );
 
   const signOut = useCallback(async () => {
-    if (isDemo) {
-      if (typeof window !== "undefined")
-        window.localStorage.removeItem(DEMO_SESSION_KEY);
-      setUser(null);
-      setBookings([]);
-      return;
-    }
+    if (isDemo) { setUser(null); setBookings([]); return; }
 
     const supabase = getSupabaseBrowserClient();
     await supabase?.auth.signOut();
@@ -595,21 +446,7 @@ export function AppProvider({
     async (data) => {
       if (!user) return false;
 
-      if (isDemo) {
-        const users = demoUsers().map((u) =>
-          u.id === user.id
-            ? {
-                ...u,
-                fullName: data.fullName ?? u.fullName,
-                phone: data.phone !== undefined ? data.phone : u.phone,
-              }
-            : u,
-        );
-        writeJSON(DEMO_USERS_KEY, users);
-        const updated = users.find((u) => u.id === user.id);
-        if (updated) setUser(toAppUser(updated));
-        return true;
-      }
+      if (isDemo) return false;
 
       try {
         const response = await fetch("/api/account", {

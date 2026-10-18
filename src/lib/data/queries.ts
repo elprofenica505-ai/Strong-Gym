@@ -24,7 +24,7 @@ export type { AuthUser } from "@/lib/auth/current-user";
 
 import { getWeekRange, weekRangeFromKey } from "@/lib/schedule";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { DEMO_MODE, isSupabaseConfigured } from "@/lib/supabase/env";
 import type {
   Booking,
   BookingDetail,
@@ -43,7 +43,7 @@ import { generateWeekSessions } from "./demo-sessions";
 async function operationalClient() {
   return checkedRead("CONNECTION", async () => {
     const db = await getSupabaseServerClient();
-    if (!db && isSupabaseConfigured)
+    if (!db && !DEMO_MODE)
       throw new DataReadError("CONNECTION", "UNAVAILABLE");
     return db;
   });
@@ -441,7 +441,7 @@ export interface AccountsReceivableRow {
 export async function getPaymentMethods(): Promise<PaymentMethod[]> {
   const supabase = await getSupabaseServerClient();
   if (!supabase) {
-    if (isSupabaseConfigured)
+    if (!DEMO_MODE)
       throw new FinanceReadError("METHODS", "UNAVAILABLE");
     return [];
   }
@@ -463,7 +463,7 @@ export async function getPaymentMethods(): Promise<PaymentMethod[]> {
 export async function getExpenseCategories(): Promise<ExpenseCategory[]> {
   const supabase = await getSupabaseServerClient();
   if (!supabase) {
-    if (isSupabaseConfigured)
+    if (!DEMO_MODE)
       throw new FinanceReadError("CATEGORIES", "UNAVAILABLE");
     return [];
   }
@@ -486,7 +486,7 @@ export async function getExpenseCategories(): Promise<ExpenseCategory[]> {
 export async function getAccounts(): Promise<Account[]> {
   const supabase = await getSupabaseServerClient();
   if (!supabase) {
-    if (isSupabaseConfigured)
+    if (!DEMO_MODE)
       throw new FinanceReadError("ACCOUNTS", "UNAVAILABLE");
     return [];
   }
@@ -513,7 +513,7 @@ export async function getRecentTransactions(
 ): Promise<Transaction[]> {
   const supabase = await getSupabaseServerClient();
   if (!supabase) {
-    if (isSupabaseConfigured)
+    if (!DEMO_MODE)
       throw new FinanceReadError("TRANSACTIONS", "UNAVAILABLE");
     return [];
   }
@@ -553,7 +553,7 @@ export async function getRecentTransactions(
 export async function getDailyCash(days = 14): Promise<DailyCashRow[]> {
   const supabase = await getSupabaseServerClient();
   if (!supabase) {
-    if (isSupabaseConfigured)
+    if (!DEMO_MODE)
       throw new FinanceReadError("DAILY", "UNAVAILABLE");
     return [];
   }
@@ -582,7 +582,7 @@ export async function getDailyCash(days = 14): Promise<DailyCashRow[]> {
 export async function getMonthlyPnl(months = 6): Promise<MonthlyPnlRow[]> {
   const supabase = await getSupabaseServerClient();
   if (!supabase) {
-    if (isSupabaseConfigured)
+    if (!DEMO_MODE)
       throw new FinanceReadError("MONTHLY", "UNAVAILABLE");
     return [];
   }
@@ -612,7 +612,7 @@ export async function getPaymentMethodsBreakdown(): Promise<
 > {
   const supabase = await getSupabaseServerClient();
   if (!supabase) {
-    if (isSupabaseConfigured)
+    if (!DEMO_MODE)
       throw new FinanceReadError("METHOD_TOTALS", "UNAVAILABLE");
     return [];
   }
@@ -645,7 +645,7 @@ export async function getAccountsReceivable(): Promise<
 > {
   const supabase = await getSupabaseServerClient();
   if (!supabase) {
-    if (isSupabaseConfigured)
+    if (!DEMO_MODE)
       throw new FinanceReadError("RECEIVABLES", "UNAVAILABLE");
     return [];
   }
@@ -714,7 +714,7 @@ export interface CashSummary {
 export async function getCashSummary(): Promise<CashSummary> {
   const supabase = await getSupabaseServerClient();
   if (!supabase) {
-    if (isSupabaseConfigured)
+    if (!DEMO_MODE)
       throw new FinanceReadError("SUMMARY", "UNAVAILABLE");
     return {
       incomeToday: 0,
