@@ -149,7 +149,8 @@ explícita. No afirmar seguridad absoluta ni certificación externa por tener HT
 - [x] Pantalla de personal y roles (sólo administrador con MFA), conectada a admin_set_role.
 - [ ] Revisión visual en navegador real de las páginas nuevas (la sandbox no tiene Chromium para la prueba de layout).
 - [x] Asignación entrenador-cliente en base de datos: SQL 00035 probado (59/59), con interruptor del administrador para búsqueda y pedidos del entrenador (desactivado por defecto). Aprobación sólo del administrador; caja registra pedidos.
-- [ ] Pantalla de pedidos de acceso y del interruptor para el administrador, y vista del entrenador (sus clientes con asistencia).
-- [ ] Aplicar 00035 en Supabase después de 00034 (autorización expresa).
+- [x] Pantalla de administración: interruptor y pedidos de acceso (Administración > Entrenadores y accesos).
+- [ ] Vista del entrenador (sus clientes con asistencia).
+- [x] Aplicar 00034 y 00035 en Supabase (aplicadas con autorización del dueño; 00034 incluye quitar la política antigua de escritura de entrenadores para caja).
 - [ ] Aplicar 00034 en Supabase antes de desplegar este código (ver docs/ROLES-MIGRACION-PLAN.md).
 

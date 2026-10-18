@@ -1,4 +1,4 @@
--- 00035 ASIGNACIÓN ENTRENADOR-CLIENTE. ESTADO: BORRADOR PROBADO LOCALMENTE. NO APLICADO EN SUPABASE.
+-- 00035 ASIGNACIÓN ENTRENADOR-CLIENTE. ESTADO: APLICADO EN SUPABASE (proyecto hcnuepdxmbsmlzdmvwhx) tras prueba local 59/59.
 -- Requiere 00034 (roles caja/entrenador, is_admin/is_cashier/is_trainer, is_staff sin entrenador).
 --
 -- Reglas:

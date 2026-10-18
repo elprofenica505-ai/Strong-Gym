@@ -1,5 +1,5 @@
 -- 00034 FASE B: separar permisos por función (caja, entrenador, administrador).
--- ESTADO: BORRADOR PROBADO LOCALMENTE. NO APLICADO EN SUPABASE.
+-- ESTADO: APLICADO EN SUPABASE (proyecto hcnuepdxmbsmlzdmvwhx). Incluye quitar la política antigua 'Staff can write coaches' tras detectar que caja podía escribir entrenadores.
 -- Requiere: 00030, 00031 (crm_is_staff), 00032 (aal2) y 00033 (roles cashier/trainer, is_admin, is_cashier, is_trainer).
 -- Aplicar sólo con autorización expresa. Una sentencia por llamada si se usa execute_query.
 --
@@ -40,6 +40,7 @@ drop policy if exists "clases: el staff escribe" on public.classes;
 create policy "clases: el admin escribe" on public.classes
   for all to authenticated using (public.is_admin()) with check (public.is_admin());
 
+drop policy if exists "Staff can write coaches" on public.coaches;
 drop policy if exists "profes: el staff escribe" on public.coaches;
 create policy "profes: el admin escribe" on public.coaches
   for all to authenticated using (public.is_admin()) with check (public.is_admin());

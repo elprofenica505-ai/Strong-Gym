@@ -37,7 +37,7 @@ Estado (18 oct 2026): **LISTA EN CÓDIGO, NO APLICADA EN SUPABASE.**
 - Pendiente de UI (requiere aprobación del lugar en el menú): vista del entrenador.
 
 ## Asignación entrenador-cliente (00035)
-Estado: BORRADOR PROBADO LOCALMENTE (59/59), NO APLICADO. Se aplica después de 00034.
+Estado: APLICADO en Supabase (después de 00034). Prueba local 59/59.
 - El entrenador sólo ve a los clientes con acceso APROBADO para él.
 - Interruptor del administrador `trainer_can_request_clients` (en staff_permissions, desactivado por defecto): si está apagado, el entrenador no busca ni pide clientes. Lo cambia sólo el administrador con MFA. Apagarlo no quita los clientes ya aprobados; los pedidos de caja siguen pendientes de aprobación.
 - El entrenador pide clientes para sí mismo. Caja puede registrar un pedido en nombre de un entrenador.
