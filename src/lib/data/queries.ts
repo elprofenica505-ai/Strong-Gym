@@ -1,3 +1,4 @@
+import { accountPlanSchema, type AccountPlan } from "@/lib/crm/account-plan";
 import "server-only";
 import {
   BOOKING_COLUMNS,
@@ -85,6 +86,20 @@ export async function getPlans(): Promise<Plan[]> {
     "PLANS",
     demoPlans.filter((p) => p.is_active),
   );
+}
+
+/** Fuente canónica: ficha vinculada a auth.uid(), no profiles.plan_id legado. */
+export async function getMyAssignedPlan(): Promise<AccountPlan> {
+  return checkedRead("ACCOUNT_PLAN", async () => {
+    const db = await operationalClient();
+    if (!db) throw new DataReadError("ACCOUNT_PLAN", "UNAVAILABLE");
+    const { data, error } = await db.rpc("crm_my_assigned_plan")
+      .abortSignal(AbortSignal.timeout(15000));
+    if (error) throw new DataReadError("ACCOUNT_PLAN", error.code);
+    const parsed = accountPlanSchema.safeParse(data);
+    if (!parsed.success) throw new DataReadError("ACCOUNT_PLAN", "INVALID");
+    return parsed.data;
+  });
 }
 
 /* ------------------------------------------------------------

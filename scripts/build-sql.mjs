@@ -188,7 +188,8 @@ const profilesReadFix = readFileSync(join(ROOT, "supabase/migrations/00012_profi
 
 const crmCompat = readFileSync(join(ROOT, "supabase/migrations/00022_crm_finance_compat.sql"), "utf8");
 const financeRead = readFileSync(join(ROOT, "supabase/migrations/00023_finance_read_bank_accounts.sql"), "utf8");
-const crmSql = readFileSync(join(ROOT, "supabase/migrations/00020_clients_crm.sql"), "utf8") + "\n\n" + crmCompat + "\n\n" + financeRead;
+const accountPlanSql = readFileSync(join(ROOT, "supabase/migrations/00025_account_assigned_plan.sql"), "utf8");
+const crmSql = readFileSync(join(ROOT, "supabase/migrations/00020_clients_crm.sql"), "utf8") + "\n\n" + crmCompat + "\n\n" + financeRead + "\n\n" + accountPlanSql;
 
 /* --- 3b. SETUP.sql: instalación desde cero --- */
 const cabecera = `-- ============================================================
@@ -297,6 +298,7 @@ sincronizarGenerado(join(ROOT, "supabase/FASE2.sql"), "-- ACTUALIZACIÓN FASE 2.
 sincronizarGenerado(join(ROOT, "supabase/COMPATIBILIDAD-CRM.sql"), crmCompat);
 sincronizarGenerado(join(ROOT, "supabase/LECTURA-CAJA.sql"), financeRead);
 sincronizarGenerado(join(ROOT, "supabase/COBROS-GASTOS.sql"), readFileSync(join(ROOT, "supabase/migrations/00024_finance_movements.sql"), "utf8"));
+sincronizarGenerado(join(ROOT, "supabase/PLAN-CUENTA.sql"), accountPlanSql);
 sincronizarGenerado(SETUP, setupNuevo);
 sincronizarGenerado(UPDATE, actualizarNuevo);
 

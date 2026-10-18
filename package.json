@@ -9,7 +9,7 @@
     "dev": "next dev",
     "lint": "eslint .",
     "start": "next start",
-    "test:sql": "node scripts/test-sql.mjs && node scripts/test-crm-sql.mjs && node scripts/test-crm-compat-sql.mjs && node scripts/test-finance-write-sql.mjs",
+    "test:sql": "node scripts/test-sql.mjs && node scripts/test-crm-sql.mjs && node scripts/test-crm-compat-sql.mjs && node scripts/test-finance-write-sql.mjs && node scripts/test-account-plan-sql.mjs",
     "typecheck": "tsc --noEmit",
     "test:metadata": "node scripts/test-metadata.mjs",
     "test:finance:rsc": "node scripts/test-finance-rsc.mjs",

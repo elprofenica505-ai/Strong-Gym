@@ -9,6 +9,7 @@ const connected = createLoader({
   "@/lib/data/queries": `
  export const getCurrentUser=async()=>globalThis.__dataUser;
  export const getMyBookings=async()=>globalThis.__dataRead();
+ export const getMyAssignedPlan=async()=>globalThis.__dataRead();
  export const getClasses=async()=>globalThis.__dataRead();
  export const getPlans=async()=>globalThis.__dataRead();
  export const getAllBookings=async()=>globalThis.__dataRead();

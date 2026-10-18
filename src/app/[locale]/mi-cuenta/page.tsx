@@ -6,7 +6,7 @@ import { AccountDashboard } from "@/components/account/account-dashboard";
 import { SectionHeading } from "@/components/ui/section";
 import { getDictionary } from "@/i18n/dictionaries";
 import { isLocale, type Locale } from "@/i18n/config";
-import { getCurrentUser, getMyBookings, getPlans } from "@/lib/data/queries";
+import { getCurrentUser, getMyBookings, getPlans, getMyAssignedPlan } from "@/lib/data/queries";
 
 export async function generateMetadata({
   params,
@@ -47,6 +47,9 @@ export default async function AccountPage({
       </section>
     );
   const [bookings, plans] = result.data;
+  // Lectura separada: un fallo de plan no convierte el dato en «sin plan»
+  // ni impide consultar reservas. El RPC sólo consulta la identidad de la sesión.
+  const assignedPlan = user ? await readData(getMyAssignedPlan) : null;
 
   return (
     <>
@@ -67,7 +70,8 @@ export default async function AccountPage({
       <ClientPass />
       <section className="py-10 sm:py-12 lg:py-14">
         <div className="container-x">
-          <AccountDashboard initialBookings={bookings} plans={plans} />
+          <AccountDashboard initialBookings={bookings} plans={plans}
+            accountPlan={user && assignedPlan ? { userId: user.id, ...assignedPlan } : null} />
         </div>
       </section>
     </>

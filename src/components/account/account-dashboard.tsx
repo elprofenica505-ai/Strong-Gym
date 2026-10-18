@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { AccountPlanRead } from "@/lib/crm/account-plan";
+import { ReloadButton } from "@/components/ui/reload-button";
 import { DataUnavailable } from "@/components/ui/data-unavailable";
 import {
   CalendarCheck,
@@ -43,9 +45,11 @@ import { accentOnDark, cn, textOnAccent } from "@/lib/utils";
 export function AccountDashboard({
   initialBookings,
   plans,
+  accountPlan,
 }: {
   initialBookings: BookingDetail[];
   plans: Plan[];
+  accountPlan?: AccountPlanRead | null;
 }) {
   const { dict, locale } = useDictionary();
   const {
@@ -80,7 +84,11 @@ export function AccountDashboard({
     ? bookings.filter((b) => b.status === "attended").length
     : initialBookings.filter((b) => b.status === "attended").length;
 
-  const currentPlan = plans.find((plan) => plan.id === user?.planId) ?? null;
+  const demoPlan = plans.find((plan) => plan.id === user?.planId) ?? null;
+  // No reutilizar el dato de una identidad anterior tras cambiar de sesión.
+  const ownPlan = accountPlan?.userId === user?.id ? accountPlan : null;
+  const planKnown = isDemo || ownPlan?.ok === true;
+  const currentPlan = isDemo ? demoPlan : ownPlan?.ok ? ownPlan.data.plan : null;
 
   async function onSaveProfile(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -278,15 +286,33 @@ export function AccountDashboard({
       <div className="flex flex-col gap-3 rounded-2xl border border-line bg-card p-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-[0.6875rem] font-semibold tracking-[0.14em] text-fog uppercase">
-            {dict.account.plan}
+            {locale === "es" ? "Plan asignado" : "Assigned plan"}
           </p>
           <p className="display-xl mt-1.5 text-[1.5rem] leading-none">
-            {currentPlan
-              ? locale === "es"
-                ? currentPlan.name_es
-                : currentPlan.name_en
-              : dict.account.noPlan}
+            {!planKnown
+              ? locale === "es" ? "Plan no confirmado" : "Plan not verified"
+              : currentPlan
+                ? locale === "es" ? currentPlan.name_es : currentPlan.name_en
+                : !isDemo && ownPlan?.ok && !ownPlan.data.linked
+                  ? locale === "es" ? "Sin ficha vinculada" : "No linked client record"
+                  : dict.account.noPlan}
           </p>
+          {!planKnown ? (
+            <div role="alert" className="mt-3 space-y-2 text-sm text-fog">
+              <p>{locale === "es"
+                ? "No pudimos consultar tu plan. No significa que no tengas uno. Reintentá la consulta; no vuelvas a asignarlo."
+                : "We could not read your plan. This does not mean you have none. Retry the query; do not assign it again."}</p>
+              {ownPlan && !ownPlan.ok && <p className="break-all font-mono text-xs">{ownPlan.code}</p>}
+              <ReloadButton label={locale === "es" ? "Reintentar consulta" : "Retry query"} />
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-fog">{locale === "es"
+              ? "La asignación no confirma pago ni vigencia."
+              : "An assignment does not confirm payment or validity dates."}</p>
+          )}
+          {currentPlan && !currentPlan.is_active && <p className="mt-2 text-sm text-fog">{locale === "es"
+            ? "Este plan ya no está disponible para nuevas asignaciones."
+            : "This plan is no longer available for new assignments."}</p>}
         </div>
 
         <ButtonLink

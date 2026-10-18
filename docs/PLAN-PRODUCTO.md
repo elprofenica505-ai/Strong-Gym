@@ -149,3 +149,9 @@ Pendientes: escritura denegada y respuesta perdida en Supabase remoto bajo
 identidades reales, aceptación integral B–F, deudas/créditos con reglas explícitas,
 vigencias y demás módulos del plan. C.1 no aplica deudas/créditos ni renueva planes.
 Sin merge, limpieza o cambios de acceso del dueño todavía.
+
+Operación diaria validada posteriormente por el usuario: entrada manual persistida
+y segunda entrada del día rechazada sin duplicado; edición de plan y nota
+persistida tras recarga. Se detectó discrepancia del plan entre ficha y Mi cuenta.
+[Reparación y SQL de lectura propia](./PLAN-CUENTA.md): no es una renovación ni
+una prueba de vigencia/pago. Aplicación remota de PLAN-CUENTA pendiente.

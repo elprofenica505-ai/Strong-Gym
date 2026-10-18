@@ -48,6 +48,8 @@ afterEach(() => {
 const user = {
   id: "first",
   fullName: "Cliente de prueba",
+  createdAt: "2026-10-16T12:00:00Z",
+  phone: null,
   email: "example@example.com",
   role: "member",
   isDemo: false,
@@ -313,4 +315,34 @@ test("Horarios: una sesión completa válida sigue mostrando datos y cupos", asy
   await screen.findByRole("heading", { name: "Clase de prueba" });
   assert.equal(screen.queryByRole("alert"), null);
   assert.ok(screen.getByText("2/10"));
+});
+
+for (const [label, result, expected] of [
+  ["asignado CRM prevalece al perfil legado", { ok: true, data: { linked: true, plan: { id: "crm", name_es: "Gimnasio mensual", name_en: "Monthly gym", is_active: true } } }, "Gimnasio mensual"],
+  ["sin plan CRM no usa perfil legado", { ok: true, data: { linked: true, plan: null } }, dict.account.noPlan],
+  ["sin ficha no simula ausencia de plan", { ok: true, data: { linked: false, plan: null } }, "Sin ficha vinculada"],
+  ["fallo no significa sin plan", { ok: false, code: "DATA_ACCOUNT_PLAN_PGRST202" }, "Plan no confirmado"],
+  ["plan inactivo conserva nombre", { ok: true, data: { linked: true, plan: { id: "crm", name_es: "Plan anterior", name_en: "Old plan", is_active: false } } }, "Plan anterior"],
+]) test(`Mi cuenta: ${label}`, async () => {
+  globalThis.fetch = async () => json({ bookings: [] });
+  render(tree({ ...user, planId: "legacy" }, React.createElement(AccountDashboard, {
+    initialBookings: [],
+    plans: [{ id: "legacy", name_es: "PLAN LEGADO INCORRECTO", name_en: "WRONG LEGACY PLAN" }],
+    accountPlan: { userId: user.id, ...result },
+  })));
+  await screen.findByText(expected);
+  assert.equal(screen.queryByText("PLAN LEGADO INCORRECTO"), null);
+  if (expected === "Plan no confirmado") {
+    assert.equal(screen.queryByText(dict.account.noPlan), null);
+    assert.ok(screen.getByRole("button", { name: "Reintentar consulta" }));
+  }
+});
+test("Mi cuenta: datos del plan de otra sesión no se muestran", async () => {
+  globalThis.fetch = async () => json({ bookings: [] });
+  render(tree(user, React.createElement(AccountDashboard, {
+    initialBookings: [], plans: [],
+    accountPlan: { userId: "another", ok: true, data: { linked: true, plan: { id: "x", name_es: "PLAN AJENO", name_en: "OTHER PLAN", is_active: true } } },
+  })));
+  await screen.findByText("Plan no confirmado");
+  assert.equal(screen.queryByText("PLAN AJENO"), null);
 });
