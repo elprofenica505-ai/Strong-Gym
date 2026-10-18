@@ -27,6 +27,10 @@ const nextConfig: NextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          // Fuerza HTTPS en navegadores durante un año (sin includeSubDomains para no afectar otros subdominios).
+          { key: "Strict-Transport-Security", value: "max-age=31536000" },
+          // Cámara sólo para este sitio (lector de QR); sin micrófono, ubicación ni pago de terceros.
+          { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=(), payment=()" },
         ],
       },
       {
