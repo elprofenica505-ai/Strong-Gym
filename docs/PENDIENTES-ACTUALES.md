@@ -120,4 +120,6 @@ explícita. No afirmar seguridad absoluta ni certificación externa por tener HT
 - [ ] Antispam fuerte (opcional, requiere decisión y cuenta externa): verificador tipo Turnstile. Límite actual es parcial.
 - [x] Prueba en navegador tras 00032 (landing sin cuenta y panel con código): confirmada por el usuario.
 - [ ] Recuperación por correo: el enlace abre la app instalada (alcance del manifiesto era "/"). Corrección en rama: alcance "/es" (commit de manifest.ts). Requiere merge y despliegue con autorización; después, reinstalar o abrir la app para que tome el nuevo alcance.
+- [x] Cabeceras (18 oct, rama arena/45b6501d): añadidas Strict-Transport-Security (1 año) y Permissions-Policy (cámara sólo para el sitio, para el lector de QR). Verificadas en build de producción local.
+- [ ] Política de contenido (CSP): pendiente; requiere probarla en modo informativo antes de activarla, para no romper páginas.
 - [ ] Llave de acceso (huella/rostro): cuando Supabase la saque de versión experimental.
