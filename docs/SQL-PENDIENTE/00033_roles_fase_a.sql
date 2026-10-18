@@ -1,4 +1,4 @@
--- 00033 FASE A (BORRADOR, NO APLICADO). Requiere autorización expresa antes de ejecutarse en Supabase.
+-- 00033 FASE A: APLICADA en Supabase el 2026-10-18 con autorización del usuario. Verificada en solo lectura.
 -- Objetivo: base segura para roles de caja y entrenador, SIN cambiar lo que ya funciona.
 --   1) Agrega los roles `cashier` y `trainer` al tipo user_role.
 --   2) Tabla staff_permissions: interruptores que controla el administrador (cashier_can_void = false).

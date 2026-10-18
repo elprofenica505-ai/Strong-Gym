@@ -11,7 +11,7 @@ heredarían acceso total si sólo se agregan roles. Por eso el cambio se hace po
 ## Fase A — base segura (sin cambiar comportamiento actual)
 
 Estado (18 oct 2026): SQL preparado en `docs/SQL-PENDIENTE/00033_roles_fase_a.sql` y probado localmente
-con `scripts/test-roles-fase-a-sql.mjs`: 28 de 28 comprobaciones. **NO aplicado en Supabase**; espera autorización.
+con `scripts/test-roles-fase-a-sql.mjs`: 28 de 28 comprobaciones. **APLICADO en Supabase el 18 oct 2026** con autorización; verificado en solo lectura (roles cashier y trainer, tabla staff_permissions con cashier_can_void=false, RLS activo, anon sin acceso, is_staff sin cambios).
 Nota: hoy nadie puede cambiar el rol de un perfil desde la API (sólo por SQL del administrador). Asignar roles
 desde el panel es parte de la Fase B y requiere su propia prueba.
 - Agregar roles `cashier` y `trainer` a la restricción de perfiles.
