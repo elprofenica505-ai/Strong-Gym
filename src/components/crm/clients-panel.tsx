@@ -16,6 +16,7 @@ import { ClientCard } from "./client-card";
 import { QrScanner } from "./qr-scanner";
 import { MovementForm } from "@/components/admin/movement-form";
 import { crmRequest } from "@/lib/crm/request";
+import { ClientFinanceSummary, ClientIncomeHistory } from "./client-finance";
 import { useCrmResource } from "./use-crm-resource";
 const input =
   "w-full rounded-lg border border-line bg-paper px-3 py-2.5 text-ink disabled:opacity-60";
@@ -44,7 +45,6 @@ function validDetail(data: unknown) {
   return (
     !!value?.client?.id &&
     typeof value.client.full_name === "string" &&
-    (value.balance === null || typeof value.balance === "number") &&
     typeof value.card === "string" &&
     Array.isArray(value.visits) &&
     Array.isArray(value.events) &&
@@ -575,38 +575,13 @@ export function ClientsPanel({
               asistencia.
             </p>
           )}
-          {detail.balances ? (
-            <div className="rounded-xl border border-line p-4 text-sm text-fog space-y-1">
-              <h3 className="font-bold text-ink">
-                Créditos y deudas de la cuenta vinculada
-              </h3>
-              <p>
-                Crédito NIO: C$ {Number(detail.balances.credit_nio).toFixed(2)}
-              </p>
-              <p>Deuda NIO: C$ {Number(detail.balances.debt_nio).toFixed(2)}</p>
-              <p>
-                Crédito USD: US$ {Number(detail.balances.credit_usd).toFixed(2)}
-              </p>
-              <p>
-                Deuda USD: US$ {Number(detail.balances.debt_usd).toFixed(2)}
-              </p>
-              <p>
-                Valores guardados por separado. No se compensan ni convierten
-                automáticamente.
-              </p>
-            </div>
-          ) : detail.balance !== null ? (
-            <p className="text-sm text-fog">
-              Saldo de cuenta vinculada: C$ {Number(detail.balance).toFixed(2)}{" "}
-              (+ a favor / − deuda). No bloquea entradas automáticamente.
-            </p>
-          ) : (
-            <p className="text-sm text-fog">
-              {detail.client.profile_id
-                ? "Saldo de la cuenta vinculada no disponible. No equivale a cero ni confirma que esté al día."
-                : "Sin saldo financiero vinculado. Los cobros de esta ficha se muestran abajo; esto no significa que esté al día ni genera una cuenta por cobrar."}
-            </p>
-          )}
+          <ClientFinanceSummary
+            detail={detail}
+            pending={detailResource.loading}
+            stale={!!detailResource.error}
+            disabled={busy || detailResource.loading}
+            retry={() => setDetailAttempt((n) => n + 1)}
+          />
           <EditClient
             key={`${detail.client.id}:${detail.client.updated_at ?? detail.client.created_at}`}
             client={detail.client}
@@ -697,27 +672,7 @@ export function ClientsPanel({
                 <p className="text-fog">Sin entradas registradas.</p>
               )}
             </div>
-            <div>
-              <h3 className="mb-3 text-lg font-bold">Últimos 40 cobros</h3>
-              <ul className="space-y-2 text-sm">
-                {detail.payments.map((p) => (
-                  <li key={p.id} className="rounded-lg border border-line p-3">
-                    <p>
-                      {p.currency} {Number(p.amount).toFixed(2)} · {p.concept}
-                    </p>
-                    <p className="text-xs text-fog">
-                      {fmt(p.occurred_at)} · {p.status}
-                    </p>
-                    <p className="break-all text-xs text-fog">
-                      Referencia: {p.id}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-              {!detail.payments.length && (
-                <p className="text-fog">Sin cobros registrados.</p>
-              )}
-            </div>
+            <ClientIncomeHistory detail={detail} pending={detailResource.loading} stale={!!detailResource.error} />
           </div>
           <details>
             <summary className="cursor-pointer text-sm text-brand-300">

@@ -198,3 +198,21 @@ remota de esa misma reserva pendientes. No volver a reservar ni repetir FASE2.
 - Próximo desarrollo: revisar saldo de ficha CRM y coherencia con movimientos,
   sin confundir saldo de cliente con Caja ni convertir desconocido en cero.
   No se han implementado todavía nuevas reglas de deuda/crédito/vigencia.
+
+### C.2 — Lectura financiera coherente de la ficha (implementada; instalación remota pendiente)
+
+- Nueva00027/SALDO-CLIENTE: reemplaza sólo lector crm_detail, mantiene permisos de
+  personal y carnet. No altera writers ni saldos. Distingue cuenta sin vínculo,
+  fila de saldo ausente, registro real (también cero) y esquema desconocido.
+- UI valida sin coerción identidad/estructura/valores; crédito/deuda NIO/USD
+  separados, saldo neto legado rotulado. Error financiero no bloquea recepción.
+- Totales completados de todo el historial en moneda original, independientes de
+  saldo y Caja. Lista sólo ingresos, límite40, estado visible, fecha Managua;
+  client_id explícito prevalece sobre fallback de member_id. No egresos como cobros.
+-54 comprobaciones SQL nuevas, ambas estructuras, incluida compatibilidad del
+  cobro idempotente ya existente y no creación de saldos. Pruebas React/contrato
+  y diseño responsive añadidas. Ver [SALDO-CLIENTE.md](./SALDO-CLIENTE.md).
+- Pendiente instalar incremental remoto y consultar ficha de prueba Carlicheta,
+  sin nuevos cobros. No dar por verificados importes/estado remoto antes de verlo.
+- Siguen pendientes cargos/abonos/anticipos y conciliación/saldos iniciales con
+  reglas explícitas; esta entrega no los simula a partir de cobros por servicio.

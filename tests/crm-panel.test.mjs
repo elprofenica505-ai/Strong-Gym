@@ -44,6 +44,7 @@ const client = (cid = id, name = "Hellen Reyes", num = 1) => ({
   id: cid,
   full_name: name,
   client_number: num,
+  profile_id: null,
   phone: null,
   email: null,
   plan_id: null,
@@ -60,6 +61,9 @@ const detail = (c = client()) => ({
   events: [],
   payments: [],
   balance: null,
+  finance: { version:1, client_id:c.id, profile_id:c.profile_id, layout:"repository",
+    balance_status:c.profile_id ? "missing" : "unlinked", balance_nio:null, balances:null,
+    collections:{count_nio:0,amount_nio:0,count_usd:0,amount_usd:0} },
 });
 const options = {
   payments_enabled: true,
@@ -354,6 +358,9 @@ test("estructura bank_accounts abre ficha y muestra monedas separadas, sin habil
     ...detail(),
     finance_layout: "bank_accounts_split",
     balances: { credit_nio: 100, credit_usd: 7, debt_nio: 20, debt_usd: 3 },
+    client: { ...client(), profile_id: other },
+    finance: { ...detail().finance, profile_id:other, layout:"bank_accounts_split", balance_status:"ready",
+      balances:{credit_nio:100,credit_usd:7,debt_nio:20,debt_usd:3} },
   };
   const calls = setup(
     () => json(legacy),
@@ -562,4 +569,64 @@ test("ficha bancaria usa el nuevo protocolo de cobro sin depender del escritor l
   assert.ok(screen.getByText(/No reduce deudas/));
   assert.equal(screen.queryByText(/Los cobros están bloqueados/), null);
   assert.ok(calls.some((c) => c.url === "/api/admin/finance"));
+});
+
+test("saldo: SQL anterior no bloquea recepción y reintentar confirma sección sólo con GET", async () => {
+  let updated=false;
+  const calls=setup(()=>{
+    const value=detail();
+    if(!updated) delete value.finance;
+    return json(value);
+  });
+  await open(); await heading();
+  await screen.findByText('CRM_FINANCE_READ_UNCONFIRMED');
+  assert.equal(screen.getByRole('button',{name:/Confirmar entrada/}).disabled,false);
+  assert.equal(screen.queryByText(/Córdobas: C\$ 0.00/),null);
+  updated=true;
+  fireEvent.click(screen.getByRole('button',{name:'Reintentar saldo y cobros'}));
+  await screen.findByText('Córdobas: C$ 0.00 · 0 cobros');
+  assert.equal(screen.queryByText('CRM_FINANCE_READ_UNCONFIRMED'),null);
+  assert.equal(calls.filter(call=>call.body).length,0);
+});
+
+test("saldo: un refresh fallido oculta cifras antiguas sin anunciar cero", async () => {
+  let fail=false;
+  const value=detail();
+  value.finance.collections={count_nio:1,amount_nio:125,count_usd:0,amount_usd:0};
+  const calls=setup(()=> fail ? json({error:'Lectura no confirmada'},503) : json(value));
+  await open(); await screen.findByText('Córdobas: C$ 125.00 · 1 cobro');
+  fail=true;
+  fireEvent.click(screen.getByRole('button',{name:'Buscar',exact:true}));
+  await screen.findByText('CRM_FINANCE_READ_UNCONFIRMED');
+  assert.equal(screen.queryByText('Córdobas: C$ 125.00 · 1 cobro'),null);
+  assert.equal(screen.queryByText(/Córdobas: C\$ 0.00/),null);
+  fail=false;
+  const retry=screen.getByRole('button',{name:'Reintentar saldo y cobros'});
+  assert.equal(retry.disabled,false);
+  fireEvent.click(retry);
+  await screen.findByText('Córdobas: C$ 125.00 · 1 cobro');
+  assert.equal(calls.filter(call=>call.body).length,0);
+});
+
+test("saldo: respuesta financiera de otra ficha no se muestra aunque la ficha principal coincida", async () => {
+  const value=detail();
+  value.finance.client_id=other;
+  value.finance.collections={count_nio:1,amount_nio:777,count_usd:0,amount_usd:0};
+  setup(()=>json(value));
+  await open(); await heading();
+  await screen.findByText('CRM_FINANCE_READ_UNCONFIRMED');
+  assert.equal(screen.queryByText(/Córdobas: C\$ 777.00/),null);
+  assert.equal(screen.getByRole('button',{name:/Confirmar entrada/}).disabled,false);
+});
+
+test("saldo: datos financieros inválidos se aíslan de recepción, no bloquean toda la ficha", async () => {
+  const value=detail();
+  value.balance='incorrecto';
+  value.finance.balance_status='ready';
+  value.finance.balance_nio=null;
+  setup(()=>json(value));
+  await open(); await heading();
+  await screen.findByText('CRM_FINANCE_READ_UNCONFIRMED');
+  assert.equal(screen.getByRole('button',{name:/Confirmar entrada/}).disabled,false);
+  assert.equal(screen.queryByText('No pudimos abrir esta ficha'),null);
 });

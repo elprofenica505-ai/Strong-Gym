@@ -51,6 +51,7 @@ export interface ClientDetail {
   events: ClientEvent[];
   payments: ClientPayment[];
   balance: number | null;
+  finance?: unknown;
   finance_layout?: "repository" | "bank_accounts_split" | "unsupported";
   balances?: {
     credit_nio: number;

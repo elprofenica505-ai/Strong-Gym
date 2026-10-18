@@ -168,6 +168,21 @@ for (const variant of ["ejemplo", "vacio", "importes-largos"]) {
     "@/components/providers/app-provider": `export const useApp=()=>({user:{role:'admin',fullName:'Admin EJEMPLO'},isDemo:false,hydrated:true,bookings:[],signOut(){},toast(){}});`,
     "next/navigation": `export function notFound(){throw Error("NOT_FOUND")};export const usePathname=()=>'/es/panel/reportes';export const useRouter=()=>({});export function redirect(){throw Error('redirect')}`,
   });
+  const { ClientFinanceSummary, ClientIncomeHistory } = await load("components/crm/client-finance.tsx");
+  const financeId = "11111111-1111-4111-8111-111111111111";
+  const profileId = "22222222-2222-4222-8222-222222222222";
+  const financeDetail = {
+    client: { id: financeId, profile_id: profileId },
+    finance: { version: 1, client_id: financeId, profile_id: profileId,
+      layout: "bank_accounts_split", balance_status: empty ? "missing" : "ready", balance_nio: null,
+      balances: empty ? null : { credit_nio: large ? 9999999999.99 : 100,
+        credit_usd: large ? 9999999999.99 : 7, debt_nio: large ? 9999999999.99 : 20, debt_usd: 3 },
+      collections: { count_nio: empty ? 0 : 12345, amount_nio: empty ? 0 : large ? 9999999999.99 : 453,
+        count_usd: empty ? 0 : 1, amount_usd: empty ? 0 : 2 },
+    },
+    payments: empty ? [] : [{ id: financeId, occurred_at: "2026-10-18T01:00:00Z", concept: names,
+      currency: "NIO", amount: large ? 9999999999.99 : 10, status: "completed" }],
+  };
   const { SiteShell } = await load("components/layout/site-shell.tsx");
   const { SiteFooter } = await load("components/layout/site-footer.tsx");
   for (const key of [
@@ -177,9 +192,14 @@ for (const variant of ["ejemplo", "vacio", "importes-largos"]) {
     "gastos",
     "cobro",
     "comprobante",
+    "saldo-cliente",
   ]) {
     const Page =
-      key === "cobro"
+      key === "saldo-cliente"
+        ? () => React.createElement("section", {className:"container-x space-y-6 py-8"},
+            React.createElement(ClientFinanceSummary, {detail:financeDetail,pending:false,stale:false,retry(){},disabled:false}),
+            React.createElement(ClientIncomeHistory, {detail:financeDetail,pending:false,stale:false}))
+        : key === "cobro"
         ? () =>
             React.createElement(MovementForm, {
               kind: "service_income",
@@ -325,7 +345,7 @@ try {
       );
   }
   console.log(
-    `PASS: ${results.length} casos (6 pantallas/formularios × 3 fixtures EJEMPLO × 8 anchos, 320–1280 px). Sin overflow global, CTA responsive y tablas desplazables. Render SSR completo con CSS de producción; no certifica hidratación ni escrituras remotas.`,
+    `PASS: ${results.length} casos (7 pantallas/formularios × 3 fixtures EJEMPLO × 8 anchos, 320–1280 px). Sin overflow global, CTA responsive y tablas desplazables. Render SSR completo con CSS de producción; no certifica hidratación ni escrituras remotas.`,
   );
 } finally {
   if (browser) await browser.close();
