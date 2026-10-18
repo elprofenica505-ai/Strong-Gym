@@ -14,7 +14,14 @@ const schema = z.object({
 /** PATCH /api/account → actualiza los datos del perfil. */
 export async function PATCH(request: Request) {
   if (!isSupabaseConfigured) {
-    return NextResponse.json({ ok: true, mode: "demo" });
+    return NextResponse.json(
+      {
+        error: "DEMO",
+        message:
+          "Esta acción requiere Supabase conectado; no se guardó información.",
+      },
+      { status: 503 },
+    );
   }
 
   const user = await getCurrentUser();
@@ -28,20 +35,30 @@ export async function PATCH(request: Request) {
   }
 
   const parsed = schema.safeParse(payload);
-  if (!parsed.success) return NextResponse.json({ error: "INVALID" }, { status: 422 });
+  if (!parsed.success)
+    return NextResponse.json({ error: "INVALID" }, { status: 422 });
 
-  const supabase = await getSupabaseServerClient();
-  if (!supabase) return NextResponse.json({ error: "DEMO" }, { status: 503 });
+  try {
+    const supabase = await getSupabaseServerClient();
+    if (!supabase)
+      return NextResponse.json({ error: "UNAVAILABLE" }, { status: 503 });
 
-  const { error } = await supabase
-    .from("profiles")
-    .update({
-      ...(parsed.data.fullName ? { full_name: parsed.data.fullName } : {}),
-      ...(parsed.data.phone !== undefined ? { phone: parsed.data.phone || null } : {}),
-    })
-    .eq("id", user.id);
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        ...(parsed.data.fullName ? { full_name: parsed.data.fullName } : {}),
+        ...(parsed.data.phone !== undefined
+          ? { phone: parsed.data.phone || null }
+          : {}),
+      })
+      .eq("id", user.id)
+      .select("id")
+      .single();
 
-  if (error) return NextResponse.json({ error: "UNKNOWN" }, { status: 500 });
+    if (error) return NextResponse.json({ error: "UNKNOWN" }, { status: 500 });
 
-  return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ error: "UNAVAILABLE" }, { status: 503 });
+  }
 }

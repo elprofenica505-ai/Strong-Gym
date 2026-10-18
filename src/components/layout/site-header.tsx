@@ -75,7 +75,10 @@ export function SiteHeader({ onOpenMenu }: { onOpenMenu: () => void }) {
                 )}
               >
                 <span
-                  className={cn("size-1.5 rounded-full", abierto ? "animate-pulse bg-ok" : "bg-fog")}
+                  className={cn(
+                    "size-1.5 rounded-full",
+                    abierto ? "animate-pulse bg-ok" : "bg-fog",
+                  )}
                   aria-hidden="true"
                 />
                 {abierto ? dict.contact.openNow : dict.contact.closedNow}
@@ -84,10 +87,14 @@ export function SiteHeader({ onOpenMenu }: { onOpenMenu: () => void }) {
 
             <LanguageSwitcher locale={locale} label={dict.nav.language} />
 
-            <ButtonLink href={`/${locale}/horarios`} size="sm" className="hidden sm:inline-flex">
-              <CalendarCheck className="size-4" aria-hidden="true" />
-              {dict.cta.book}
-            </ButtonLink>
+            {/* La visibilidad pertenece al contenedor: ButtonLink usa inline-flex
+                y no debe competir con hidden dentro del mismo elemento. */}
+            <div className="hidden sm:block">
+              <ButtonLink href={`/${locale}/horarios`} size="sm">
+                <CalendarCheck className="size-4" aria-hidden="true" />
+                {dict.cta.book}
+              </ButtonLink>
+            </div>
           </div>
         </div>
       </div>

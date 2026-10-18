@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, Database, FileSpreadsheet, Trash2, Upload } from "lucide-react";
+import {
+  ArrowRight,
+  Database,
+  FileSpreadsheet,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { getCurrentUser } from "@/lib/data/queries";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
@@ -35,19 +41,20 @@ export default async function HerramientasPage({
           Panel · Herramientas
         </span>
         <h1 className="display-xl mt-3 text-[1.75rem] sm:text-[2.25rem]">
-          Cargar y limpiar datos
+          Carga y entrega de datos
         </h1>
         <p className="mt-2 max-w-2xl text-[0.875rem] leading-relaxed text-fog">
-          Cuando el dueño te pase los datos reales, desde acá los cargás al sistema.
-          También podés borrar los datos de ejemplo que vinieron con la instalación.
+          Cuando el dueño te pase los datos reales, desde acá los cargás al
+          sistema. La limpieza de los datos de ejemplo se prepara con respaldo y
+          SQL revisado, sólo al terminar las pruebas y con aprobación del dueño.
         </p>
       </div>
 
       {isDemo && (
         <div className="rounded-2xl border border-brand/35 bg-brand-soft p-4 text-[0.875rem] text-brand-300">
-          Estás en <strong>modo demo</strong>. Las herramientas de carga y reset se activan
-          cuando Supabase está conectado. En modo demo los datos viven en el navegador y
-          no se tocan.
+          Estás en <strong>modo demo</strong>. La importación se activa cuando
+          Supabase está conectado. En modo demo los datos viven en el navegador
+          y no se tocan.
         </div>
       )}
 
@@ -62,9 +69,9 @@ export default async function HerramientasPage({
         <ToolCard
           href={`/${locale}/panel/reset`}
           Icon={Trash2}
-          title="Borrar datos de ejemplo"
-          description="Quita los clientes ficticios, los gastos y los coaches que vinieron con la instalación."
-          cta="Ver opciones de reset"
+          title="Preparar limpieza final"
+          description="Revisá los requisitos para retirar datos de prueba sin borrar el sistema ni alterar saldos reales."
+          cta="Ver requisitos de entrega"
         />
         <ToolCard
           href={`/${locale}/panel/ayuda`}

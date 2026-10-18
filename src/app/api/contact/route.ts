@@ -28,7 +28,10 @@ export async function POST(request: Request) {
   const parsed = contactSchema.safeParse(payload);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "INVALID", fields: parsed.error.issues.map((i) => i.path.join(".")) },
+      {
+        error: "INVALID",
+        fields: parsed.error.issues.map((i) => i.path.join(".")),
+      },
       { status: 422 },
     );
   }
@@ -38,25 +41,37 @@ export async function POST(request: Request) {
   if (website) return NextResponse.json({ ok: true });
 
   if (!isSupabaseConfigured) {
-    // Modo demo: la consulta se ve en el panel de ejemplo.
-    return NextResponse.json({ ok: true, mode: "demo" });
+    // Sin base no se simula un envío exitoso.
+    return NextResponse.json(
+      {
+        error: "DEMO",
+        message:
+          "Esta acción requiere Supabase conectado; no se guardó información.",
+      },
+      { status: 503 },
+    );
   }
 
-  const supabase = await getSupabaseServerClient();
-  if (!supabase) return NextResponse.json({ ok: true, mode: "demo" });
+  try {
+    const supabase = await getSupabaseServerClient();
+    if (!supabase)
+      return NextResponse.json({ error: "UNAVAILABLE" }, { status: 503 });
 
-  const { error } = await supabase.from("messages").insert({
-    name: data.name,
-    email: data.email,
-    phone: data.phone || null,
-    subject: data.subject || "info",
-    message: data.message,
-    locale: data.locale ?? "es",
-  });
+    const { error } = await supabase.from("messages").insert({
+      name: data.name,
+      email: data.email,
+      phone: data.phone || null,
+      subject: data.subject || "info",
+      message: data.message,
+      locale: data.locale ?? "es",
+    });
 
-  if (error) {
-    return NextResponse.json({ error: "UNKNOWN" }, { status: 500 });
+    if (error) {
+      return NextResponse.json({ error: "UNKNOWN" }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ error: "UNAVAILABLE" }, { status: 503 });
   }
-
-  return NextResponse.json({ ok: true });
 }

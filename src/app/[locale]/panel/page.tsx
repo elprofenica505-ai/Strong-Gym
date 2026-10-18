@@ -1,3 +1,5 @@
+import { readData } from "@/lib/data/read-result";
+import { DataUnavailable } from "@/components/ui/data-unavailable";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -43,7 +45,11 @@ export async function generateMetadata({
   };
 }
 
-export default async function AdminPage({ params }: { params: Promise<{ locale: string }> }) {
+export default async function AdminPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
   const { locale: rawLocale } = await params;
   const locale: Locale = isLocale(rawLocale) ? rawLocale : "es";
   const dict = getDictionary(locale);
@@ -61,7 +67,9 @@ export default async function AdminPage({ params }: { params: Promise<{ locale: 
       <section className="container-x flex min-h-[70vh] flex-col items-center justify-center gap-5 py-24 text-center">
         <ShieldAlert className="size-8 text-alert" aria-hidden="true" />
         <h1 className="display-xl text-[1.75rem]">
-          {es ? "No pudimos verificar tu perfil" : "We could not verify your profile"}
+          {es
+            ? "No pudimos verificar tu perfil"
+            : "We could not verify your profile"}
         </h1>
         <p className="max-w-lg text-fog">
           {es
@@ -69,9 +77,14 @@ export default async function AdminPage({ params }: { params: Promise<{ locale: 
             : "You are signed in, but a valid public.profiles record could not be read. Your role was not changed and access remains protected. Check RLS policies and that Vercel uses the correct Supabase project."}
         </p>
         <p className="max-w-full break-all font-mono text-xs text-fog">
-          ID: {user.id} · {user.profileStatus === "missing"
-            ? (es ? "Perfil no visible o inexistente" : "Profile missing or not visible")
-            : (es ? "Error al leer el perfil" : "Profile read error")}
+          ID: {user.id} ·{" "}
+          {user.profileStatus === "missing"
+            ? es
+              ? "Perfil no visible o inexistente"
+              : "Profile missing or not visible"
+            : es
+              ? "Error al leer el perfil"
+              : "Profile read error"}
         </p>
         <ReloadButton label={es ? "Reintentar" : "Retry"} />
       </section>
@@ -127,20 +140,32 @@ export default async function AdminPage({ params }: { params: Promise<{ locale: 
     messages = demoAdminMessages();
     memberCount = 942;
   } else {
-    const [rawBookings, rawClasses, rawMessages, members, week] = await Promise.all([
-      getAllBookings(),
-      getClasses(),
-      getContactMessages(),
-      countMembers(),
-      getSessionsForWeek(),
-    ]);
+    const result = await readData(() =>
+      Promise.all([
+        getAllBookings(),
+        getClasses(),
+        getContactMessages(),
+        countMembers(),
+        getSessionsForWeek(),
+      ]),
+    );
+    if (!result.ok)
+      return (
+        <section className="container-x py-12">
+          <DataUnavailable locale={locale} code={result.code} />
+        </section>
+      );
+    const [rawBookings, rawClasses, rawMessages, members, week] = result.data;
 
     messages = rawMessages;
     memberCount = members;
 
     const sessionsPerClass = new Map<string, number>();
     for (const session of week.sessions) {
-      sessionsPerClass.set(session.class_id, (sessionsPerClass.get(session.class_id) ?? 0) + 1);
+      sessionsPerClass.set(
+        session.class_id,
+        (sessionsPerClass.get(session.class_id) ?? 0) + 1,
+      );
     }
 
     bookings = rawBookings.map((booking) => ({
@@ -150,7 +175,9 @@ export default async function AdminPage({ params }: { params: Promise<{ locale: 
       status: booking.status,
       createdAt: booking.created_at,
       className:
-        locale === "es" ? booking.session.gymClass.name_es : booking.session.gymClass.name_en,
+        locale === "es"
+          ? booking.session.gymClass.name_es
+          : booking.session.gymClass.name_en,
       classColor: booking.session.gymClass.color,
       room: booking.session.room,
       coachName: booking.session.coach?.name ?? null,
@@ -174,7 +201,10 @@ export default async function AdminPage({ params }: { params: Promise<{ locale: 
   return (
     <>
       <section className="relative overflow-hidden border-b border-brand/25 bg-cloud pt-12 pb-10 sm:pt-16 sm:pb-12 lg:pt-20">
-        <div className="absolute inset-0 bg-grid opacity-50" aria-hidden="true" />
+        <div
+          className="absolute inset-0 bg-grid opacity-50"
+          aria-hidden="true"
+        />
         <div
           className="absolute -top-24 left-1/4 size-80 rounded-full bg-brand/8 blur-3xl"
           aria-hidden="true"
@@ -190,12 +220,16 @@ export default async function AdminPage({ params }: { params: Promise<{ locale: 
           <p className="mt-4 text-[0.8125rem] text-fog">
             {user ? (
               <>
-                {user.fullName} · <span className="font-mono text-brand-300">{user.role}</span>
+                {user.fullName} ·{" "}
+                <span className="font-mono text-brand-300">{user.role}</span>
               </>
             ) : (
               <>
                 {dict.demo.title} ·{" "}
-                <Link href={`/${locale}/ingresar`} className="text-brand-300 hover:opacity-80">
+                <Link
+                  href={`/${locale}/ingresar`}
+                  className="text-brand-300 hover:opacity-80"
+                >
                   {dict.nav.login}
                 </Link>
               </>

@@ -1,3 +1,5 @@
+import { readData } from "@/lib/data/read-result";
+import { DataUnavailable } from "@/components/ui/data-unavailable";
 import { Check, Sparkles } from "lucide-react";
 import { getDictionary } from "@/i18n/dictionaries";
 import type { Locale } from "@/i18n/config";
@@ -10,7 +12,14 @@ import { cn } from "@/lib/utils";
 
 export async function Plans({ locale }: { locale: Locale }) {
   const dict = getDictionary(locale);
-  const plans = await getPlans();
+  const result = await readData(() => getPlans());
+  if (!result.ok)
+    return (
+      <Section id="planes">
+        <DataUnavailable locale={locale} code={result.code} />
+      </Section>
+    );
+  const plans = result.data;
 
   return (
     <Section id="planes" className="border-b border-line">
@@ -20,14 +29,23 @@ export async function Plans({ locale }: { locale: Locale }) {
         subtitle={dict.plans.subtitle}
       />
 
+      {plans.length === 0 && (
+        <p className="mt-10 text-fog">
+          {locale === "es"
+            ? "No hay planes publicados por el momento."
+            : "No plans are currently published."}
+        </p>
+      )}
       <div className="mt-10 grid gap-5 sm:mt-14 sm:grid-cols-2 lg:grid-cols-3">
         {plans.map((plan, index) => {
           const name = locale === "es" ? plan.name_es : plan.name_en;
           const tagline = locale === "es" ? plan.tagline_es : plan.tagline_en;
-          const features = locale === "es" ? plan.features_es : plan.features_en;
+          const features =
+            locale === "es" ? plan.features_es : plan.features_en;
 
           const price = formatPrice(plan.price);
-          const period = plan.period === "session" ? dict.plans.session : dict.plans.month;
+          const period =
+            plan.period === "session" ? dict.plans.session : dict.plans.month;
 
           return (
             <Reveal key={plan.id} delay={index * 70} className="h-full">
@@ -46,9 +64,13 @@ export async function Plans({ locale }: { locale: Locale }) {
                   </span>
                 ) : null}
 
-                <h3 className="display-xl text-[1.5rem] leading-none text-ink">{name}</h3>
+                <h3 className="display-xl text-[1.5rem] leading-none text-ink">
+                  {name}
+                </h3>
 
-                <p className="mt-2 min-h-10 text-[0.8125rem] leading-snug text-fog">{tagline}</p>
+                <p className="mt-2 min-h-10 text-[0.8125rem] leading-snug text-fog">
+                  {tagline}
+                </p>
 
                 {/* Si el gimnasio todavía no publicó el precio mostramos
                     "Consultar" en vez de inventar un número. */}
@@ -62,7 +84,9 @@ export async function Plans({ locale }: { locale: Locale }) {
                   >
                     {price ?? dict.plans.consult}
                   </span>
-                  {price ? <span className="text-[0.75rem] text-fog">{period}</span> : null}
+                  {price ? (
+                    <span className="text-[0.75rem] text-fog">{period}</span>
+                  ) : null}
                 </p>
 
                 <ul className="mt-6 flex flex-1 flex-col gap-3 border-t border-line pt-6">
@@ -73,7 +97,9 @@ export async function Plans({ locale }: { locale: Locale }) {
                         strokeWidth={2.75}
                         aria-hidden="true"
                       />
-                      <span className="text-[0.8125rem] leading-snug text-mist">{feature}</span>
+                      <span className="text-[0.8125rem] leading-snug text-mist">
+                        {feature}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -113,7 +139,9 @@ export async function Plans({ locale }: { locale: Locale }) {
                   strokeWidth={2.75}
                   aria-hidden="true"
                 />
-                <span className="text-[0.8125rem] leading-snug text-fog">{item}</span>
+                <span className="text-[0.8125rem] leading-snug text-fog">
+                  {item}
+                </span>
               </li>
             ))}
           </ul>

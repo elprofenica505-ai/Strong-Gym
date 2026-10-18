@@ -23,6 +23,8 @@ export const siteConfig = {
   legalName: "Strong Fitness Gym",
   /** Dominio propio. Mientras no haya uno, se usa la URL del hosting. */
   domain: null as string | null,
+  /** URL pública confirmada del hosting, también para builds sin variables de Vercel. */
+  productionUrl: "https://strong-gym-gamma.vercel.app",
 
   /** Email de contacto. Null = el sitio muestra WhatsApp en su lugar. */
   contactEmail: null as string | null,
@@ -99,16 +101,23 @@ export function fullAddress(): string {
   return `${street}, ${city}, ${region}, ${country}`;
 }
 
-/** URL pública del sitio (localhost en desarrollo, el dominio en producción). */
+/** URL pública/canónica. Un Preview no debe convertirse en el dominio público. */
 export function getSiteUrl(): string {
   const fromEnv = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (fromEnv) return fromEnv.replace(/\/$/, "");
+  if (fromEnv) {
+    const host = new URL(fromEnv).hostname.toLowerCase();
+    const local = host === "localhost" || host.endsWith(".localhost") ||
+      host === "127.0.0.1" || host === "[::1]";
+    // Evita publicar localhost si se copió el antiguo .env.example a producción.
+    if (process.env.NODE_ENV !== "production" || !local) return fromEnv.replace(/\/$/, "");
+  }
   if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
     return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
   }
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
   if (siteConfig.domain) return `https://${siteConfig.domain}`;
-  return "http://localhost:3000";
+  return process.env.NODE_ENV === "development"
+    ? "http://localhost:3000"
+    : siteConfig.productionUrl;
 }
 
 export function whatsappLink(message?: string): string {

@@ -17,7 +17,6 @@ import { Testimonials } from "@/components/sections/testimonials";
 import { MemberSummary } from "@/components/account/member-summary";
 import { getDictionary } from "@/i18n/dictionaries";
 import { isLocale } from "@/i18n/config";
-import { getCurrentUser, getMyBookings } from "@/lib/data/queries";
 import { homeJsonLd } from "@/lib/structured-data";
 import { fotoDisponible } from "@/components/ui/gym-photo";
 
@@ -41,8 +40,6 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const safeLocale = isLocale(locale) ? locale : "es";
   const dict = getDictionary(safeLocale);
 
-  const user = await getCurrentUser();
-  const bookings = user ? await getMyBookings(user.id) : [];
 
   return (
     <>

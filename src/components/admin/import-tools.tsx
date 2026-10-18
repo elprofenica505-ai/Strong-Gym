@@ -7,7 +7,6 @@ import {
   Download,
   FileSpreadsheet,
   RefreshCw,
-  Trash2,
   Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -31,27 +30,41 @@ function parseCSV(text: string): { headers: string[]; rows: Row[] } {
     const c = clean[i];
     if (inQuotes) {
       if (c === '"') {
-        if (clean[i + 1] === '"') { cell += '"'; i++; }
-        else inQuotes = false;
+        if (clean[i + 1] === '"') {
+          cell += '"';
+          i++;
+        } else inQuotes = false;
       } else {
         cell += c;
       }
     } else {
       if (c === '"') inQuotes = true;
-      else if (c === ",") { row.push(cell); cell = ""; }
-      else if (c === "\n" || c === "\r") {
-        if (cell !== "" || row.length > 0) { row.push(cell); cell = ""; out.push(row); row = []; }
+      else if (c === ",") {
+        row.push(cell);
+        cell = "";
+      } else if (c === "\n" || c === "\r") {
+        if (cell !== "" || row.length > 0) {
+          row.push(cell);
+          cell = "";
+          out.push(row);
+          row = [];
+        }
         if (c === "\r" && clean[i + 1] === "\n") i++;
       } else cell += c;
     }
   }
-  if (cell !== "" || row.length > 0) { row.push(cell); out.push(row); }
+  if (cell !== "" || row.length > 0) {
+    row.push(cell);
+    out.push(row);
+  }
   if (out.length === 0) return { headers: [], rows: [] };
   const headers = out[0].map((h) => h.trim().toLowerCase());
   const rows: Row[] = [];
   for (let r = 1; r < out.length; r++) {
     const obj: Row = {};
-    headers.forEach((h, i) => { obj[h] = (out[r][i] ?? "").trim(); });
+    headers.forEach((h, i) => {
+      obj[h] = (out[r][i] ?? "").trim();
+    });
     rows.push(obj);
   }
   return { headers, rows };
@@ -61,16 +74,38 @@ function parseCSV(text: string): { headers: string[]; rows: Row[] } {
    Acepta varios alias para que sea flexible con el Excel del
    dueño. La primera coincidencia gana. */
 const ALIASES: Record<string, string[]> = {
-  fullName:            ["fullname", "full_name", "nombre", "name", "cliente", "socio"],
-  email:               ["email", "correo", "mail"],
-  phone:               ["phone", "telefono", "tel", "celular", "movil"],
-  planId:              ["planid", "plan_id", "plan"],
-  status:              ["status", "estado"],
-  birthdate:           ["birthdate", "birth_date", "fecha_nacimiento", "nacimiento", "cumple"],
-  address:             ["address", "direccion", "dir"],
-  emergencyContactName:["emergencycontactname", "emergency_contact_name", "contacto_emergencia_nombre", "emergencia_nombre"],
-  emergencyContactPhone:["emergencycontactphone","emergency_contact_phone", "contacto_emergencia_tel", "emergencia_tel"],
-  medicalNotes:        ["medicalnotes", "medical_notes", "notas_medicas", "salud", "alergias"],
+  fullName: ["fullname", "full_name", "nombre", "name", "cliente", "socio"],
+  email: ["email", "correo", "mail"],
+  phone: ["phone", "telefono", "tel", "celular", "movil"],
+  planId: ["planid", "plan_id", "plan"],
+  status: ["status", "estado"],
+  birthdate: [
+    "birthdate",
+    "birth_date",
+    "fecha_nacimiento",
+    "nacimiento",
+    "cumple",
+  ],
+  address: ["address", "direccion", "dir"],
+  emergencyContactName: [
+    "emergencycontactname",
+    "emergency_contact_name",
+    "contacto_emergencia_nombre",
+    "emergencia_nombre",
+  ],
+  emergencyContactPhone: [
+    "emergencycontactphone",
+    "emergency_contact_phone",
+    "contacto_emergencia_tel",
+    "emergencia_tel",
+  ],
+  medicalNotes: [
+    "medicalnotes",
+    "medical_notes",
+    "notas_medicas",
+    "salud",
+    "alergias",
+  ],
 };
 
 function mapHeaders(headers: string[]): Record<string, string> {
@@ -108,12 +143,22 @@ const REQUIRED: (keyof typeof ALIASES)[] = ["fullName"];
 export function ImportMembersTool() {
   const [csvText, setCsvText] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
-  const [parsed, setParsed] = useState<{ headers: string[]; rows: Row[] } | null>(null);
+  const [parsed, setParsed] = useState<{
+    headers: string[];
+    rows: Row[];
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ imported: number; skipped: number; errors: string[] } | null>(null);
+  const [result, setResult] = useState<{
+    imported: number;
+    skipped: number;
+    errors: string[];
+  } | null>(null);
 
-  const mapping = useMemo(() => (parsed ? mapHeaders(parsed.headers) : null), [parsed]);
+  const mapping = useMemo(
+    () => (parsed ? mapHeaders(parsed.headers) : null),
+    [parsed],
+  );
 
   const validRows = useMemo(() => {
     if (!parsed || !mapping) return [];
@@ -130,8 +175,12 @@ export function ImportMembersTool() {
           status: mapping.status ? r[mapping.status] : "",
           birthdate: mapping.birthdate ? r[mapping.birthdate] : "",
           address: mapping.address ? r[mapping.address] : "",
-          emergencyContactName: mapping.emergencyContactName ? r[mapping.emergencyContactName] : "",
-          emergencyContactPhone: mapping.emergencyContactPhone ? r[mapping.emergencyContactPhone] : "",
+          emergencyContactName: mapping.emergencyContactName
+            ? r[mapping.emergencyContactName]
+            : "",
+          emergencyContactPhone: mapping.emergencyContactPhone
+            ? r[mapping.emergencyContactPhone]
+            : "",
           medicalNotes: mapping.medicalNotes ? r[mapping.medicalNotes] : "",
         };
       })
@@ -204,7 +253,8 @@ export function ImportMembersTool() {
             email: r.email,
             phone: r.phone || undefined,
             planId: r.planId || undefined,
-            status: (r.status as "active" | "frozen" | "cancelled") || undefined,
+            status:
+              (r.status as "active" | "frozen" | "cancelled") || undefined,
             birthdate: r.birthdate || undefined,
             address: r.address || undefined,
             emergencyContactName: r.emergencyContactName || undefined,
@@ -230,10 +280,12 @@ export function ImportMembersTool() {
     <div className="space-y-5">
       {/* Paso 1: descargar plantilla */}
       <div className="rounded-2xl border border-line bg-card p-5">
-        <h3 className="text-[0.9375rem] font-semibold text-ink">1. Descargá la plantilla</h3>
+        <h3 className="text-[0.9375rem] font-semibold text-ink">
+          1. Descargá la plantilla
+        </h3>
         <p className="mt-1 text-[0.8125rem] text-fog">
-          La única columna obligatoria es <strong>nombre</strong>.
-          El resto es opcional y se puede cargar después desde el panel.
+          La única columna obligatoria es <strong>nombre</strong>. El resto es
+          opcional y se puede cargar después desde el panel.
         </p>
         <button
           type="button"
@@ -247,10 +299,13 @@ export function ImportMembersTool() {
 
       {/* Paso 2: subir el archivo */}
       <div className="rounded-2xl border border-line bg-card p-5">
-        <h3 className="text-[0.9375rem] font-semibold text-ink">2. Subí tu archivo</h3>
+        <h3 className="text-[0.9375rem] font-semibold text-ink">
+          2. Subí tu archivo
+        </h3>
         <p className="mt-1 text-[0.8125rem] text-fog">
-          Aceptamos CSV. Si tenés Excel, exportá la hoja como CSV (Archivo → Guardar como → CSV).
-          Google Sheets también sirve (Archivo → Descargar → CSV).
+          Aceptamos CSV. Si tenés Excel, exportá la hoja como CSV (Archivo →
+          Guardar como → CSV). Google Sheets también sirve (Archivo → Descargar
+          → CSV).
         </p>
 
         <label className="mt-3 flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-dashed border-line bg-card-2 px-4 py-6 transition-colors hover:border-brand">
@@ -259,9 +314,7 @@ export function ImportMembersTool() {
             <p className="text-[0.875rem] font-semibold text-ink">
               Tocá para elegir un CSV
             </p>
-            <p className="text-[0.75rem] text-fog">
-              o arrastralo hasta acá
-            </p>
+            <p className="text-[0.75rem] text-fog">o arrastralo hasta acá</p>
           </div>
           <input
             type="file"
@@ -280,7 +333,9 @@ export function ImportMembersTool() {
       {/* Paso 3: revisar mapeo */}
       {parsed && mapping && (
         <div className="rounded-2xl border border-line bg-card p-5">
-          <h3 className="text-[0.9375rem] font-semibold text-ink">3. Revisa el mapeo de columnas</h3>
+          <h3 className="text-[0.9375rem] font-semibold text-ink">
+            3. Revisa el mapeo de columnas
+          </h3>
           <p className="mt-1 text-[0.75rem] text-fog">
             Detectamos {parsed.headers.length} columnas en tu archivo.
             {REQUIRED.every((r) => mapping[r])
@@ -288,26 +343,29 @@ export function ImportMembersTool() {
               : " ⚠️ Faltan columnas obligatorias (nombre y/o email)."}
           </p>
           <ul className="mt-3 space-y-1.5 text-[0.75rem]">
-            {(Object.keys(FIELD_LABELS) as (keyof typeof FIELD_LABELS)[]).map((field) => {
-              const col = mapping[field];
-              const required = REQUIRED.includes(field);
-              return (
-                <li
-                  key={field}
-                  className={cn(
-                    "flex items-center justify-between rounded-lg border border-line bg-card-2 px-3 py-2",
-                    !col && required && "border-alert/50",
-                  )}
-                >
-                  <span className="text-ink">
-                    {FIELD_LABELS[field]} {required && <span className="text-alert">*</span>}
-                  </span>
-                  <code className="text-fog">
-                    {col ? `→ ${col}` : "no detectada"}
-                  </code>
-                </li>
-              );
-            })}
+            {(Object.keys(FIELD_LABELS) as (keyof typeof FIELD_LABELS)[]).map(
+              (field) => {
+                const col = mapping[field];
+                const required = REQUIRED.includes(field);
+                return (
+                  <li
+                    key={field}
+                    className={cn(
+                      "flex items-center justify-between rounded-lg border border-line bg-card-2 px-3 py-2",
+                      !col && required && "border-alert/50",
+                    )}
+                  >
+                    <span className="text-ink">
+                      {FIELD_LABELS[field]}{" "}
+                      {required && <span className="text-alert">*</span>}
+                    </span>
+                    <code className="text-fog">
+                      {col ? `→ ${col}` : "no detectada"}
+                    </code>
+                  </li>
+                );
+              },
+            )}
           </ul>
         </div>
       )}
@@ -316,7 +374,9 @@ export function ImportMembersTool() {
       {validRows.length > 0 && (
         <div className="rounded-2xl border border-line bg-card p-5">
           <h3 className="text-[0.9375rem] font-semibold text-ink">
-            4. Vista previa · {validRows.length} cliente{validRows.length === 1 ? "" : "s"} listo{validRows.length === 1 ? "" : "s"}
+            4. Vista previa · {validRows.length} cliente
+            {validRows.length === 1 ? "" : "s"} listo
+            {validRows.length === 1 ? "" : "s"}
           </h3>
           <p className="mt-1 text-[0.75rem] text-fog">
             Estos se importarán al confirmar.
@@ -339,7 +399,9 @@ export function ImportMembersTool() {
                     <td className="px-3 py-2 text-ink">{r.fullName}</td>
                     <td className="px-3 py-2 text-mist">{r.email}</td>
                     <td className="px-3 py-2 text-fog">{r.planId || "—"}</td>
-                    <td className="px-3 py-2 text-fog">{r.status || "active"}</td>
+                    <td className="px-3 py-2 text-fog">
+                      {r.status || "active"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -361,8 +423,14 @@ export function ImportMembersTool() {
           disabled={busy}
           className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand px-6 py-3 text-[0.9375rem] font-semibold text-onbrand transition-colors hover:bg-brand-600 disabled:opacity-50"
         >
-          {busy ? <RefreshCw className="size-4 animate-spin" /> : <Upload className="size-4" />}
-          {busy ? "Importando…" : `Importar ${validRows.length} cliente${validRows.length === 1 ? "" : "s"}`}
+          {busy ? (
+            <RefreshCw className="size-4 animate-spin" />
+          ) : (
+            <Upload className="size-4" />
+          )}
+          {busy
+            ? "Importando…"
+            : `Importar ${validRows.length} cliente${validRows.length === 1 ? "" : "s"}`}
         </button>
       )}
 
@@ -379,22 +447,31 @@ export function ImportMembersTool() {
             <h3 className="text-[0.9375rem] font-semibold text-ink">Listo</h3>
           </div>
           <p className="mt-2 text-[0.8125rem] text-mist">
-            <strong className="text-brand-300">{result.imported}</strong> cliente
-            {result.imported === 1 ? "" : "s"} importado{result.imported === 1 ? "" : "s"}.
+            <strong className="text-brand-300">{result.imported}</strong>{" "}
+            cliente
+            {result.imported === 1 ? "" : "s"} importado
+            {result.imported === 1 ? "" : "s"}.
             {result.skipped > 0 && (
-              <> <strong className="text-alert">{result.skipped}</strong> salteado{result.skipped === 1 ? "" : "s"}.</>
+              <>
+                {" "}
+                <strong className="text-alert">{result.skipped}</strong>{" "}
+                salteado{result.skipped === 1 ? "" : "s"}.
+              </>
             )}
           </p>
           {result.errors.length > 0 && (
             <details className="mt-3">
               <summary className="cursor-pointer text-[0.75rem] font-semibold text-fog">
-                Ver {result.errors.length} detalle{result.errors.length === 1 ? "" : "s"}
+                Ver {result.errors.length} detalle
+                {result.errors.length === 1 ? "" : "s"}
               </summary>
               <ul className="mt-2 list-disc space-y-1 pl-5 text-[0.75rem] text-fog">
                 {result.errors.slice(0, 50).map((e, i) => (
                   <li key={i}>{e}</li>
                 ))}
-                {result.errors.length > 50 && <li>… y {result.errors.length - 50} más.</li>}
+                {result.errors.length > 50 && (
+                  <li>… y {result.errors.length - 50} más.</li>
+                )}
               </ul>
             </details>
           )}
@@ -409,181 +486,41 @@ export function ImportMembersTool() {
    ============================================================ */
 
 export function ResetTool() {
-  const [busy, setBusy] = useState<null | "members" | "transactions" | "coaches" | "all">(null);
-  const [confirm, setConfirm] = useState<null | "members" | "transactions" | "coaches" | "all">(null);
-  const [result, setResult] = useState<{ ok: boolean; deleted: Record<string, number>; message?: string } | null>(null);
-
-  const ask = (scope: "members" | "transactions" | "coaches" | "all") => setConfirm(scope);
-  const go = async () => {
-    if (!confirm) return;
-    setBusy(confirm);
-    setResult(null);
-    try {
-      const res = await fetch("/api/admin/reset", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ scope: confirm }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        setResult({ ok: false, deleted: {}, message: json.message || json.error });
-      } else {
-        setResult({ ok: true, deleted: json.deleted });
-      }
-    } catch (e) {
-      setResult({ ok: false, deleted: {}, message: String(e) });
-    } finally {
-      setBusy(null);
-      setConfirm(null);
-    }
-  };
-
   return (
-    <div className="space-y-4">
-      <div className="rounded-2xl border border-alert/35 bg-alert/[0.06] p-4 text-[0.8125rem] text-mist">
-        <p className="flex items-start gap-2">
-          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-alert" />
-          <span>
-            Las acciones de abajo borran <strong>solo datos de ejemplo</strong>:
-            los clientes de <code>@stronggym-ejemplo.com</code>, los 3 coaches
-            del seed y los 13 gastos del mes con la marca <code>[SEED-GASTO]</code>.
-            No se tocan la estructura de la base, los planes, las disciplinas,
-            ni tu usuario admin. Este reset es de Fase 1 y no elimina los ejemplos CRM de Fase 2.
-          </span>
-        </p>
-      </div>
-
-      <ResetButtonCard
-        scope="members"
-        label="Borrar los clientes de ejemplo"
-        hint="Solo los que tengan email @stronggym-ejemplo.com"
-        onAsk={ask}
-        disabled={busy !== null}
-      />
-      <ResetButtonCard
-        scope="transactions"
-        label="Borrar los 13 gastos del mes de ejemplo"
-        hint="Solo los que tengan el prefijo [SEED-GASTO]"
-        onAsk={ask}
-        disabled={busy !== null}
-      />
-      <ResetButtonCard
-        scope="coaches"
-        label="Borrar los 3 coaches de ejemplo"
-        hint="Douglas Hernández, María Rodríguez, José Luis Pérez"
-        onAsk={ask}
-        disabled={busy !== null}
-      />
-      <ResetButtonCard
-        scope="all"
-        label="Borrar ejemplos de Fase 1 (clientes + gastos + coaches)"
-        hint="Útil cuando los datos reales ya están listos"
-        danger
-        onAsk={ask}
-        disabled={busy !== null}
-      />
-
-      {confirm && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-alert/50 bg-paper p-5">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="size-5 text-alert" />
-              <h3 className="text-[1.0625rem] font-semibold text-ink">¿Estás seguro?</h3>
-            </div>
-            <p className="mt-3 text-[0.875rem] leading-relaxed text-mist">
-              Vas a borrar:{" "}
-              <strong className="text-ink">
-                {confirm === "members" && "los clientes de ejemplo"}
-                {confirm === "transactions" && "los 13 gastos de ejemplo"}
-                {confirm === "coaches" && "los 3 coaches de ejemplo"}
-                {confirm === "all" && "clientes + gastos + coaches de ejemplo"}
-              </strong>
-              . Esta acción no se puede deshacer.
-            </p>
-            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={() => setConfirm(null)}
-                className="rounded-full border border-line px-5 py-2 text-[0.8125rem] font-semibold text-mist hover:border-brand hover:text-ink"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={go}
-                disabled={busy !== null}
-                className="rounded-full bg-alert px-5 py-2 text-[0.8125rem] font-semibold text-onbrand transition-colors hover:bg-alert/80 disabled:opacity-50"
-              >
-                {busy ? "Borrando…" : "Sí, borrar"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {result && (
-        <div
-          className={cn(
-            "rounded-2xl border p-4 text-[0.8125rem]",
-            result.ok ? "border-brand/40 bg-brand-soft text-brand-300" : "border-alert/50 bg-alert/10 text-alert",
-          )}
-        >
-          {result.ok ? (
-            <p>
-              ✅ Listo. Borrados:{" "}
-              {Object.entries(result.deleted)
-                .map(([k, v]) => `${v} ${k}`)
-                .join(", ")}
-              .
-            </p>
-          ) : (
-            <p>❌ {result.message ?? "Error al borrar."}</p>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-type ResetScope = "members" | "transactions" | "coaches" | "all";
-
-function ResetButtonCard({
-  scope,
-  label,
-  hint,
-  danger = false,
-  onAsk,
-  disabled,
-}: {
-  scope: ResetScope;
-  label: string;
-  hint: string;
-  danger?: boolean;
-  onAsk: (scope: ResetScope) => void;
-  disabled: boolean;
-}) {
-  return (
-    <div className="rounded-2xl border border-line bg-card p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-[0.875rem] font-semibold text-ink">{label}</p>
-          <p className="mt-0.5 text-[0.75rem] text-fog">{hint}</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => onAsk(scope)}
-          disabled={disabled}
-          className={cn(
-            "inline-flex shrink-0 items-center justify-center gap-2 rounded-full border px-4 py-2 text-[0.8125rem] font-semibold transition-colors disabled:opacity-50",
-            danger
-              ? "border-alert text-alert hover:bg-alert/10"
-              : "border-line text-mist hover:border-brand hover:text-brand-300",
-          )}
-        >
-          <Trash2 className="size-3.5" />
-          Borrar
-        </button>
-      </div>
-    </div>
+    <section className="space-y-4 rounded-2xl border border-alert/30 bg-card p-5">
+      <h2 className="flex items-center gap-2 text-lg font-semibold text-ink">
+        <AlertTriangle className="size-5 shrink-0 text-alert" />
+        Limpieza final mediante SQL revisado
+      </h2>
+      <p className="text-sm leading-relaxed text-mist">
+        Se retiró el borrado automático por correos, prefijos e IDs: podía dejar
+        saldos sin conciliar, borrar referencias válidas y mostrar éxito aunque
+        una operación fallara. Esta pantalla no borra ni modifica datos.
+      </p>
+      <ol className="list-inside list-decimal space-y-2 text-sm text-fog">
+        <li>
+          Terminar y probar los módulos con registros de ejemplo identificados.
+        </li>
+        <li>
+          Obtener la aprobación del dueño y verificar su acceso de
+          administrador.
+        </li>
+        <li>
+          Respaldar la base y conciliar movimientos, deudas y saldos por moneda.
+        </li>
+        <li>
+          Revisar y ejecutar el SQL de limpieza dentro de una transacción, con
+          sus relaciones.
+        </li>
+        <li>
+          Verificar los resultados antes de cargar datos reales y saldos
+          iniciales.
+        </li>
+      </ol>
+      <p className="text-sm text-mist">
+        Se conservan las tablas, módulos, funciones y configuración acordada. No
+        se debe reinstalar la base para retirar datos de prueba.
+      </p>
+    </section>
   );
 }

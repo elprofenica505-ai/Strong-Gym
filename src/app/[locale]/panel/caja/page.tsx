@@ -1,3 +1,5 @@
+import { FinanceUnavailable } from "@/components/admin/finance-unavailable";
+import { readFinance } from "@/lib/finance/read-result";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { CashPanel } from "@/components/admin/cash-panel";
@@ -43,23 +45,27 @@ export default async function CajaPage({
     redirect(`/${locale}/mi-cuenta`);
   }
 
-  const [
-    summary,
-    recent,
-    daily,
-    monthly,
-    methods,
-    paymentMethods,
-    accounts,
-  ] = await Promise.all([
-    getCashSummary(),
-    getRecentTransactions(30),
-    getDailyCash(14),
-    getMonthlyPnl(6),
-    getPaymentMethodsBreakdown(),
-    getPaymentMethods(),
-    getAccounts(),
-  ]);
+  const result = await readFinance(() =>
+    Promise.all([
+      getCashSummary(),
+      getRecentTransactions(30),
+      getDailyCash(14),
+      getMonthlyPnl(6),
+      getPaymentMethodsBreakdown(),
+      getPaymentMethods(),
+      getAccounts(),
+    ]),
+  );
+  if (!result.ok)
+    return (
+      <FinanceUnavailable
+        locale={locale}
+        code={result.code}
+        message={result.message}
+      />
+    );
+  const [summary, recent, daily, monthly, methods, paymentMethods, accounts] =
+    result.data;
 
   const paymentMethodNames = Object.fromEntries(
     paymentMethods.map((m) => [m.id, m.nameEs]),
@@ -67,12 +73,6 @@ export default async function CajaPage({
   const paymentMethodIcons = Object.fromEntries(
     paymentMethods.map((m) => [m.id, m.icon]),
   );
-  const accountsForPanel = accounts.map((a) => ({
-    id: a.id,
-    name: a.name,
-    currency: a.currency,
-    kind: a.kind,
-  }));
 
   return (
     <CashPanel

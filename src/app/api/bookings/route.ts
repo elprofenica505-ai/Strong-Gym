@@ -1,3 +1,4 @@
+import { readData } from "@/lib/data/read-result";
 import { NextResponse } from "next/server";
 import { siteConfig } from "@/config/site";
 import { getCurrentUser, getMyBookings } from "@/lib/data/queries";
@@ -16,21 +17,35 @@ type ErrorCode =
   | "CANCELLED"
   | "NOT_FOUND"
   | "TOO_LATE"
+  | "UNCONFIRMED"
   | "UNKNOWN";
 
 function fail(code: ErrorCode, status: number) {
-  return NextResponse.json({ error: code }, { status });
+  return NextResponse.json({ error: code }, { status, headers: { "Cache-Control": "private, no-store" } });
 }
 
 /** GET /api/bookings → reservas del usuario logueado. */
 export async function GET() {
-  if (!isSupabaseConfigured) return NextResponse.json({ bookings: [], mode: "demo" });
+  if (!isSupabaseConfigured)
+    return NextResponse.json({ bookings: [], mode: "demo" });
 
   const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ bookings: [], mode: "auth-required" });
+  if (!user)
+    return NextResponse.json(
+      { error: "AUTH" },
+      { status: 401, headers: { "Cache-Control": "private, no-store" } },
+    );
 
-  const bookings = await getMyBookings(user.id);
-  return NextResponse.json({ bookings, mode: "supabase" });
+  const result = await readData(() => getMyBookings(user.id));
+  if (!result.ok)
+    return NextResponse.json(
+      { error: "DATA_UNAVAILABLE", code: result.code },
+      { status: 503, headers: { "Cache-Control": "private, no-store" } },
+    );
+  return NextResponse.json(
+    { bookings: result.data, mode: "supabase" },
+    { headers: { "Cache-Control": "private, no-store" } },
+  );
 }
 
 /** POST /api/bookings  { sessionId } → reserva un lugar en la clase. */
@@ -48,14 +63,16 @@ export async function POST(request: Request) {
     return fail("UNKNOWN", 400);
   }
 
-  if (!sessionId) return fail("UNKNOWN", 400);
+  if (typeof sessionId !== "string" || !sessionId.trim() || sessionId.length > 160) return fail("UNKNOWN", 400);
 
   const supabase = await getSupabaseServerClient();
   if (!supabase) return fail("DEMO", 503);
 
   // La validación de cupo y de duplicados vive en Postgres
   // (función book_session), así no hay condiciones de carrera.
-  const { data, error } = await supabase.rpc("book_session", { p_session_id: sessionId });
+  const { data, error } = await supabase.rpc("book_session", {
+    p_session_id: sessionId,
+  });
 
   if (error) {
     const message = `${error.message} ${error.details ?? ""}`.toUpperCase();
@@ -68,7 +85,13 @@ export async function POST(request: Request) {
     return fail("UNKNOWN", 500);
   }
 
-  return NextResponse.json({ ok: true, booking: data });
+  // Un HTTP 200 con resultado vacío no demuestra una reserva guardada.
+  if (!data || typeof data.id !== "string" || !data.id ||
+      data.session_id !== sessionId || data.status !== "confirmed")
+    return fail("UNCONFIRMED", 503);
+  return NextResponse.json({ ok: true, booking: data }, {
+    headers: { "Cache-Control": "private, no-store" },
+  });
 }
 
 /** DELETE /api/bookings?id=... → cancela una reserva. */
@@ -84,7 +107,9 @@ export async function DELETE(request: Request) {
   const supabase = await getSupabaseServerClient();
   if (!supabase) return fail("DEMO", 503);
 
-  const { error } = await supabase.rpc("cancel_booking", { p_booking_id: bookingId });
+  const { error } = await supabase.rpc("cancel_booking", {
+    p_booking_id: bookingId,
+  });
 
   if (error) {
     const message = `${error.message} ${error.details ?? ""}`.toUpperCase();
@@ -93,5 +118,8 @@ export async function DELETE(request: Request) {
     return fail("UNKNOWN", 500);
   }
 
-  return NextResponse.json({ ok: true, cancellationWindowHours: siteConfig.cancellationWindowHours });
+  return NextResponse.json({
+    ok: true,
+    cancellationWindowHours: siteConfig.cancellationWindowHours,
+  });
 }

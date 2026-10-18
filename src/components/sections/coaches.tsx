@@ -1,3 +1,5 @@
+import { readData } from "@/lib/data/read-result";
+import { DataUnavailable } from "@/components/ui/data-unavailable";
 import { Dumbbell, Hand, Users } from "lucide-react";
 import { InstagramIcon } from "@/components/ui/social-icons";
 import { getDictionary } from "@/i18n/dictionaries";
@@ -20,7 +22,14 @@ const factIcons = [Users, Dumbbell, Hand];
  */
 export async function Coaches({ locale }: { locale: Locale }) {
   const dict = getDictionary(locale);
-  const coaches = await getCoaches();
+  const result = await readData(() => getCoaches());
+  if (!result.ok)
+    return (
+      <Section id="equipo">
+        <DataUnavailable locale={locale} code={result.code} />
+      </Section>
+    );
+  const coaches = result.data;
 
   return (
     <Section id="equipo" className="border-b border-line">
@@ -40,8 +49,12 @@ export async function Coaches({ locale }: { locale: Locale }) {
                   <span className="grid size-11 place-items-center rounded-xl bg-brand-soft text-brand-300">
                     <Icon className="size-5" aria-hidden="true" />
                   </span>
-                  <h3 className="mt-5 text-[1.0625rem] font-semibold text-ink">{fact.title}</h3>
-                  <p className="mt-2.5 text-[0.875rem] leading-relaxed text-fog">{fact.text}</p>
+                  <h3 className="mt-5 text-[1.0625rem] font-semibold text-ink">
+                    {fact.title}
+                  </h3>
+                  <p className="mt-2.5 text-[0.875rem] leading-relaxed text-fog">
+                    {fact.text}
+                  </p>
                 </article>
               </Reveal>
             );
@@ -74,13 +87,18 @@ export async function Coaches({ locale }: { locale: Locale }) {
                       <h3 className="truncate text-[1.0625rem] font-semibold text-ink">
                         {coach.name}
                       </h3>
-                      <p className="mt-0.5 text-[0.75rem] leading-snug" style={{ color: coach.color }}>
+                      <p
+                        className="mt-0.5 text-[0.75rem] leading-snug"
+                        style={{ color: coach.color }}
+                      >
                         {role}
                       </p>
                     </div>
                   </div>
 
-                  <p className="mt-5 flex-1 text-[0.875rem] leading-relaxed text-fog">{bio}</p>
+                  <p className="mt-5 flex-1 text-[0.875rem] leading-relaxed text-fog">
+                    {bio}
+                  </p>
 
                   <div className="mt-5 flex items-center justify-between border-t border-line pt-4">
                     <div className="flex flex-wrap gap-1.5">

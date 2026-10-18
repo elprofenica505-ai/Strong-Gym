@@ -36,17 +36,18 @@ export default async function ResetPage({
         <div>
           <span className="eyebrow">
             <span className="h-px w-6 bg-brand" aria-hidden="true" />
-            Herramientas · Reset
+            Herramientas · Entrega
           </span>
           <h1 className="display-xl mt-2 text-[1.75rem] sm:text-[2.25rem]">
-            Borrar datos de ejemplo
+            Preparar limpieza final
           </h1>
         </div>
       </div>
 
       {isDemo ? (
         <div className="rounded-2xl border border-brand/35 bg-brand-soft p-6 text-center text-[0.875rem] text-brand-300">
-          El reset funciona con Supabase conectado. En modo demo no hay nada que borrar del servidor.
+          Sin una conexión a Supabase no hay datos del servidor para revisar o
+          limpiar. Esta pantalla no realiza borrados.
         </div>
       ) : (
         <ResetTool />

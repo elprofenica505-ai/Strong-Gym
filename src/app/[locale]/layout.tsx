@@ -27,13 +27,14 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
-  if (!isLocale(locale)) return {};
+  const siteUrl = getSiteUrl();
+  const metadataBase = new URL(siteUrl);
+  if (!isLocale(locale)) return { metadataBase };
 
   const dict = getDictionary(locale);
-  const siteUrl = getSiteUrl();
 
   return {
-    metadataBase: new URL(siteUrl),
+    metadataBase,
     title: {
       default: dict.meta.title,
       template: `%s | ${siteConfig.name}`,

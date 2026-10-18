@@ -24,6 +24,11 @@ for (const file of [
       "utf8",
     ),
   );
+const nativeWriterQuery =
+  "select pg_get_functiondef(oid) as definition from pg_proc where pronamespace='public'::regnamespace and proname='record_payment' order by oid";
+const nativeWriterBefore = JSON.stringify(
+  (await db.query(nativeWriterQuery)).rows,
+);
 const migration = readFileSync(
   new URL("../supabase/FASE2.sql", import.meta.url),
   "utf8",
@@ -325,6 +330,24 @@ check(
   "sin cuenta financiera vinculada no inventa saldo",
   detail.balance === null,
 );
+const financeOptions = (await as(staff, "select public.crm_options() as value"))
+  .rows[0].value;
+check(
+  "modelo original conserva cobros habilitados",
+  financeOptions.payments_enabled === true &&
+    financeOptions.finance_layout === "repository",
+);
+check(
+  "opciones originales conservan métodos y cuentas",
+  financeOptions.methods.length > 0 && financeOptions.accounts.length > 0,
+);
+await reject(member, "select public.crm_options()", [], "AUTH");
+await reject(
+  staff,
+  "select public.crm_record_payment_repository($1,$2,$3,$4,$5,$6,$7,$8)",
+  args,
+  "permission denied",
+);
 const imported = (
   await as(staff, "select public.crm_import_client($1) as r", [
     JSON.stringify({
@@ -375,6 +398,64 @@ check(
   "seed idempotente, no duplica asistencias",
   (await row("select count(*)::int as n from public.client_visits")).n ===
     seedBefore,
+);
+await db.exec("begin read only");
+const writerMetadata = await db.query(
+  readFileSync(
+    new URL(
+      "../supabase/DIAGNOSTICO-ESCRITURA-FINANCIERA.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+);
+const writerData = JSON.parse(writerMetadata.rows[0].diagnostico);
+check(
+  "diagnóstico nativo identifica escritor de saldos y vistas sin ejecutarlos",
+  writerData.funciones.some((f) => f.nombre === "update_member_balance") &&
+    writerData.vistas.some((v) => v.nombre === "v_daily_cash"),
+);
+await db.exec("rollback");
+check(
+  "00023 no reemplaza escritor ni reglas del modelo nativo",
+  JSON.stringify((await db.query(nativeWriterQuery)).rows) ===
+    nativeWriterBefore,
+);
+await reject(
+  staff,
+  "select finance_read('summary')",
+  [],
+  "FINANCE_SCHEMA_UNSUPPORTED",
+);
+await reject(member, "select finance_read('summary')", [], "AUTH");
+await reject(null, "select finance_read('summary')", [], "permission denied");
+const optionalBankSeed = readFileSync(
+  new URL("../supabase/EJEMPLOS-CAJA-OPCIONAL.sql", import.meta.url),
+  "utf8",
+);
+await assert.rejects(db.exec(optionalBankSeed), /FINANCE_SCHEMA_UNSUPPORTED/);
+await db.exec("rollback");
+check(
+  "seed de cuentas bank_accounts rechaza esquema nativo sin crear tabla paralela",
+  !(await row("select to_regclass('public.bank_accounts') as t")).t,
+);
+await assert.rejects(
+  db.exec(
+    readFileSync(
+      new URL(
+        "../supabase/migrations/00024_finance_movements.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  ),
+  /FINANCE_SCHEMA_UNSUPPORTED/,
+);
+await db.exec("rollback");
+check(
+  "actualización bancaria rechaza esquema nativo sin instalación parcial",
+  !(await db.query("select to_regclass('public.finance_entries') as t")).rows[0]
+    .t,
 );
 await db.close();
 console.log(`\n🎉 CRM: ${count} comprobaciones pasaron\n`);

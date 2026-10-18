@@ -1,3 +1,5 @@
+import { FinanceUnavailable } from "@/components/admin/finance-unavailable";
+import { readFinance } from "@/lib/finance/read-result";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -5,7 +7,7 @@ import { ArrowLeft, Clock, Mail, Phone, Wallet } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { getAccountsReceivable, getCurrentUser } from "@/lib/data/queries";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { formatMoney } from "@/components/admin/cash-panel";
+import { formatMoney } from "@/lib/finance/format-money";
 
 export async function generateMetadata({
   params,
@@ -38,11 +40,25 @@ export default async function CuentasPage({
     redirect(`/${locale}/mi-cuenta`);
   }
 
-  const rows = await getAccountsReceivable();
+  const result = await readFinance(() => getAccountsReceivable());
+  if (!result.ok)
+    return (
+      <FinanceUnavailable
+        locale={locale}
+        code={result.code}
+        message={result.message}
+      />
+    );
+  const rows = result.data;
   const totalOwed = rows.reduce((acc, r) => acc + r.totalOwedNio, 0);
+  const hasSplit = rows.some((r) => r.totalOwedUsd !== undefined);
+  const totalOwedUsd = rows.reduce((acc, r) => acc + (r.totalOwedUsd ?? 0), 0);
+  const ages = rows.flatMap((r) =>
+    r.daysOverdue === null ? [] : [r.daysOverdue],
+  );
 
   return (
-    <div className="space-y-6">
+    <div className="container-x min-w-0 space-y-6 py-6">
       <div className="flex items-center gap-3">
         <Link
           href={`/${locale}/panel`}
@@ -55,55 +71,67 @@ export default async function CuentasPage({
             <span className="h-px w-6 bg-brand" aria-hidden="true" />
             Caja · Cuentas por cobrar
           </span>
-          <h1 className="display-xl mt-2 text-[1.75rem] sm:text-[2.25rem]">Quién te debe</h1>
+          <h1 className="display-xl mt-2 text-[1.75rem] sm:text-[2.25rem]">
+            Quién te debe
+          </h1>
         </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
         <Stat label="Clientes con deuda" value={String(rows.length)} />
-        <Stat label="Total adeudado" value={formatMoney(totalOwed)} />
+        <Stat label="Deuda informada NIO" value={formatMoney(totalOwed)} />
         <Stat
           label="Más antiguo"
-          value={
-            rows[0]
-              ? `${rows[0].daysOverdue} días`
-              : "—"
-          }
+          value={ages.length ? `${Math.max(...ages)} días` : "No informado"}
         />
       </div>
 
+      {hasSplit && (
+        <Stat
+          label="Deuda informada USD · sin convertir"
+          value={formatMoney(totalOwedUsd, "USD")}
+        />
+      )}
+      <p className="text-sm text-fog">
+        Montos informados por la base, sin compensar créditos ni convertir entre
+        monedas. Si no hay vencimiento o factura, no se inventan días de mora.
+      </p>
       {rows.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-line bg-card py-12 text-center text-[0.875rem] text-fog">
-          No hay cuentas pendientes. 🎉
+          No hay deudas informadas en esta consulta.
         </p>
       ) : (
         <ul className="space-y-2.5">
           {rows.map((r) => (
             <li
-              key={r.memberId}
-              className="grid gap-3 rounded-2xl border border-line bg-card p-4 sm:grid-cols-[1fr,auto] sm:items-center"
+              key={r.clientId ? `client:${r.clientId}` : `profile:${r.memberId}`}
+              className="grid gap-3 rounded-2xl border border-line bg-card p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
             >
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="truncate text-[0.9375rem] font-semibold text-ink">{r.fullName}</p>
-                  {r.daysOverdue > 0 && (
+                  <p className="break-words text-[0.9375rem] font-semibold text-ink">
+                    {r.fullName}
+                  </p>
+                  {r.daysOverdue !== null && r.daysOverdue > 0 && (
                     <Badge className="border-alert/40 bg-card text-alert">
                       {r.daysOverdue} días de mora
                     </Badge>
                   )}
                 </div>
                 <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[0.75rem] text-fog">
-                  <span className="inline-flex items-center gap-1">
+                  <span className="inline-flex min-w-0 max-w-full items-center gap-1 break-all">
                     <Mail className="size-3" /> {r.email}
                   </span>
                   {r.phone && (
-                    <span className="inline-flex items-center gap-1">
+                    <span className="inline-flex min-w-0 max-w-full items-center gap-1 break-all">
                       <Phone className="size-3" /> {r.phone}
                     </span>
                   )}
-                  <span className="inline-flex items-center gap-1">
+                  <span className="inline-flex min-w-0 max-w-full items-center gap-1 break-all">
                     <Clock className="size-3" />
-                    {r.invoicesOpen} factura{r.invoicesOpen === 1 ? "" : "s"}
+                    {r.invoicesOpen === null
+                      ? "Facturas no informadas"
+                      : `${r.invoicesOpen} factura${r.invoicesOpen === 1 ? "" : "s"}`}
                   </span>
                 </div>
               </div>
@@ -111,6 +139,11 @@ export default async function CuentasPage({
                 <p className="font-mono text-[1.0625rem] font-semibold text-brand tabular-nums">
                   {formatMoney(r.totalOwedNio)}
                 </p>
+                {r.totalOwedUsd !== undefined && (
+                  <p className="font-mono text-brand">
+                    {formatMoney(r.totalOwedUsd, "USD")}
+                  </p>
+                )}
                 <p className="mt-0.5 text-[0.6875rem] text-fog">
                   Vence: {r.oldestDue ?? "—"}
                 </p>
@@ -126,8 +159,12 @@ export default async function CuentasPage({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-line bg-card p-4">
-      <p className="text-[0.6875rem] font-semibold tracking-[0.14em] text-fog uppercase">{label}</p>
-      <p className="display-xl mt-2 text-[1.375rem] leading-none text-brand">{value}</p>
+      <p className="text-[0.6875rem] font-semibold tracking-[0.14em] text-fog uppercase">
+        {label}
+      </p>
+      <p className="display-xl mt-2 text-[1.375rem] leading-none text-brand">
+        {value}
+      </p>
     </div>
   );
 }

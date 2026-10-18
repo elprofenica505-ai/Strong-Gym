@@ -186,7 +186,12 @@ const financeSeedNuevo = readFileSync(join(ROOT, "supabase/migrations/00011_fina
 
 const profilesReadFix = readFileSync(join(ROOT, "supabase/migrations/00012_profiles_self_read.sql"), "utf8");
 
-const crmSql = readFileSync(join(ROOT, "supabase/migrations/00020_clients_crm.sql"), "utf8");
+const crmCompat = readFileSync(join(ROOT, "supabase/migrations/00022_crm_finance_compat.sql"), "utf8");
+const financeRead = readFileSync(join(ROOT, "supabase/migrations/00023_finance_read_bank_accounts.sql"), "utf8");
+const accountPlanSql = readFileSync(join(ROOT, "supabase/migrations/00025_account_assigned_plan.sql"), "utf8");
+const bookingReadSql = readFileSync(join(ROOT, "supabase/migrations/00026_booking_read_policy.sql"), "utf8");
+const clientFinanceSql = readFileSync(join(ROOT, "supabase/migrations/00027_client_finance_read.sql"), "utf8");
+const crmSql = readFileSync(join(ROOT, "supabase/migrations/00020_clients_crm.sql"), "utf8") + "\n\n" + crmCompat + "\n\n" + financeRead + "\n\n" + accountPlanSql + "\n\n" + bookingReadSql + "\n\n" + clientFinanceSql;
 
 /* --- 3b. SETUP.sql: instalación desde cero --- */
 const cabecera = `-- ============================================================
@@ -292,6 +297,14 @@ function sincronizarGenerado(archivo, contenido) {
 }
 
 sincronizarGenerado(join(ROOT, "supabase/FASE2.sql"), "-- ACTUALIZACIÓN FASE 2. Base con Fase 1 y fix 00012 aplicados.\n-- Sólo estructura CRM y vinculación de perfiles existentes; no borra ni carga ejemplos.\n-- Seed opcional separado: migrations/00021_clients_seed.sql.\n\n" + crmSql);
+sincronizarGenerado(join(ROOT, "supabase/COMPATIBILIDAD-CRM.sql"), crmCompat);
+sincronizarGenerado(join(ROOT, "supabase/LECTURA-CAJA.sql"), financeRead);
+sincronizarGenerado(join(ROOT, "supabase/COBROS-GASTOS.sql"), readFileSync(join(ROOT, "supabase/migrations/00024_finance_movements.sql"), "utf8"));
+sincronizarGenerado(join(ROOT, "supabase/PLAN-CUENTA.sql"), accountPlanSql);
+sincronizarGenerado(join(ROOT, "supabase/LECTURA-RESERVAS.sql"), bookingReadSql);
+sincronizarGenerado(join(ROOT, "supabase/SALDO-CLIENTE.sql"), clientFinanceSql);
+sincronizarGenerado(join(ROOT, "supabase/DEUDAS-ABONOS.sql"), readFileSync(join(ROOT, "supabase/migrations/00028_debts_payments.sql"), "utf8"));
+sincronizarGenerado(join(ROOT, "supabase/VUELTO-ABONOS.sql"), readFileSync(join(ROOT, "supabase/migrations/00029_cash_change.sql"), "utf8"));
 sincronizarGenerado(SETUP, setupNuevo);
 sincronizarGenerado(UPDATE, actualizarNuevo);
 

@@ -175,7 +175,10 @@ const en = {
     subtitle:
       "Walk-in access to the weights and machine floor, plus coached boxing and dance cardio classes.",
     duration: "min",
-    capacity: "spots",
+    capacity: "Capacity: {count} people",
+    sessionCapacity: "Capacity: {count} people per session",
+    bookSchedule: "View schedule and book",
+    availabilityHint: "Available spots are shown when you choose a date and time.",
     intensity: "Intensity",
     intensityLevels: {
       low: "Low",
@@ -225,6 +228,7 @@ const en = {
     sessionFull: "That class is full, try another time.",
     pastSession: "That class has already happened.",
     cancelledByGym: "The class was cancelled by the gym.",
+    bookingUnconfirmed: "We could not verify the booking or cancellation in your account. Check My account before repeating; do not book again yet.",
     bookingError: "We could not complete the booking. Please try again.",
     weekOf: "Week of",
     weeklySummary: "classes this week",

@@ -9,9 +9,13 @@
     "dev": "next dev",
     "lint": "eslint .",
     "start": "next start",
-    "test:sql": "node scripts/test-sql.mjs && node scripts/test-crm-sql.mjs",
+    "test:sql": "node scripts/test-sql.mjs && node scripts/test-crm-sql.mjs && node scripts/test-crm-compat-sql.mjs && node scripts/test-finance-write-sql.mjs && node scripts/test-account-plan-sql.mjs && node scripts/test-booking-read-sql.mjs && node scripts/test-client-finance-sql.mjs && node scripts/test-debts-sql.mjs",
     "typecheck": "tsc --noEmit",
-    "test:auth": "node --experimental-strip-types --test tests/*.test.mjs"
+    "test:metadata": "node scripts/test-metadata.mjs",
+    "test:finance:rsc": "node scripts/test-finance-rsc.mjs",
+    "test:auth": "node --experimental-strip-types --test tests/*.test.mjs",
+    "test:layout": "node scripts/test-shell-layout.mjs",
+    "test:finance:concurrency": "node scripts/test-finance-concurrency.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",
@@ -31,11 +35,15 @@
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.9",
     "@tailwindcss/postcss": "^4.3.3",
+    "@testing-library/react": "^16.3.3",
     "@types/node": "^24.9.2",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.5",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.4.0",
+    "jsdom": "^26.1.0",
+    "pg": "^8.23.1",
+    "playwright-core": "^1.64.1",
     "sharp": "^0.35.5",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3"

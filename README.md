@@ -13,6 +13,25 @@ y el código en **GitHub**.
 
 ---
 
+## Desarrollo del sistema de gestión
+
+El objetivo es completar el producto conectado y probarlo con datos inventados;
+no limitarlo al modo local de demostración. La limpieza final se realizará sólo
+tras aprobar la demostración, sin eliminar estructura ni funcionalidades.
+
+- [Plan de producto y criterios de entrega](./docs/PLAN-PRODUCTO.md).
+- [Inventario funcional y bloqueantes reales](./docs/INVENTARIO-FUNCIONAL.md).
+- [Resultados de la validación del inventario](./docs/VALIDACION-INVENTARIO.md).
+- [B.1: lecturas conectadas sin datos ficticios ni vacíos falsos](./docs/B1-LECTURAS.md).
+- [Reparación de reservas/móvil, pruebas y siguiente paso financiero](./docs/REPARACION-RESERVAS-MOVIL.md).
+- [C.1: cobros por servicio, gastos, comprobantes e instalación](./docs/COBROS-GASTOS.md).
+
+Estas referencias distinguen las funciones implementadas de las parciales o
+pendientes. La descripción histórica que sigue no certifica que cada acción del
+panel persista ni que el reset legado prepare por sí solo la entrega al dueño.
+
+---
+
 ## Qué incluye
 
 ### Público (cualquiera puede entrar)
@@ -91,11 +110,15 @@ npm run dev        # servidor de desarrollo (localhost:3000)
 npm run build      # compilar para producción
 npm start          # correr la versión compilada
 npm run typecheck  # revisar los tipos de TypeScript
-npm run test:sql   # probar el SQL de Supabase en un Postgres real (34 pruebas)
+npm run test:metadata # tras build demo: verificar URLs e imágenes para compartir
+npm run test:sql   # base, CRM y compatibilidad contra PostgreSQL embebido (PGlite)
+npm run test:layout # tras build e instalar Chromium: shell, finanzas y comprobantes, 144 casos
 npm run build:sql  # regenerar supabase/SETUP.sql tras cambiar los horarios
 ```
 
 ---
+
+Configuración de URLs y pruebas de metadatos: [docs/METADATOS.md](./docs/METADATOS.md).
 
 ## Estructura del proyecto
 
@@ -271,3 +294,13 @@ CRM con etiquetas comerciales, alta sin cuenta web, QR/carnet opcional y atenci�
 Ver [instalación, alcance y pruebas](docs/FASE2-CLIENTES.md). Para una base existente
 con Fase 1 y 00012, aplicar sólo `supabase/FASE2.sql`; ejemplos opcionales separados
 en `00021_clients_seed.sql`. No se instalan automáticamente en producción.
+
+
+### Base con `bank_accounts` y saldos separados
+
+Si ya instalaste CRM y el diagnóstico confirma esa estructura financiera,
+consultá [la compatibilidad incremental](docs/FASE2-CLIENTES.md#compatibilidad-incremental-confirmada-por-csv-00022)
+y `supabase/COMPATIBILIDAD-CRM.sql`. No reinstales SETUP/ACTUALIZAR sobre esa base.
+El parche permite leer ficha/opciones y conserva saldos separados; **los cobros
+CRM quedan bloqueados** en ese modelo hasta revisar su actualización de Caja.
+No equivale a una migración completa de finanzas ni valida reportes FASE1.

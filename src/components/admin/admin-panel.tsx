@@ -20,7 +20,12 @@ import { useDictionary } from "@/components/providers/dictionary-provider";
 import { ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { accentOnDark, cn } from "@/lib/utils";
-import { formatDateNumeric, formatLongDate, formatTime, gymNow } from "@/lib/schedule";
+import {
+  formatDateNumeric,
+  formatLongDate,
+  formatTime,
+  gymNow,
+} from "@/lib/schedule";
 import type { ContactMessage, GymClass } from "@/lib/types";
 
 /* ============================================================
@@ -63,15 +68,21 @@ interface Props {
 
 type Tab = "overview" | "bookings" | "messages" | "classes";
 
-export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }: Props) {
+export function AdminPanel({
+  bookings,
+  messages,
+  classes,
+  memberCount,
+  isDemo,
+}: Props) {
   const { dict, locale } = useDictionary();
   const [tab, setTab] = useState<Tab>("overview");
 
-  const [bookingStatuses, setBookingStatuses] = useState<Record<string, string>>(() =>
-    Object.fromEntries(bookings.map((b) => [b.id, b.status])),
-  );
-  const [readMessages, setReadMessages] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(messages.map((m) => [m.id, m.is_read])),
+  const [bookingStatuses, setBookingStatuses] = useState<
+    Record<string, string>
+  >(() => Object.fromEntries(bookings.map((b) => [b.id, b.status])));
+  const [readMessages, setReadMessages] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(messages.map((m) => [m.id, m.is_read])),
   );
   const [classActive, setClassActive] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(classes.map((c) => [c.id, c.isActive])),
@@ -92,8 +103,12 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
     return new Date(now.getTime() - diff * 86_400_000);
   }, [now]);
 
-  const bookingsThisWeek = bookings.filter((b) => new Date(b.startsAt) >= startOfWeek).length;
-  const unreadCount = Object.values(readMessages).filter((value) => !value).length;
+  const bookingsThisWeek = bookings.filter(
+    (b) => new Date(b.startsAt) >= startOfWeek,
+  ).length;
+  const unreadCount = Object.values(readMessages).filter(
+    (value) => !value,
+  ).length;
 
   const stats = [
     {
@@ -118,10 +133,20 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
     },
   ];
 
-  const tabs: { id: Tab; label: string; Icon: typeof LayoutDashboard; badge?: number }[] = [
+  const tabs: {
+    id: Tab;
+    label: string;
+    Icon: typeof LayoutDashboard;
+    badge?: number;
+  }[] = [
     { id: "overview", label: dict.admin.tabs.overview, Icon: LayoutDashboard },
     { id: "bookings", label: dict.admin.tabs.bookings, Icon: CalendarDays },
-    { id: "messages", label: dict.admin.tabs.messages, Icon: MessageSquare, badge: unreadCount },
+    {
+      id: "messages",
+      label: dict.admin.tabs.messages,
+      Icon: MessageSquare,
+      badge: unreadCount,
+    },
     { id: "classes", label: dict.admin.tabs.classes, Icon: BadgeCheck },
   ];
 
@@ -133,9 +158,15 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
         </p>
       ) : null}
 
-      <a href={`/${locale}/panel/clientes`} className="rounded-2xl border border-brand/40 bg-brand/10 p-5 transition-colors hover:border-brand">
+      <a
+        href={`/${locale}/panel/clientes`}
+        className="rounded-2xl border border-brand/40 bg-brand/10 p-5 transition-colors hover:border-brand"
+      >
         <p className="text-lg font-bold text-ink">Clientes · recepción y QR</p>
-        <p className="mt-1 text-sm text-fog">Alta sin cuenta, búsqueda manual, etiquetas, carnet, asistencias y cobros confirmados.</p>
+        <p className="mt-1 text-sm text-fog">
+          Alta sin cuenta, búsqueda manual, etiquetas, carnet, asistencias y
+          cobros confirmados.
+        </p>
       </a>
 
       {/* --- Acceso rápido a la Fase 1: caja --- */}
@@ -152,7 +183,8 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
               Caja y cuentas
             </p>
             <p className="text-[0.75rem] text-fog">
-              Ingresos, egresos, cuentas por cobrar y los 10 métodos de pago del gimnasio
+              Ingresos, egresos, cuentas por cobrar y los 10 métodos de pago del
+              gimnasio
             </p>
           </div>
         </div>
@@ -175,7 +207,8 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
               Herramientas
             </p>
             <p className="text-[0.75rem] text-fog">
-              Importar clientes desde CSV, borrar los datos de ejemplo y ver la guía paso a paso
+              Importar clientes desde CSV, preparar la entrega al dueño y ver la
+              guía paso a paso
             </p>
           </div>
         </div>
@@ -198,7 +231,9 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
             onClick={() => setTab(id)}
             className={cn(
               "flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-[0.8125rem] font-medium transition-colors",
-              tab === id ? "bg-brand text-onbrand" : "text-mist hover:bg-cloud hover:text-ink",
+              tab === id
+                ? "bg-brand text-onbrand"
+                : "text-mist hover:bg-cloud hover:text-ink",
             )}
           >
             <Icon className="size-4" aria-hidden="true" />
@@ -207,7 +242,9 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
               <span
                 className={cn(
                   "rounded-full px-1.5 py-0.5 text-[0.625rem] font-bold",
-                  tab === id ? "bg-onbrand/15 text-onbrand" : "bg-alert/20 text-alert",
+                  tab === id
+                    ? "bg-onbrand/15 text-onbrand"
+                    : "bg-alert/20 text-alert",
                 )}
               >
                 {badge}
@@ -230,8 +267,12 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
                   <Icon className="size-5" aria-hidden="true" />
                 </span>
                 <div>
-                  <p className="display-xl text-[1.75rem] leading-none text-brand">{value}</p>
-                  <p className="mt-1 text-[0.75rem] leading-snug text-fog">{label}</p>
+                  <p className="display-xl text-[1.75rem] leading-none text-brand">
+                    {value}
+                  </p>
+                  <p className="mt-1 text-[0.75rem] leading-snug text-fog">
+                    {label}
+                  </p>
                 </div>
               </div>
             ))}
@@ -241,16 +282,26 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
             {/* Próximas clases de hoy */}
             <div className="rounded-2xl border border-line bg-card p-5">
               <h2 className="mb-4 flex items-center gap-2 text-[0.9375rem] font-semibold text-ink">
-                <CalendarDays className="size-4 text-brand" aria-hidden="true" />
+                <CalendarDays
+                  className="size-4 text-brand"
+                  aria-hidden="true"
+                />
                 {dict.nav.schedule} · {formatLongDate(now, locale)}
               </h2>
 
               <ul className="flex flex-col divide-y divide-line">
                 {bookings
-                  .filter((b) => formatDateNumeric(new Date(b.startsAt), "es") === todayISO)
+                  .filter(
+                    (b) =>
+                      formatDateNumeric(new Date(b.startsAt), "es") ===
+                      todayISO,
+                  )
                   .slice(0, 8)
                   .map((booking) => (
-                    <li key={booking.id} className="flex items-center gap-3 py-2.5">
+                    <li
+                      key={booking.id}
+                      className="flex items-center gap-3 py-2.5"
+                    >
                       <span
                         className="size-2 shrink-0 rounded-full"
                         style={{ backgroundColor: booking.classColor }}
@@ -296,7 +347,10 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
                       <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-paper">
                         <span
                           className="block h-full rounded-full"
-                          style={{ width: `${load}%`, backgroundColor: accentOnDark(gymClass.color) }}
+                          style={{
+                            width: `${load}%`,
+                            backgroundColor: accentOnDark(gymClass.color),
+                          }}
                         />
                       </span>
                       <span className="w-8 shrink-0 text-right text-[0.6875rem] tabular-nums text-fog">
@@ -343,10 +397,14 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
 
                 <tbody className="divide-y divide-line">
                   {bookings.slice(0, 100).map((booking) => {
-                    const status = bookingStatuses[booking.id] ?? booking.status;
+                    const status =
+                      bookingStatuses[booking.id] ?? booking.status;
 
                     return (
-                      <tr key={booking.id} className="transition-colors hover:bg-cloud">
+                      <tr
+                        key={booking.id}
+                        className="transition-colors hover:bg-cloud"
+                      >
                         <td className="px-5 py-3.5">
                           <span className="block text-[0.8125rem] font-medium text-ink">
                             {booking.memberName}
@@ -363,7 +421,9 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
                               style={{ backgroundColor: booking.classColor }}
                               aria-hidden="true"
                             />
-                            <span className="text-[0.8125rem] text-mist">{booking.className}</span>
+                            <span className="text-[0.8125rem] text-mist">
+                              {booking.className}
+                            </span>
                           </span>
                           <span className="mt-0.5 block text-[0.6875rem] text-fog">
                             {booking.room}
@@ -372,7 +432,10 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
                         </td>
 
                         <td className="px-5 py-3.5 text-[0.8125rem] text-mist">
-                          {formatDateNumeric(new Date(booking.startsAt), locale)}
+                          {formatDateNumeric(
+                            new Date(booking.startsAt),
+                            locale,
+                          )}
                         </td>
 
                         <td className="px-5 py-3.5 text-[0.8125rem] tabular-nums text-mist">
@@ -388,7 +451,10 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
                             <button
                               type="button"
                               onClick={() =>
-                                setBookingStatuses((prev) => ({ ...prev, [booking.id]: "attended" }))
+                                setBookingStatuses((prev) => ({
+                                  ...prev,
+                                  [booking.id]: "attended",
+                                }))
                               }
                               title={dict.admin.actions.markAttended}
                               aria-label={dict.admin.actions.markAttended}
@@ -400,19 +466,28 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
                             <button
                               type="button"
                               onClick={() =>
-                                setBookingStatuses((prev) => ({ ...prev, [booking.id]: "no_show" }))
+                                setBookingStatuses((prev) => ({
+                                  ...prev,
+                                  [booking.id]: "no_show",
+                                }))
                               }
                               title={dict.admin.actions.markNoShow}
                               aria-label={dict.admin.actions.markNoShow}
                               className="grid size-8 place-items-center rounded-lg border border-line text-fog transition-colors hover:border-alert/60 hover:text-alert"
                             >
-                              <ShieldAlert className="size-3.5" aria-hidden="true" />
+                              <ShieldAlert
+                                className="size-3.5"
+                                aria-hidden="true"
+                              />
                             </button>
 
                             <button
                               type="button"
                               onClick={() =>
-                                setBookingStatuses((prev) => ({ ...prev, [booking.id]: "cancelled" }))
+                                setBookingStatuses((prev) => ({
+                                  ...prev,
+                                  [booking.id]: "cancelled",
+                                }))
                               }
                               title={dict.admin.actions.cancelBooking}
                               aria-label={dict.admin.actions.cancelBooking}
@@ -453,13 +528,23 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
                 >
                   <header className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-[0.875rem] font-semibold text-ink">{message.name}</p>
+                      <p className="text-[0.875rem] font-semibold text-ink">
+                        {message.name}
+                      </p>
                       <p className="mt-0.5 flex flex-wrap items-center gap-x-3 text-[0.75rem] text-fog">
-                        <a href={`mailto:${message.email}`} className="hover:text-brand">
+                        <a
+                          href={`mailto:${message.email}`}
+                          className="hover:text-brand"
+                        >
                           {message.email}
                         </a>
                         {message.phone ? <span>{message.phone}</span> : null}
-                        <span>{formatDateNumeric(new Date(message.created_at), locale)}</span>
+                        <span>
+                          {formatDateNumeric(
+                            new Date(message.created_at),
+                            locale,
+                          )}
+                        </span>
                       </p>
                     </div>
 
@@ -471,7 +556,10 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
                       <button
                         type="button"
                         onClick={() =>
-                          setReadMessages((prev) => ({ ...prev, [message.id]: !isRead }))
+                          setReadMessages((prev) => ({
+                            ...prev,
+                            [message.id]: !isRead,
+                          }))
                         }
                         className={cn(
                           "rounded-full border px-3 py-1.5 text-[0.6875rem] font-semibold transition-colors",
@@ -510,17 +598,27 @@ export function AdminPanel({ bookings, messages, classes, memberCount, isDemo }:
                 )}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <h2 className="display-xl text-[1.25rem] leading-none" style={{ color: accentOnDark(gymClass.color) }}>
+                  <h2
+                    className="display-xl text-[1.25rem] leading-none"
+                    style={{ color: accentOnDark(gymClass.color) }}
+                  >
                     {gymClass.name}
                   </h2>
 
                   <button
                     type="button"
-                    onClick={() => setClassActive((prev) => ({ ...prev, [gymClass.id]: !active }))}
+                    onClick={() =>
+                      setClassActive((prev) => ({
+                        ...prev,
+                        [gymClass.id]: !active,
+                      }))
+                    }
                     aria-pressed={active}
                     className={cn(
                       "relative h-6 w-11 shrink-0 rounded-full border transition-colors",
-                      active ? "border-brand/60 bg-brand/25" : "border-line bg-paper",
+                      active
+                        ? "border-brand/60 bg-brand/25"
+                        : "border-line bg-paper",
                     )}
                     aria-label={dict.admin.actions.toggleClass}
                   >
@@ -594,8 +692,14 @@ function StatusPill({
       label: dict.account.attended,
       className: "border-emerald-400/40 text-emerald-300 bg-emerald-400/10",
     },
-    no_show: { label: dict.account.noShow, className: "border-alert/40 text-alert bg-alert/10" },
-    cancelled: { label: dict.account.cancelled, className: "border-line text-fog bg-paper/40" },
+    no_show: {
+      label: dict.account.noShow,
+      className: "border-alert/40 text-alert bg-alert/10",
+    },
+    cancelled: {
+      label: dict.account.cancelled,
+      className: "border-line text-fog bg-paper/40",
+    },
   };
 
   const entry = map[status] ?? map.confirmed;
@@ -613,7 +717,13 @@ function StatusPill({
 }
 
 /** Estado vacío reutilizable del panel. */
-export function AdminEmpty({ text, cta }: { text: string; cta?: { href: string; label: string } }) {
+export function AdminEmpty({
+  text,
+  cta,
+}: {
+  text: string;
+  cta?: { href: string; label: string };
+}) {
   return (
     <div className="flex flex-col items-center gap-4 rounded-2xl border border-line bg-card px-6 py-14 text-center">
       <CalendarX className="size-8 text-fog" aria-hidden="true" />

@@ -26,10 +26,10 @@ export function SiteShell({
     <>
       <SideNav open={menuOpen} onClose={closeMenu} />
 
-      <div className="flex min-h-dvh flex-col lg:pl-64">
+      <div className="flex min-h-dvh min-w-0 max-w-full flex-col lg:pl-64">
         {banner}
         <SiteHeader onOpenMenu={openMenu} />
-        <main id="contenido" className="relative flex-1">
+        <main id="contenido" className="relative min-w-0 flex-1">
           {children}
         </main>
         {footer}

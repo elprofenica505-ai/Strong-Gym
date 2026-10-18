@@ -43,16 +43,34 @@ const errorMessages = {
   TOO_LATE: "bookingError",
   NOT_FOUND: "bookingError",
   AUTH: "loginToBook",
+  UNCONFIRMED: "bookingUnconfirmed",
   UNKNOWN: "bookingError",
 } as const;
 
 export function ScheduleBoard({ initialWeekKey }: { initialWeekKey?: string }) {
   const { dict, locale } = useDictionary();
-  const { user, bookedSessionIds, book, cancelBySessionId, toast } = useApp();
+  const {
+    user,
+    bookedSessionIds,
+    book,
+    cancelBySessionId,
+    toast,
+    bookingsLoading,
+    bookingsError,
+    reloadBookings,
+  } = useApp();
 
-  const [week, setWeek] = useState<WeekRange>(() => weekRangeFromKey(initialWeekKey));
+  const [week, setWeek] = useState<WeekRange>(() =>
+    weekRangeFromKey(initialWeekKey),
+  );
   const [sessions, setSessions] = useState<SessionDetail[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const requestedWeek = useRef(initialWeekKey ?? "");
+  const loadRequest = useRef(0);
+  const invalidateRequests = useCallback(() => {
+    loadRequest.current++;
+  }, []);
   const [activeDay, setActiveDay] = useState<string | null>(null);
   const [classFilter, setClassFilter] = useState<string>("all");
   const [pendingSession, setPendingSession] = useState<string | null>(null);
@@ -61,42 +79,73 @@ export function ScheduleBoard({ initialWeekKey }: { initialWeekKey?: string }) {
 
   /* ---------- Carga de datos ---------- */
 
-  const load = useCallback(
-    async (key: string) => {
-      setLoading(true);
-      try {
-        const url = key ? `/api/sessions?week=${encodeURIComponent(key)}` : "/api/sessions";
-        const response = await fetch(url, { cache: "no-store" });
-        if (!response.ok) throw new Error("fetch failed");
+  const load = useCallback(async (key: string) => {
+    const request = ++loadRequest.current;
+    requestedWeek.current = key;
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const url = key
+        ? `/api/sessions?week=${encodeURIComponent(key)}`
+        : "/api/sessions";
+      const response = await fetch(url, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!response.ok) throw new Error("fetch failed");
 
-        const data = (await response.json()) as {
-          weekKey: string;
-          sessions: SessionDetail[];
-        };
+      const data = (await response.json()) as {
+        weekKey: string;
+        sessions: SessionDetail[];
+      };
 
-        setSessions(data.sessions);
-        setWeek(weekRangeFromKey(data.weekKey));
+      if (
+        !Array.isArray(data.sessions) ||
+        typeof data.weekKey !== "string" ||
+        data.sessions.some(
+          (session) =>
+            !session ||
+            typeof session.id !== "string" ||
+            !session.gymClass ||
+            typeof session.gymClass.slug !== "string" ||
+            typeof session.gymClass.name_es !== "string" ||
+            typeof session.gymClass.name_en !== "string" ||
+            typeof session.gymClass.color !== "string" ||
+            !Number.isFinite(Date.parse(session.starts_at)) ||
+            !Number.isFinite(Date.parse(session.ends_at)) ||
+            !Number.isSafeInteger(session.capacity) ||
+            session.capacity < 0 ||
+            !Number.isSafeInteger(session.bookedCount) ||
+            session.bookedCount < 0 ||
+            !Number.isSafeInteger(session.spotsLeft) ||
+            session.spotsLeft < 0,
+        )
+      )
+        throw new Error("INVALID_SESSIONS");
+      if (request !== loadRequest.current) return;
+      setSessions(data.sessions);
+      setWeek(weekRangeFromKey(data.weekKey));
 
-        // Mantenemos la URL sincronizada para poder compartir una semana
-        // concreta, sin disparar otro render del servidor.
-        if (typeof window !== "undefined") {
-          const url = new URL(window.location.href);
-          url.searchParams.set("week", data.weekKey);
-          window.history.replaceState(null, "", url.toString());
-        }
-      } catch {
-        setSessions([]);
-        toast(dict.schedule.bookingError, "error");
-      } finally {
-        setLoading(false);
+      // Mantenemos la URL sincronizada para poder compartir una semana
+      // concreta, sin disparar otro render del servidor.
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.set("week", data.weekKey);
+        window.history.replaceState(null, "", url.toString());
       }
-    },
-    [dict.schedule.bookingError, toast],
-  );
+    } catch {
+      if (request !== loadRequest.current) return;
+      setSessions(null);
+      setLoadError(true);
+    } finally {
+      if (request === loadRequest.current) setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     void load(initialWeekKey ?? "");
-  }, [load, initialWeekKey]);
+    return invalidateRequests;
+  }, [load, initialWeekKey, invalidateRequests]);
 
   /* ---------- Derivados ---------- */
 
@@ -104,22 +153,29 @@ export function ScheduleBoard({ initialWeekKey }: { initialWeekKey?: string }) {
   const todayISO = useMemo(() => toISODate(gymNow()), []);
 
   const disciplines = useMemo(() => {
-    const map = new Map<string, { slug: string; name: string; color: string }>();
+    const map = new Map<
+      string,
+      { slug: string; name: string; color: string }
+    >();
     for (const session of sessions ?? []) {
       if (map.has(session.gymClass.slug)) continue;
       map.set(session.gymClass.slug, {
         slug: session.gymClass.slug,
-        name: locale === "es" ? session.gymClass.name_es : session.gymClass.name_en,
+        name:
+          locale === "es" ? session.gymClass.name_es : session.gymClass.name_en,
         color: session.gymClass.color,
       });
     }
-    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, locale));
+    return [...map.values()].sort((a, b) =>
+      a.name.localeCompare(b.name, locale),
+    );
   }, [sessions, locale]);
 
   const sessionsByDay = useMemo(() => {
     const map = new Map<string, SessionDetail[]>();
     for (const session of sessions ?? []) {
-      if (classFilter !== "all" && session.gymClass.slug !== classFilter) continue;
+      if (classFilter !== "all" && session.gymClass.slug !== classFilter)
+        continue;
       const key = toISODate(new Date(session.starts_at));
       const list = map.get(key);
       if (list) list.push(session);
@@ -128,9 +184,12 @@ export function ScheduleBoard({ initialWeekKey }: { initialWeekKey?: string }) {
     return map;
   }, [sessions, classFilter]);
 
-  const visibleDays = activeDay ? days.filter((d) => toISODate(d) === activeDay) : days;
+  const visibleDays = activeDay
+    ? days.filter((d) => toISODate(d) === activeDay)
+    : days;
   const totalVisible = useMemo(
-    () => [...sessionsByDay.values()].reduce((acc, list) => acc + list.length, 0),
+    () =>
+      [...sessionsByDay.values()].reduce((acc, list) => acc + list.length, 0),
     [sessionsByDay],
   );
 
@@ -153,7 +212,10 @@ export function ScheduleBoard({ initialWeekKey }: { initialWeekKey?: string }) {
   async function onBook(session: SessionDetail) {
     if (!user) {
       setNeedLogin(true);
-      dayRefs.current["login"]?.scrollIntoView({ behavior: "smooth", block: "center" });
+      dayRefs.current["login"]?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
       return;
     }
 
@@ -163,17 +225,7 @@ export function ScheduleBoard({ initialWeekKey }: { initialWeekKey?: string }) {
 
     if (result.ok) {
       toast(dict.schedule.bookSuccess, "success");
-      setSessions((prev) =>
-        (prev ?? []).map((item) =>
-          item.id === session.id
-            ? {
-                ...item,
-                bookedCount: item.bookedCount + 1,
-                spotsLeft: Math.max(0, item.spotsLeft - 1),
-              }
-            : item,
-        ),
-      );
+      await load(week.key);
       return;
     }
 
@@ -189,21 +241,11 @@ export function ScheduleBoard({ initialWeekKey }: { initialWeekKey?: string }) {
 
     if (result.ok) {
       toast(dict.schedule.cancelSuccess, "info");
-      setSessions((prev) =>
-        (prev ?? []).map((item) =>
-          item.id === session.id
-            ? {
-                ...item,
-                bookedCount: Math.max(0, item.bookedCount - 1),
-                spotsLeft: item.spotsLeft + 1,
-              }
-            : item,
-        ),
-      );
+      await load(week.key);
       return;
     }
 
-    toast(dict.schedule.bookingError, "error");
+    toast(result.error === "UNCONFIRMED" ? dict.schedule.bookingUnconfirmed : dict.schedule.bookingError, "error");
   }
 
   /* ---------- Render ---------- */
@@ -312,7 +354,10 @@ export function ScheduleBoard({ initialWeekKey }: { initialWeekKey?: string }) {
               onClick={() => {
                 setActiveDay(iso);
                 requestAnimationFrame(() => {
-                  dayRefs.current[iso]?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  dayRefs.current[iso]?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
                 });
               }}
             />
@@ -336,7 +381,9 @@ export function ScheduleBoard({ initialWeekKey }: { initialWeekKey?: string }) {
               <p className="text-[0.875rem] font-semibold text-ink">
                 {dict.schedule.loginToBook}
               </p>
-              <p className="mt-0.5 text-[0.8125rem] text-fog">{dict.schedule.loginHint}</p>
+              <p className="mt-0.5 text-[0.8125rem] text-fog">
+                {dict.schedule.loginHint}
+              </p>
             </div>
           </div>
 
@@ -344,7 +391,11 @@ export function ScheduleBoard({ initialWeekKey }: { initialWeekKey?: string }) {
             <ButtonLink href={`/${locale}/ingresar`} size="sm">
               {dict.nav.login}
             </ButtonLink>
-            <ButtonLink href={`/${locale}/registro`} variant="outline" size="sm">
+            <ButtonLink
+              href={`/${locale}/registro`}
+              variant="outline"
+              size="sm"
+            >
               {dict.nav.register}
             </ButtonLink>
           </div>
@@ -352,13 +403,36 @@ export function ScheduleBoard({ initialWeekKey }: { initialWeekKey?: string }) {
       ) : null}
 
       {/* --- Listado de clases --- */}
-      {loading && !sessions ? (
+      {loadError || bookingsError ? (
+        <div
+          role="alert"
+          className="rounded-2xl border border-alert/40 bg-card p-6 text-mist"
+        >
+          <p>
+            {locale === "es"
+              ? "No pudimos confirmar horarios, cupos o tus reservas. Esto no significa que no haya clases ni reservas."
+              : "We could not verify the schedule, availability or your bookings. This does not mean there are no classes or bookings."}
+          </p>
+          <button
+            type="button"
+            className="mt-4 rounded-full border border-brand px-4 py-2"
+            onClick={() => {
+              if (loadError) void load(requestedWeek.current);
+              if (bookingsError) void reloadBookings();
+            }}
+          >
+            {locale === "es" ? "Reintentar consulta" : "Retry query"}
+          </button>
+        </div>
+      ) : loading || bookingsLoading ? (
         <SkeletonList />
       ) : totalVisible === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-line bg-card px-6 py-16 text-center">
           <CalendarX className="size-8 text-fog" aria-hidden="true" />
           <p className="text-[0.9375rem] text-mist">
-            {classFilter === "all" ? dict.schedule.noSessions : dict.schedule.noResults}
+            {classFilter === "all"
+              ? dict.schedule.noSessions
+              : dict.schedule.noResults}
           </p>
         </div>
       ) : (
@@ -397,7 +471,10 @@ export function ScheduleBoard({ initialWeekKey }: { initialWeekKey?: string }) {
                   <span className="ml-auto shrink-0 text-[0.75rem] text-fog">
                     {daySessions.length === 1
                       ? dict.schedule.oneClassCount
-                      : dict.schedule.classesCount.replace("{count}", String(daySessions.length))}
+                      : dict.schedule.classesCount.replace(
+                          "{count}",
+                          String(daySessions.length),
+                        )}
                   </span>
                 </header>
 
@@ -516,7 +593,10 @@ function DayButton({
         {bottom}
         {isToday ? (
           <span
-            className={cn("size-1.5 rounded-full", active ? "bg-onbrand" : "bg-brand")}
+            className={cn(
+              "size-1.5 rounded-full",
+              active ? "bg-onbrand" : "bg-brand",
+            )}
             aria-hidden="true"
           />
         ) : null}
@@ -571,7 +651,8 @@ function SessionRow({
   onBook: () => void;
   onCancel: () => void;
 }) {
-  const name = locale === "es" ? session.gymClass.name_es : session.gymClass.name_en;
+  const name =
+    locale === "es" ? session.gymClass.name_es : session.gymClass.name_en;
   const startsAt = new Date(session.starts_at);
   const endsAt = new Date(session.ends_at);
   const isFull = session.spotsLeft <= 0;
@@ -603,7 +684,9 @@ function SessionRow({
         {/* Detalle */}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h4 className="display-xl text-[1.125rem] leading-none sm:text-[1.25rem]">{name}</h4>
+            <h4 className="display-xl text-[1.125rem] leading-none sm:text-[1.25rem]">
+              {name}
+            </h4>
 
             <span
               className="rounded-full px-2 py-0.5 text-[0.625rem] font-bold tracking-wide uppercase"
@@ -644,7 +727,10 @@ function SessionRow({
                 className="h-full rounded-full transition-all duration-500"
                 style={{
                   width: `${occupancy}%`,
-                  backgroundColor: isFull && !isBooked ? "#ff5b26" : accentOnDark(session.gymClass.color),
+                  backgroundColor:
+                    isFull && !isBooked
+                      ? "#ff5b26"
+                      : accentOnDark(session.gymClass.color),
                 }}
               />
             </div>
@@ -658,7 +744,9 @@ function SessionRow({
         <div className="shrink-0 sm:w-40">
           {isPast ? (
             <span className="flex w-full items-center justify-center gap-2 rounded-full border border-line px-4 py-2.5 text-[0.75rem] font-semibold text-fog">
-              {isBooked ? <Check className="size-3.5" aria-hidden="true" /> : null}
+              {isBooked ? (
+                <Check className="size-3.5" aria-hidden="true" />
+              ) : null}
               {isBooked ? labels.booked : labels.finished}
             </span>
           ) : isBooked ? (

@@ -122,3 +122,131 @@ test("falta de migración se muestra como error, no datos demo ni éxito", async
   assert.equal(response.status, 503);
   assert.ok((await response.json()).error.includes("FASE2.sql"));
 });
+
+const detailId = "ac000000-0000-4000-8000-000000000001";
+const detailRequest = () =>
+  new Request(`https://gym.example/api/admin/clients?id=${detailId}`);
+test("API detalle vacío/inválido falla explícitamente, nunca responde éxito null", async () => {
+  for (const data of [null, {}, { client: { id: "otro" } }]) {
+    reset();
+    globalThis.__crmTest.db.rpc = async () => ({ data, error: null });
+    const response = await GET(detailRequest());
+    assert.ok([404, 503].includes(response.status));
+    assert.match(
+      (await response.json()).code,
+      /^CRM_DETAIL_(EMPTY|INVALID_RESPONSE)$/,
+    );
+  }
+});
+test("API diferencia error de esquema/permisos por operación sin filtrar SQL, PII ni mensajes internos", async (t) => {
+  const logs = [];
+  t.mock.method(console, "error", (...args) => logs.push(args));
+  for (const code of ["42703", "42501", "PGRST202", "unknown unsafe"]) {
+    reset();
+    globalThis.__crmTest.db.rpc = async () => ({
+      data: null,
+      error: {
+        code,
+        message: "secret-email@test SQL select full_name from profiles",
+      },
+    });
+    const response = await GET(detailRequest());
+    assert.equal(response.status, 503);
+    const body = await response.json();
+    assert.equal(
+      body.code,
+      `CRM_DETAIL_${code === "unknown unsafe" ? "UNKNOWN" : code}`,
+    );
+    assert.doesNotMatch(JSON.stringify(body), /secret-email|select full_name/);
+  }
+  assert.doesNotMatch(
+    JSON.stringify(logs),
+    /secret-email|select full_name|unknown unsafe/,
+  );
+});
+test("API detalle retorna datos de la ficha pedida y mantiene no-store", async () => {
+  reset();
+  const data = {
+    client: { id: detailId },
+    card: "token",
+    payments: [],
+    events: [],
+    visits: [],
+  };
+  globalThis.__crmTest.db.rpc = async () => ({ data, error: null });
+  const response = await GET(detailRequest());
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), data);
+  assert.equal(response.headers.get("cache-control"), "private, no-store");
+});
+
+test("API opciones usa RPC protegida y conserva el bloqueo financiero declarado", async () => {
+  reset();
+  let name;
+  const data = {
+    plans: [],
+    methods: [],
+    accounts: [],
+    payments_enabled: false,
+    finance_layout: "bank_accounts_split",
+    payment_block_reason: "Pendiente revisar Caja",
+  };
+  globalThis.__crmTest.db.rpc = async (n) => {
+    name = n;
+    return { data, error: null };
+  };
+  const response = await GET(
+    new Request("https://gym.example/api/admin/clients?mode=options"),
+  );
+  assert.equal(name, "crm_options");
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), data);
+});
+test("API opciones sin compatibilidad indica el incremental, no reinstalar la base", async () => {
+  reset();
+  globalThis.__crmTest.db.rpc = async () => ({
+    data: null,
+    error: { code: "PGRST202" },
+  });
+  const response = await GET(
+    new Request("https://gym.example/api/admin/clients?mode=options"),
+  );
+  assert.equal(response.status, 503);
+  const data = await response.json();
+  assert.equal(data.code, "CRM_OPTIONS_COMPAT_REQUIRED");
+  assert.match(data.error, /COMPATIBILIDAD-CRM.sql/);
+});
+test("API opciones incompletas no habilitan cobros por defecto", async () => {
+  reset();
+  globalThis.__crmTest.db.rpc = async () => ({
+    data: { plans: [], methods: [], accounts: [] },
+    error: null,
+  });
+  const response = await GET(
+    new Request("https://gym.example/api/admin/clients?mode=options"),
+  );
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).code, "CRM_OPTIONS_INVALID_RESPONSE");
+});
+test("API devuelve bloqueo de cobro financiero como conflicto controlado", async () => {
+  reset();
+  globalThis.__crmTest.db.rpc = async () => ({
+    data: null,
+    error: { code: "P0001", message: "FINANCE_REVIEW_REQUIRED" },
+  });
+  const response = await POST(
+    req({
+      action: "payment",
+      id: detailId,
+      requestId: detailId,
+      amount: 500,
+      currency: "NIO",
+      method: "cash",
+      account: "cash",
+      concept: "Prueba",
+      fx: 1,
+    }),
+  );
+  assert.equal(response.status, 409);
+  assert.match((await response.json()).error, /bloqueados/);
+});
