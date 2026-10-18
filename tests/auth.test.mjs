@@ -8,9 +8,12 @@ const identity = {
   user_metadata: { full_name: "Admin de prueba", role: "admin" },
 };
 
-function client({ role = "admin", profileError = null, missing = false, authError = null, throwProfile = false } = {}) {
+function client({ role = "admin", profileError = null, missing = false, authError = null, throwProfile = false, levels = { currentLevel: "aal2", nextLevel: "aal2" }, aalError = null } = {}) {
   return {
-    auth: { getUser: async () => ({ data: { user: identity }, error: authError }) },
+    auth: {
+      getUser: async () => ({ data: { user: identity }, error: authError }),
+      mfa: { getAuthenticatorAssuranceLevel: async () => ({ data: levels, error: aalError }) },
+    },
     from(table) {
       assert.equal(table, "profiles");
       return {
@@ -70,4 +73,29 @@ test("sin usuario autenticado no hay acceso", async () => {
   const mock = client();
   mock.auth.getUser = async () => ({ data: { user: null }, error: null });
   assert.equal(await resolveCurrentUser(mock), null);
+});
+
+test("personal sin MFA verificado (aal1) no entra al panel aunque tenga rol admin", async () => {
+  for (const levels of [
+    { currentLevel: "aal1", nextLevel: "aal1" },
+    { currentLevel: "aal1", nextLevel: "aal2" },
+  ]) {
+    const user = await resolveCurrentUser(client({ role: "admin", levels }));
+    assert.equal(user.role, "admin");
+    assert.equal(canAccessPanel(user), false);
+  }
+});
+
+test("nivel de sesión ilegible o desconocido bloquea al personal", async () => {
+  const unreadable = await resolveCurrentUser(client({ role: "staff", aalError: { message: "x" } }));
+  assert.equal(unreadable.mfa, "unavailable");
+  assert.equal(canAccessPanel(unreadable), false);
+  const unknown = await resolveCurrentUser(client({ role: "staff", levels: { currentLevel: "aal3", nextLevel: null } }));
+  assert.equal(canAccessPanel(unknown), false);
+});
+
+test("clientes (member) no requieren MFA para su propia cuenta", async () => {
+  const user = await resolveCurrentUser(client({ role: "member", levels: { currentLevel: "aal1", nextLevel: "aal1" } }));
+  assert.equal(user.mfa, "not_required");
+  assert.equal(canAccessPanel(user), false);
 });

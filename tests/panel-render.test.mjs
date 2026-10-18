@@ -43,7 +43,7 @@ export function redirect(path) { throw new Error("REDIRECT:" + path); }
 export function notFound() { throw new Error("NOT_FOUND"); }`;
 const baseUser = {
   id: "00000000-0000-4000-8000-000000000001", email: "test@example.com", fullName: "Admin de prueba",
-  role: "admin", profileStatus: "ready", isDemo: false,
+  role: "admin", mfa: "ok", profileStatus: "ready", isDemo: false,
 };
 
 function context(user) {

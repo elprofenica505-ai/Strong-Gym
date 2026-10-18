@@ -9,12 +9,12 @@ const load = createLoader({
 const { POST } = await load("app/api/admin/reset/route.ts");
 for (const role of [null, "member", "coach", "staff"])
   test(`reset retirado: ${role ?? "anónimo"} no obtiene acceso administrativo`, async () => {
-    globalThis.__resetUser = role ? { id: "test", role } : null;
+    globalThis.__resetUser = role ? { id: "test", role, mfa: "ok" } : null;
     const r = await POST();
     assert.equal(r.status, 403);
   });
 test("reset retirado: admin recibe 410 sin ejecutar SQL ni afirmar éxito", async () => {
-  globalThis.__resetUser = { id: "test", role: "admin" };
+  globalThis.__resetUser = { id: "test", role: "admin", mfa: "ok" };
   const r = await POST();
   assert.equal(r.status, 410);
   assert.equal(r.headers.get("Cache-Control"), "private, no-store");

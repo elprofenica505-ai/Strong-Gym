@@ -173,7 +173,7 @@ function pageLoader(role) {
   const code = queryNames
     .map((fn) =>
       fn === "getCurrentUser"
-        ? `export const getCurrentUser=async()=>({id:'test',role:${JSON.stringify(role)}});`
+        ? `export const getCurrentUser=async()=>({id:'test',role:${JSON.stringify(role)},mfa:'ok'});`
         : `export const ${fn}=async()=>{globalThis.__financePageReads++;throw new Error('PRIVATE DATABASE MESSAGE');};`,
     )
     .join("\n");
@@ -483,7 +483,7 @@ test("Cuentas: deuda USD independiente y mora/facturas no informadas", async () 
   };
   const page = createLoader({
     "@/lib/supabase/env": "export const isSupabaseConfigured=true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;",
-    "@/lib/data/queries": `export const getCurrentUser=async()=>({role:'staff'});export const getAccountsReceivable=async()=>(${JSON.stringify([ar])});`,
+    "@/lib/data/queries": `export const getCurrentUser=async()=>({role:'staff',mfa:'ok'});export const getAccountsReceivable=async()=>(${JSON.stringify([ar])});`,
     "next/navigation": 'export function redirect(){throw Error("redirect");}',
   });
   const { default: Page } = await page("app/[locale]/panel/cuentas/page.tsx");
