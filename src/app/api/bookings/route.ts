@@ -17,10 +17,11 @@ type ErrorCode =
   | "CANCELLED"
   | "NOT_FOUND"
   | "TOO_LATE"
+  | "UNCONFIRMED"
   | "UNKNOWN";
 
 function fail(code: ErrorCode, status: number) {
-  return NextResponse.json({ error: code }, { status });
+  return NextResponse.json({ error: code }, { status, headers: { "Cache-Control": "private, no-store" } });
 }
 
 /** GET /api/bookings → reservas del usuario logueado. */
@@ -62,7 +63,7 @@ export async function POST(request: Request) {
     return fail("UNKNOWN", 400);
   }
 
-  if (!sessionId) return fail("UNKNOWN", 400);
+  if (typeof sessionId !== "string" || !sessionId.trim() || sessionId.length > 160) return fail("UNKNOWN", 400);
 
   const supabase = await getSupabaseServerClient();
   if (!supabase) return fail("DEMO", 503);
@@ -84,7 +85,13 @@ export async function POST(request: Request) {
     return fail("UNKNOWN", 500);
   }
 
-  return NextResponse.json({ ok: true, booking: data });
+  // Un HTTP 200 con resultado vacío no demuestra una reserva guardada.
+  if (!data || typeof data.id !== "string" || !data.id ||
+      data.session_id !== sessionId || data.status !== "confirmed")
+    return fail("UNCONFIRMED", 503);
+  return NextResponse.json({ ok: true, booking: data }, {
+    headers: { "Cache-Control": "private, no-store" },
+  });
 }
 
 /** DELETE /api/bookings?id=... → cancela una reserva. */

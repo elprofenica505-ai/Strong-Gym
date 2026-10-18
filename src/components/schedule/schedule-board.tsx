@@ -43,6 +43,7 @@ const errorMessages = {
   TOO_LATE: "bookingError",
   NOT_FOUND: "bookingError",
   AUTH: "loginToBook",
+  UNCONFIRMED: "bookingUnconfirmed",
   UNKNOWN: "bookingError",
 } as const;
 
@@ -224,17 +225,7 @@ export function ScheduleBoard({ initialWeekKey }: { initialWeekKey?: string }) {
 
     if (result.ok) {
       toast(dict.schedule.bookSuccess, "success");
-      setSessions((prev) =>
-        (prev ?? []).map((item) =>
-          item.id === session.id
-            ? {
-                ...item,
-                bookedCount: item.bookedCount + 1,
-                spotsLeft: Math.max(0, item.spotsLeft - 1),
-              }
-            : item,
-        ),
-      );
+      await load(week.key);
       return;
     }
 
@@ -250,21 +241,11 @@ export function ScheduleBoard({ initialWeekKey }: { initialWeekKey?: string }) {
 
     if (result.ok) {
       toast(dict.schedule.cancelSuccess, "info");
-      setSessions((prev) =>
-        (prev ?? []).map((item) =>
-          item.id === session.id
-            ? {
-                ...item,
-                bookedCount: Math.max(0, item.bookedCount - 1),
-                spotsLeft: item.spotsLeft + 1,
-              }
-            : item,
-        ),
-      );
+      await load(week.key);
       return;
     }
 
-    toast(dict.schedule.bookingError, "error");
+    toast(result.error === "UNCONFIRMED" ? dict.schedule.bookingUnconfirmed : dict.schedule.bookingError, "error");
   }
 
   /* ---------- Render ---------- */

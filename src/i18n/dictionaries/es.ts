@@ -228,6 +228,7 @@ const es = {
     sessionFull: "Se llenó la clase, probá con otro horario.",
     pastSession: "Esa clase ya pasó.",
     cancelledByGym: "La clase fue cancelada por el gimnasio.",
+    bookingUnconfirmed: "No pudimos confirmar la reserva o su cancelación en tu cuenta. Revisá Mi cuenta antes de repetir; no vuelvas a reservar todavía.",
     bookingError: "No pudimos completar la reserva. Intentá de nuevo.",
     weekOf: "Semana del",
     weeklySummary: "clases esta semana",

@@ -47,6 +47,7 @@ export type BookingErrorCode =
   | "CANCELLED"
   | "TOO_LATE"
   | "NOT_FOUND"
+  | "UNCONFIRMED"
   | "UNKNOWN";
 
 export type ToastType = "success" | "error" | "info";
@@ -252,23 +253,25 @@ export function AppProvider({
     setUser(initialUser);
   }, [initialUser, isDemo]);
 
-  const loadBookings = useCallback(async () => {
+  const loadBookings = useCallback(async (expected?: {
+    id: string; sessionId: string; status: "confirmed" | "cancelled";
+  }): Promise<boolean> => {
     // Una mutación de la sesión anterior puede terminar después del cambio de usuario.
-    if (user?.id !== latestUser.current?.id) return;
+    if (user?.id !== latestUser.current?.id) return false;
     const request = ++bookingsRequest.current;
     if (isDemo) {
       if (!user) {
         setBookings([]);
-        return;
+        return true;
       }
       setBookings(readJSON<AppBooking[]>(demoBookingsKey(user.id), []));
-      return;
+      return true;
     }
 
     if (!user) {
       setBookings([]);
       setBookingsRead({ owner: null, status: "ready" });
-      return;
+      return true;
     }
 
     setBookingsRead({ owner: user.id, status: "loading" });
@@ -300,7 +303,10 @@ export function AppProvider({
         )
       )
         throw new Error("INVALID_BOOKINGS");
-      if (request !== bookingsRequest.current) return;
+      if (request !== bookingsRequest.current) return false;
+      if (expected && !data.bookings.some(b =>
+        b.id === expected.id && b.session_id === expected.sessionId &&
+        b.status === expected.status)) throw new Error("BOOKING_NOT_RECONCILED");
       setBookings(
         data.bookings.map((b) => ({
           id: b.id,
@@ -310,10 +316,12 @@ export function AppProvider({
         })),
       );
       setBookingsRead({ owner: user.id, status: "ready" });
+      return true;
     } catch {
-      if (request !== bookingsRequest.current) return;
+      if (request !== bookingsRequest.current) return false;
       // Conservamos el último valor, pero no lo presentamos como confirmado.
       setBookingsRead({ owner: user.id, status: "error" });
+      return false;
     }
   }, [isDemo, user]);
 
@@ -364,17 +372,35 @@ export function AppProvider({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sessionId }),
+          signal: AbortSignal.timeout(15000),
         });
+        if (user.id !== latestUser.current?.id) return { ok: false, error: "UNCONFIRMED" };
         if (response.ok) {
-          await loadBookings();
-          return { ok: true };
+          const result = await response.json().catch(() => null);
+          const row = result?.booking;
+          if (user.id !== latestUser.current?.id) return { ok: false, error: "UNCONFIRMED" };
+          if (result?.ok !== true || typeof row?.id !== "string" || !row.id ||
+              row.session_id !== sessionId || row.status !== "confirmed") {
+            setBookingsRead({ owner: user.id, status: "error" });
+            return { ok: false, error: "UNCONFIRMED" };
+          }
+          const reconciled = await loadBookings({ id: row.id, sessionId, status: "confirmed" });
+          return reconciled ? { ok: true } : { ok: false, error: "UNCONFIRMED" };
         }
         const data = (await response.json().catch(() => ({}))) as {
           error?: BookingErrorCode;
         };
-        return { ok: false, error: data.error ?? "UNKNOWN" };
+        const error = data.error ?? "UNCONFIRMED";
+        if (error === "UNCONFIRMED" || error === "UNKNOWN") {
+          if (user.id === latestUser.current?.id)
+            setBookingsRead({ owner: user.id, status: "error" });
+          return { ok: false, error: "UNCONFIRMED" };
+        }
+        return { ok: false, error };
       } catch {
-        return { ok: false, error: "UNKNOWN" };
+        if (user.id === latestUser.current?.id)
+          setBookingsRead({ owner: user.id, status: "error" });
+        return { ok: false, error: "UNCONFIRMED" };
       }
     },
     [isDemo, user, bookings, bookingsReady, persistDemoBookings, loadBookings],
@@ -401,18 +427,28 @@ export function AppProvider({
           `/api/bookings?id=${encodeURIComponent(bookingId)}`,
           {
             method: "DELETE",
+            signal: AbortSignal.timeout(15000),
           },
         );
+        if (user.id !== latestUser.current?.id) return { ok: false, error: "UNCONFIRMED" };
         if (response.ok) {
-          await loadBookings();
-          return { ok: true };
+          const reconciled = await loadBookings({ id: bookingId, sessionId, status: "cancelled" });
+          return reconciled ? { ok: true } : { ok: false, error: "UNCONFIRMED" };
         }
         const data = (await response.json().catch(() => ({}))) as {
           error?: BookingErrorCode;
         };
-        return { ok: false, error: data.error ?? "UNKNOWN" };
+        const error = data.error ?? "UNCONFIRMED";
+        if (error === "UNCONFIRMED" || error === "UNKNOWN") {
+          if (user.id === latestUser.current?.id)
+            setBookingsRead({ owner: user.id, status: "error" });
+          return { ok: false, error: "UNCONFIRMED" };
+        }
+        return { ok: false, error };
       } catch {
-        return { ok: false, error: "UNKNOWN" };
+        if (user.id === latestUser.current?.id)
+          setBookingsRead({ owner: user.id, status: "error" });
+        return { ok: false, error: "UNCONFIRMED" };
       }
     },
     [isDemo, user, bookings, bookingsReady, persistDemoBookings, loadBookings],
@@ -614,7 +650,7 @@ export function AppProvider({
       bookings,
       bookingsLoading,
       bookingsError,
-      reloadBookings: loadBookings,
+      reloadBookings: async () => { await loadBookings(); },
       bookedSessionIds,
       book,
       cancelBooking,

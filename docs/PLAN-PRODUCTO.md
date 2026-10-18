@@ -155,3 +155,9 @@ y segunda entrada del día rechazada sin duplicado; edición de plan y nota
 persistida tras recarga. Se detectó discrepancia del plan entre ficha y Mi cuenta.
 [Reparación y SQL de lectura propia](./PLAN-CUENTA.md): no es una renovación ni
 una prueba de vigencia/pago. Aplicación remota de PLAN-CUENTA pendiente.
+
+Reserva remota de prueba (20-oct 06:00, intento17-oct): ocupación local1/20 pero
+Mi cuenta0 y botón «Reservar». **Prueba no aceptada**. Se reparó confirmación
+ciega/ocupación aritmética del frontend; falta diagnóstico SELECT remoto para
+identificar si se guardó y si RLS/contrato impiden verla. No repetir operación.
+[Estado y diagnóstico](./RESERVAS-CONCILIACION.md).

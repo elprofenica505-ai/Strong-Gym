@@ -131,7 +131,7 @@ test("reserva confirmada seguida de fallo de lectura no se reenvía automáticam
     const method = options.method ?? "GET";
     methods.push(method);
     return method === "POST"
-      ? json({ ok: true })
+      ? json({ ok: true, booking: { id: "saved", session_id: "session", status: "confirmed" } })
       : ++gets === 1
         ? json({ bookings: [] })
         : json({ error: "DATA_UNAVAILABLE" }, 503);
@@ -142,7 +142,7 @@ test("reserva confirmada seguida de fallo de lectura no se reenvía automáticam
   await act(async () => {
     result = await app.book("session");
   });
-  assert.equal(result.ok, true);
+  assert.deepEqual(result, { ok: false, error: "UNCONFIRMED" });
   assert.equal(app.bookingsError, true);
   assert.deepEqual(methods, ["GET", "POST", "GET"]);
 });
@@ -345,4 +345,101 @@ test("Mi cuenta: datos del plan de otra sesión no se muestran", async () => {
   })));
   await screen.findByText("Plan no confirmado");
   assert.equal(screen.queryByText("PLAN AJENO"), null);
+});
+
+for (const after of [[], [{ ...booking("other"), session_id: "session" }], [{ ...booking("saved"), session_id: "session", status: "cancelled" }]])
+  test(`POST reserva seguido de GET divergente no anuncia éxito: ${JSON.stringify(after)}`, async () => {
+    let gets = 0;
+    let posts = 0;
+    globalThis.fetch = async (_url, init = {}) => {
+      if (init.method === "POST") { posts++; return json({ok:true,booking:{id:"saved",session_id:"session",status:"confirmed"}}); }
+      return json({bookings: ++gets === 1 ? [] : after});
+    };
+    render(tree());
+    await waitFor(() => assert.equal(app.bookingsLoading, false));
+    let result;
+    await act(async () => { result = await app.book("session"); });
+    assert.deepEqual(result, {ok:false,error:"UNCONFIRMED"});
+    assert.equal(app.bookingsError, true);
+    assert.equal(posts, 1);
+  });
+for (const payload of [null, {}, {ok:true}, {ok:true,booking:{id:"saved",session_id:"other",status:"confirmed"}}])
+  test(`POST vacío o incoherente no confirma reserva: ${JSON.stringify(payload)}`, async () => {
+    globalThis.fetch = async (_url, init = {}) => init.method === "POST" ? json(payload) : json({bookings:[]});
+    render(tree());
+    await waitFor(() => assert.equal(app.bookingsLoading, false));
+    let result;
+    await act(async () => { result = await app.book("session"); });
+    assert.deepEqual(result, {ok:false,error:"UNCONFIRMED"});
+    assert.equal(app.bookingsError, true);
+  });
+test("POST y GET coincidentes confirman reserva y activan el estado reservado", async () => {
+  let gets = 0;
+  globalThis.fetch = async (_url, init = {}) => init.method === "POST"
+    ? json({ok:true,booking:{id:"saved",session_id:"session",status:"confirmed"}})
+    : json({bookings: ++gets === 1 ? [] : [{...booking("saved"),session_id:"session"}]});
+  render(tree());
+  await waitFor(() => assert.equal(app.bookingsLoading, false));
+  let result;
+  await act(async () => { result = await app.book("session"); });
+  assert.deepEqual(result, {ok:true});
+  assert.ok(app.bookedSessionIds.has("session"));
+});
+
+for (const cancelled of [true, false]) test(`cancelación se confirma por lectura, no sólo por HTTP: ${cancelled}`, async () => {
+  let gets = 0;
+  globalThis.fetch = async (_url, init = {}) => init.method === "DELETE" ? json({ok:true})
+    : json({bookings:[{...booking("saved"),session_id:"session",status: ++gets > 1 && cancelled ? "cancelled" : "confirmed"}]});
+  render(tree());
+  await waitFor(() => assert.equal(app.bookingsLoading,false));
+  let result;
+  await act(async()=>{result=await app.cancelBooking("saved","session")});
+  assert.deepEqual(result,cancelled?{ok:true}:{ok:false,error:"UNCONFIRMED"});
+  assert.equal(app.bookingsError,!cancelled);
+});
+
+test("Horarios vuelve a leer ocupación real después de reservar, sin sumar un cupo inventado", async () => {
+  const { getWeekRange } = await load("lib/schedule.ts");
+  const starts = new Date("2099-01-06T12:00:00Z");
+  const key = getWeekRange(starts).key;
+  let posts = 0;
+  let sessionReads = 0;
+  globalThis.fetch = async (url, init = {}) => {
+    if (init.method === "POST") { posts++; return json({ok:true,booking:{id:"saved",session_id:"session",status:"confirmed"}}); }
+    if (String(url).startsWith("/api/sessions")) {
+      sessionReads++;
+      return json({weekKey:key,sessions:[{
+        id:"session",starts_at:starts.toISOString(),ends_at:"2099-01-06T13:00:00Z",
+        capacity:20,bookedCount:posts ? 7 : 0,spotsLeft:posts ? 13 : 20,
+        room:"Área EJEMPLO",status:"scheduled",coach:null,
+        gymClass:{slug:"test",name_es:"Boxeo prueba",name_en:"Test boxing",color:"#d81a22",duration_min:60},
+      }]});
+    }
+    return json({bookings:posts ? [{...booking("saved"),session_id:"session"}] : []});
+  };
+  render(tree(user,React.createElement(ScheduleBoard,{initialWeekKey:key})));
+  await screen.findByText("0/20");
+  await waitFor(()=>assert.equal(app.bookingsLoading,false));
+  fireEvent.click(screen.getByRole("button",{name:dict.schedule.book}));
+  await screen.findByText("7/20");
+  assert.equal(posts,1);
+  assert.equal(sessionReads,2);
+  assert.equal(screen.queryByText("1/20"),null);
+  assert.ok(screen.getByRole("button",{name:dict.schedule.cancel}));
+});
+
+test("rechazo UNCONFIRMED del servidor bloquea nuevos envíos hasta revisar lecturas", async () => {
+  let sends=0;
+  globalThis.fetch=async(_url,init={})=>{
+    if(init.method==='POST'){sends++;assert.ok(init.signal instanceof AbortSignal);return json({error:'UNCONFIRMED'},503)}
+    return json({bookings:[]});
+  };
+  render(tree());
+  await waitFor(()=>assert.equal(app.bookingsLoading,false));
+  let result;
+  await act(async()=>{result=await app.book('session')});
+  assert.deepEqual(result,{ok:false,error:'UNCONFIRMED'});
+  assert.equal(app.bookingsError,true);
+  await act(async()=>{await app.book('session')});
+  assert.equal(sends,1);
 });
