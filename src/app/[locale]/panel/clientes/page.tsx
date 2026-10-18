@@ -20,6 +20,8 @@ export default async function ClientsPage({
   if (!DEMO_MODE && !user) redirect(`/${locale}/ingresar`);
   if (!DEMO_MODE && !canAccessPanel(user))
     redirect(`/${locale}/mi-cuenta`);
+  // El entrenador no ve la lista de clientes; sólo sus asignados en "Mis clientes".
+  if (!DEMO_MODE && user?.role === "trainer") redirect(`/${locale}/panel/entrenador`);
   return (
     <ClientsPanel
       isAdmin={user?.role === "admin"}

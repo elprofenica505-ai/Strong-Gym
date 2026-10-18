@@ -19,11 +19,19 @@ test("caja ve finanzas, clientes y operaci처n, pero no reportes ni administraci�
   assert.equal(mods.some((m) => m.id === "administracion"), false);
 });
 
-test("entrenador y cliente no ven m처dulos de gesti처n", () => {
-  assert.deepEqual(visibleModules("trainer"), []);
+test("entrenador ve s처lo su m처dulo 'Mis clientes'; cliente y visitante no ven m처dulos", () => {
+  const mods = visibleModules("trainer");
+  assert.deepEqual(ids(mods), ["entrenador"]);
+  assert.deepEqual(mods[0].children, []);
+  assert.equal(panelAccess("trainer"), "trainer");
   assert.deepEqual(visibleModules("member"), []);
   assert.deepEqual(visibleModules(null), []);
-  assert.equal(panelAccess("trainer"), "none");
+  assert.equal(panelAccess("member"), "none");
+});
+
+test("el m처dulo del entrenador no lo ven administrador ni caja", () => {
+  assert.equal(ids(visibleModules("admin")).includes("entrenador"), false);
+  assert.equal(ids(visibleModules("cashier")).includes("entrenador"), false);
 });
 
 test("el rol staff retirado no tiene acceso a m처dulos", () => {

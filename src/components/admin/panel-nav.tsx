@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   CalendarCheck,
+  Dumbbell,
   LayoutDashboard,
   Settings2,
   Users,
@@ -19,6 +20,7 @@ const ICONS = {
   finanzas: Wallet,
   operacion: CalendarCheck,
   administracion: Settings2,
+  entrenador: Dumbbell,
 } as const;
 
 /**

@@ -956,3 +956,41 @@ export async function getTrainerAccessAdmin(): Promise<{
     };
   });
 }
+
+export interface TrainerRosterRow {
+  clientId: string;
+  fullName: string;
+  visits30d: number;
+  visitedToday: boolean;
+}
+
+/** Entrenador: sólo sus clientes aprobados. La base no devuelve teléfono, correo ni notas. */
+export async function getTrainerRoster(): Promise<TrainerRosterRow[]> {
+  return checkedRead("TRAINER_ROSTER", async () => {
+    const supabase = await getSupabaseServerClient();
+    if (!supabase) return [];
+    const { data, error } = await supabase
+      .rpc("trainer_roster")
+      .abortSignal(AbortSignal.timeout(15000));
+    if (error) throw new DataReadError("TRAINER_ROSTER", error.code);
+    return ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
+      clientId: row.client_id as string,
+      fullName: (row.full_name as string | null) ?? "Sin nombre",
+      visits30d: Number(row.visits_30d ?? 0),
+      visitedToday: row.visited_today === true,
+    }));
+  });
+}
+
+/** Lee si el administrador activó la búsqueda y los pedidos del entrenador. */
+export async function getTrainerRequestEnabled(): Promise<boolean> {
+  return checkedRead("TRAINER_FLAG", async () => {
+    const supabase = await getSupabaseServerClient();
+    if (!supabase) return false;
+    const { data, error } = await supabase
+      .rpc("trainer_request_enabled")
+      .abortSignal(AbortSignal.timeout(15000));
+    if (error) throw new DataReadError("TRAINER_FLAG", error.code);
+    return data === true;
+  });
+}

@@ -82,6 +82,9 @@ export default async function PanelHomePage({
     );
   }
 
+  // El entrenador tiene su propio módulo: "Mis clientes".
+  if (!demo && user?.role === "trainer" && canAccessPanel(user)) redirect(`/${locale}/panel/entrenador`);
+
   if (!demo && !canAccessPanel(user)) {
     return (
       <section className="container-x flex min-h-[70vh] flex-col items-center justify-center py-24 text-center">

@@ -6,6 +6,9 @@
 
 export type PanelRole = "admin" | "cashier" | "trainer" | "member" | "staff" | null | undefined;
 
+/** "trainer": sólo el módulo del entrenador. "none": sin módulos. */
+export type PanelAccessLevel = "all" | "finance" | "trainer" | "none";
+
 export interface PanelChild {
   id: string;
   label: string;
@@ -15,16 +18,26 @@ export interface PanelChild {
 }
 
 export interface PanelModule {
-  id: "inicio" | "clientes" | "finanzas" | "operacion" | "administracion";
+  id: "inicio" | "clientes" | "finanzas" | "operacion" | "administracion" | "entrenador";
   label: string;
   description: string;
   href: string;
   /** Sólo administrador. */
   adminOnly?: boolean;
+  /** Sólo entrenador (no lo ven administrador ni caja). */
+  trainerOnly?: boolean;
   children: PanelChild[];
 }
 
 export const PANEL_MODULES: PanelModule[] = [
+  {
+    id: "entrenador",
+    label: "Mis clientes",
+    description: "Tus clientes asignados y su asistencia. Pedí acceso a otros clientes.",
+    href: "/panel/entrenador",
+    trainerOnly: true,
+    children: [],
+  },
   {
     id: "inicio",
     label: "Inicio",
@@ -74,11 +87,12 @@ export const PANEL_MODULES: PanelModule[] = [
   },
 ];
 
-/** Caja y administración ven el panel; el entrenador no tiene módulos todavía. */
-export function panelAccess(role: PanelRole, demo = false): "all" | "finance" | "none" {
+/** Caja y administración ven el panel; el entrenador sólo ve su módulo "Mis clientes". */
+export function panelAccess(role: PanelRole, demo = false): PanelAccessLevel {
   if (demo) return "all";
   if (role === "admin") return "all";
   if (role === "cashier") return "finance";
+  if (role === "trainer") return "trainer";
   return "none";
 }
 
@@ -86,8 +100,9 @@ export function panelAccess(role: PanelRole, demo = false): "all" | "finance" | 
 export function visibleModules(role: PanelRole, demo = false): PanelModule[] {
   const access = panelAccess(role, demo);
   if (access === "none") return [];
+  if (access === "trainer") return PANEL_MODULES.filter((m) => m.trainerOnly).map((m) => ({ ...m, children: [] }));
   const isAdmin = access === "all";
-  return PANEL_MODULES.filter((m) => isAdmin || !m.adminOnly).map((m) => ({
+  return PANEL_MODULES.filter((m) => !m.trainerOnly && (isAdmin || !m.adminOnly)).map((m) => ({
     ...m,
     children: m.children.filter((c) => isAdmin || !c.adminOnly),
   }));
