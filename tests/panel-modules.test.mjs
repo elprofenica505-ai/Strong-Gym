@@ -9,7 +9,7 @@ test("administrador ve todos los módulos y todas sus secciones", () => {
   const mods = visibleModules("admin");
   assert.deepEqual(ids(mods), ["inicio", "clientes", "finanzas", "operacion", "administracion"]);
   assert.deepEqual(childIds(mods, "finanzas"), ["caja", "cuentas", "gastos", "reportes"]);
-  assert.deepEqual(childIds(mods, "administracion"), ["roles", "importar", "herramientas", "ayuda"]);
+  assert.deepEqual(childIds(mods, "administracion"), ["roles", "entrenadores", "importar", "herramientas", "ayuda"]);
 });
 
 test("caja ve finanzas, clientes y operación, pero no reportes ni administración", () => {

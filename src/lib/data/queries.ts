@@ -897,3 +897,62 @@ export async function getProfilesForRoles(): Promise<
     }));
   });
 }
+
+export type TrainerAccessStatus = "pending" | "approved" | "rejected" | "revoked";
+
+export interface TrainerAccessRow {
+  id: string;
+  trainerName: string;
+  clientName: string;
+  status: TrainerAccessStatus;
+  requestedVia: "trainer" | "cashier";
+  reason: string | null;
+  createdAt: string;
+  decidedAt: string | null;
+}
+
+/** Sólo administrador (la base lo vuelve a comprobar). Sin teléfono, correo ni notas. */
+export async function getTrainerAccessAdmin(): Promise<{
+  enabled: boolean;
+  requests: TrainerAccessRow[];
+}> {
+  return checkedRead("TRAINER_ACCESS", async () => {
+    const supabase = await getSupabaseServerClient();
+    if (!supabase) return { enabled: false, requests: [] };
+    const [flag, rows] = await Promise.all([
+      supabase
+        .from("staff_permissions")
+        .select("enabled")
+        .eq("key", "trainer_can_request_clients")
+        .abortSignal(AbortSignal.timeout(15000))
+        .maybeSingle(),
+      supabase
+        .from("trainer_client_access")
+        .select(
+          "id, status, requested_via, reason, created_at, decided_at, trainer:profiles!trainer_id(full_name), client:gym_clients!client_id(full_name)",
+        )
+        .order("created_at", { ascending: false })
+        .limit(300)
+        .abortSignal(AbortSignal.timeout(15000)),
+    ]);
+    if (flag.error) throw new DataReadError("TRAINER_ACCESS", flag.error.code);
+    if (rows.error) throw new DataReadError("TRAINER_ACCESS", rows.error.code);
+    return {
+      enabled: flag.data?.enabled === true,
+      requests: ((rows.data ?? []) as Array<Record<string, unknown>>).map((row) => {
+        const trainer = row.trainer as unknown as { full_name: string | null } | null;
+        const client = row.client as unknown as { full_name: string | null } | null;
+        return {
+          id: row.id as string,
+          trainerName: trainer?.full_name ?? "Sin nombre",
+          clientName: client?.full_name ?? "Sin nombre",
+          status: row.status as TrainerAccessStatus,
+          requestedVia: row.requested_via as "trainer" | "cashier",
+          reason: (row.reason as string | null) ?? null,
+          createdAt: row.created_at as string,
+          decidedAt: (row.decided_at as string | null) ?? null,
+        };
+      }),
+    };
+  });
+}

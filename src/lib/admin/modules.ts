@@ -66,6 +66,7 @@ export const PANEL_MODULES: PanelModule[] = [
     adminOnly: true,
     children: [
       { id: "roles", label: "Personal y roles", href: "/panel/administracion/roles", adminOnly: true },
+      { id: "entrenadores", label: "Entrenadores y accesos", href: "/panel/administracion/entrenadores", adminOnly: true },
       { id: "importar", label: "Importar clientes", href: "/panel/importar", adminOnly: true },
       { id: "herramientas", label: "Herramientas", href: "/panel/herramientas", adminOnly: true },
       { id: "ayuda", label: "Guía de uso", href: "/panel/ayuda", adminOnly: true },
