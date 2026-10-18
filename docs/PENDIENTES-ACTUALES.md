@@ -1,0 +1,95 @@
+# Strong Gym — Ruta única y pendientes actuales
+
+Actualizada:18 de octubre de2026. PR10 ya mergeado (`6ed6616`).
+Continuación activa: `arena/90aa43e3-strong-gym`. Esta lista separa construir de
+verificar: no asigna un porcentaje inventado ni certifica toda la plataforma.
+
+## 1. Base funcional conservada: no volver a empezar
+
+Comprobado con las capturas previas del usuario: ficha de prueba Carlicheta,
+recepción manual, rechazo de segunda entrada del día, reserva/cancelación propias,
+cobro NIO10, gasto NIO4, cobro USD1 y recorrido de deuda NIO100 → abonos40+20+40 →0.
+Últimos dos abonos con recibido100/vueltos80 y60; Caja final NIO106, cuentas por
+cobrar0 y créditos intactos. No repetir esos cargos/abonos ni reinstalar00028/29.
+Esto acredita esos recorridos, no cada módulo, moneda, rol o fallo de red posible.
+
+## 2. Una sola secuencia de trabajo
+
+### Etapa 1 — Proteger lo construido (ACTUAL)
+
+- [x] Consultar estructura y permisos reales de Supabase, sin leer filas comerciales.
+- [x] Preparar corrección de perfiles, vistas financieras y cuentas/RPC;147 pruebas
+  locales adicionales en dos estructuras, sin reconstruir la aplicación.
+- [x] Aplicar y verificar incremental00030 en Supabase con autorización específica.
+- [ ] Comprobar visualmente panel/clientes/Caja/reportes/cupos tras el ajuste, sólo lectura.
+  [Detalle y evidencia de Seguridad 1A](SEGURIDAD-ACCESOS.md).
+- [ ] Aislar demo/producción; impedir fallback productivo y contraseñas demo guardadas.
+- [ ] Revisar secretos, historial/bundles/variables y exclusiones de archivos env.
+- [ ] Auth: contraseñas, recuperación, confirmación/redirects, sesiones y MFA admin
+  sin bloquear al administrador; no sustituir Auth editando profiles.
+- [ ] Revisar restante de RLS/RPC, políticas de Storage/Realtime si se usan, abuso,
+  límites, CSRF y cabeceras. Seguridad se prueba en cada entrega, no sólo al final.
+
+### Etapa 2 — Ordenar navegación
+
+- [ ] Inicio, Clientes, Agenda, Finanzas (Caja/gastos/cuentas), Personal, Reportes,
+  Configuración; accesos directos y menú móvil. Mantener oscuro/rojo.
+- [ ] Cada sección localizable y adecuada al rol; no duplicar/reconstruir operaciones.
+  Todavía no se implementó el rediseño ni se considera aprobado por capturas antiguas.
+
+### Etapa 3 — Completar operación diaria
+
+- [ ] Ficha sin cuenta/correo/teléfono/QR con recorrido financiero conectado propio.
+- [ ] Planes/vigencias/servicios y reglas comerciales pendientes explícitas; no inventar
+  descuentos por etiquetas, bloqueos por deuda ni renovaciones por cualquier cobro.
+- [ ] Reservas/cupos/horarios; cerrar asistencia, inasistencia y cancelación administrativa.
+- [ ] Hacer persistentes mensajes leídos/no leídos y activación/reactivación de disciplinas.
+- [ ] QR opcional/cámara/reemplazo en dispositivo real; búsqueda manual siempre.
+- [ ] Revisar actualización de «Hoy»/horarios con Managua en páginas abiertas.
+
+### Etapa 4 — Gestión y finanzas completas
+
+- [ ] Personal: alta/edición/desactivación/asignación, responsabilidades, auditoría y roles.
+- [ ] Extender recibido/vuelto a cobros por servicio: hoy está comprobado en abonos.
+- [ ] Verificar deuda/abonos/vuelto USD sin alterar NIO; no repetir simple cobro USD1.
+- [ ] Cierres/conciliación, cuentas/transferencias y reglas de reversión/devolución/crédito
+  por definir y construir cuando corresponda, nunca simular con DELETE.
+- [ ] Reportes coherentes, filtros y exportación completa/autorizada, no sólo últimos40/50.
+- [ ] Importación validada: archivo pequeño, duplicados, errores y reintentos. Excel
+  requiere importación propia; no considerar que CSV admite cualquier .xlsx o saldos.
+- [ ] Comprobantes PDF en celular; recibos internos no fiscales, monedas separadas,
+  FX manual y comisiones separadas, sin conversión/neteo automático.
+
+### Etapa 5 — Aceptación integral
+
+- [ ] Recorrido conectado con ficticios identificados: alta → plan/vigencia → reserva/
+  entrada → cobro/abono → gasto → reporte/exportación.
+- [ ] Admin/personal/cliente/anónimo y clientes A/B por API/base; revocación de rol,
+  doble clic, respuesta perdida, red/sesión expirada y concurrencia sin duplicar cobros.
+- [ ] Navegación/errores/recarga en celular y escritorio, textos públicos ES/EN, enlaces
+  y formularios antispam; confirmar precios/contacto/horarios con el dueño.
+- [ ] Cerrar vulnerabilidades importantes conocidas, dependencias, cabeceras/cookies,
+  certificado TLS válido/renovación/HTTP→HTTPS/sin contenido mixto del dominio final.
+- [ ] Respaldo y restauración ensayados, recuperación de acceso y guía de incidentes.
+- [ ] Demostración y aprobación del dueño, con resultados y límites documentados.
+
+### Etapa 6 — Entrega al dueño (NO ejecutar ahora)
+
+- [ ] Inventario/preview de ficticios y relaciones, respaldo y aprobación de limpieza.
+- [ ] Eliminar sólo ficticios autorizados; conservar tablas/módulos/funciones/políticas.
+- [ ] Carga real manual/importación y cuatro saldos explícitos conciliados por cliente;
+  no reconstruir deuda de cobros históricos ni asumir ausencia de fila como cero.
+- [ ] Crear/verificar acceso del dueño ANTES de retirar administrador temporal.
+- [ ] Verificar operación con datos reales, entregar manual y mantenimiento.
+
+## 3. Forma de avanzar
+
+Cada entrega explica qué cambió, prueba real, qué queda y siguiente paso. Conservar
+pruebas/operaciones ya aprobadas como regresión; no pedir repetirlas sin motivo.
+No hacer nuevos merges sin autorización. Merge no ejecuta SQL ni equivale a entrega.
+El agente resuelve detalles técnicos; al usuario se piden sólo pruebas guiadas,
+reglas comerciales o autorizaciones necesarias. Nunca claves/contraseñas por chat.
+
+Inventario/ventas, mantenimiento, campañas, nómina y facturación fiscal son ampliaciones
+con alcance/reglas propios; no abrirlas antes de cerrar lo comprometido salvo decisión
+explícita. No afirmar seguridad absoluta ni certificación externa por tener HTTPS.

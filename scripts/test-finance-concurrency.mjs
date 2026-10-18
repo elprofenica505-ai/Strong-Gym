@@ -57,6 +57,7 @@ try {
     "supabase/migrations/00024_finance_movements.sql",
     "supabase/migrations/00028_debts_payments.sql",
     "supabase/migrations/00029_cash_change.sql",
+    "supabase/migrations/00030_access_hardening.sql",
   ]) await control.query(sql(file));
   const actor = randomUUID();
   await control.query("insert into auth.users(id,email,raw_user_meta_data) values($1,'concurrencia@test.invalid','{\"full_name\":\"Prueba local\"}')", [actor]);

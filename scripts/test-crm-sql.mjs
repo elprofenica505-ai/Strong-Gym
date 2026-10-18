@@ -132,7 +132,7 @@ await reject(
   member,
   "update public.profiles set role='admin' where id=auth.uid()",
   [],
-  "ADMIN_ONLY",
+  "permission denied",
 );
 check(
   "perfil no fue promovido",

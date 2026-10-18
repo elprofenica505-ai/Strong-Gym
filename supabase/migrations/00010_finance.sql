@@ -599,8 +599,9 @@ drop policy if exists cr_staff on public.cash_registers;
 create policy cr_staff on public.cash_registers
   for all using (public.is_staff()) with check (public.is_staff());
 
--- Vistas: por defecto se evalúan con RLS del usuario.
--- Para que el panel funcione, el admin/staff ya pasa is_staff().
+-- Definiciones legacy: el propietario evalúa estas vistas por defecto.
+-- 00030_access_hardening.sql activa invoker/RLS y retira permisos públicos.
+-- El instalador completo aplica ese endurecimiento al finalizar.
 grant select on public.v_daily_cash,
                 public.v_accounts_receivable,
                 public.v_monthly_pnl,
