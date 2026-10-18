@@ -1,12 +1,12 @@
 # Strong Gym — Plan de producto y entrega
 
 > **Estado vigente:** [ruta única y pendientes actuales](PENDIENTES-ACTUALES.md).
-> PR10/11 ya mergeados (`545807a`). Continuación: `arena/e27cbf67-strong-gym`.
-> [Seguridad1A](SEGURIDAD-ACCESOS.md):00030 aplicado con autorización y permisos
-> remotos verificados; usuario reportó pantallas normales. [Seguridad1B](DEMO-PRODUCCION.md):
-> separación demo/producción construida y probada, pendiente de merge/publicación.
-> El resto de este plan registra historia.00028/29 ya se comprobaron en el recorrido
-> NIO de Carlicheta: no repetir liquidación/apertura ni SQL. Nuevos merges requieren autorización.
+> PR10/11/12 mergeados (`538101e`). Continuación: `arena/1e67d1fd-strong-gym`.
+> Seguridad1A:00030 aplicado con autorización;1B: demo aislada integrada y usuario
+> confirmó humo conectado. [Seguridad1C](AUTH-RECUPERACION.md): recuperación/callback/
+> contraseñas/logout construidos; sin correo real ni cambio remoto, pendiente de
+> publicación autorizada y aceptación. MFA integral todavía pendiente.
+> El resto registra historia: no repetir pagos de Carlicheta ni reinstalar SQL.
 
 ## 1. Objetivo acordado
 
@@ -135,7 +135,7 @@ implementadas ni se inventan reglas laborales, fiscales o comerciales para ellas
 
 ## 7. Control de entregas
 
-PR #10/11 ya mergeados. Continuación en `arena/e27cbf67-strong-gym`, sin nuevos merges automáticos.
+PR #10/11/12 ya mergeados. Continuación en `arena/1e67d1fd-strong-gym`, sin nuevos merges automáticos.
 Documentar cada bloque: cambios, pruebas, pendientes y SQL si corresponde.
 Revisión inicial: 2026-10-17, código base `9910268`.
 

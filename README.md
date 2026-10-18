@@ -12,6 +12,9 @@ y el código en **GitHub**.
 > variables Supabase vacías. Es sólo lectura, sin cuentas ni contraseñas demo.
 > Ver [Seguridad 1B](./docs/DEMO-PRODUCCION.md) y [DEPLOY.md](./DEPLOY.md).
 
+> **Recuperación de acceso (Seguridad1C):** [guía, configuración y límites](./docs/AUTH-RECUPERACION.md).
+> El correo real y MFA no se consideran certificados por aprobar las pruebas locales.
+
 ---
 
 ## Desarrollo del sistema de gestión
@@ -115,7 +118,7 @@ npm start          # correr la versión compilada
 npm run typecheck  # revisar los tipos de TypeScript
 npm run test:metadata # tras build demo: verificar URLs e imágenes para compartir
 npm run test:sql   # base, CRM y compatibilidad contra PostgreSQL embebido (PGlite)
-npm run test:layout # tras build e instalar Chromium: shell, finanzas y comprobantes, 144 casos
+npm run test:layout # tras build e instalar Chromium: shell, finanzas y comprobantes, 264 casos
 npm run build:sql  # regenerar supabase/SETUP.sql tras cambiar los horarios
 ```
 

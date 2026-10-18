@@ -37,7 +37,7 @@ const SECTION_TO_NAV: { id: string; nav: NavId }[] = [
 
 export function SideNav({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { dict, locale } = useDictionary();
-  const { user, signOut, toast, hydrated } = useApp();
+  const { user, signOut, hydrated } = useApp();
   const pathname = usePathname();
   const [sectionNav, setSectionNav] = useState<NavId>("home");
 
@@ -175,7 +175,6 @@ export function SideNav({ open, onClose }: { open: boolean; onClose: () => void 
               type="button"
               onClick={() => {
                 void signOut();
-                toast(dict.nav.logout, "info");
                 onClose();
               }}
               className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-line bg-card text-[0.875rem] font-semibold text-mist transition-colors hover:border-brand/40 hover:text-ink"

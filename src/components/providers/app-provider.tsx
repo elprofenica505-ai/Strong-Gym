@@ -12,6 +12,8 @@ import {
   type ReactNode,
 } from "react";
 import type { BookingDetail } from "@/lib/types";
+import { validNewPassword } from "@/lib/auth/password-recovery";
+import { authCallbackUrl } from "@/lib/auth/redirects";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 /* ============================================================
@@ -392,6 +394,7 @@ export function AppProvider({
       setAuthLoading(true);
       try {
         if (isDemo) return { ok: false, error: "genericError" };
+        if (!validNewPassword(password)) return { ok: false, error: "weakPassword" };
 
         const supabase = getSupabaseBrowserClient();
         if (!supabase) return { ok: false, error: "genericError" };
@@ -403,7 +406,7 @@ export function AppProvider({
             data: { full_name: fullName.trim(), phone: phone ?? null },
             emailRedirectTo:
               typeof window !== "undefined"
-                ? `${window.location.origin}/es/mi-cuenta`
+                ? authCallbackUrl(window.location.origin, window.location.pathname.split("/")[1], "signup")
                 : undefined,
           },
         });
@@ -435,12 +438,21 @@ export function AppProvider({
   const signOut = useCallback(async () => {
     if (isDemo) { setUser(null); setBookings([]); return; }
 
-    const supabase = getSupabaseBrowserClient();
-    await supabase?.auth.signOut();
-    setUser(null);
-    setBookings([]);
-    router.refresh();
-  }, [isDemo, router]);
+    try {
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) throw new Error("AUTH_UNAVAILABLE");
+      const { error } = await supabase.auth.signOut();
+      if (error) throw new Error("SIGNOUT_UNCONFIRMED");
+      invalidateRequests();
+      setUser(null);
+      setBookings([]);
+      router.refresh();
+    } catch {
+      toast(window.location.pathname.startsWith("/en/")
+        ? "Could not confirm sign-out. Your session may still be active; please try again."
+        : "No pudimos confirmar el cierre. Tu sesión puede seguir activa; intentá de nuevo.", "error");
+    }
+  }, [isDemo, router, toast, invalidateRequests]);
 
   const updateProfile = useCallback<AppContextValue["updateProfile"]>(
     async (data) => {

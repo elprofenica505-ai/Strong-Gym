@@ -162,6 +162,7 @@ for (const variant of ["ejemplo", "vacio", "importes-largos"]) {
     writesEnabled:true,canOpen:true,balances:empty?null:{credit_nio:0,credit_usd:0,debt_nio:large?9999999999.99:100,debt_usd:20},entries:[]};
   const load = createLoader({
     "server-only": "export {};",
+    "@/lib/supabase/client": "export const getSupabaseBrowserClient=()=>null;",
     "@/lib/supabase/server": `export const getSupabaseServerClient=async()=>({rpc(){return {abortSignal:async()=>({data:globalThis.__layoutReceipt,error:null})}}});`,
     "@/components/crm/use-crm-resource": `export const useCrmResource=(url)=>({loading:false,error:'',data:url.includes('/api/admin/debts')?${JSON.stringify(debtExample)}:url.includes('history=')?[]:${JSON.stringify(financeOptions)}});`,
     "@/lib/supabase/env": "export const isSupabaseConfigured=true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;",
@@ -170,6 +171,7 @@ for (const variant of ["ejemplo", "vacio", "importes-largos"]) {
     "@/components/providers/app-provider": `export const useApp=()=>({user:{role:'admin',fullName:'Admin EJEMPLO'},isDemo:false,hydrated:true,bookings:[],signOut(){},toast(){}});`,
     "next/navigation": `export function notFound(){throw Error("NOT_FOUND")};export const usePathname=()=>'/es/panel/reportes';export const useRouter=()=>({});export function redirect(){throw Error('redirect')}`,
   });
+  const { RecoveryForm } = await load("components/auth/recovery-form.tsx");
   const { DebtForm } = await load("components/crm/debt-form.tsx");
   const { ClientFinanceSummary, ClientIncomeHistory } = await load("components/crm/client-finance.tsx");
   const financeId = "11111111-1111-4111-8111-111111111111";
@@ -198,6 +200,8 @@ for (const variant of ["ejemplo", "vacio", "importes-largos"]) {
     "comprobante-vuelto",
     "saldo-cliente",
     "deudas-abonos",
+    "recuperar",
+    "nueva-clave",
   ]) {
     const cashApplied=large?99999998:20;
     globalThis.__layoutReceipt=key==='comprobante-vuelto'?{...exampleReceipt,kind:'debt_payment',clientId:exampleReceipt.id,clientName:names,
@@ -205,7 +209,12 @@ for (const variant of ["ejemplo", "vacio", "importes-largos"]) {
       debtBefore:cashApplied+10,debtAfter:10,accountAfter:exampleReceipt.accountBefore+cashApplied,
       cashReceived:large?99999999:100,changeGiven:large?1:80}:exampleReceipt;
     const Page =
-      key === "deudas-abonos"
+      (key === "recuperar" || key === "nueva-clave")
+        ? () => React.createElement("section",{className:"container-x max-w-md py-8"},React.createElement(RecoveryForm,{
+            mode:key === "recuperar" ? "request" : "update",expectedUserId:empty?undefined:financeId,
+            email:large?"EXAMPLE-"+"long".repeat(40)+"@test.invalid":"example@test.invalid",
+          }))
+        : key === "deudas-abonos"
         ? () => React.createElement("section", {className:"container-x py-8"}, React.createElement(DebtForm,{clientId:financeId,locale:'es'}))
         : key === "saldo-cliente"
         ? () => React.createElement("section", {className:"container-x space-y-6 py-8"},
@@ -357,7 +366,7 @@ try {
       );
   }
   console.log(
-    `PASS: ${results.length} casos (9 pantallas/formularios × 3 fixtures EJEMPLO × 8 anchos, 320–1280 px). Sin overflow global, CTA responsive y tablas desplazables. Render SSR completo con CSS de producción; no certifica hidratación ni escrituras remotas.`,
+    `PASS: ${results.length} casos (11 pantallas/formularios × 3 fixtures EJEMPLO × 8 anchos, 320–1280 px). Sin overflow global, CTA responsive y tablas desplazables. Render SSR completo con CSS de producción; no certifica hidratación ni escrituras remotas.`,
   );
 } finally {
   if (browser) await browser.close();

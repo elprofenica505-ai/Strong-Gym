@@ -108,20 +108,22 @@ try {
     }
   }
   for (const path of ["es", "en"].flatMap(locale =>
-    ["ingresar", "registro", "mi-cuenta", "panel", "panel/clientes", "panel/caja", "panel/reportes", "horarios"]
+    ["ingresar", "registro", "mi-cuenta", "panel", "panel/clientes", "panel/caja", "panel/reportes", "horarios", "recuperar", "recuperar/actualizar"]
       .map(route => `/${locale}/${route}`))) {
     const res=await fetchLocal(path);
     assert.equal(res.status,503,path);
     assert.match(res.headers.get("cache-control"),/no-store/);
+    if (path.includes("/recuperar")) assert.equal(res.headers.get("referrer-policy"),"no-referrer");
     const body=await res.text();
     assert.doesNotMatch(body, /admin123|demo-admin/);
     assert.match(body, path.startsWith("/en/") ? /Service temporarily unavailable/ : /Servicio temporalmente no disponible/);
   }
-  for (const path of ["/api/bookings", "/api/admin/clients", "/api/admin/finance", "/api/admin/debts", "/api/account", "/api/contact", "/api/newsletter"]) {
+  for (const path of ["/api/bookings", "/api/admin/clients", "/api/admin/finance", "/api/admin/debts", "/api/account", "/api/contact", "/api/newsletter", "/api/auth/callback"]) {
     for (const method of ["GET", "POST", "PATCH", "DELETE"]) {
       const res=await fetch(`${local}${path}`, {method, signal:AbortSignal.timeout(20000)});
       assert.equal(res.status,503,`${method} ${path}`);
       assert.match(res.headers.get("cache-control"),/no-store/);
+      if (path.startsWith("/api/auth/")) assert.equal(res.headers.get("referrer-policy"),"no-referrer");
       assert.equal((await res.json()).error,"CONFIGURATION_UNAVAILABLE");
     }
   }
