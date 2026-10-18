@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { allowRequest, clientIp, FORM_RULE, isHoneypotFilled } from "@/lib/antispam";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ const contactSchema = z.object({
   message: z.string().trim().min(10, "message").max(4000),
   locale: z.enum(["es", "en"]).optional().default("es"),
   /** Campo trampa: si viene completo, es un bot. */
-  website: z.string().max(0).optional().nullable(),
+  website: z.string().max(500).optional().nullable(),
 });
 
 /** POST /api/contact → guarda la consulta del formulario. */
@@ -26,6 +27,13 @@ export async function POST(request: Request) {
   }
 
   const parsed = contactSchema.safeParse(payload);
+  if (parsed.success && isHoneypotFilled(parsed.data.website)) {
+    // Robot: respondemos OK para no darle pistas, pero no guardamos nada.
+    return NextResponse.json({ ok: true });
+  }
+  if (!allowRequest("contact", clientIp(request), FORM_RULE)) {
+    return NextResponse.json({ error: "RATE_LIMIT" }, { status: 429 });
+  }
   if (!parsed.success) {
     return NextResponse.json(
       {
@@ -36,9 +44,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { website, ...data } = parsed.data;
-  // Honeypot: respondemos OK para no darle pistas al bot, pero no guardamos.
-  if (website) return NextResponse.json({ ok: true });
+  const { website: _website, ...data } = parsed.data;
 
   if (!isSupabaseConfigured) {
     // Sin base no se simula un envío exitoso.
