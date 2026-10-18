@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { authEmailFailure } from "./email-errors";
 import { authCallbackUrl } from "./redirects";
 
 export const NEW_PASSWORD_MIN = 12;
@@ -14,8 +15,8 @@ export async function requestRecovery(client: SupabaseClient, email: string, ori
       redirectTo: authCallbackUrl(origin, locale, "recovery"),
     });
     // No exponer existencia de cuentas, mensajes del proveedor ni direcciones.
-    return error ? "error" as const : "sent" as const;
-  } catch { return "error" as const; }
+    return error ? authEmailFailure(error) : "sent" as const;
+  } catch (error) { return authEmailFailure(error); }
 }
 
 export async function changeRecoveredPassword(client: SupabaseClient, expectedUserId: string, password: string) {

@@ -1,7 +1,8 @@
 # Seguridad 1C — Acceso y recuperación de contraseña
 
 18 de octubre de2026. Base: PR12 mergeado (`538101e`). Rama:
-`arena/1e67d1fd-strong-gym`. Sólo código/documentación y pruebas aisladas; no SQL,
+`arena/1e67d1fd-strong-gym`. Código/documentación, pruebas aisladas y revisión Auth
+en sólo lectura; no SQL,
 correos reales enviados, usuarios modificados, factores MFA ni ajustes remotos.
 
 ## 1. Qué construye este bloque
@@ -44,9 +45,16 @@ correos reales enviados, usuarios modificados, factores MFA ni ajustes remotos.
     sigue503. Callback/recuperación usan no-store/no-referrer/noindex; encabezados
     adicionales para que códigos/credenciales no se propaguen como Referer.
 
-## 2. Preparación del correo — NO ejecutada remotamente
+## 2. Preparación del correo — sin modificaciones remotas
 
 No hace falta SQL. No cambiar contraseñas, desactivar confirmación ni retirar roles.
+
+**Actualización de revisión real:** [informe previo a publicación](REVISION-CORREO-AUTH.md).
+Dominio, patrón de destinos y templates son compatibles. SMTP propio NO configurado;
+el correo general a clientes sigue bloqueado para aceptación productiva. No se enviaron
+mensajes ni se modificó configuración. La lista siguiente es una referencia de destinos,
+no una instrucción para añadirlos repetidos al patrón existente.
+
 Antes de dar por operativo el correo real, revisar en Authentication → URL Configuration:
 
 - Site URL del dominio confirmado: `https://strong-gym-gamma.vercel.app`.
@@ -70,8 +78,10 @@ Si una plantilla personalizada usa otro formato, revisar antes de publicar.
 
 Revisar SMTP/entregabilidad/límites, confirmación, expiración/reautenticación,
 contraseñas filtradas y CAPTCHA en el proveedor. No habilitar CAPTCHA sin implementar
-su interacción en la app. No se consultaron secretos SMTP, claves ni valores de
-variables remotas para esta entrega. No se promete una auditoría completa de Auth.
+su interacción en la app. La revisión posterior consultó la configuración Auth existente
+en sólo lectura: los campos SMTP no están configurados. No se solicitaron claves API
+ni variables de Vercel y no se guardó la respuesta completa. Ver informe enlazado.
+No se promete una auditoría completa de Auth.
 
 ## 3. MFA — límites y siguiente bloque
 
@@ -112,7 +122,7 @@ cambiar claves reales automáticamente. Esa aceptación todavía está pendiente
 typecheck: tsc --noEmit, exit0
 lint:0 errores,9 advertencias
 build: Compiled successfully;44/44 (flag demo=true, producción sin Supabase)
-test:auth:520/520,0 fallos (51 casos nuevos)
+test:auth:532/532,0 fallos (63 casos nuevos desde PR12)
 test:sql: todas las suites aprobadas, seguridad147/deudas95 incluidas
 test:finance:rsc: Cuentas/Reportes/Gastos/Comprobante aprobados
 test:metadata: páginas ES/EN y API503, no-referrer en rutas nuevas, OG PNG válidos

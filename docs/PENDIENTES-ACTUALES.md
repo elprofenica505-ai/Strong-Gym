@@ -29,7 +29,10 @@ Esto acredita esos recorridos, no cada módulo, moneda, rol o fallo de red posib
 - [x] Usuario confirmó ingreso/Clientes/Caja/Reportes tras publicar1B. Sólo prueba de humo, no todos los permisos.
 - [x] Construir recuperación PKCE/redirects/validación de contraseñas/logout explícito:
   [Seguridad1C](AUTH-RECUPERACION.md). Pendiente de merge autorizado y correo real.
-- [ ] Verificar allowlist/templates/SMTP y aceptación de recuperación con correo del usuario.
+- [x] Revisar allowlist/templates/SMTP real en sólo lectura: destinos/templates compatibles;
+  [SMTP propio no configurado](REVISION-CORREO-AUTH.md), límite integrado2/h. Sin cambios remotos.
+- [ ] Confirmar remitente/dominio/proveedor con el usuario, configurar envío con autorización
+  y aceptar recuperación por correo real después de publicar. No listo aún para entrega general.
 - [ ] Revisar secretos, historial/bundles/variables y exclusiones de archivos env.
 - [ ] Auth: contraseñas, recuperación, confirmación/redirects, sesiones y MFA admin
   sin bloquear al administrador; no sustituir Auth editando profiles.

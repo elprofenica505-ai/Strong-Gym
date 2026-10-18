@@ -159,7 +159,7 @@ Cada `git push` a `main` republica el sitio automáticamente.
 1. En Supabase → **Authentication** → **URL Configuration**.
 2. **Site URL**: `https://tu-dominio.vercel.app`
 3. **Redirect URLs**: agregá
-   - Los destinos concretos de [recuperación/confirmación PKCE](docs/AUTH-RECUPERACION.md#2-preparación-del-correo--no-ejecutada-remotamente).
+   - Los destinos concretos de [recuperación/confirmación PKCE](docs/AUTH-RECUPERACION.md).
    - Para local/preview, autorizar sólo el origen controlado y sus callbacks. No wildcard global de Vercel.
    - Conservar destinos anteriores hasta verificar correos pendientes; no borrar configuración a ciegas.
 

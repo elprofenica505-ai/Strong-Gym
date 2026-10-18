@@ -417,6 +417,8 @@ const es = {
     emailInUse: "Ya existe una cuenta con ese email. Probá ingresar.",
     weakPassword: "Usá una contraseña única de entre 12 y 128 caracteres.",
     passwordMismatch: "Las contraseñas no coinciden.",
+    rateLimited: "Se alcanzó un límite de solicitudes. Esperá antes de intentar de nuevo; no se enviarán reintentos automáticos.",
+    deliveryUnavailable: "El servicio de correo requiere revisión. Contactá al administrador para completar la solicitud.",
     genericError: "No pudimos completar la operación. Intentá de nuevo.",
     requiredField: "Complete este campo",
     passwordMin: "Entre 12 y 128 caracteres",

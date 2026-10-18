@@ -414,6 +414,8 @@ const en = {
     emailInUse: "An account with that email already exists. Try logging in.",
     weakPassword: "Use a unique password between 12 and 128 characters.",
     passwordMismatch: "The passwords do not match.",
+    rateLimited: "A request limit was reached. Wait before trying again; no automatic retries will be sent.",
+    deliveryUnavailable: "The email service needs attention. Contact the administrator to complete the request.",
     genericError: "We could not complete the operation. Please try again.",
     requiredField: "Please fill in this field",
     passwordMin: "Between 12 and 128 characters",

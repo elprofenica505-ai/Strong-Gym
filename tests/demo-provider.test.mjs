@@ -60,6 +60,16 @@ test('demo de sólo lectura: no restaura sesiones ni almacena contraseñas; limp
     assert.equal(result.ok,false);assert.equal(signups,0);
     await act(async()=>{result=await ctx.signUp({fullName:' EXAMPLE ',email:'example@test.invalid',password:'EXAMPLE_NEW_PASSWORD'});});
     assert.equal(result.ok,true);assert.equal(result.needsConfirmation,true);assert.equal(signups,1);
+    for(const [providerError,key] of [[{status:429,code:'over_email_send_rate_limit'},'rateLimited'],[{code:'email_address_not_authorized'},'deliveryUnavailable']]) {
+      globalThis.__authBoundary={auth:{
+        signUp:async()=>({data:null,error:{...providerError,message:'EXAMPLE_PRIVATE_PROVIDER'}}),
+        signInWithPassword:async()=>({data:null,error:{...providerError,message:'EXAMPLE_PRIVATE_PROVIDER'}}),
+      }};
+      await act(async()=>{result=await ctx.signUp({fullName:'EXAMPLE',email:'example@test.invalid',password:'EXAMPLE_NEW_PASSWORD'});});
+      assert.equal(result.ok,false);assert.equal(result.error,key);assert.equal(ctx.user,null);
+      await act(async()=>{result=await ctx.signIn('example@test.invalid','EXAMPLE_NEW_PASSWORD');});
+      assert.equal(result.ok,false);assert.equal(result.error,key);assert.equal(ctx.user,null);
+    }
   } finally {
     await act(async()=>root.unmount());dom.window.close();
     globalThis.window=previous.window;globalThis.document=previous.document;globalThis.IS_REACT_ACT_ENVIRONMENT=previous.act;

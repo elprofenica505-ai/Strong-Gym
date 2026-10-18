@@ -110,3 +110,29 @@ for(const mode of ['login','register'])test(`${mode}: contraseña antigua corta 
     },AuthForm);
   } finally {delete globalThis.__loginBoundary;}
 });
+
+for(const [error,phrase] of [
+  [{status:429,code:'over_email_send_rate_limit'},/límite de solicitudes/],
+  [{code:'email_address_not_authorized'},/servicio de correo requiere revisión/],
+])test(`UI de correo: ${error.code} no finge éxito ni expone proveedor`,async()=>{
+  let calls=0;
+  globalThis.__recoveryClient={auth:{resetPasswordForEmail:async()=>{calls++;return {error:{...error,message:'EXAMPLE_PRIVATE_SMTP'}};}}};
+  await withForm({mode:'request'},async(doc,event)=>{
+    doc.querySelector('input').value='example@test.invalid';
+    await act(async()=>doc.querySelector('form').dispatchEvent(event()));
+    assert.equal(calls,1);assert.match(doc.querySelector('[role=alert]').textContent,phrase);
+    assert.doesNotMatch(doc.body.textContent,/EXAMPLE_PRIVATE_SMTP|Si existe una cuenta/);
+    assert.ok(doc.querySelector('form'));
+  });
+});
+
+test('error desconocido de acceso siempre muestra texto genérico, no objetos ni detalles',async()=>{
+  globalThis.__loginBoundary=async()=>({ok:false,error:'__proto__'});
+  try {
+    await withForm({mode:'login'},async(doc,event)=>{
+      doc.querySelector('[name=email]').value='example@test.invalid';doc.querySelector('[name=password]').value='old123';
+      await act(async()=>doc.querySelector('form').dispatchEvent(event()));
+      assert.equal(doc.querySelector('[role=alert]').textContent,es.auth.genericError);
+    },AuthForm);
+  } finally {delete globalThis.__loginBoundary;}
+});

@@ -38,7 +38,12 @@ export function RecoveryForm({ mode, expectedUserId, email, invalidLink = false 
       if (!client) { setError(copy.failed); return; }
       if (mode === "request") {
         const result = await requestRecovery(client, String(data.get("email") ?? ""), window.location.origin, locale);
-        if (result !== "sent") { setError(result === "invalid" ? dict.contact.invalidEmail : copy.failed); return; }
+        if (result !== "sent") {
+          setError(result === "invalid" ? dict.contact.invalidEmail
+            : result === "rateLimited" ? dict.auth.rateLimited
+            : result === "deliveryUnavailable" ? dict.auth.deliveryUnavailable : copy.failed);
+          return;
+        }
         setDone(true); form.reset();
       } else {
         const result = await changeRecoveredPassword(client, expectedUserId!, password);

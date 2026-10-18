@@ -57,7 +57,8 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
       : await signUp({ fullName, email, password, phone });
 
     if (!result.ok) {
-      setError((dict.auth as Record<string, string>)[result.error ?? "genericError"]);
+      const message = (dict.auth as Record<string, unknown>)[result.error ?? "genericError"];
+      setError(typeof message === "string" ? message : dict.auth.genericError);
       return;
     }
 

@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import type { BookingDetail } from "@/lib/types";
+import { authEmailFailure } from "@/lib/auth/email-errors";
 import { validNewPassword } from "@/lib/auth/password-recovery";
 import { authCallbackUrl } from "@/lib/auth/redirects";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -371,6 +372,8 @@ export function AppProvider({
           password,
         });
         if (error) {
+          const emailFailure = authEmailFailure(error);
+          if (emailFailure !== "error") return { ok: false, error: emailFailure };
           const message = error.message.toLowerCase();
           if (message.includes("invalid") || message.includes("credentials")) {
             return { ok: false, error: "invalidCredentials" };
@@ -412,6 +415,8 @@ export function AppProvider({
         });
 
         if (error) {
+          const emailFailure = authEmailFailure(error);
+          if (emailFailure !== "error") return { ok: false, error: emailFailure };
           const message = error.message.toLowerCase();
           if (message.includes("already") || message.includes("registered")) {
             return { ok: false, error: "emailInUse" };
