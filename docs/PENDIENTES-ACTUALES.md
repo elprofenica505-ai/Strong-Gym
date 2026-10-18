@@ -13,6 +13,22 @@ cobro NIO10, gasto NIO4, cobro USD1 y recorrido de deuda NIO100 → abonos40+20+
 cobrar0 y créditos intactos. No repetir esos cargos/abonos ni reinstalar00028/29.
 Esto acredita esos recorridos, no cada módulo, moneda, rol o fallo de red posible.
 
+## 1B. En espera: no hacer hasta hablar con el dueño y confirmar pago
+
+Estos pendientes dependen de una decisión del dueño, de un dato que sólo él puede dar
+o de un servicio de pago. No se ejecutan mientras tanto. Se retoman cuando el usuario lo indique.
+
+- [ ] Correo propio del gimnasio: remitente, dominio y proveedor SMTP reales. Requiere datos del dueño y autorización expresa.
+- [ ] Prueba de recuperación de contraseña con correo real desde la dirección principal (hay que esperar la hora de límite del proyecto).
+- [ ] Sesiones con tiempo límite e inactividad en Supabase: requiere plan Pro (pago).
+- [ ] Verificador antispam externo (tipo Turnstile): requiere cuenta externa y decisión.
+- [ ] Política de contenido (CSP): probarla en modo informativo antes de activarla.
+- [ ] Dueño como segundo administrador: requiere su correo y autorización escrita, y que la app esté lista.
+- [ ] Llave de acceso (huella o rostro): cuando Supabase la saque de versión experimental.
+- [ ] Cuenta de prueba de cliente (`baltodano19932025@gmail.com`): sólo recibe correos si se agrega como miembro del equipo o si hay correo propio; no se creó.
+
+Ya quedó hecho en esta misma etapa (sin pendientes de pago): MFA del personal, verificación en dos pasos de la cuenta Supabase, 00031 y 00032, antispam básico, cabeceras HSTS y Permissions-Policy, revisión de bundle y secretos, alcance de la app instalada.
+
 ## 2. Una sola secuencia de trabajo
 
 ### Etapa 1 — Proteger lo construido (ACTUAL)
