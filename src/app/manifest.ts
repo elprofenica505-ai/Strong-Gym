@@ -22,7 +22,10 @@ export default function manifest(): MetadataRoute.Manifest {
     description:
       "Gimnasio en Los Cedros, Villa El Carmen: pesas y máquinas, boxeo, bailoterapia y suplementos.",
     start_url: "/es",
-    scope: "/",
+    // Alcance sólo de la parte pública en español. Así los enlaces de correo
+    // (p. ej. /api/auth/callback de recuperación) se abren en el navegador y
+    // no dentro de la app instalada, que perdería el código del navegador.
+    scope: "/es",
     display: "standalone",
     display_override: ["standalone", "browser"],
     orientation: "portrait",

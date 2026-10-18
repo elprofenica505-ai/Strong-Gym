@@ -17,7 +17,15 @@ Fecha de esta versión: 2026-10-18 · Rama: `arena/85c54d7d-strong-gym` · PR ab
    - Antes de implementarla hay que verificar que la función salga de versión experimental en Supabase.
 5. **Varios administradores:** técnicamente posible, pero **cada alta es una decisión del dueño**. Cada persona activa su propio método. Se prepara sólo cuando el dueño lo pida, con su correo y autorización escrita.
 
-## Orden acordado
+## Estado del orden acordado
+
+**Hecho 2026-10-18:**
+- Paso 1: PR #14 mergeado a `main` (commit `3cc754c`).
+- Paso 2: SQL `00031_personal_requiere_mfa.sql` aplicado en Supabase (`crm_is_staff()` exige `aal2`). Verificado: definición actualizada; `anon` sin permiso de ejecución.
+- Verificación previa: único personal (admin `elprofenica505@gmail.com`) con factor TOTP verificado.
+- Pendiente de prueba manual: entrar al panel y confirmar que Clientes y Caja cargan con datos.
+
+**Orden original:**
 
 1. **Mergear PR #14** (MFA con código de app para admin/staff) — requiere autorización expresa.
 2. **Cerrar el hueco en la base de datos:** exigir MFA (`aal2`) en las políticas de personal de Supabase, para que no se pueda consultar datos directamente por la API sin el segundo factor. — Requiere SQL preparado y autorización expresa.
