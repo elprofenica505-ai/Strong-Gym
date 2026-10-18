@@ -11,7 +11,7 @@ const {render,screen,fireEvent,waitFor,cleanup,act}=await import('@testing-libra
 const load=createLoader({
   '@/lib/data/queries':'export const getCurrentUser=async()=>globalThis.__debtTest.user;',
   '@/lib/supabase/server':'export const getSupabaseServerClient=async()=>globalThis.__debtTest.db;',
-  '@/lib/supabase/env':'export const isSupabaseConfigured=true;',
+  '@/lib/supabase/env':'export const isSupabaseConfigured=true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;',
   'next/navigation':'export const useRouter=()=>({refresh(){}});',
 });
 const {GET,POST}=await load('app/api/admin/debts/route.ts');

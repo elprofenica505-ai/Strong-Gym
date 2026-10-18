@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Receipt, Wallet } from "lucide-react";
 import { getCurrentUser, getExpenseCategories } from "@/lib/data/queries";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { DEMO_MODE } from "@/lib/supabase/env";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
@@ -21,7 +21,7 @@ export default async function GastosPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  if (!isSupabaseConfigured) {
+  if (DEMO_MODE) {
     return (
       <Placeholder
         title="Gastos"

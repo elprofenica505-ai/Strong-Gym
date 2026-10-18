@@ -70,7 +70,7 @@ export async function testFinanceRecovery({ control, connect, actor, client, che
     cleanup = testing.cleanup;
     const load = createLoader({
       "@/lib/data/queries": "export const getCurrentUser=()=>globalThis.__financeRecovery.user();",
-      "@/lib/supabase/env": "export const isSupabaseConfigured=true;",
+      "@/lib/supabase/env": "export const isSupabaseConfigured=true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;",
       "@/lib/supabase/server": "export const getSupabaseServerClient=async()=>globalThis.__financeRecovery.db;",
       "next/navigation": "export const useRouter=()=>({refresh(){}});",
     });

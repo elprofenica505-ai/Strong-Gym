@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { isLocale } from "@/i18n/config";
 import { canAccessPanel } from "@/lib/auth/current-user";
 import { getCurrentUser } from "@/lib/data/queries";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { DEMO_MODE } from "@/lib/supabase/env";
 import { ClientsPanel } from "@/components/crm/clients-panel";
 export const metadata: Metadata = {
   title: "Clientes y recepción",
@@ -17,13 +17,13 @@ export default async function ClientsPage({
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const user = await getCurrentUser();
-  if (isSupabaseConfigured && !user) redirect(`/${locale}/ingresar`);
-  if (isSupabaseConfigured && !canAccessPanel(user))
+  if (!DEMO_MODE && !user) redirect(`/${locale}/ingresar`);
+  if (!DEMO_MODE && !canAccessPanel(user))
     redirect(`/${locale}/mi-cuenta`);
   return (
     <ClientsPanel
       isAdmin={user?.role === "admin"}
-      isDemo={!isSupabaseConfigured}
+      isDemo={DEMO_MODE}
     />
   );
 }

@@ -15,7 +15,7 @@ import { getSiteUrl, siteConfig } from "@/config/site";
 import { getDictionary } from "@/i18n/dictionaries";
 import { isLocale, locales, type Locale } from "@/i18n/config";
 import { getCurrentUser } from "@/lib/data/queries";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { DEMO_MODE, CONFIGURATION_UNAVAILABLE } from "@/lib/supabase/env";
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
@@ -63,7 +63,7 @@ export async function generateMetadata({
       title: dict.meta.title,
       description: dict.meta.description,
     },
-    robots: { index: true, follow: true },
+    robots: { index: !CONFIGURATION_UNAVAILABLE, follow: !CONFIGURATION_UNAVAILABLE },
     // El manifest se declara en `manifest.ts`; acá referenciamos los
     // íconos y el app-capable de iOS. appleWebApp hace que Safari
     // muestre "Añadir a pantalla de inicio" y abra la app en modo
@@ -118,6 +118,12 @@ export default async function LocaleLayout({
   if (!isLocale(locale)) notFound();
 
   const dict = getDictionary(locale as Locale);
+  if (CONFIGURATION_UNAVAILABLE) {
+    return <html lang={locale}><body><main className="min-h-screen bg-paper px-6 py-24 text-ink">
+      <h1 className="text-2xl font-bold">{locale === "en" ? "Service temporarily unavailable" : "Servicio temporalmente no disponible"}</h1>
+      <p className="mt-4">{locale === "en" ? "Configuration requires attention. No demo or operations are enabled." : "La configuración requiere revisión. No se activó una demo ni se habilitaron operaciones."}</p>
+    </main></body></html>;
+  }
   const user = await getCurrentUser();
 
   return (
@@ -148,7 +154,7 @@ export default async function LocaleLayout({
       </head>
       <body className="min-h-dvh bg-paper text-ink antialiased">
         <DictionaryProvider dict={dict} locale={locale as Locale}>
-          <AppProvider initialUser={user} isDemo={!isSupabaseConfigured}>
+          <AppProvider initialUser={user} isDemo={DEMO_MODE}>
             <a
               href="#contenido"
               className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:rounded-full focus:bg-brand focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-onbrand"
@@ -157,7 +163,7 @@ export default async function LocaleLayout({
             </a>
 
             <SiteShell
-              banner={!isSupabaseConfigured ? <DemoBanner /> : null}
+              banner={DEMO_MODE ? <DemoBanner /> : null}
               footer={<SiteFooter locale={locale as Locale} />}
             >
               {children}

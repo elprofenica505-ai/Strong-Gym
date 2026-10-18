@@ -40,8 +40,7 @@ import { accentOnDark, cn, textOnAccent } from "@/lib/utils";
 /**
  * Panel del cliente.
  *  - Con Supabase manda la última lectura autenticada, no el estado SSR inicial.
- *  - En modo demo viven en el navegador (AppProvider) y acá las cruzamos
- *    con los horarios de ejemplo para poder mostrarlas.
+ *  - La demo actual sólo permite lectura, sin identidad ni reservas persistidas.
  */
 export function AccountDashboard({
   initialBookings,
@@ -431,8 +430,7 @@ function historyFrom(bookings: BookingDetail[], now: Date): BookingDetail[] {
 }
 
 /**
- * Modo demo: busca en los horarios de esta semana y la próxima las clases
- * que el usuario reservó (las reservas de ejemplo viven en localStorage).
+ * Lector ilustrativo de horarios. La demo actual no crea ni restaura reservas.
  */
 function useDemoBookings(bookings: AppBooking[]): {
   upcoming: BookingDetail[];

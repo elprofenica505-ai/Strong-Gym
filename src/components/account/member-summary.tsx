@@ -152,7 +152,7 @@ export function MemberSummary({ initialBookings }: { initialBookings: BookingDet
   );
 }
 
-/** Modo demo: cruza las reservas del navegador con los horarios de ejemplo. */
+/** Lector ilustrativo; demo actual no crea ni persiste reservas. */
 function useDemoUpcoming(bookings: ReturnType<typeof useApp>["bookings"]): BookingDetail[] {
   const [sessions, setSessions] = useState<Map<string, SessionDetail>>(new Map());
 

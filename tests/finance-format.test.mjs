@@ -50,7 +50,7 @@ for (const page of ["cuentas", "reportes"])
       export const getPaymentMethodsBreakdown=async()=>${JSON.stringify(empty ? [] : [{ paymentMethodId: null, nameEs: null, icon: "Wallet", txCount: 1, totalNio: 86600, incomeNio: 0, expenseNio: 86600 }])};`;
       const load = createLoader({
         "@/lib/data/queries": queries,
-        "@/lib/supabase/env": "export const isSupabaseConfigured=true;",
+        "@/lib/supabase/env": "export const isSupabaseConfigured=true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;",
         "@/components/admin/cash-panel":
           "export function formatMoney(){throw Error('SERVER_CALLED_CLIENT_FUNCTION');}",
         "next/navigation":

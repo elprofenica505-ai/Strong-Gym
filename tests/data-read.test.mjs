@@ -6,7 +6,7 @@ import { createLoader } from "./helpers/react-loader.mjs";
 
 const load = createLoader({
   "server-only": "export {};",
-  "@/lib/supabase/env": "export const isSupabaseConfigured=true;",
+  "@/lib/supabase/env": "export const isSupabaseConfigured=true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;",
   "@/lib/supabase/server":
     'export const getSupabaseServerClient=async()=> { if(globalThis.__dbThrows) throw new Error("secret"); return globalThis.__operationalDb; };',
 });
@@ -199,7 +199,7 @@ test("relación rota de sesión/reserva no desaparece como lista vacía", async 
 test("sin configurar conserva demo local explícita", async () => {
   const demo = await createLoader({
     "server-only": "export {};",
-    "@/lib/supabase/env": "export const isSupabaseConfigured=false;",
+    "@/lib/supabase/env": "export const isSupabaseConfigured=false;export const DEMO_MODE=true;export const CONFIGURATION_UNAVAILABLE=false;",
     "@/lib/supabase/server":
       "export const getSupabaseServerClient=async()=>null;",
   })("lib/data/queries.ts");

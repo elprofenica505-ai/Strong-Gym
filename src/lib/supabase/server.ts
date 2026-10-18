@@ -3,13 +3,14 @@ import "server-only";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
-import { SUPABASE_ANON_KEY, SUPABASE_URL, isSupabaseConfigured } from "./env";
+import { SUPABASE_ANON_KEY, SUPABASE_URL, isSupabaseConfigured, assertConnectionAvailable } from "./env";
 
 /**
  * Cliente de Supabase para el servidor, con la sesión del usuario
  * leída de las cookies. Devuelve `null` en modo demo.
  */
 export async function getSupabaseServerClient(): Promise<SupabaseClient | null> {
+  assertConnectionAvailable();
   if (!isSupabaseConfigured) return null;
 
   const cookieStore = await cookies();

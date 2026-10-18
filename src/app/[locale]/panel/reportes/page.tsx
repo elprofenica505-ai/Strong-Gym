@@ -9,7 +9,7 @@ import {
   getMonthlyPnl,
   getPaymentMethodsBreakdown,
 } from "@/lib/data/queries";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { DEMO_MODE } from "@/lib/supabase/env";
 import { formatMoney } from "@/lib/finance/format-money";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -25,7 +25,7 @@ export default async function ReportesPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  if (!isSupabaseConfigured) {
+  if (DEMO_MODE) {
     return (
       <Placeholder
         title="Reportes"

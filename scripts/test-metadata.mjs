@@ -1,4 +1,4 @@
-/** Verifica el build local/demo por HTTP, sin sesión ni acceso a redes sociales.
+/** Verifica metadatos/imagenes y cierre seguro del build sin configurar por HTTP.
  * Requiere build con Supabase sin configurar (como CI). Servidor efímero, cerrado al terminar.
  */
 import assert from "node:assert/strict";
@@ -74,7 +74,10 @@ try {
   for (const locale of ["es", "en"]) {
     const response = await fetchLocal(`/${locale}`);
     assert.equal(response.status, 200);
-    const dom = new JSDOM(await response.text());
+    const html = await response.text();
+    assert.match(html, /Servicio temporalmente no disponible|Service temporarily unavailable/);
+    assert.doesNotMatch(html, /admin123|demo-admin|strong-gym:demo-users/);
+    const dom = new JSDOM(html);
     try {
       const doc = dom.window.document;
       assert.equal(doc.documentElement.lang, locale);
@@ -104,6 +107,25 @@ try {
       dom.window.close();
     }
   }
+  for (const path of ["es", "en"].flatMap(locale =>
+    ["ingresar", "registro", "mi-cuenta", "panel", "panel/clientes", "panel/caja", "panel/reportes", "horarios"]
+      .map(route => `/${locale}/${route}`))) {
+    const res=await fetchLocal(path);
+    assert.equal(res.status,503,path);
+    assert.match(res.headers.get("cache-control"),/no-store/);
+    const body=await res.text();
+    assert.doesNotMatch(body, /admin123|demo-admin/);
+    assert.match(body, path.startsWith("/en/") ? /Service temporarily unavailable/ : /Servicio temporalmente no disponible/);
+  }
+  for (const path of ["/api/bookings", "/api/admin/clients", "/api/admin/finance", "/api/admin/debts", "/api/account", "/api/contact", "/api/newsletter"]) {
+    for (const method of ["GET", "POST", "PATCH", "DELETE"]) {
+      const res=await fetch(`${local}${path}`, {method, signal:AbortSignal.timeout(20000)});
+      assert.equal(res.status,503,`${method} ${path}`);
+      assert.match(res.headers.get("cache-control"),/no-store/);
+      assert.equal((await res.json()).error,"CONFIGURATION_UNAVAILABLE");
+    }
+  }
+  console.log("✅ Producción sin configuración: ingreso/panel/caja/reservas y API GET/POST/PATCH/DELETE bloqueados con 503, sin credenciales ni demo.");
   const oldImage = await fetchLocal("/opengraph-image");
   assert.equal(oldImage.status, 200);
   assert.match(oldImage.headers.get("content-type"), /^image\/png/);
@@ -111,11 +133,11 @@ try {
     "✅ Enlace anterior /opengraph-image sigue funcionando mediante redirección por idioma.",
   );
   const missing = await fetchLocal("/es/esta-pagina-no-existe");
-  assert.equal(missing.status, 404);
+  assert.equal(missing.status, 503);
   await missing.text();
   assert.doesNotMatch(logs, /metadataBase property .*not set/);
   console.log(
-    "✅ Ruta inexistente devuelve 404; sin advertencia de metadataBase en las solicitudes.",
+    "✅ Sin configuración, rutas no públicas devuelven 503; sin advertencia de metadataBase en las solicitudes.",
   );
 } catch (error) {
   console.error(logs);

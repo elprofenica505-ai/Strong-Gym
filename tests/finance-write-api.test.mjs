@@ -16,7 +16,7 @@ const intent = {
 const load = createLoader({
   "@/lib/data/queries":
     "export const getCurrentUser=async()=>globalThis.__financeUser;",
-  "@/lib/supabase/env": "export const isSupabaseConfigured=true;",
+  "@/lib/supabase/env": "export const isSupabaseConfigured=true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;",
   "@/lib/supabase/server":
     "export const getSupabaseServerClient=async()=>globalThis.__financeWriteDb;",
 });
@@ -190,7 +190,7 @@ test("historial valida filtro y requiere filas completas", async () => {
 });
 test("sin Supabase responde 503 y jamás simula guardado", async () => {
   const { POST } = await createLoader({
-    "@/lib/supabase/env": "export const isSupabaseConfigured=false;",
+    "@/lib/supabase/env": "export const isSupabaseConfigured=false;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=true;",
     "@/lib/data/queries":
       'export const getCurrentUser=async()=>{throw Error("unexpected")};',
     "@/lib/supabase/server":

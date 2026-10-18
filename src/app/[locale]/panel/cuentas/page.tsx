@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, Clock, Mail, Phone, Wallet } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { getAccountsReceivable, getCurrentUser } from "@/lib/data/queries";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { DEMO_MODE } from "@/lib/supabase/env";
 import { formatMoney } from "@/lib/finance/format-money";
 
 export async function generateMetadata({
@@ -26,7 +26,7 @@ export default async function CuentasPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  if (!isSupabaseConfigured) {
+  if (DEMO_MODE) {
     return (
       <Placeholder
         title="Cuentas por cobrar"

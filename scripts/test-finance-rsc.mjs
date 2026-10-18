@@ -87,7 +87,7 @@ try {
     "server.ts",
     `export const getSupabaseServerClient=async()=>({rpc(){return {abortSignal:async()=>process.env.FINANCE_RSC_EMPTY==='1'?{data:null,error:{message:'RECEIPT_NOT_FOUND'}}:{data:${JSON.stringify(receipt)},error:null}}}});`,
   );
-  put("env.ts", "export const isSupabaseConfigured = true;");
+  put("env.ts", "export const isSupabaseConfigured = true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;");
   put(
     "data.ts",
     `const empty=process.env.FINANCE_RSC_EMPTY==='1';

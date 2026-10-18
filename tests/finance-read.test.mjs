@@ -6,7 +6,7 @@ import { createLoader } from "./helpers/react-loader.mjs";
 
 const load = createLoader({
   "server-only": "export {};",
-  "@/lib/supabase/env": "export const isSupabaseConfigured=true;",
+  "@/lib/supabase/env": "export const isSupabaseConfigured=true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;",
   "@/lib/supabase/server":
     "export const getSupabaseServerClient=async()=>globalThis.__financeDb;",
 });
@@ -178,7 +178,7 @@ function pageLoader(role) {
     )
     .join("\n");
   return createLoader({
-    "@/lib/supabase/env": "export const isSupabaseConfigured=true;",
+    "@/lib/supabase/env": "export const isSupabaseConfigured=true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;",
     "@/lib/data/queries": code,
     "next/navigation":
       "export const useRouter=()=>({refresh(){}});export function redirect(path){throw new Error('REDIRECT:'+path);}",
@@ -482,7 +482,7 @@ test("Cuentas: deuda USD independiente y mora/facturas no informadas", async () 
     daysOverdue: null,
   };
   const page = createLoader({
-    "@/lib/supabase/env": "export const isSupabaseConfigured=true;",
+    "@/lib/supabase/env": "export const isSupabaseConfigured=true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;",
     "@/lib/data/queries": `export const getCurrentUser=async()=>({role:'staff'});export const getAccountsReceivable=async()=>(${JSON.stringify([ar])});`,
     "next/navigation": 'export function redirect(){throw Error("redirect");}',
   });

@@ -1,15 +1,16 @@
 # Strong Gym — Sitio web + reserva de clases
 
 Sitio web del gimnasio **Strong Gym**: landing bilingüe (español/inglés), horarios de clases
-y **reserva de clases online** para los socios, con panel de administración para el gimnasio.
+y **reserva de clases online** para los clientes, con panel de administración para el gimnasio.
 
 Hecho para correr en **Vercel** con la base de datos y el login en **Supabase**,
 y el código en **GitHub**.
 
-> **¿Recién arrancás?** El sitio funciona **sin configurar nada**: entra en *modo demo* y
-> muestra el contenido de ejemplo con las reservas guardadas en tu navegador.
-> Cuando conectás Supabase, todo pasa a la base de datos real.
-> Los pasos están en **[DEPLOY.md](./DEPLOY.md)**.
+> **Configuración segura:** producción requiere Supabase con HTTPS y clave pública.
+> Sin configuración no activa una demo: bloquea operaciones y muestra un aviso.
+> Demo local opcional: `NEXT_PUBLIC_ENABLE_DEMO=true` con `npm run dev`, ambas
+> variables Supabase vacías. Es sólo lectura, sin cuentas ni contraseñas demo.
+> Ver [Seguridad 1B](./docs/DEMO-PRODUCCION.md) y [DEPLOY.md](./DEPLOY.md).
 
 ---
 
@@ -43,7 +44,7 @@ panel persista ni que el reset legado prepare por sí solo la entrega al dueño.
 | **Registro / Ingreso** | Alta de cuenta e inicio de sesión con email y contraseña |
 | **Contacto** | Formulario que guarda las consultas en la base (con protección anti-spam) |
 
-### Socios (con cuenta)
+### Clientes (con cuenta)
 
 - **Mi cuenta** (`/es/mi-cuenta`): próximas reservas, historial, estadísticas y datos personales.
 - Cancelar una reserva hasta **3 horas antes** del inicio de la clase.
@@ -51,7 +52,7 @@ panel persista ni que el reset legado prepare por sí solo la entrega al dueño.
 ### Staff del gimnasio
 
 - **Panel** (`/es/panel`): reservas del día y de la semana, consultas del formulario,
-  disciplinas activas, ocupación y socios registrados.
+  disciplinas activas, ocupación y clientes registrados.
 
 ### Detalles técnicos
 
@@ -60,7 +61,7 @@ panel persista ni que el reset legado prepare por sí solo la entrega al dueño.
 - **Adaptable de verdad**: se diseña desde 360 px (celular chico) hasta monitores grandes.
 - **Reservas sin sobreventa**: el cupo se controla en PostgreSQL con bloqueo de fila
   (`book_session`), así que dos personas no pueden tomar el último lugar a la vez.
-- **Seguridad a nivel de fila (RLS)**: cada socio sólo puede ver y tocar sus propias reservas.
+- **Seguridad a nivel de fila (RLS)**: cada cliente sólo puede ver y tocar sus propias reservas.
 - **Funciona sin JavaScript para el contenido** (SSR) y con `prefers-reduced-motion` respetado.
 - SEO: metadatos por idioma, `hreflang`, `sitemap.xml`, `robots.txt` y datos estructurados
   (`HealthAndBeautyBusiness` + `Event` por clase) para que Google muestre los horarios.
@@ -94,14 +95,16 @@ npm run dev
 
 Abrí <http://localhost:3000> y te redirige a `/es` o `/en` según tu navegador.
 
-### Probar el panel de administración en modo demo
+### Demostración local de sólo lectura
 
-1. Entrá a **Ingresar**.
-2. Usá la cuenta de ejemplo: **`admin@stronggym.com`** / **`admin123`**
-3. Andá a **Panel**.
+1. En `.env.local`, dejar URL/clave Supabase vacías y añadir `NEXT_PUBLIC_ENABLE_DEMO=true`.
+2. Ejecutar `npm run dev` para consultar contenido y panel ilustrativos.
+3. Ingreso, registro, reservas y edición demo están deshabilitados. No introducir datos reales.
 
-> Las cuentas y las reservas del modo demo se guardan en el `localStorage` del navegador.
-> Borrá los datos del sitio para empezar de cero.
+No hay administrador ni contraseña de ejemplo. Las antiguas cuentas/sesiones/reservas
+`strong-gym:demo-*` se eliminan al montar el proveedor actualizado; no se tocan cookies
+Supabase ni referencias financieras pendientes. Con URL/clave reales se utiliza Supabase,
+no importa el flag demo. Con `npm run build/start` nunca hay demo, aunque el flag sea true.
 
 ### Comandos
 
@@ -130,8 +133,8 @@ src/
 │   │   ├── page.tsx           # home
 │   │   ├── horarios/          # calendario + reservas
 │   │   ├── ingresar/          # login
-│   │   ├── registro/          # alta de socio
-│   │   ├── mi-cuenta/         # panel del socio
+│   │   ├── registro/          # alta de cliente
+│   │   ├── mi-cuenta/         # panel del cliente
 │   │   └── panel/             # panel de administración
 │   ├── api/                   # rutas de backend
 │   │   ├── sessions/          # GET  horarios de la semana
@@ -146,7 +149,7 @@ src/
 │   ├── layout/                # header, footer, logo, selector de idioma
 │   ├── sections/              # secciones de la home
 │   ├── schedule/              # tablero de reservas
-│   ├── account/               # panel del socio
+│   ├── account/               # panel del cliente
 │   ├── admin/                 # panel de administración
 │   ├── auth/                  # formularios y layout de login
 │   ├── providers/             # estado global (sesión, reservas, idioma)
@@ -242,8 +245,8 @@ Resumen:
 ## Preguntas frecuentes del proyecto
 
 **¿Puedo usarlo sin Supabase?**
-Sí. Sin variables de entorno arranca en modo demo con contenido de ejemplo y las reservas
-guardadas en el navegador. Es útil para mostrar el sitio a un cliente antes de configurar nada.
+Sólo como demostración local de lectura con opt-in y `npm run dev`. Producción sin
+configuración muestra indisponibilidad y responde503 en rutas de operación/API, no simula operaciones.
 
 **¿Cuánto cuesta?**
 Vercel (plan Hobby) y Supabase (plan Free) alcanzan de sobra para un gimnasio. Los dos son
@@ -272,10 +275,11 @@ and deployed on Vercel.
 npm install && npm run dev
 ```
 
-It runs in **demo mode** out of the box (sample content, bookings stored in the browser).
-Demo admin login: `admin@stronggym.com` / `admin123`.
+Production fails closed without configuration. An explicit read-only local demo is
+available with `NEXT_PUBLIC_ENABLE_DEMO=true` and `npm run dev`, with empty Supabase
+variables. No demo accounts, passwords or simulated bookings are stored.
 
-To go live: run the SQL files in `supabase/migrations/`, set `NEXT_PUBLIC_SUPABASE_URL` and
+For an existing database, do not reinstall SQL files. To configure the app, set `NEXT_PUBLIC_SUPABASE_URL` and
 `NEXT_PUBLIC_SUPABASE_ANON_KEY` (locally in `.env.local`, on Vercel in Project Settings →
 Environment Variables), and redeploy. Full walkthrough: [DEPLOY.md](./DEPLOY.md).
 

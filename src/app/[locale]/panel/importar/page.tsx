@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { ImportMembersTool } from "@/components/admin/import-tools";
 import { getCurrentUser } from "@/lib/data/queries";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { DEMO_MODE } from "@/lib/supabase/env";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: "Importar clientes", robots: { index: false, follow: false } };
@@ -16,7 +16,7 @@ export default async function ImportarPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const isDemo = !isSupabaseConfigured;
+  const isDemo = DEMO_MODE;
   if (!isDemo) {
     const user = await getCurrentUser();
     if (!user || (user.role !== "admin" && user.role !== "staff")) {

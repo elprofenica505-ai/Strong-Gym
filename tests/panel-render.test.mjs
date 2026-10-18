@@ -50,7 +50,7 @@ function context(user) {
   return {
     "@/components/providers/dictionary-provider": dictionary,
     "next/navigation": navigation,
-    "@/lib/supabase/env": "export const isSupabaseConfigured = true;",
+    "@/lib/supabase/env": "export const isSupabaseConfigured = true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;",
     "@/lib/data/queries": `
       export const getCurrentUser = async () => (${JSON.stringify(user)});
       export const countMembers = async () => 0;

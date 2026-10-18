@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { createLoader } from "./helpers/react-loader.mjs";
 const connected = createLoader({
   "server-only": "export {};",
-  "@/lib/supabase/env": "export const isSupabaseConfigured=true;",
+  "@/lib/supabase/env": "export const isSupabaseConfigured=true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;",
   "@/lib/data/queries": `
  export const getCurrentUser=async()=>globalThis.__dataUser;
  export const getMyBookings=async()=>globalThis.__dataRead();
@@ -43,7 +43,7 @@ for (const name of ["contact", "newsletter", "account"]) {
   const method = name === "account" ? "PATCH" : "POST";
   test(`${name}: no configurado devuelve 503, no éxito demo`, async () => {
     const api = await createLoader({
-      "@/lib/supabase/env": "export const isSupabaseConfigured=false;",
+      "@/lib/supabase/env": "export const isSupabaseConfigured=false;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=true;",
       "@/lib/supabase/server":
         "export const getSupabaseServerClient=async()=>null;",
       "@/lib/data/queries": "export const getCurrentUser=async()=>null;",

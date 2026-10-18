@@ -1,7 +1,7 @@
 # Strong Gym — Ruta única y pendientes actuales
 
-Actualizada:18 de octubre de2026. PR10 ya mergeado (`6ed6616`).
-Continuación activa: `arena/90aa43e3-strong-gym`. Esta lista separa construir de
+Actualizada:18 de octubre de2026. PR10 y PR11 ya mergeados; base vigente `545807a`.
+Continuación activa: `arena/e27cbf67-strong-gym`. Esta lista separa construir de
 verificar: no asigna un porcentaje inventado ni certifica toda la plataforma.
 
 ## 1. Base funcional conservada: no volver a empezar
@@ -21,9 +21,12 @@ Esto acredita esos recorridos, no cada módulo, moneda, rol o fallo de red posib
 - [x] Preparar corrección de perfiles, vistas financieras y cuentas/RPC;147 pruebas
   locales adicionales en dos estructuras, sin reconstruir la aplicación.
 - [x] Aplicar y verificar incremental00030 en Supabase con autorización específica.
-- [ ] Comprobar visualmente panel/clientes/Caja/reportes/cupos tras el ajuste, sólo lectura.
+- [x] Usuario reportó pantallas normales tras00030. Es prueba de humo visual,
+  no auditoría completa ni nueva prueba de pagos.
   [Detalle y evidencia de Seguridad 1A](SEGURIDAD-ACCESOS.md).
-- [ ] Aislar demo/producción; impedir fallback productivo y contraseñas demo guardadas.
+- [x] Construir y probar aislamiento demo/producción y eliminación de contraseñas
+  demo guardadas: [Seguridad1B](DEMO-PRODUCCION.md). Código pendiente de merge/publicación.
+- [ ] Tras publicar1B, comprobar login/lecturas conectadas sin repetir cobros.
 - [ ] Revisar secretos, historial/bundles/variables y exclusiones de archivos env.
 - [ ] Auth: contraseñas, recuperación, confirmación/redirects, sesiones y MFA admin
   sin bloquear al administrador; no sustituir Auth editando profiles.

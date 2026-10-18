@@ -28,7 +28,7 @@ import {
   demoAdminClasses,
   demoAdminMessages,
 } from "@/lib/data/demo-admin";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { DEMO_MODE } from "@/lib/supabase/env";
 
 export async function generateMetadata({
   params,
@@ -54,7 +54,7 @@ export default async function AdminPage({
   const locale: Locale = isLocale(rawLocale) ? rawLocale : "es";
   const dict = getDictionary(locale);
 
-  const demo = !isSupabaseConfigured;
+  const demo = DEMO_MODE;
   const user = await getCurrentUser();
   const isStaff = canAccessPanel(user);
 

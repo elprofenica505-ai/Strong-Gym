@@ -450,6 +450,7 @@ export function AdminPanel({
                           <div className="flex gap-1.5">
                             <button
                               type="button"
+                              disabled={isDemo}
                               onClick={() =>
                                 setBookingStatuses((prev) => ({
                                   ...prev,
@@ -465,6 +466,7 @@ export function AdminPanel({
 
                             <button
                               type="button"
+                              disabled={isDemo}
                               onClick={() =>
                                 setBookingStatuses((prev) => ({
                                   ...prev,
@@ -483,6 +485,7 @@ export function AdminPanel({
 
                             <button
                               type="button"
+                              disabled={isDemo}
                               onClick={() =>
                                 setBookingStatuses((prev) => ({
                                   ...prev,
@@ -555,6 +558,7 @@ export function AdminPanel({
 
                       <button
                         type="button"
+                        disabled={isDemo}
                         onClick={() =>
                           setReadMessages((prev) => ({
                             ...prev,
@@ -607,6 +611,7 @@ export function AdminPanel({
 
                   <button
                     type="button"
+                    disabled={isDemo}
                     onClick={() =>
                       setClassActive((prev) => ({
                         ...prev,

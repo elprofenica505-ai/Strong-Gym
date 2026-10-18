@@ -48,7 +48,7 @@ git push
 2. Completá:
    - **Name**: `strong-gym`
    - **Database Password**: apretá *Generate a password* y **guardala** en un lugar seguro.
-   - **Region**: elegí la más cercana a tus socios (para Centroamérica, `East US` suele andar bien).
+   - **Region**: elegí la más cercana a tus clientes (para Centroamérica, `East US` suele andar bien).
 3. Esperá 1 o 2 minutos a que termine de crearse.
 
 ---
@@ -100,7 +100,7 @@ npm run test:sql
 ```
 
 Levanta un PostgreSQL real, aplica los mismos archivos y corre 34 pruebas
-(reservar, cancelar, cupos llenos, seguridad entre socios...). Tiene que terminar con
+(reservar, cancelar, cupos llenos, seguridad entre clientes...). Tiene que terminar con
 **🎉 Todo pasó**.
 
 ---
@@ -125,8 +125,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...tu_clave_larga
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
-Reiniciá el servidor (`Ctrl + C` y `npm run dev`). El aviso amarillo de "modo demo"
-tiene que desaparecer y en Horarios vas a ver las clases reales de la base.
+Reiniciá el servidor (`Ctrl + C` y `npm run dev`). Con URL HTTPS y clave pública
+válidas se utiliza la base real. Sin configuración se bloquean operaciones. La demo
+sólo existe localmente con opt-in, nunca en producción: [Seguridad1B](docs/DEMO-PRODUCCION.md).
 
 > `.env.local` está en el `.gitignore`: tus claves nunca se suben al repositorio.
 
@@ -166,11 +167,11 @@ Cada `git push` a `main` republica el sitio automáticamente.
 - **Opción A — con confirmación (recomendado en producción)**
   Authentication → Sign In / Providers → Email: dejá **Confirm email** activado.
 
-  Después de registrarse, el socio recibe un mail y tiene que hacer clic para activar
+  Después de registrarse, el cliente recibe un mail y tiene que hacer clic para activar
   su cuenta. El sitio le muestra el mensaje "Revisá tu correo".
 
 - **Opción B — sin confirmación (cómodo para probar)**
-  Desactivá **Confirm email**. El socio queda logueado al instante.
+  Desactivá **Confirm email**. El cliente queda logueado al instante.
 
 > **Importante para probar**: el servicio de emails gratuito de Supabase tiene un límite
 > bajo por hora. Si vas a registrar muchas cuentas de prueba, usá la opción B o conectá
@@ -226,7 +227,7 @@ select public.generate_week_sessions('2026-11-16'::date);
 
 ### Marcar ausencias
 
-Los socios que reservan y no van quedan como `confirmed`. Para pasarlos a `no_show`
+Los clientes que reservan y no van quedan como `confirmed`. Para pasarlos a `no_show`
 después de la clase:
 
 ```sql
@@ -260,9 +261,9 @@ copy (select * from public.bookings) to stdout with csv header;
 
 | Síntoma | Causa y solución |
 |---|---|
-| Queda el aviso "Modo demo" | Las variables de entorno no llegaron. En Vercel: Settings → Environment Variables, y después **Redeploy** (las variables no se aplican a un deploy ya hecho). |
-| "Email o contraseña incorrectos" con datos correctos | Falta confirmar el email. Revisá Authentication → Users: si dice *Waiting for verification*, el socio tiene que abrir el link del mail. |
-| El mail de confirmación no llega | Límite del servicio gratuito de emails o el mail cayó en spam. Probá desactivando **Confirm email** o configurá un SMTP propio. |
+| Servicio no disponible / CONFIGURATION_UNAVAILABLE | Falta configuración válida. No es modo demo. En Vercel: Settings → Environment Variables, y después **Redeploy** (las variables no se aplican a un deploy ya hecho). |
+| "Email o contraseña incorrectos" con datos correctos | Falta confirmar el email. Revisá Authentication → Users: si dice *Waiting for verification*, el cliente tiene que abrir el link del mail. |
+| El mail de confirmación no llega | Límite del servicio gratuito de emails o el mail cayó en spam. Revisá límites/SMTP y configurá un proveedor propio. No desactivar confirmación como solución en producción. |
 | Al reservar dice "No pudimos completar la reserva" | Mirá los logs: Vercel → tu proyecto → **Logs**. Si dice `function book_session does not exist`, no corriste `SETUP.sql`. |
 | El panel dice "No tenés permisos" o no puede verificar el perfil | Revisá el ID/rol que muestra y seguí [el diagnóstico del panel](docs/PANEL-ADMIN.md). No confundir un SELECT como dueño con la lectura bajo RLS del usuario autenticado. |
 | El sitio redirige siempre a `/es` | Es lo normal: el idioma se detecta del navegador. El selector ES/EN del header lo cambia. |
@@ -274,8 +275,8 @@ copy (select * from public.bookings) to stdout with csv header;
 
 - [ ] Los dos `.sql` corrieron sin errores
 - [ ] `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` están en Vercel
-- [ ] El aviso de "modo demo" ya no aparece en el sitio publicado
-- [ ] Probaste registrar un socio de punta a punta (registro → reservar → cancelar)
+- [ ] Supabase real configurado; login y lecturas probados. Sin configuración, rutas/API bloqueadas (no demo).
+- [ ] Probaste registrar un cliente de punta a punta (registro → reservar → cancelar)
 - [ ] Tu usuario tiene rol `admin` y ves el Panel
 - [ ] En Supabase → Authentication → URL Configuration está tu dominio real
 - [ ] `NEXT_PUBLIC_SITE_URL` apunta a tu dominio (para que los links de los emails sean correctos)

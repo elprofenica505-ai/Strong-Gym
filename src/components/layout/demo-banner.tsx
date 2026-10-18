@@ -8,7 +8,7 @@ const STORAGE_KEY = "strong-gym:demo-banner-dismissed";
 
 /**
  * Aviso de que el sitio corre con datos de ejemplo.
- * Desaparece solo cuando conectás Supabase (env.ts → isSupabaseConfigured).
+ * Sólo se monta en demostración local explícita de lectura, nunca en producción.
  */
 export function DemoBanner() {
   const dict = useDictionary().dict;
