@@ -9,6 +9,11 @@ Como hoy el personal tiene casi los mismos permisos que el administrador, el caj
 heredarían acceso total si sólo se agregan roles. Por eso el cambio se hace por fases.
 
 ## Fase A — base segura (sin cambiar comportamiento actual)
+
+Estado (18 oct 2026): SQL preparado en `docs/SQL-PENDIENTE/00033_roles_fase_a.sql` y probado localmente
+con `scripts/test-roles-fase-a-sql.mjs`: 28 de 28 comprobaciones. **NO aplicado en Supabase**; espera autorización.
+Nota: hoy nadie puede cambiar el rol de un perfil desde la API (sólo por SQL del administrador). Asignar roles
+desde el panel es parte de la Fase B y requiere su propia prueba.
 - Agregar roles `cashier` y `trainer` a la restricción de perfiles.
 - Tabla de permisos del administrador (`staff_permissions`): clave, activo, quién cambió, cuándo.
   Sólo el administrador lee y escribe. Valor inicial: `cashier_can_void = false`.
