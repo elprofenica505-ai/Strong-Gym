@@ -16,6 +16,7 @@ import { ClientCard } from "./client-card";
 import { QrScanner } from "./qr-scanner";
 import { MovementForm } from "@/components/admin/movement-form";
 import { crmRequest } from "@/lib/crm/request";
+import { DebtForm } from "./debt-form";
 import { ClientFinanceSummary, ClientIncomeHistory } from "./client-finance";
 import { useCrmResource } from "./use-crm-resource";
 const input =
@@ -582,6 +583,10 @@ export function ClientsPanel({
             disabled={busy || detailResource.loading}
             retry={() => setDetailAttempt((n) => n + 1)}
           />
+          {detail.finance_layout === "bank_accounts_split" && <DebtForm
+            key={`debt:${detail.client.id}`} clientId={detail.client.id} locale={locale}
+            disabled={detailBusy} onBusy={setBusy} onRefresh={() => setRevision(n => n + 1)}
+          />}
           <EditClient
             key={`${detail.client.id}:${detail.client.updated_at ?? detail.client.created_at}`}
             client={detail.client}
@@ -688,6 +693,8 @@ export function ClientsPanel({
                       updated: "Ficha actualizada",
                       card_reset: "QR reemplazado",
                       payment: "Cobro registrado",
+                      debt_charge: "Deuda registrada",
+                      debt_opening: "Saldo inicial registrado",
                     } as Record<string, string>
                   )[e.action] || e.action}
                   {e.details.category_after &&

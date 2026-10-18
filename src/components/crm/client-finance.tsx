@@ -18,7 +18,7 @@ export function ClientFinanceSummary({ detail, pending, stale, retry, disabled }
           <Button variant="outline" disabled={disabled} onClick={retry}>Reintentar saldo y cobros</Button>
         </div> : <>
           {finance.balance_status === "ready" && finance.balances ? <div className="space-y-1">
-            <h4 className="font-semibold text-ink">Créditos y deudas de la cuenta vinculada</h4>
+            <h4 className="font-semibold text-ink">{finance.source === "client" ? "Créditos y deudas de esta ficha" : "Créditos y deudas de la cuenta vinculada"}</h4>
             <p>Crédito NIO: C$ {finance.balances.credit_nio.toFixed(2)}</p>
             <p>Deuda NIO: C$ {finance.balances.debt_nio.toFixed(2)}</p>
             <p>Crédito USD: US$ {finance.balances.credit_usd.toFixed(2)}</p>

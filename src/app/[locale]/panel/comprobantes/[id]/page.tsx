@@ -68,6 +68,8 @@ export default async function ReceiptPage({
     ],
     ["Saldo informado antes", formatMoney(r.accountBefore, r.currency)],
     ["Saldo informado después", formatMoney(r.accountAfter, r.currency)],
+    ...(r.kind === "debt_payment" ? [["Deuda antes del abono", r.debtBefore === undefined ? "No confirmada" : formatMoney(r.debtBefore, r.currency)],
+      ["Deuda después del abono", r.debtAfter === undefined ? "No confirmada" : formatMoney(r.debtAfter, r.currency)]] : []),
     ["Referencia del intento", r.requestId],
   ];
   return (
@@ -79,7 +81,7 @@ export default async function ReceiptPage({
       </div>
       <h1 className="display-xl text-3xl">
         Comprobante interno ·{" "}
-        {r.kind === "expense" ? "Gasto" : "Cobro por servicio"}
+        {r.kind === "expense" ? "Gasto" : r.kind === "debt_payment" ? "Abono de deuda" : "Cobro por servicio"}
       </h1>
       <p className="break-all text-sm text-fog">{r.reference}</p>
       <p className="font-mono text-2xl font-semibold">

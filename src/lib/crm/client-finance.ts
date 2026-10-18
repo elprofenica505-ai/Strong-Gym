@@ -14,15 +14,18 @@ const collections = z.object({
 const schema = z.object({
   version: z.literal(1), client_id: z.string(), profile_id: z.string().nullable(),
   layout: z.enum(["repository", "bank_accounts_split", "unsupported"]),
+  source: z.enum(["profile", "client"]).optional(),
   balance_status: z.enum(["ready", "unlinked", "missing", "unsupported"]),
   balance_nio: z.number().finite().nullable(), balances: split.nullable(),
   collections: collections.nullable(),
 }).superRefine((value, ctx) => {
   const known = value.layout !== "unsupported";
   const ready = value.balance_status === "ready";
-  if ((!known) !== (value.balance_status === "unsupported") ||
+  if ((value.source !== undefined && (value.source === "client") !== (value.profile_id === null)) ||
+      (!known) !== (value.balance_status === "unsupported") ||
       known !== (value.collections !== null) ||
-      (known && (value.profile_id === null) !== (value.balance_status === "unlinked")) ||
+      (known && (value.profile_id === null) !== (value.balance_status === "unlinked") &&
+        !(value.profile_id === null && value.source === "client" && ready)) ||
       (value.layout === "repository" && (value.balances !== null || ready !== (value.balance_nio !== null))) ||
       (value.layout === "bank_accounts_split" && (value.balance_nio !== null || ready !== (value.balances !== null))) ||
       (!ready && (value.balance_nio !== null || value.balances !== null)))

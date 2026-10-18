@@ -104,7 +104,7 @@ export default async function CuentasPage({
         <ul className="space-y-2.5">
           {rows.map((r) => (
             <li
-              key={r.memberId}
+              key={r.clientId ? `client:${r.clientId}` : `profile:${r.memberId}`}
               className="grid gap-3 rounded-2xl border border-line bg-card p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
             >
               <div className="min-w-0">

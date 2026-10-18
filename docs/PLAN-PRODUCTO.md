@@ -216,3 +216,22 @@ remota de esa misma reserva pendientes. No volver a reservar ni repetir FASE2.
   sin nuevos cobros. No dar por verificados importes/estado remoto antes de verlo.
 - Siguen pendientes cargos/abonos/anticipos y conciliación/saldos iniciales con
   reglas explícitas; esta entrega no los simula a partir de cobros por servicio.
+
+### C.2 — Deudas y abonos manuales (instalación/prueba remota pendientes)
+
+- Usuario eligió rechazar excedente: parcial permitido, abono mayor a deuda en su
+  moneda rechazado; no crédito automático. [DEUDAS-ABONOS.md](./DEUDAS-ABONOS.md).
+-00028/DEUDAS-ABONOS: cargo manual, abono y apertura administrativa explícita sin
+  sobrescribir registros. Native member_balances para vínculo existente y cuenta
+  por ficha sin login. No se crean usuarios ni se supone saldo cero.
+- Abono atómico con dinero/Caja/deuda/auditoría; referencias globales idempotentes,
+  bloqueos reales, no doble descuento/cobro al perder respuesta. Tipo debt_payment
+  separado de servicio; comprobante con deuda antes/después. Lectores consolidados.
+- Pruebas locales PostgreSQL:10 concurrencia (4 nuevas) +10 recuperación UI/API/SQL
+  (3 nuevas), sin HTTP/Supabase real. PGlite y regresiones API/React añadidas.
+- El SQL anterior SALDO-CLIENTE seguía sin confirmación remota.00028 incorpora
+  lector actualizado para este modelo, no se solicita volver a ejecutar00027.
+- Agente sin SQL ni operaciones remotas. Pendiente instalar incremental y validar
+  controles en ficha de prueba antes del recorrido ficticio guiado. No merge.
+- Reversión de cargo, devolución, uso de crédito, fiscal y automatismos siguen
+  pendientes; no se simulan mediante borrados ni compensación automática.

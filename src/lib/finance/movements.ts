@@ -53,7 +53,9 @@ export const receiptSchema = z.object({
   id: z.string().uuid(),
   reference: z.string(),
   requestId: z.string().uuid(),
-  kind: z.enum(["service_income", "expense"]),
+  kind: z.enum(["service_income", "expense", "debt_payment"]),
+  debtBefore: z.number().finite().nonnegative().optional(),
+  debtAfter: z.number().finite().nonnegative().optional(),
   occurredAt: z.string().datetime({ offset: true }),
   amount: z.number().positive(),
   currency: z.enum(["NIO", "USD"]),
@@ -71,6 +73,10 @@ export const receiptSchema = z.object({
   actorName: z.string().nullable(),
   accountBefore: z.number(),
   accountAfter: z.number(),
+}).superRefine((r,ctx)=>{
+  if(r.kind==='debt_payment'&&(r.debtBefore===undefined||r.debtAfter===undefined||
+    Math.abs(r.debtBefore-r.debtAfter-r.amount)>0.000001||Math.abs(r.accountAfter-r.accountBefore-r.amount)>0.000001))
+    ctx.addIssue({code:"custom",message:"INVALID_DEBT_PAYMENT_RECEIPT"});
 });
 export type MovementReceipt = z.infer<typeof receiptSchema>;
 

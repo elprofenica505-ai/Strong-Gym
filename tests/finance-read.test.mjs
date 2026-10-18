@@ -14,10 +14,12 @@ const queries = await load("lib/data/queries.ts");
 const { FinanceReadError, readFinance } = await load(
   "lib/finance/read-result.ts",
 );
-function mockDb(respond) {
+function mockDb(respond, debtReport = null) {
   const calls = [];
   globalThis.__financeDb = {
     rpc(rpc, args) {
+      // Las regresiones anteriores prueban el adaptador sin el módulo nuevo.
+      if (rpc === "finance_debt_report") return Promise.resolve(debtReport ? debtReport(args) : {data:null,error:{code:"PGRST202"}});
       const call = { rpc, args };
       calls.push(call);
       return Promise.resolve().then(() => respond(call, calls));
@@ -492,4 +494,15 @@ test("Cuentas: deuda USD independiente y mora/facturas no informadas", async () 
   assert.match(html, /Facturas no informadas/);
   assert.match(html, /No informado/);
   assert.doesNotMatch(html, /0 facturas|0 días|No hay deudas/);
+});
+
+
+test("deudas: reporte consolidado prevalece aunque vista nativa antigua responda vacío", async()=>{
+  const calls=mockDb(()=>({data:[],error:null}), args=>({data:{finance_layout:'bank_accounts_split',section:args.p_section,data:args.p_section==='summary'?{...legacySummary,totalOwed:9}:[{...legacyFixtures.receivables[0],member_id:null,client_id:'manual',total_owed_nio:9}]},error:null}));
+  const rows=await queries.getAccountsReceivable();assert.equal(rows[0].memberId,null);assert.equal(rows[0].clientId,'manual');assert.equal(rows[0].totalOwedNio,9);
+  assert.equal((await queries.getCashSummary()).totalOwed,9);assert.equal(calls.length,0);
+});
+for(const response of [{data:null,error:{code:'42501'}},{data:null,error:null}])test("deudas: reporte fallido no permite fallback a ceros viejos "+JSON.stringify(response),async()=>{
+  const calls=mockDb(()=>({data:[],error:null}),()=>response);
+  await assert.rejects(queries.getAccountsReceivable(),FinanceReadError);await assert.rejects(queries.getCashSummary(),FinanceReadError);assert.equal(calls.length,0);
 });

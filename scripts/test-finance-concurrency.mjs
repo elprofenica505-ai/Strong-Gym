@@ -55,6 +55,7 @@ try {
     "supabase/migrations/00022_crm_finance_compat.sql",
     "supabase/migrations/00023_finance_read_bank_accounts.sql",
     "supabase/migrations/00024_finance_movements.sql",
+    "supabase/migrations/00028_debts_payments.sql",
   ]) await control.query(sql(file));
   const actor = randomUUID();
   await control.query("insert into auth.users(id,email,raw_user_meta_data) values($1,'concurrencia@test.invalid','{\"full_name\":\"Prueba local\"}')", [actor]);
@@ -164,6 +165,37 @@ try {
   await a.query("rollback");
   await expectState(38, 6);
   check("cambio de rol concurrente espera al writer y bloquea el reintento posterior", true);
+  // Deudas: mismo control de bloqueo real, no simulación de PGlite.
+  await control.query("update profiles set role='staff' where id=$1",[actor]);
+  await control.query("insert into member_balances(member_id,credit_nio,credit_usd,debt_nio,debt_usd) values($1,7,3,100,20)",[actor]);
+  const debtCall="select finance_debt_record($1,$2,$3,$4,'NIO','EJEMPLO deuda concurrente',$5,$6,$7,null) as value";
+  const debt=(db,request,amount,kind='payment')=>db.query(debtCall,[request,kind,client,amount,kind==='payment'?'concurrency-cash':null,kind==='payment'?'concurrency-nio':null,kind==='payment'?40:null]);
+  const debtState=async()=>{
+    const value=(await control.query('select debt_nio,credit_nio,debt_usd,credit_usd from member_balances where member_id=$1',[actor])).rows[0];
+    return Object.fromEntries(Object.entries(value).map(([k,v])=>[k,Number(v)]));
+  };
+  const sameDebt=randomUUID();
+  await begin(a);const paid=(await debt(a,sameDebt,30)).rows[0].value;
+  await begin(b);const repeatedDebt=outcome(debt(b,sameDebt,30));await blockedBy(b,a);await a.query('commit');
+  const paidAgain=await repeatedDebt;assert.ifError(paidAgain.error);await b.query('commit');
+  assert.deepEqual(await debtState(),{debt_nio:70,credit_nio:7,debt_usd:20,credit_usd:3});
+  check('abono simultáneo mismo UUID se confirma una vez y devuelve mismo asiento',paidAgain.value.rows[0].value.id===paid.id);
+  const beforeOverpay=await state();
+  await begin(a);await debt(a,randomUUID(),50);
+  await begin(b);const excess=outcome(debt(b,randomUUID(),50));await blockedBy(b,a);await a.query('commit');
+  assert.match((await excess).error?.message??'',/PAYMENT_EXCEEDS_DEBT/);await b.query('rollback');
+  assert.deepEqual(await debtState(),{debt_nio:20,credit_nio:7,debt_usd:20,credit_usd:3});
+  const afterOverpay=await state();assert.equal(afterOverpay.balance-beforeOverpay.balance,50);assert.equal(afterOverpay.tx-beforeOverpay.tx,1);
+  check('dos abonos concurrentes no cobran por encima de deuda ni crean crédito',true);
+  await begin(a);await debt(a,randomUUID(),10,'charge');
+  await begin(b);const extraCharge=outcome(debt(b,randomUUID(),15,'charge'));await blockedBy(b,a);await a.query('commit');
+  assert.ifError((await extraCharge).error);await b.query('commit');
+  assert.equal((await debtState()).debt_nio,45);
+  check('cargos concurrentes no pierden incrementos',true);
+  const retryDebt=randomUUID();await begin(a);await debt(a,retryDebt,5);
+  await begin(b);const afterRollback=outcome(debt(b,retryDebt,5));await blockedBy(b,a);await a.query('rollback');
+  assert.ifError((await afterRollback).error);await b.query('commit');assert.equal((await debtState()).debt_nio,40);
+  check('rollback de abono libera referencia sin dejar dinero ni deuda parcial',true);
   console.log(`\n🎉 Concurrencia PostgreSQL: ${checks} comprobaciones pasaron. No se accedió a Supabase.`);
   const concurrencyChecks = checks;
   const { testFinanceRecovery } = await import("../tests/helpers/finance-recovery.mjs");

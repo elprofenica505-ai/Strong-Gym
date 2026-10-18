@@ -43,7 +43,7 @@ export async function crmRequest<T>(
           : "No se pudo completar la operación.";
       const code =
         typeof json?.code === "string" &&
-        /^(?:CRM|FIN)_[A-Z0-9_]{1,60}$/.test(json.code)
+        /^(?:CRM|FIN|DEBT)_[A-Z0-9_]{1,60}$/.test(json.code)
           ? ` Código: ${json.code}.`
           : "";
       throw new Error(message + code);

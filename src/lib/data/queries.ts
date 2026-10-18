@@ -15,6 +15,7 @@ import { FinanceReadError } from "@/lib/finance/read-result";
 import {
   isFinanceSchemaError,
   readBankFinance,
+  readDebtReport,
 } from "@/lib/finance/legacy-reader";
 
 import { cache } from "react";
@@ -425,7 +426,8 @@ export interface PaymentMethodBreakdown {
 }
 
 export interface AccountsReceivableRow {
-  memberId: string;
+  memberId: string | null;
+  clientId?: string;
   fullName: string;
   email: string;
   phone: string | null;
@@ -647,6 +649,16 @@ export async function getAccountsReceivable(): Promise<
       throw new FinanceReadError("RECEIVABLES", "UNAVAILABLE");
     return [];
   }
+  const consolidated = await readDebtReport<{
+    member_id: string | null; client_id?: string; full_name: string | null; email: string | null;
+    phone: string | null; invoices_open: null; total_owed_nio: number; total_owed_usd: number;
+    oldest_due: null; days_overdue: null;
+  }[]>(supabase, "receivables");
+  if (consolidated !== null) return consolidated.map(r => ({
+    memberId:r.member_id, ...(r.client_id ? {clientId:r.client_id} : {}), fullName:r.full_name ?? "—",
+    email:r.email ?? "",phone:r.phone,invoicesOpen:null,totalOwedNio:Number(r.total_owed_nio),
+    totalOwedUsd:Number(r.total_owed_usd),oldestDue:null,daysOverdue:null,
+  }));
   let { data, error } = await supabase
     .from("v_accounts_receivable")
     .select(
@@ -662,6 +674,7 @@ export async function getAccountsReceivable(): Promise<
   }
   return (data ?? []).map((r) => ({
     memberId: r.member_id,
+    ...("client_id" in r && typeof r.client_id === "string" ? {clientId:r.client_id} : {}),
     fullName: r.full_name ?? "—",
     email: r.email ?? "",
     phone: r.phone,
@@ -717,6 +730,8 @@ export async function getCashSummary(): Promise<CashSummary> {
       openRegister: null,
     };
   }
+  const consolidated = await readDebtReport<CashSummary>(supabase, "summary");
+  if (consolidated !== null) return consolidated;
   // Hoy
   const today = new Date().toISOString().slice(0, 10);
   const { data: todayRows, error: todayError } = await supabase

@@ -158,16 +158,19 @@ for (const variant of ["ejemplo", "vacio", "importes-largos"]) {
     accountAfter: 90,
     reference: "SG-EJEMPLO",
   };
+  const debtExample={clientName:names,protocol:'debt-v1',clientId:'11111111-1111-4111-8111-111111111111',profileId:null,source:'client',
+    writesEnabled:true,canOpen:true,balances:empty?null:{credit_nio:0,credit_usd:0,debt_nio:large?9999999999.99:100,debt_usd:20},entries:[]};
   const load = createLoader({
     "server-only": "export {};",
     "@/lib/supabase/server": `export const getSupabaseServerClient=async()=>({rpc(){return {abortSignal:async()=>({data:${JSON.stringify(exampleReceipt)},error:null})}}});`,
-    "@/components/crm/use-crm-resource": `export const useCrmResource=(url)=>({loading:false,error:'',data:url.includes('history=')?[]:${JSON.stringify(financeOptions)}});`,
+    "@/components/crm/use-crm-resource": `export const useCrmResource=(url)=>({loading:false,error:'',data:url.includes('/api/admin/debts')?${JSON.stringify(debtExample)}:url.includes('history=')?[]:${JSON.stringify(financeOptions)}});`,
     "@/lib/supabase/env": "export const isSupabaseConfigured=true;",
     "@/lib/data/queries": `export const getCurrentUser=async()=>({role:'admin'});export const getMonthlyPnl=async()=>${JSON.stringify(variantMonthly)};export const getPaymentMethodsBreakdown=async()=>${JSON.stringify(variantMethods)};export const getCashSummary=async()=>(${JSON.stringify(variantSummary)});export const getAccounts=async()=>${JSON.stringify(variantAccounts)};export const getRecentTransactions=async()=>${JSON.stringify(variantRecent)};export const getAccountsReceivable=async()=>${JSON.stringify(debts)};export const getExpenseCategories=async()=>${JSON.stringify(categories)};export const getDailyCash=async()=>[];export const getPaymentMethods=async()=>[];`,
     "@/components/providers/dictionary-provider": `export const useDictionary=()=>({locale:'es',dict:${JSON.stringify(dict)}});`,
     "@/components/providers/app-provider": `export const useApp=()=>({user:{role:'admin',fullName:'Admin EJEMPLO'},isDemo:false,hydrated:true,bookings:[],signOut(){},toast(){}});`,
     "next/navigation": `export function notFound(){throw Error("NOT_FOUND")};export const usePathname=()=>'/es/panel/reportes';export const useRouter=()=>({});export function redirect(){throw Error('redirect')}`,
   });
+  const { DebtForm } = await load("components/crm/debt-form.tsx");
   const { ClientFinanceSummary, ClientIncomeHistory } = await load("components/crm/client-finance.tsx");
   const financeId = "11111111-1111-4111-8111-111111111111";
   const profileId = "22222222-2222-4222-8222-222222222222";
@@ -193,9 +196,12 @@ for (const variant of ["ejemplo", "vacio", "importes-largos"]) {
     "cobro",
     "comprobante",
     "saldo-cliente",
+    "deudas-abonos",
   ]) {
     const Page =
-      key === "saldo-cliente"
+      key === "deudas-abonos"
+        ? () => React.createElement("section", {className:"container-x py-8"}, React.createElement(DebtForm,{clientId:financeId,locale:'es'}))
+        : key === "saldo-cliente"
         ? () => React.createElement("section", {className:"container-x space-y-6 py-8"},
             React.createElement(ClientFinanceSummary, {detail:financeDetail,pending:false,stale:false,retry(){},disabled:false}),
             React.createElement(ClientIncomeHistory, {detail:financeDetail,pending:false,stale:false}))
@@ -345,7 +351,7 @@ try {
       );
   }
   console.log(
-    `PASS: ${results.length} casos (7 pantallas/formularios × 3 fixtures EJEMPLO × 8 anchos, 320–1280 px). Sin overflow global, CTA responsive y tablas desplazables. Render SSR completo con CSS de producción; no certifica hidratación ni escrituras remotas.`,
+    `PASS: ${results.length} casos (8 pantallas/formularios × 3 fixtures EJEMPLO × 8 anchos, 320–1280 px). Sin overflow global, CTA responsive y tablas desplazables. Render SSR completo con CSS de producción; no certifica hidratación ni escrituras remotas.`,
   );
 } finally {
   if (browser) await browser.close();

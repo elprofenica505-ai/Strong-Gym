@@ -23,6 +23,8 @@ export async function testFinanceRecovery({ control, connect, actor, client, che
   let cleanup;
   const stats = { rpc: 0, posts: [], committed: [] };
   const rpcSql = {
+    finance_debt_detail: p => ["select finance_debt_detail($1) as value", [p.p_client]],
+    finance_debt_record: p => ["select finance_debt_record($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) as value", [p.p_request,p.p_kind,p.p_client,p.p_amount,p.p_currency,p.p_concept,p.p_method,p.p_account,p.p_fx,p.p_open]],
     finance_options: () => ["select finance_options() as value", []],
     finance_receipt: p => ["select finance_receipt($1) as value", [p.p_id]],
     finance_recent_receipts: p => ["select finance_recent_receipts($1,$2) as value", [p.p_kind, p.p_client]],
@@ -72,6 +74,8 @@ export async function testFinanceRecovery({ control, connect, actor, client, che
       "next/navigation": "export const useRouter=()=>({refresh(){}});",
     });
     const { GET, POST } = await load("app/api/admin/finance/route.ts");
+    const { GET: GETDebt, POST: POSTDebt } = await load("app/api/admin/debts/route.ts");
+    const { DebtForm } = await load("components/crm/debt-form.tsx");
     const { MovementForm } = await load("components/admin/movement-form.tsx");
     await control.query("update profiles set role='staff' where id=$1", [actor]);
     await control.query(`
@@ -100,9 +104,9 @@ export async function testFinanceRecovery({ control, connect, actor, client, che
         headers: isPost ? { "content-type": "application/json", origin: url.origin, host: url.host } : {},
         body: isPost ? init.body : undefined,
       });
-      if (!isPost) return GET(request);
+      if (!isPost) return url.pathname.endsWith("/debts") ? GETDebt(request) : GET(request);
       stats.posts.push(JSON.parse(init.body));
-      const response = await POST(request);
+      const response = await (url.pathname.endsWith("/debts") ? POSTDebt(request) : POST(request));
       assert.equal(response.status, 200);
       const body = await response.clone().json();
       stats.committed.push(body.id);
@@ -190,6 +194,37 @@ export async function testFinanceRecovery({ control, connect, actor, client, che
       check(`${item.kind}: API recupera snapshot y equivalentes correctos tras reintento`, true);
       await ui(() => second.unmount());
     }
+    const debtBefore=Number((await control.query('select debt_nio from member_balances where member_id=$1',[actor])).rows[0].debt_nio);
+    const cashBefore=await state();
+    const props={clientId:client,locale:'es'};
+    const debtUi=await ui(()=>render(React.createElement(DebtForm,props)));
+    await ui(()=>fireEvent.change(screen.getByLabelText('Operación'),{target:{value:'payment'}}));
+    for(const [label,value] of [['Importe de deuda o abono','2'],['Método de abono','recovery-nio'],['Cuenta que recibe el abono','recovery-nio'],['Tasa NIO por 1 USD','40'],['Motivo de deuda, abono o saldo inicial','EJEMPLO abono con respuesta perdida']])
+      fireEvent.change(screen.getByLabelText(label),{target:{value}});
+    loseResponse=true;
+    await ui(()=>fireEvent.click(screen.getByRole('button',{name:'Registrar abono de deuda'})));
+    const debtKey=`strong-gym:debt-v1:${client}`;
+    const debtIntent=JSON.parse(sessionStorage.getItem(debtKey));
+    assert.equal(debtIntent.kind,'payment');
+    const storedDebt=(await control.query('select receipt from client_debt_entries where request_id=$1',[debtIntent.requestId])).rows[0].receipt;
+    const debtAfter=Number((await control.query('select debt_nio from member_balances where member_id=$1',[actor])).rows[0].debt_nio);
+    assert.equal(debtAfter,debtBefore-2);assert.equal(Number((await state()).nio),Number(cashBefore.nio)+2);
+    assert.equal(screen.queryByText(/Operación confirmada/),null);
+    check('abono: COMMIT real disminuye deuda y aumenta Caja aunque se pierda respuesta',true);
+    await ui(()=>debtUi.unmount());
+    const recoveredUi=await ui(()=>render(React.createElement(DebtForm,props)));
+    const committedState=await state();
+    await ui(()=>fireEvent.click(screen.getByRole('button',{name:'Reintentar la misma operación'})));
+    await screen.findByText(`Operación confirmada. Referencia: ${storedDebt.reference}`);
+    assert.equal(sessionStorage.getItem(debtKey),null);assert.deepEqual(await state(),committedState);
+    assert.equal(Number((await control.query('select debt_nio from member_balances where member_id=$1',[actor])).rows[0].debt_nio),debtAfter);
+    check('abono: remontaje y mismo UUID recuperan sin segundo cobro ni segunda reducción',true);
+    const debtReceiptResponse=await GET(new Request(`https://strong.test/api/admin/finance?receipt=${storedDebt.transactionId}`));
+    assert.equal(debtReceiptResponse.status,200);
+    const debtCashReceipt=await debtReceiptResponse.json();assert.equal(debtCashReceipt.kind,'debt_payment');
+    assert.equal(debtCashReceipt.debtBefore,debtBefore);assert.equal(debtCashReceipt.debtAfter,debtAfter);
+    check('abono: comprobante API conserva estado de deuda anterior y posterior',true);
+    await ui(()=>recoveredUi.unmount());
     // Autorización de API conectada a profiles real, no un rol fijo del mock.
     await control.query("update profiles set role='member' where id=$1", [actor]);
     const before = await state();

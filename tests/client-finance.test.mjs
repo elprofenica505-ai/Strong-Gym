@@ -89,3 +89,10 @@ for(const invalid of [{...payment(),amount:null},{...payment(),amount:'12'},{...
   assert.ok(screen.getByRole('alert'));
   assert.equal(screen.queryByText(/USD 0.00|NaN/),null);
 });
+
+test('ficha: cuenta de deuda sin login se muestra sólo con fuente explícita coherente',()=>{
+  const value={...finance(),profile_id:null,source:'client'};
+  assert.ok(readClientFinance(value,id,null));
+  show(value);assert.ok(screen.getByText('Créditos y deudas de esta ficha'));
+  assert.equal(readClientFinance({...value,source:'profile'},id,null),null);
+});

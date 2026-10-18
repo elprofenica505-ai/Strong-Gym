@@ -33,7 +33,12 @@ export async function readBankFinance<T>(
   });
   if (error)
     throw new FinanceReadError(`BANK_${section.toUpperCase()}`, error.code);
-  const value = data?.data;
+  return validateBankFinance<T>(data, section);
+}
+
+// Misma validación para la capacidad nueva y el adaptador anterior.
+function validateBankFinance<T>(data: {data?: unknown;finance_layout?: unknown;section?: unknown} | null, section: string): T {
+  const value = data?.data as Record<string, unknown> & Record<string, unknown>[];
   if (
     data?.finance_layout !== "bank_accounts_split" ||
     data?.section !== section ||
@@ -82,8 +87,8 @@ export async function readBankFinance<T>(
         value.pendingInvoices !== null ||
         (value.openRegister !== null &&
           (!value.openRegister ||
-            !isMoney(value.openRegister.openingAmount) ||
-            !isMoney(value.openRegister.openingAmountUsd)))
+            !isMoney((value.openRegister as Record<string, unknown>).openingAmount) ||
+            !isMoney((value.openRegister as Record<string, unknown>).openingAmountUsd)))
       : rows.some(
           (row: Record<string, unknown>) =>
             (["accounts", "transactions"].includes(section) &&
@@ -102,4 +107,15 @@ export async function readBankFinance<T>(
         );
   if (invalid) throw new FinanceReadError("BANK_RESPONSE", "INVALID");
   return value as T;
+}
+
+/** Un módulo no instalado permite el lector anterior. Un error de permiso/red o
+ * respuesta inválida NO permite caer a una vista vieja y anunciar falsos ceros. */
+export async function readDebtReport<T>(db: SupabaseClient, section: "summary" | "receivables"): Promise<T | null> {
+  const {data,error}=await db.rpc("finance_debt_report",{p_section:section});
+  if(error) {
+    if(["PGRST202","42883"].includes(error.code??""))return null;
+    throw new FinanceReadError("DEBT_REPORT",error.code);
+  }
+  return validateBankFinance<T>(data,section);
 }
