@@ -112,4 +112,7 @@ explícita. No afirmar seguridad absoluta ni certificación externa por tener HT
 - [ ] Recuperación con correo real: sólo después de tener remitente. Cuenta de prueba de cliente: `baltodano19932025@gmail.com`, que no es miembro del equipo de Supabase; no recibe correos del servicio integrado.
 - [ ] Dueño como segundo administrador: sólo con correo del dueño y autorización escrita, cuando la aplicación esté lista.
 - [x] Revisión de secretos en código e historial (sólo lectura): sin claves reales; `.env` ignorado; sólo ejemplos y nombres en documentación/pruebas. Falta revisar el bundle compilado en el build de producción.
+- [ ] HALLAZGO 18 oct (sólo lectura): 22 políticas usan is_staff() sin aal2, incluidas escrituras de caja, transacciones y cuentas. 00031 sólo cubrió crm_is_staff(). Corrección en borrador docs/SQL-PENDIENTE/00032 (NO aplicado; requiere autorización).
+- [ ] HALLAZGO 18 oct: anon y authenticated tienen TRUNCATE/REFERENCES/TRIGGER en 12 tablas (la API no permite TRUNCATE; el permiso sobra). Incluido en 00032.
+- [x] Revisado: profiles sólo permite actualizar full_name y phone (no el rol). Políticas públicas de clases, planes, horarios, mensajes y suscripciones son de intención pública; falta antispam (paso 16).
 - [ ] Llave de acceso (huella/rostro): cuando Supabase la saque de versión experimental.
