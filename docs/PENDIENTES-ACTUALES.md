@@ -102,3 +102,13 @@ reglas comerciales o autorizaciones necesarias. Nunca claves/contraseñas por ch
 Inventario/ventas, mantenimiento, campañas, nómina y facturación fiscal son ampliaciones
 con alcance/reglas propios; no abrirlas antes de cerrar lo comprometido salvo decisión
 explícita. No afirmar seguridad absoluta ni certificación externa por tener HTTPS.
+
+## Actualización 18 oct 2026 (rama arena/764b16e9-strong-gym)
+
+- [x] MFA obligatorio para personal: PR #14 mergeado (`3cc754c`) y SQL 00031 aplicado en Supabase.
+- [x] Prueba manual: ingreso con código de app y datos sin cambios.
+- [ ] Activar verificación en dos pasos en la cuenta de Supabase (panel del proyecto). Lo hace el dueño de la cuenta; no lo hace el agente.
+- [ ] Correo del gimnasio (remitente real y dominio). En espera del dato del usuario; bloquea los pasos de recuperación con correo real.
+- [ ] Recuperación con correo real: sólo después de tener remitente. Cuenta de prueba de cliente: `baltodano19932025@gmail.com`, que no es miembro del equipo de Supabase; no recibe correos del servicio integrado.
+- [ ] Dueño como segundo administrador: sólo con correo del dueño y autorización escrita, cuando la aplicación esté lista.
+- [ ] Llave de acceso (huella/rostro): cuando Supabase la saque de versión experimental.
