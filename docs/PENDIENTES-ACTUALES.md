@@ -115,4 +115,5 @@ explícita. No afirmar seguridad absoluta ni certificación externa por tener HT
 - [x] HALLAZGO 18 oct: 22 políticas usan is_staff() sin aal2. Corregido con 00032 (aplicado y verificado: is_staff exige aal2; anon no ejecuta is_staff).
 - [x] HALLAZGO 18 oct: anon y authenticated tenían TRUNCATE/REFERENCES/TRIGGER en 12 tablas. Quitado con 00032 (verificado: 0 tablas con permiso sobrante).
 - [x] Revisado: profiles sólo permite actualizar full_name y phone (no el rol). Políticas públicas de clases, planes, horarios, mensajes y suscripciones son de intención pública; falta antispam (paso 16).
+- [x] Prueba en navegador tras 00032 (landing sin cuenta y panel con código): confirmada por el usuario.
 - [ ] Llave de acceso (huella/rostro): cuando Supabase la saque de versión experimental.
