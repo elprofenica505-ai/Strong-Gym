@@ -14,6 +14,7 @@ import {
 import type { BookingDetail } from "@/lib/types";
 import { authEmailFailure } from "@/lib/auth/email-errors";
 import { validNewPassword } from "@/lib/auth/password-recovery";
+import { inactivityLimitMs, isInactive } from "@/lib/auth/session-policy";
 import { authCallbackUrl } from "@/lib/auth/redirects";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -458,6 +459,28 @@ export function AppProvider({
         : "No pudimos confirmar el cierre. Tu sesión puede seguir activa; intentá de nuevo.", "error");
     }
   }, [isDemo, router, toast, invalidateRequests]);
+
+  /* Cierre por inactividad: administrador y personal, 2 horas sin actividad.
+     Clientes no se cierran solos. Demo no aplica. */
+  const inactivityLimit = isDemo ? null : inactivityLimitMs(user?.role);
+  const lastActivityRef = useRef<number>(0);
+  useEffect(() => {
+    if (inactivityLimit === null || !user) return;
+    lastActivityRef.current = Date.now();
+    const mark = () => { lastActivityRef.current = Date.now(); };
+    const events: (keyof WindowEventMap)[] = ["pointerdown", "keydown", "touchstart", "scroll"];
+    events.forEach(ev => window.addEventListener(ev, mark, { passive: true }));
+    const timer = window.setInterval(() => {
+      if (isInactive(lastActivityRef.current, Date.now(), inactivityLimit)) {
+        window.clearInterval(timer);
+        void signOut();
+      }
+    }, 30_000);
+    return () => {
+      events.forEach(ev => window.removeEventListener(ev, mark));
+      window.clearInterval(timer);
+    };
+  }, [inactivityLimit, user, signOut]);
 
   const updateProfile = useCallback<AppContextValue["updateProfile"]>(
     async (data) => {

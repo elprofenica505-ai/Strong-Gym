@@ -24,6 +24,8 @@ o de un servicio de pago. No se ejecutan mientras tanto. Se retoman cuando el us
 - [ ] Verificador antispam externo (tipo Turnstile): requiere cuenta externa y decisión.
 - [ ] Política de contenido (CSP): probarla en modo informativo antes de activarla.
 - [ ] Dueño como segundo administrador: requiere su correo y autorización escrita, y que la app esté lista.
+- [x] Cierre por inactividad (18 oct, rama arena/985edb39): administrador y personal cierran sesión tras 2 horas sin actividad; clientes no se cierran solos (sólo cierre manual). Pruebas en tests/session-policy.test.mjs. Pendiente: verificar en navegador real.
+- [ ] Roles de caja y entrenador con permisos limitados: requiere diseño, decisión del dueño y autorización de SQL antes de implementarse.
 - [ ] Llave de acceso (huella o rostro): cuando Supabase la saque de versión experimental.
 - [ ] Cuenta de prueba de cliente (`baltodano19932025@gmail.com`): sólo recibe correos si se agrega como miembro del equipo o si hay correo propio; no se creó.
 
