@@ -1,4 +1,4 @@
--- 00032 (BORRADOR, NO APLICADO). Requiere autorización expresa del dueño del proyecto antes de ejecutarse.
+-- 00032 APLICADO en Supabase el 2026-10-18 con autorización del usuario. Prueba local previa: 14 comprobaciones.
 -- Objetivo:
 --   1) is_staff() exige aal2, igual que crm_is_staff() (00031). 22 políticas usan is_staff() sin MFA.
 --   2) Quitar TRUNCATE, REFERENCES y TRIGGER a anon y authenticated en tablas de public.
