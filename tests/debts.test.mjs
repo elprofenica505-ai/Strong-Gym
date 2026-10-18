@@ -22,8 +22,8 @@ const client='11111111-1111-4111-8111-111111111111',actor='22222222-2222-4222-82
 const balances={credit_nio:7,credit_usd:3,debt_nio:100,debt_usd:20};
 const zero={credit_nio:0,credit_usd:0,debt_nio:0,debt_usd:0};
 const intent=(kind='payment')=>({requestId:request,clientId:client,kind,concept:'EJEMPLO deuda',amount:20,currency:'NIO',...(kind==='payment'?{account:'nio',method:'cash',fx:40}:{})});
-const receipt=(d=intent())=>({id:'44444444-4444-4444-8444-444444444444',reference:'SD-EJEMPLO',requestId:d.requestId,clientId:d.clientId,kind:d.kind,concept:d.concept,clientName:'Cliente EJEMPLO',actorId:actor,actorName:'Personal EJEMPLO',occurredAt:'2026-10-18T03:00:00Z',amount:d.amount??null,currency:d.currency??null,before:d.kind==='opening'?null:balances,after:d.kind==='opening'?d.opening:{...balances,debt_nio:balances.debt_nio+(d.kind==='charge'?d.amount:-d.amount)},transactionId:d.kind==='payment'?'55555555-5555-4555-8555-555555555555':null});
-const detail=(values=balances)=>({protocol:'debt-v1',clientId:client,clientName:'Cliente EJEMPLO',profileId:actor,source:'profile',balances:values,writesEnabled:true,canOpen:true,entries:[]});
+const receipt=(d=intent(),b=balances)=>({id:'44444444-4444-4444-8444-444444444444',reference:'SD-EJEMPLO',requestId:d.requestId,clientId:d.clientId,kind:d.kind,concept:d.concept,clientName:'Cliente EJEMPLO',actorId:actor,actorName:'Personal EJEMPLO',occurredAt:'2026-10-18T03:00:00Z',amount:d.amount??null,currency:d.currency??null,before:d.kind==='opening'?null:b,after:d.kind==='opening'?d.opening:{...b,debt_nio:b.debt_nio+(d.kind==='charge'?d.amount:-d.amount)},...(d.cashReceived!==undefined?{cashReceived:d.cashReceived,changeGiven:Math.round((d.cashReceived-d.amount)*100)/100}:{}),transactionId:d.kind==='payment'?'55555555-5555-4555-8555-555555555555':null});
+const detail=(values=balances)=>({protocol:'debt-v1',clientId:client,clientName:'Cliente EJEMPLO',profileId:actor,source:'profile',balances:values,writesEnabled:true,canOpen:true,cashProtocol:'cash-v1',cashAccounts:['nio'],entries:[]});
 const options={protocol:'service-v1',finance_layout:'bank_accounts_split',writes_enabled:true,methods:[{id:'cash',name_es:'Efectivo EJEMPLO',accepts_nio:true,accepts_usd:true}],accounts:[{id:'nio',name:'Caja EJEMPLO',currency:'NIO'}],categories:[]};
 const json=(v,status=200)=>Response.json(v,{status});
 function reset(role='staff',result=receipt()) {
@@ -69,7 +69,7 @@ function ui(handler,values=balances) {
   render(React.createElement(DebtForm,{clientId:client,locale:'es'}));return posts;
 }
 async function fill(kind='payment',amount=20) {
-  await screen.findByText('Deuda actual NIO: C$ 100.00 · USD: US$ 20.00');
+  await screen.findByText(/Deuda actual NIO:/);
   fireEvent.change(screen.getByLabelText('Operación'),{target:{value:kind}});
   fireEvent.change(screen.getByLabelText('Importe de deuda o abono'),{target:{value:String(amount)}});
   fireEvent.change(screen.getByLabelText('Motivo de deuda, abono o saldo inicial'),{target:{value:'EJEMPLO deuda'}});
@@ -133,4 +133,40 @@ test('UI descartar referencia corrupta requiere revisión explícita, no cobra n
   sessionStorage.setItem(`strong-gym:debt-v1:${client}`,'corrupt');const posts=ui(d=>json(receipt(d)));await screen.findByText(/Referencia local ilegible/);
   window.confirm=()=>false;fireEvent.click(screen.getByRole('button',{name:'Descartar registro ilegible después de revisar'}));assert.equal(sessionStorage.getItem(`strong-gym:debt-v1:${client}`),'corrupt');
   window.confirm=()=>true;fireEvent.click(screen.getByRole('button',{name:'Descartar registro ilegible después de revisar'}));assert.equal(sessionStorage.getItem(`strong-gym:debt-v1:${client}`),null);assert.equal(posts.length,0);
+});
+
+for(const received of [19,0,-1,100.001,Infinity,'100',null])test('API efectivo inválido sin RPC '+String(received),async()=>{
+  const calls=reset();assert.equal((await POST(req({...intent(),cashReceived:received}))).status,422);assert.equal(calls.length,0);
+});
+test('API efectivo usa RPC atómico nuevo y exige comprobante coincidente',async()=>{
+  const d={...intent(),cashReceived:100};const calls=reset('staff',receipt(d));assert.equal((await POST(req(d))).status,200);
+  assert.equal(calls[0].name,'finance_debt_record_with_cash');assert.equal(calls[0].args.p_amount,20);assert.equal(calls[0].args.p_cash_received,100);
+  reset('staff',receipt({...d,cashReceived:101}));assert.equal((await POST(req(d))).status,503);
+  reset('staff',{...receipt(d),changeGiven:79});assert.equal((await POST(req(d))).status,503);
+});
+test('contrato efectivo no admite vuelto en apertura/cargo ni pares incompletos',()=>{
+  const d={...intent(),cashReceived:100};
+  assert.ok(debtReceiptSchema.safeParse(receipt(d)).success);
+  for(const corrupt of [{...receipt(d),changeGiven:undefined},{...receipt(d),cashReceived:undefined},{...receipt(d),changeGiven:81},{...receipt(intent('charge')),cashReceived:100,changeGiven:80}])assert.equal(debtReceiptSchema.safeParse(corrupt).success,false);
+  assert.equal(debtIntentSchema.safeParse({...intent('charge'),cashReceived:100}).success,false);
+});
+for(const applied of [20,60])test(`UI debe60/abona${applied}/entrega100: preview y payload exactos`,async()=>{
+  const before={...balances,debt_nio:60};const posts=ui(d=>json(receipt(d,before)),before);await fill('payment',applied);
+  fireEvent.click(screen.getByLabelText('Calcular vuelto por entrega de efectivo'));
+  fireEvent.change(screen.getByLabelText('Cuenta que recibe el abono'),{target:{value:'nio'}});
+  fireEvent.change(screen.getByLabelText('Efectivo recibido (NIO)'),{target:{value:'100'}});
+  await screen.findByText(new RegExp(`Vuelto a entregar: NIO ${(100-applied).toFixed(2)} · Deuda restante: ${(60-applied).toFixed(2)}`));
+  fireEvent.click(screen.getByRole('button',{name:'Registrar abono de deuda'}));await screen.findByText(/Operación confirmada/);
+  assert.equal(posts.length,1);assert.equal(posts[0].amount,applied);assert.equal(posts[0].cashReceived,100);
+});
+test('UI efectivo insuficiente no envía, cancelación no persiste y pérdida de respuesta conserva efectivo',async()=>{
+  const posts=ui(()=>{throw new TypeError('lost');});await fill();fireEvent.click(screen.getByLabelText('Calcular vuelto por entrega de efectivo'));
+  fireEvent.change(screen.getByLabelText('Cuenta que recibe el abono'),{target:{value:'nio'}});
+  fireEvent.change(screen.getByLabelText('Efectivo recibido (NIO)'),{target:{value:'10'}});
+  fireEvent.click(screen.getByRole('button',{name:'Registrar abono de deuda'}));await screen.findByText(/El efectivo recibido debe cubrir el abono/);assert.equal(posts.length,0);
+  fireEvent.change(screen.getByLabelText('Efectivo recibido (NIO)'),{target:{value:'100'}});
+  window.confirm=()=>false;fireEvent.click(screen.getByRole('button',{name:'Registrar abono de deuda'}));assert.equal(sessionStorage.length,0);
+  window.confirm=()=>true;fireEvent.click(screen.getByRole('button',{name:'Registrar abono de deuda'}));await screen.findByRole('button',{name:'Reintentar la misma operación'});
+  assert.equal(JSON.parse(sessionStorage.getItem(`strong-gym:debt-v1:${client}`)).cashReceived,100);
+  fireEvent.click(screen.getByRole('button',{name:'Reintentar la misma operación'}));await waitFor(()=>assert.equal(posts.length,2));assert.deepEqual(posts[0],posts[1]);
 });

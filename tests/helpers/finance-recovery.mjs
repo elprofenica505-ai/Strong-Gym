@@ -24,6 +24,7 @@ export async function testFinanceRecovery({ control, connect, actor, client, che
   const stats = { rpc: 0, posts: [], committed: [] };
   const rpcSql = {
     finance_debt_detail: p => ["select finance_debt_detail($1) as value", [p.p_client]],
+    finance_debt_record_with_cash: p => ["select finance_debt_record_with_cash($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) as value",[p.p_request,p.p_kind,p.p_client,p.p_amount,p.p_currency,p.p_concept,p.p_method,p.p_account,p.p_fx,p.p_open,p.p_cash_received]],
     finance_debt_record: p => ["select finance_debt_record($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) as value", [p.p_request,p.p_kind,p.p_client,p.p_amount,p.p_currency,p.p_concept,p.p_method,p.p_account,p.p_fx,p.p_open]],
     finance_options: () => ["select finance_options() as value", []],
     finance_receipt: p => ["select finance_receipt($1) as value", [p.p_id]],
@@ -225,6 +226,26 @@ export async function testFinanceRecovery({ control, connect, actor, client, che
     assert.equal(debtCashReceipt.debtBefore,debtBefore);assert.equal(debtCashReceipt.debtAfter,debtAfter);
     check('abono: comprobante API conserva estado de deuda anterior y posterior',true);
     await ui(()=>recoveredUi.unmount());
+    const cashDebtBefore=Number((await control.query('select debt_nio from member_balances where member_id=$1',[actor])).rows[0].debt_nio);
+    const cashAccountBefore=await state();const cashUi=await ui(()=>render(React.createElement(DebtForm,props)));
+    await ui(()=>fireEvent.change(screen.getByLabelText('Operación'),{target:{value:'payment'}}));
+    await ui(()=>fireEvent.click(screen.getByLabelText('Calcular vuelto por entrega de efectivo')));
+    for(const [label,value] of [['Importe de deuda o abono','2'],['Efectivo recibido (NIO)','100'],['Método de abono','recovery-nio'],['Cuenta que recibe el abono','recovery-nio'],['Tasa NIO por 1 USD','40'],['Motivo de deuda, abono o saldo inicial','EJEMPLO efectivo y vuelto con respuesta perdida']])
+      fireEvent.change(screen.getByLabelText(label),{target:{value}});
+    loseResponse=true;await ui(()=>fireEvent.click(screen.getByRole('button',{name:'Registrar abono de deuda'})));
+    const cashIntent=JSON.parse(sessionStorage.getItem(debtKey));assert.equal(cashIntent.cashReceived,100);
+    const cashStored=(await control.query('select receipt from client_debt_entries where request_id=$1',[cashIntent.requestId])).rows[0].receipt;
+    assert.equal(cashStored.cashReceived,100);assert.equal(cashStored.changeGiven,98);assert.equal(cashStored.after.debt_nio,cashDebtBefore-2);
+    assert.equal(Number((await state()).nio),Number(cashAccountBefore.nio)+2);
+    check('efectivo: COMMIT con respuesta perdida guarda vuelto98 y sólo ingreso2',true);
+    await ui(()=>cashUi.unmount());const cashRemount=await ui(()=>render(React.createElement(DebtForm,props)));const cashCommitted=await state();
+    await ui(()=>fireEvent.click(screen.getByRole('button',{name:'Reintentar la misma operación'})));await screen.findByText(`Operación confirmada. Referencia: ${cashStored.reference}`);
+    assert.deepEqual(await state(),cashCommitted);assert.equal(sessionStorage.getItem(debtKey),null);
+    check('efectivo: remontaje recupera mismo intento sin repetir ingreso, deuda ni vuelto registrado',true);
+    const cashResponse=await GET(new Request(`https://strong.test/api/admin/finance?receipt=${cashStored.transactionId}`));assert.equal(cashResponse.status,200);
+    const cashSnapshot=await cashResponse.json();assert.equal(cashSnapshot.cashReceived,100);assert.equal(cashSnapshot.changeGiven,98);assert.equal(cashSnapshot.amount,2);
+    check('efectivo: API de comprobante conserva recibido, vuelto y abono neto',true);
+    await ui(()=>cashRemount.unmount());
     // Autorización de API conectada a profiles real, no un rol fijo del mock.
     await control.query("update profiles set role='member' where id=$1", [actor]);
     const before = await state();

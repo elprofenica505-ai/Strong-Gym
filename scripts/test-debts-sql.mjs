@@ -118,5 +118,44 @@ try {
   await db.exec('reset role');check('authenticated sin identidad no puede leer deudas',true);
   for(const table of ['member_balances','client_debt_balances','client_debt_entries'])
     check(`sin permisos directos INSERT/UPDATE/DELETE ${table}`,(await row("select has_table_privilege('authenticated',$1,'INSERT,UPDATE,DELETE') as allowed",[table])).allowed===false);
+  const cashSnapshot=async()=>JSON.stringify([await snapshot(),(await db.query('select * from client_debt_entries order by id')).rows,(await db.query('select * from client_debt_balances order by client_id')).rows]);
+  const beforeCashInstall=await cashSnapshot();await db.exec(sql('supabase/migrations/00029_cash_change.sql'));await db.exec(sql('supabase/migrations/00029_cash_change.sql'));
+  check('vuelto: instalar dos veces no cambia registros ni saldos',beforeCashInstall===await cashSnapshot());
+  check('vuelto: lectura anuncia capacidad y cajas reales',(await get()).cashProtocol==='cash-v1'&&(await get()).cashAccounts.includes('nio'));
+  const cashCall=async(d={},actor=staff)=>(await as(actor,'select finance_debt_record_with_cash($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) as value',[
+    d.request??randomUUID(),d.kind??'payment',d.client??client,d.amount??20,d.currency??'NIO',d.concept??'EJEMPLO vuelto',d.method??'both',d.account??'nio',d.fx??40,d.open??null,d.received===undefined?100:d.received,
+  ])).rows[0].value;
+  const cashFail=async(d,pattern,actor=staff)=>{const before=await cashSnapshot();await assert.rejects(cashCall(d,actor),pattern);check(`vuelto: rechazo atómico ${pattern}`,before===await cashSnapshot());};
+  await call({amount:60});
+  let bankBefore=Number((await row("select balance from bank_accounts where id='nio'")).balance);
+  const txBefore=(await row('select count(*)::int n from transactions')).n;
+  const cashId=randomUUID();const cashPartial=await cashCall({request:cashId});
+  check('debe60/abona20/entrega100: vuelto80 y deuda40',cashPartial.cashReceived===100&&cashPartial.changeGiven===80&&cashPartial.before.debt_nio===60&&cashPartial.after.debt_nio===40);
+  check('Caja recibe sólo20, sin gasto por vuelto',Number((await row("select balance from bank_accounts where id='nio'")).balance)===bankBefore+20&&(await row('select count(*)::int n from transactions')).n===txBefore+1&&(await row('select type::text,amount from transactions where id=$1',[cashPartial.transactionId])).type==='income');
+  const cashReceipt=(await as(staff,'select finance_receipt($1) as value',[cashPartial.transactionId])).rows[0].value;
+  check('comprobante guarda efectivo100/vuelto80/abono20',cashReceipt.cashReceived===100&&cashReceipt.changeGiven===80&&cashReceipt.amount===20&&cashReceipt.debtAfter===40);
+  const afterFirstCash=await cashSnapshot();check('retry de efectivo recupera la misma operación',(await cashCall({request:cashId})).id===cashPartial.id&&afterFirstCash===await cashSnapshot());
+  await cashFail({request:cashId,received:101},/REQUEST_CONFLICT/);
+  await fail({kind:'payment',amount:20,method:'both',account:'nio',fx:40,concept:'EJEMPLO vuelto',request:cashId},/REQUEST_CONFLICT/);
+  await cashFail({amount:41,received:100},/PAYMENT_EXCEEDS_DEBT/);
+  for(const received of [null,-1,0,19,100.001,100000000])await cashFail({received},/INVALID_CASH_RECEIVED/);
+  await cashFail({kind:'charge'},/INVALID_CASH_RECEIVED/);
+  await db.exec("insert into bank_accounts(id,name,account_type,currency,balance) values('cash-test-bank','EJEMPLO banco','banco','NIO',0)");
+  await cashFail({account:'cash-test-bank'},/CASH_ACCOUNT_REQUIRED/);
+  await cashFail({account:'usd'},/INVALID_ACCOUNT/);
+  await cashFail({method:'missing'},/INVALID_METHOD/);
+  await cashFail({fx:0},/INVALID_PAYMENT/);
+  for(const who of [member,null])await cashFail({},/AUTH|permission denied/,who);
+  await db.exec(`create trigger cash_event_failure before update on client_events for each row when (new.details ? 'cash_received') execute function test_event_failure()`);
+  const rollbackCash=randomUUID();await cashFail({request:rollbackCash},/TEST_EVENT_FAIL/);await db.exec('drop trigger cash_event_failure on client_events');
+  check('mismo intento tras rollback guarda una vez',(await cashCall({request:rollbackCash,received:20})).changeGiven===0);
+  await cashCall({amount:20,received:20});await call({amount:60});
+  const full=await cashCall({amount:60,received:100});
+  check('debe60/abona60/entrega100: vuelto40, deuda0 y crédito intacto',full.changeGiven===40&&full.after.debt_nio===0&&full.after.credit_nio===10);
+  const dollars=await cashCall({amount:3,received:5,currency:'USD',account:'usd'});
+  check('USD: vuelto sólo en USD, sin convertir deuda ni créditos',dollars.changeGiven===2&&dollars.after.debt_usd===17&&dollars.after.debt_nio===0&&dollars.after.credit_usd===3);
+  const noLogin=await cashCall({client:manual,amount:2,received:100});
+  check('vuelto también funciona en ficha sin login',noLogin.changeGiven===98&&noLogin.after.debt_nio===7);
+  await db.query("update profiles set role='member' where id=$1",[staff]);await cashFail({request:cashId},/AUTH/);await db.query("update profiles set role='staff' where id=$1",[staff]);
   console.log(`\n🎉 Deudas y abonos: ${count} comprobaciones pasaron (PGlite, sin concurrencia real ni Supabase remoto).`);
 } finally {await db.close();}

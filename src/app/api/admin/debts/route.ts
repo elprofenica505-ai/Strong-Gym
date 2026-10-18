@@ -8,6 +8,8 @@ import { debtDetailSchema,debtIntentSchema,debtReceiptSchema,matchesDebtReceipt 
 export const dynamic='force-dynamic';
 const reply=(body:unknown,status=200)=>NextResponse.json(body,{status,headers:{'Cache-Control':'private, no-store'}});
 const errors:Record<string,string>={
+  INVALID_CASH_RECEIVED:'El efectivo recibido debe cubrir el abono, con máximo dos decimales. El vuelto no aumenta crédito.',
+  CASH_ACCOUNT_REQUIRED:'El efectivo y su vuelto sólo se registran en una cuenta de caja activa de la misma moneda.',
   AUTH:'No tenés acceso a deudas y abonos.',ADMIN_REQUIRED:'Sólo administración puede registrar el saldo inicial explícito.',
   PAYMENT_EXCEEDS_DEBT:'El abono supera la deuda actual en esa moneda. No se guardó ni se creó crédito.',
   BALANCE_NOT_INITIALIZED:'No hay un registro de saldo confirmado. Administración debe conciliar y registrar los cuatro saldos iniciales; no se supone cero.',
@@ -50,11 +52,12 @@ export async function POST(request:Request) {
     const parsed=debtIntentSchema.safeParse(await request.json().catch(()=>null));
     if(!parsed.success)return reply({error:'Datos incompletos o inválidos. No se enviaron a la base.'},422);
     const d=parsed.data;
-    const {data,error}=await ctx.db.rpc('finance_debt_record',{
+    const {data,error}=await ctx.db.rpc(d.kind==='payment'&&d.cashReceived!==undefined?'finance_debt_record_with_cash':'finance_debt_record',{
       p_request:d.requestId,p_kind:d.kind,p_client:d.clientId,p_concept:d.concept,
       p_amount:d.kind==='opening'?null:d.amount,p_currency:d.kind==='opening'?null:d.currency,
       p_method:d.kind==='payment'?d.method:null,p_account:d.kind==='payment'?d.account:null,p_fx:d.kind==='payment'?d.fx:null,
       p_open:d.kind==='opening'?d.opening:null,
+      ...(d.kind==='payment'&&d.cashReceived!==undefined?{p_cash_received:d.cashReceived}:{}),
     }).abortSignal(AbortSignal.timeout(25000));
     if(error)return failure(error);
     const result=debtReceiptSchema.safeParse(data);

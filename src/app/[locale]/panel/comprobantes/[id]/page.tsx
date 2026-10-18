@@ -70,6 +70,11 @@ export default async function ReceiptPage({
     ["Saldo informado después", formatMoney(r.accountAfter, r.currency)],
     ...(r.kind === "debt_payment" ? [["Deuda antes del abono", r.debtBefore === undefined ? "No confirmada" : formatMoney(r.debtBefore, r.currency)],
       ["Deuda después del abono", r.debtAfter === undefined ? "No confirmada" : formatMoney(r.debtAfter, r.currency)]] : []),
+    ...(r.cashReceived!==undefined&&r.changeGiven!==undefined?[
+      ["Efectivo recibido",formatMoney(r.cashReceived,r.currency)],
+      ["Vuelto entregado",formatMoney(r.changeGiven,r.currency)],
+      ["Abono aplicado · ingreso neto en Caja",formatMoney(r.amount,r.currency)],
+    ]:[]),
     ["Referencia del intento", r.requestId],
   ];
   return (
@@ -111,7 +116,7 @@ export default async function ReceiptPage({
         </p>
       )}
       <p className="text-sm text-fog">
-        No aplica ni compensa deudas o créditos, no renueva planes y no
+        {r.kind==='debt_payment' ? `Este abono reduce la deuda por el importe aplicado.${r.cashReceived!==undefined?' El efectivo recibido menos el vuelto es el ingreso neto en Caja.':''} No crea crédito ni compensa monedas.` : 'No aplica ni compensa deudas o créditos.'} No renueva planes ni
         descuenta comisiones automáticamente. Los saldos son informados, no
         saldos iniciales conciliados por el dueño.
       </p>

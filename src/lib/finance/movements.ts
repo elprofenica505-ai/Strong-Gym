@@ -54,6 +54,8 @@ export const receiptSchema = z.object({
   reference: z.string(),
   requestId: z.string().uuid(),
   kind: z.enum(["service_income", "expense", "debt_payment"]),
+  cashReceived:z.number().finite().positive().max(99999999).multipleOf(0.01).optional(),
+  changeGiven:z.number().finite().nonnegative().max(99999999).multipleOf(0.01).optional(),
   debtBefore: z.number().finite().nonnegative().optional(),
   debtAfter: z.number().finite().nonnegative().optional(),
   occurredAt: z.string().datetime({ offset: true }),
@@ -74,6 +76,7 @@ export const receiptSchema = z.object({
   accountBefore: z.number(),
   accountAfter: z.number(),
 }).superRefine((r,ctx)=>{
+  if((r.cashReceived!==undefined||r.changeGiven!==undefined)&&(r.kind!=='debt_payment'||r.cashReceived===undefined||r.changeGiven===undefined||r.cashReceived<r.amount||Math.abs(r.cashReceived-r.changeGiven-r.amount)>0.000001))ctx.addIssue({code:'custom',message:'INVALID_CASH_RECEIPT'});
   if(r.kind==='debt_payment'&&(r.debtBefore===undefined||r.debtAfter===undefined||
     Math.abs(r.debtBefore-r.debtAfter-r.amount)>0.000001||Math.abs(r.accountAfter-r.accountBefore-r.amount)>0.000001))
     ctx.addIssue({code:"custom",message:"INVALID_DEBT_PAYMENT_RECEIPT"});

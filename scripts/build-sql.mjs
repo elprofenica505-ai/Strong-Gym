@@ -304,6 +304,7 @@ sincronizarGenerado(join(ROOT, "supabase/PLAN-CUENTA.sql"), accountPlanSql);
 sincronizarGenerado(join(ROOT, "supabase/LECTURA-RESERVAS.sql"), bookingReadSql);
 sincronizarGenerado(join(ROOT, "supabase/SALDO-CLIENTE.sql"), clientFinanceSql);
 sincronizarGenerado(join(ROOT, "supabase/DEUDAS-ABONOS.sql"), readFileSync(join(ROOT, "supabase/migrations/00028_debts_payments.sql"), "utf8"));
+sincronizarGenerado(join(ROOT, "supabase/VUELTO-ABONOS.sql"), readFileSync(join(ROOT, "supabase/migrations/00029_cash_change.sql"), "utf8"));
 sincronizarGenerado(SETUP, setupNuevo);
 sincronizarGenerado(UPDATE, actualizarNuevo);
 

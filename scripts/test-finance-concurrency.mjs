@@ -56,6 +56,7 @@ try {
     "supabase/migrations/00023_finance_read_bank_accounts.sql",
     "supabase/migrations/00024_finance_movements.sql",
     "supabase/migrations/00028_debts_payments.sql",
+    "supabase/migrations/00029_cash_change.sql",
   ]) await control.query(sql(file));
   const actor = randomUUID();
   await control.query("insert into auth.users(id,email,raw_user_meta_data) values($1,'concurrencia@test.invalid','{\"full_name\":\"Prueba local\"}')", [actor]);
@@ -196,6 +197,22 @@ try {
   await begin(b);const afterRollback=outcome(debt(b,retryDebt,5));await blockedBy(b,a);await a.query('rollback');
   assert.ifError((await afterRollback).error);await b.query('commit');assert.equal((await debtState()).debt_nio,40);
   check('rollback de abono libera referencia sin dejar dinero ni deuda parcial',true);
+  const cashDebt=(db,request,amount,received=100)=>db.query("select finance_debt_record_with_cash($1,'payment',$2,$3,'NIO','EJEMPLO efectivo concurrente','concurrency-cash','concurrency-nio',40,null,$4) as value",[request,client,amount,received]);
+  const cashRequest=randomUUID();const beforeCash=await state();
+  await begin(a);const cashPaid=(await cashDebt(a,cashRequest,5)).rows[0].value;
+  await begin(b);const cashRepeated=outcome(cashDebt(b,cashRequest,5));await blockedBy(b,a);await a.query('commit');
+  assert.equal((await cashRepeated).value.rows[0].value.id,cashPaid.id);await b.query('commit');
+  assert.equal(cashPaid.changeGiven,95);assert.equal((await state()).balance-beforeCash.balance,5);assert.equal((await debtState()).debt_nio,35);
+  check('efectivo: mismo UUID concurrente devuelve vuelto95 y cobra sólo5 una vez',true);
+  await begin(a);await cashDebt(a,randomUUID(),20);
+  await begin(b);const tooMuchCash=outcome(cashDebt(b,randomUUID(),20));await blockedBy(b,a);await a.query('commit');
+  assert.match((await tooMuchCash).error?.message??'',/PAYMENT_EXCEEDS_DEBT/);await b.query('rollback');assert.equal((await debtState()).debt_nio,15);
+  check('efectivo: recibido100 no autoriza aplicar más deuda en carrera concurrente',true);
+  const cashRollback=randomUUID();const beforeCashRollback=await state();
+  await begin(a);await cashDebt(a,cashRollback,2);
+  await begin(b);const cashRetry=outcome(cashDebt(b,cashRollback,2));await blockedBy(b,a);await a.query('rollback');
+  assert.ifError((await cashRetry).error);await b.query('commit');assert.equal((await state()).balance-beforeCashRollback.balance,2);assert.equal((await debtState()).debt_nio,13);
+  check('efectivo: rollback libera referencia con vuelto y metadatos una sola vez',true);
   console.log(`\n🎉 Concurrencia PostgreSQL: ${checks} comprobaciones pasaron. No se accedió a Supabase.`);
   const concurrencyChecks = checks;
   const { testFinanceRecovery } = await import("../tests/helpers/finance-recovery.mjs");

@@ -162,7 +162,7 @@ for (const variant of ["ejemplo", "vacio", "importes-largos"]) {
     writesEnabled:true,canOpen:true,balances:empty?null:{credit_nio:0,credit_usd:0,debt_nio:large?9999999999.99:100,debt_usd:20},entries:[]};
   const load = createLoader({
     "server-only": "export {};",
-    "@/lib/supabase/server": `export const getSupabaseServerClient=async()=>({rpc(){return {abortSignal:async()=>({data:${JSON.stringify(exampleReceipt)},error:null})}}});`,
+    "@/lib/supabase/server": `export const getSupabaseServerClient=async()=>({rpc(){return {abortSignal:async()=>({data:globalThis.__layoutReceipt,error:null})}}});`,
     "@/components/crm/use-crm-resource": `export const useCrmResource=(url)=>({loading:false,error:'',data:url.includes('/api/admin/debts')?${JSON.stringify(debtExample)}:url.includes('history=')?[]:${JSON.stringify(financeOptions)}});`,
     "@/lib/supabase/env": "export const isSupabaseConfigured=true;",
     "@/lib/data/queries": `export const getCurrentUser=async()=>({role:'admin'});export const getMonthlyPnl=async()=>${JSON.stringify(variantMonthly)};export const getPaymentMethodsBreakdown=async()=>${JSON.stringify(variantMethods)};export const getCashSummary=async()=>(${JSON.stringify(variantSummary)});export const getAccounts=async()=>${JSON.stringify(variantAccounts)};export const getRecentTransactions=async()=>${JSON.stringify(variantRecent)};export const getAccountsReceivable=async()=>${JSON.stringify(debts)};export const getExpenseCategories=async()=>${JSON.stringify(categories)};export const getDailyCash=async()=>[];export const getPaymentMethods=async()=>[];`,
@@ -195,9 +195,15 @@ for (const variant of ["ejemplo", "vacio", "importes-largos"]) {
     "gastos",
     "cobro",
     "comprobante",
+    "comprobante-vuelto",
     "saldo-cliente",
     "deudas-abonos",
   ]) {
+    const cashApplied=large?99999998:20;
+    globalThis.__layoutReceipt=key==='comprobante-vuelto'?{...exampleReceipt,kind:'debt_payment',clientId:exampleReceipt.id,clientName:names,
+      categoryName:null,amount:cashApplied,amountNio:cashApplied,amountUsd:Number((cashApplied/exampleReceipt.fx).toFixed(4)),
+      debtBefore:cashApplied+10,debtAfter:10,accountAfter:exampleReceipt.accountBefore+cashApplied,
+      cashReceived:large?99999999:100,changeGiven:large?1:80}:exampleReceipt;
     const Page =
       key === "deudas-abonos"
         ? () => React.createElement("section", {className:"container-x py-8"}, React.createElement(DebtForm,{clientId:financeId,locale:'es'}))
@@ -214,7 +220,7 @@ for (const variant of ["ejemplo", "vacio", "importes-largos"]) {
             })
         : (
             await load(
-              key === "comprobante"
+              (key === "comprobante" || key === "comprobante-vuelto")
                 ? "app/[locale]/panel/comprobantes/[id]/page.tsx"
                 : `app/[locale]/panel/${key}/page.tsx`,
             )
@@ -351,7 +357,7 @@ try {
       );
   }
   console.log(
-    `PASS: ${results.length} casos (8 pantallas/formularios × 3 fixtures EJEMPLO × 8 anchos, 320–1280 px). Sin overflow global, CTA responsive y tablas desplazables. Render SSR completo con CSS de producción; no certifica hidratación ni escrituras remotas.`,
+    `PASS: ${results.length} casos (9 pantallas/formularios × 3 fixtures EJEMPLO × 8 anchos, 320–1280 px). Sin overflow global, CTA responsive y tablas desplazables. Render SSR completo con CSS de producción; no certifica hidratación ni escrituras remotas.`,
   );
 } finally {
   if (browser) await browser.close();

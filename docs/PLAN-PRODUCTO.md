@@ -235,3 +235,17 @@ remota de esa misma reserva pendientes. No volver a reservar ni repetir FASE2.
   controles en ficha de prueba antes del recorrido ficticio guiado. No merge.
 - Reversión de cargo, devolución, uso de crédito, fiscal y automatismos siguen
   pendientes; no se simulan mediante borrados ni compensación automática.
+
+### C.2 — Efectivo recibido y vuelto (00029, prueba remota pendiente)
+
+- Usuario aclaró diferencia entre importe aplicado y billete entregado. Debe60:
+  abona20/entrega100/vuelto80/deuda40; abona60/entrega100/vuelto40/deuda0.
+- No se rechaza un billete mayor: se limita el abono aplicado a deuda. Caja sólo
+  ingresa el neto del abono, sin gasto ni crédito por vuelto. Modo efectivo explícito,
+  caja activa en la misma moneda; no se asumen clasificaciones del método por nombre.
+- [VUELTO-ABONOS.md](./VUELTO-ABONOS.md): implementación, pruebas y capturas remotas.
+  Incremental nuevo sólo VUELTO-ABONOS, sin reinstalar módulos previos.
+- Usuario confirmó instalación00028 y aportó capturas de apertura, cargo100, abono40
+  con comprobante y Caja6→46/deuda100→60. Excedente80 bloqueado por formulario.
+-00029 aún no instalado ni probado en Supabase; no se liquida la deuda pendiente,
+  no se repiten pagos ni se cambian datos reales durante desarrollo. Sin merge.
