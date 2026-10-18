@@ -109,7 +109,7 @@ export async function ClassesGrid({ locale }: { locale: Locale }) {
                           className="size-3.5"
                           aria-hidden="true"
                         />
-                        {dict.schedule.book}
+                        {dict.classes.bookSchedule}
                       </ButtonLink>
                     ) : access === "free" ? (
                       <span className="flex items-center gap-2 rounded-full border border-line bg-cloud px-3.5 py-2 text-[0.75rem] font-medium text-mist">
@@ -141,16 +141,24 @@ export async function ClassesGrid({ locale }: { locale: Locale }) {
                       </ButtonLink>
                     )}
                   </div>
+                  {access === "book" ? (
+                    <p className="mt-3 text-[0.75rem] leading-relaxed text-fog">
+                      {dict.classes.availabilityHint}
+                    </p>
+                  ) : null}
 
-                  <footer className="mt-5 flex items-center gap-4 border-t border-line pt-4 text-[0.75rem] text-fog">
-                    <span className="flex items-center gap-1.5">
+                  <footer className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line pt-4 text-[0.75rem] text-fog">
+                    <span className="flex shrink-0 items-center gap-1.5">
                       <Clock className="size-3.5" aria-hidden="true" />
                       {formatDuration(gymClass.duration_min, locale)}
                     </span>
 
-                    <span className="flex items-center gap-1.5">
-                      <Users className="size-3.5" aria-hidden="true" />
-                      {gymClass.capacity} {dict.classes.capacity}
+                    <span className="flex min-w-0 flex-1 items-start gap-1.5">
+                      <Users className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                      <span>
+                        {(access === "book" ? dict.classes.sessionCapacity : dict.classes.capacity)
+                          .replace("{count}", String(gymClass.capacity))}
+                      </span>
                     </span>
 
                     {/* Barras de intensidad */}

@@ -183,3 +183,18 @@ remota de esa misma reserva pendientes. No volver a reservar ni repetir FASE2.
 - Catálogo de Inicio: «20 lugares» es capacidad, no cupos restantes. Aclarar
   etiqueta/botón sin inventar disponibilidad global. Pendiente.
 - No SQL nuevo, reservas adicionales, cobros, roles, limpieza ni merge.
+
+### Confirmación de reservas y catálogo sin cupos ambiguos
+
+- Usuario confirma «Ahora sí funcionó» tras guía de validación visual en celular.
+  Nueva captura194328 muestra1/20,19libres y cancelación disponible; la imagen
+  cancelada192311 fue reenviada, no se asume como estado posterior a194328.
+  No se repite prueba ni se modifica su reserva.
+- Corregido etiquetado ES/EN del catálogo: capacidad por sesión para Boxeo,
+  enlace «Ver horarios y reservar» y explicación de disponibilidad por día/hora.
+  Acceso libre/consulta siguen separados. No se simula disponibilidad global.
+-6 regresiones nuevas; auth356/356, SQL completo aprobado, typecheck/build
+  correctos, lint0errores/10warnings. Validación visual del nuevo texto pendiente.
+- Próximo desarrollo: revisar saldo de ficha CRM y coherencia con movimientos,
+  sin confundir saldo de cliente con Caja ni convertir desconocido en cero.
+  No se han implementado todavía nuevas reglas de deuda/crédito/vigencia.

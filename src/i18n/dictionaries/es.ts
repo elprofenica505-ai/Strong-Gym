@@ -179,7 +179,10 @@ const es = {
     subtitle:
       "Sala de pesas y máquinas de acceso libre, más clases dirigidas de boxeo y bailoterapia.",
     duration: "min",
-    capacity: "lugares",
+    capacity: "Capacidad: {count} personas",
+    sessionCapacity: "Capacidad: {count} personas por sesión",
+    bookSchedule: "Ver horarios y reservar",
+    availabilityHint: "Los lugares disponibles se muestran al elegir día y hora.",
     intensity: "Intensidad",
     intensityLevels: {
       low: "Baja",

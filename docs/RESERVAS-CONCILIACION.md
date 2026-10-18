@@ -237,3 +237,52 @@ npm run test:sql
 ```
 
 Logs `/home/user/account-cancel-{targeted,auth,typecheck,lint,build,sql}.log`.
+
+## Confirmación del usuario y aclaración del catálogo (17-oct-2026)
+
+El usuario respondió «Ahora sí funcionó» tras la guía de prueba del arreglo
+visual. Se registra como confirmación del usuario del funcionamiento en celular;
+una captura por sí sola no demuestra si hubo recarga. Reenvió192311 (historial
+cancelado anterior) y añadió194328, que muestra una reserva activa reconocida
+para20-oct06:00:1/20,19libres y «Cancelar reserva». No se infiere que el estado
+más reciente sea cancelado ni se solicita otra operación para repetir la prueba.
+
+Inicio ahora diferencia capacidad configurada y disponibilidad: para Boxeo,
+«Capacidad: {count} personas por sesión», enlace «Ver horarios y reservar» y
+aclaración de que los lugares disponibles se consultan al elegir día/hora. La
+capacidad sigue viniendo de datos, no de un20 fijo ni del número de reservas.
+Acceso libre y consulta mantienen su modalidad, con capacidad general sin
+prometer una sesión reservable. Traducciones ES/EN y disposición flexible del
+pie de tarjeta para texto largo. Ningún cambio a reservas, SQL o saldos.
+
+6 regresiones SSR nuevas comprueban ES/EN, destino del enlace, capacidad37
+configurada, separación de acceso libre/consulta, error explícito y catálogo
+realmente vacío. Validación local real:
+
+```text
+npm run typecheck
+> tsc --noEmit
+(exit 0)
+npm run lint
+✖ 10 problems (0 errors, 10 warnings)
+(exit 0)
+npm run build
+✓ Compiled successfully in 2.7s
+✓ Generating static pages using 1 worker (40/40) in 193ms
+(exit 0)
+npm run test:auth
+# tests 356
+# pass 356
+# fail 0
+(exit 0)
+npm run test:sql
+🎉 Todo pasó
+🎉 CRM: 49 comprobaciones pasaron
+🎉 Compatibilidad CRM: 69 comprobaciones pasaron
+🎉 Escritura financiera: 86 comprobaciones pasaron (PGlite; sin concurrencia multiconexión ni SQL remoto)
+🎉 Plan propio: 22 comprobaciones pasaron (PGlite, dos esquemas; sin SQL remoto).
+🎉 Lectura de reservas: 42 comprobaciones pasaron (PGlite, dos esquemas; sin SQL remoto).
+(exit 0)
+```
+
+Logs `/home/user/catalog-capacity-{targeted,auth,typecheck,lint,build,sql}.log`.

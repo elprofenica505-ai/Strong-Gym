@@ -175,7 +175,10 @@ const en = {
     subtitle:
       "Walk-in access to the weights and machine floor, plus coached boxing and dance cardio classes.",
     duration: "min",
-    capacity: "spots",
+    capacity: "Capacity: {count} people",
+    sessionCapacity: "Capacity: {count} people per session",
+    bookSchedule: "View schedule and book",
+    availabilityHint: "Available spots are shown when you choose a date and time.",
     intensity: "Intensity",
     intensityLevels: {
       low: "Low",
