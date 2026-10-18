@@ -1,7 +1,7 @@
 # Strong Gym — Ruta única y pendientes actuales
 
-Actualizada:18 de octubre de2026. PR10 y PR11 ya mergeados; base vigente `545807a`.
-Continuación activa: `arena/e27cbf67-strong-gym`. Esta lista separa construir de
+Actualizada:18 de octubre de2026. PR10, PR11 y PR12 ya mergeados; base vigente `538101e`.
+Continuación activa: `arena/1e67d1fd-strong-gym`. Esta lista separa construir de
 verificar: no asigna un porcentaje inventado ni certifica toda la plataforma.
 
 ## 1. Base funcional conservada: no volver a empezar
@@ -25,8 +25,14 @@ Esto acredita esos recorridos, no cada módulo, moneda, rol o fallo de red posib
   no auditoría completa ni nueva prueba de pagos.
   [Detalle y evidencia de Seguridad 1A](SEGURIDAD-ACCESOS.md).
 - [x] Construir y probar aislamiento demo/producción y eliminación de contraseñas
-  demo guardadas: [Seguridad1B](DEMO-PRODUCCION.md). Código pendiente de merge/publicación.
-- [ ] Tras publicar1B, comprobar login/lecturas conectadas sin repetir cobros.
+  demo guardadas: [Seguridad1B](DEMO-PRODUCCION.md). PR12 mergeado con autorización.
+- [x] Usuario confirmó ingreso/Clientes/Caja/Reportes tras publicar1B. Sólo prueba de humo, no todos los permisos.
+- [x] Construir recuperación PKCE/redirects/validación de contraseñas/logout explícito:
+  [Seguridad1C](AUTH-RECUPERACION.md). Pendiente de merge autorizado y correo real.
+- [x] Revisar allowlist/templates/SMTP real en sólo lectura: destinos/templates compatibles;
+  [SMTP propio no configurado](REVISION-CORREO-AUTH.md), límite integrado2/h. Sin cambios remotos.
+- [ ] Confirmar remitente/dominio/proveedor con el usuario, configurar envío con autorización
+  y aceptar recuperación por correo real después de publicar. No listo aún para entrega general.
 - [ ] Revisar secretos, historial/bundles/variables y exclusiones de archivos env.
 - [ ] Auth: contraseñas, recuperación, confirmación/redirects, sesiones y MFA admin
   sin bloquear al administrador; no sustituir Auth editando profiles.

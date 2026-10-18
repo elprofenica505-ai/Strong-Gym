@@ -50,6 +50,26 @@ test('demo de sólo lectura: no restaura sesiones ni almacena contraseñas; limp
     globalThis.__authBoundary={auth:{signInWithPassword:async()=>{throw Error('EXAMPLE_NETWORK');}}};
     await act(async()=>{result=await ctx.signIn('example@test.invalid','EXAMPLE_CONNECTED');});
     assert.equal(result.ok,false);assert.equal(ctx.isDemo,false);assert.equal(ctx.user,null);
+    let signups=0;dom.window.history.replaceState({},'', '/en/registro');
+    globalThis.__authBoundary={auth:{signUp:async(payload)=>{
+      signups++;assert.equal(payload.password,'EXAMPLE_NEW_PASSWORD');
+      assert.equal(payload.options.emailRedirectTo,'https://strong.example/api/auth/callback?locale=en&flow=signup');
+      assert.deepEqual(payload.options.data,{full_name:'EXAMPLE',phone:null});return {data:{session:null},error:null};
+    }}};
+    await act(async()=>{result=await ctx.signUp({fullName:'EXAMPLE',email:'example@test.invalid',password:'short'});});
+    assert.equal(result.ok,false);assert.equal(signups,0);
+    await act(async()=>{result=await ctx.signUp({fullName:' EXAMPLE ',email:'example@test.invalid',password:'EXAMPLE_NEW_PASSWORD'});});
+    assert.equal(result.ok,true);assert.equal(result.needsConfirmation,true);assert.equal(signups,1);
+    for(const [providerError,key] of [[{status:429,code:'over_email_send_rate_limit'},'rateLimited'],[{code:'email_address_not_authorized'},'deliveryUnavailable']]) {
+      globalThis.__authBoundary={auth:{
+        signUp:async()=>({data:null,error:{...providerError,message:'EXAMPLE_PRIVATE_PROVIDER'}}),
+        signInWithPassword:async()=>({data:null,error:{...providerError,message:'EXAMPLE_PRIVATE_PROVIDER'}}),
+      }};
+      await act(async()=>{result=await ctx.signUp({fullName:'EXAMPLE',email:'example@test.invalid',password:'EXAMPLE_NEW_PASSWORD'});});
+      assert.equal(result.ok,false);assert.equal(result.error,key);assert.equal(ctx.user,null);
+      await act(async()=>{result=await ctx.signIn('example@test.invalid','EXAMPLE_NEW_PASSWORD');});
+      assert.equal(result.ok,false);assert.equal(result.error,key);assert.equal(ctx.user,null);
+    }
   } finally {
     await act(async()=>root.unmount());dom.window.close();
     globalThis.window=previous.window;globalThis.document=previous.document;globalThis.IS_REACT_ACT_ENVIRONMENT=previous.act;
@@ -97,5 +117,25 @@ test('getters reales sin configuración en producción fallan antes de SDK/cooki
   } finally {
     for(const name of names) if(previous[name]===undefined)delete process.env[name];else process.env[name]=previous[name];
     delete globalThis.__configurationCalls;
+  }
+});
+
+test('logout real fallido conserva usuario y avisa; éxito confirmado limpia estado',async()=>{
+  const dom=new JSDOM('<div id="root"></div>',{url:'https://strong.example/es/mi-cuenta'});
+  const previous={window:globalThis.window,document:globalThis.document,act:globalThis.IS_REACT_ACT_ENVIRONMENT,fetch:globalThis.fetch};
+  globalThis.window=dom.window;globalThis.document=dom.window.document;globalThis.IS_REACT_ACT_ENVIRONMENT=true;
+  globalThis.fetch=async()=>Response.json({bookings:[]});dom.window.setTimeout=()=>0;
+  globalThis.__authBoundary={auth:{signOut:async()=>({error:{message:'EXAMPLE_PRIVATE'}})}};
+  let ctx;function Probe(){ctx=useApp();return null;}
+  const root=createRoot(dom.window.document.getElementById('root'));
+  try {
+    await act(async()=>root.render(React.createElement(AppProvider,{initialUser:{id:'expected',role:'member'},isDemo:false},React.createElement(Probe))));
+    await act(async()=>ctx.signOut());
+    assert.equal(ctx.user.id,'expected');assert.match(ctx.toasts.at(-1).message,/No pudimos confirmar/);
+    globalThis.__authBoundary={auth:{signOut:async()=>({error:null})}};
+    await act(async()=>ctx.signOut());assert.equal(ctx.user,null);
+  } finally {
+    await act(async()=>root.unmount());dom.window.close();
+    globalThis.window=previous.window;globalThis.document=previous.document;globalThis.IS_REACT_ACT_ENVIRONMENT=previous.act;globalThis.fetch=previous.fetch;delete globalThis.__authBoundary;
   }
 });

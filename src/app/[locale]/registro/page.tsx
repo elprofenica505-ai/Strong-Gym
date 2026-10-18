@@ -1,3 +1,4 @@
+import { safeAuthRedirect } from "@/lib/auth/redirects";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/auth/auth-form";
@@ -38,8 +39,7 @@ export default async function RegisterPage({
   const user = await getCurrentUser();
   if (user) redirect(`/${locale}/mi-cuenta`);
 
-  const safeRedirect =
-    redirectTo && redirectTo.startsWith(`/${locale}/`) ? redirectTo : undefined;
+  const safeRedirect = safeAuthRedirect(redirectTo, locale);
 
   return (
     <AuthShell

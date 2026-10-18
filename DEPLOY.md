@@ -159,8 +159,13 @@ Cada `git push` a `main` republica el sitio automáticamente.
 1. En Supabase → **Authentication** → **URL Configuration**.
 2. **Site URL**: `https://tu-dominio.vercel.app`
 3. **Redirect URLs**: agregá
-   - `https://tu-dominio.vercel.app/**`
-   - `http://localhost:3000/**` (para cuando pruebes en tu compu)
+   - Los destinos concretos de [recuperación/confirmación PKCE](docs/AUTH-RECUPERACION.md).
+   - Para local/preview, autorizar sólo el origen controlado y sus callbacks. No wildcard global de Vercel.
+   - Conservar destinos anteriores hasta verificar correos pendientes; no borrar configuración a ciegas.
+
+Verificar también SMTP/entrega, templates compatibles y política real de contraseñas
+en el proveedor. Registro y recuperación de la app piden12–128; login existente no cambia.
+MFA sigue pendiente: no habilitar obligatoriedad ni desactivar factores existentes en esta etapa.
 
 ### Decidir si hace falta confirmar el email
 
@@ -170,8 +175,8 @@ Cada `git push` a `main` republica el sitio automáticamente.
   Después de registrarse, el cliente recibe un mail y tiene que hacer clic para activar
   su cuenta. El sitio le muestra el mensaje "Revisá tu correo".
 
-- **Opción B — sin confirmación (cómodo para probar)**
-  Desactivá **Confirm email**. El cliente queda logueado al instante.
+- **Entorno de pruebas separado:** cualquier cambio a confirmación requiere revisión
+  del responsable. No desactivarla en producción como solución a correos que no llegan.
 
 > **Importante para probar**: el servicio de emails gratuito de Supabase tiene un límite
 > bajo por hora. Si vas a registrar muchas cuentas de prueba, usá la opción B o conectá

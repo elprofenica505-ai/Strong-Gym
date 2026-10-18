@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { validNewPassword, NEW_PASSWORD_MAX } from "@/lib/auth/password-recovery";
+import { safeAuthRedirect } from "@/lib/auth/redirects";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AlertTriangle, ArrowRight, CheckCircle2, Eye, EyeOff, Loader2 } from "lucide-react";
@@ -37,7 +39,7 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
     const errors: Record<string, string> = {};
     if (!isLogin) {
       if (fullName.length < 2) errors.fullName = dict.auth.requiredField;
-      if (password.length < 6) errors.password = dict.auth.passwordMin;
+      if (!validNewPassword(password)) errors.password = dict.auth.passwordMin;
       if (password !== confirm) errors.confirmPassword = dict.auth.passwordMismatch;
     } else if (password.length < 1) {
       errors.password = dict.auth.requiredField;
@@ -55,7 +57,8 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
       : await signUp({ fullName, email, password, phone });
 
     if (!result.ok) {
-      setError((dict.auth as Record<string, string>)[result.error ?? "genericError"]);
+      const message = (dict.auth as Record<string, unknown>)[result.error ?? "genericError"];
+      setError(typeof message === "string" ? message : dict.auth.genericError);
       return;
     }
 
@@ -65,7 +68,7 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
     }
 
     // Login/registro exitoso: al panel del cliente o a la página pedida.
-    const target = redirectTo || `/${locale}/mi-cuenta`;
+    const target = safeAuthRedirect(redirectTo, locale) || `/${locale}/mi-cuenta`;
     router.replace(target);
     router.refresh();
   }
@@ -156,6 +159,7 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
           label={dict.auth.password}
           hint={isLogin ? undefined : dict.auth.passwordHint}
           autoComplete={isLogin ? "current-password" : "new-password"}
+          maxLength={isLogin ? undefined : NEW_PASSWORD_MAX}
           required
           error={fieldErrors.password}
         />
@@ -177,6 +181,7 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
       {!isLogin ? (
         <Input
           name="confirmPassword"
+          maxLength={NEW_PASSWORD_MAX}
           type={showPassword ? "text" : "password"}
           label={dict.auth.confirmPassword}
           autoComplete="new-password"
@@ -193,6 +198,8 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
         )}
         {authLoading ? dict.auth.loading : isLogin ? dict.auth.login : dict.auth.register}
       </Button>
+
+      {isLogin ? <Link href={`/${locale}/recuperar`} className="text-sm text-brand-300 underline">{dict.recovery.forgot}</Link> : null}
 
       <p className="text-center text-[0.8125rem] text-fog">
         {isLogin ? dict.auth.noAccount : dict.auth.hasAccount}{" "}

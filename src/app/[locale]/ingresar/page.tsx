@@ -1,3 +1,4 @@
+import { safeAuthRedirect } from "@/lib/auth/redirects";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/auth/auth-form";
@@ -26,9 +27,9 @@ export default async function LoginPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ redirect?: string }>;
+  searchParams: Promise<{ redirect?: string; error?: string }>;
 }) {
-  const [{ locale: rawLocale }, { redirect: redirectTo }] = await Promise.all([
+  const [{ locale: rawLocale }, { redirect: redirectTo, error }] = await Promise.all([
     params,
     searchParams,
   ]);
@@ -37,10 +38,9 @@ export default async function LoginPage({
 
   // Si ya hay sesión, no tiene sentido mostrar el login.
   const user = await getCurrentUser();
-  if (user) redirect(`/${locale}/mi-cuenta`);
+  if (user && error !== "link") redirect(`/${locale}/mi-cuenta`);
 
-  const safeRedirect =
-    redirectTo && redirectTo.startsWith(`/${locale}/`) ? redirectTo : undefined;
+  const safeRedirect = safeAuthRedirect(redirectTo, locale);
 
   return (
     <AuthShell
@@ -49,6 +49,7 @@ export default async function LoginPage({
       subtitle={dict.auth.loginSubtitle}
       bullets={dict.plans.included}
     >
+      {error === "link" ? <p role="alert" className="mb-4 text-alert">{dict.recovery.callbackFailed}</p> : null}
       <AuthForm mode="login" redirectTo={safeRedirect} />
     </AuthShell>
   );
