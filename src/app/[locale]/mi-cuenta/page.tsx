@@ -7,6 +7,8 @@ import { SectionHeading } from "@/components/ui/section";
 import { getDictionary } from "@/i18n/dictionaries";
 import { isLocale, type Locale } from "@/i18n/config";
 import { getCurrentUser, getMyBookings, getPlans, getMyAssignedPlan } from "@/lib/data/queries";
+import { MfaSetup } from "@/components/auth/mfa-setup";
+import { isStaffRole } from "@/lib/auth/current-user";
 
 export async function generateMetadata({
   params,
@@ -66,6 +68,12 @@ export default async function AccountPage({
           />
         </div>
       </section>
+
+      {user && isStaffRole(user.role) && user.mfa !== "ok" && (
+        <section className="container-x pt-10">
+          <MfaSetup locale={locale} role={user.role ?? ""} initialState={user.mfa} />
+        </section>
+      )}
 
       <ClientPass />
       <section className="py-10 sm:py-12 lg:py-14">

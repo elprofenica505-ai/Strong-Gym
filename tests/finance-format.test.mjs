@@ -44,7 +44,7 @@ test("formato compacto conserva el comportamiento de Caja y sus umbrales", () =>
 for (const page of ["cuentas", "reportes"])
   for (const empty of [false, true]) {
     test(`${page}: servidor renderiza ${empty ? "vacío" : "con filas"} sin llamar al módulo cliente`, async () => {
-      const queries = `export const getCurrentUser=async()=>({role:'staff'});
+      const queries = `export const getCurrentUser=async()=>({role:'staff',mfa:'ok'});
       export const getAccountsReceivable=async()=>${JSON.stringify(empty ? [] : [{ memberId: "test", fullName: "EJEMPLO", email: "", phone: null, totalOwedNio: 20, totalOwedUsd: 3, invoicesOpen: null, oldestDue: null, daysOverdue: null }])};
       export const getMonthlyPnl=async()=>${JSON.stringify(empty ? [] : [{ month: "2026-10-01", incomeNio: 0, expenseNio: 86600, netNio: -86600 }])};
       export const getPaymentMethodsBreakdown=async()=>${JSON.stringify(empty ? [] : [{ paymentMethodId: null, nameEs: null, icon: "Wallet", txCount: 1, totalNio: 86600, incomeNio: 0, expenseNio: 86600 }])};`;

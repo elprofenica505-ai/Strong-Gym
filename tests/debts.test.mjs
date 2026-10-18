@@ -28,7 +28,7 @@ const options={protocol:'service-v1',finance_layout:'bank_accounts_split',writes
 const json=(v,status=200)=>Response.json(v,{status});
 function reset(role='staff',result=receipt()) {
   let calls=[];
-  globalThis.__debtTest={user:role?{id:actor,role}:null,db:{rpc(name,args){calls.push({name,args});return {abortSignal:async()=>({data:result,error:null})};}}};
+  globalThis.__debtTest={user:role?{id:actor,role,mfa:"ok"}:null,db:{rpc(name,args){calls.push({name,args});return {abortSignal:async()=>({data:result,error:null})};}}};
   return calls;
 }
 const req=(value,headers={})=>new Request('https://strong.test/api/admin/debts',{method:'POST',headers:{'content-type':'application/json',origin:'https://strong.test',host:'strong.test',...headers},body:JSON.stringify(value)});

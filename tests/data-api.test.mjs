@@ -22,7 +22,7 @@ const connected = createLoader({
   "next/navigation":
     'export const useRouter=()=>({}); export function redirect(path){throw new Error("REDIRECT:"+path)}',
 });
-const user = { id: "test-user", role: "admin", profileStatus: "ready" };
+const user = { id: "test-user", role: "admin", mfa: "ok", profileStatus: "ready" };
 const request = (name) =>
   new Request(`https://strong.test/api/${name}`, {
     method: name === "account" ? "PATCH" : "POST",

@@ -24,7 +24,7 @@ const { GET, POST } = await load("app/api/admin/finance/route.ts");
 let calls = [];
 function setup(role = "staff", result = { data: id, error: null }) {
   calls = [];
-  globalThis.__financeUser = role ? { id, role } : null;
+  globalThis.__financeUser = role ? { id, role, mfa: "ok" } : null;
   globalThis.__financeWriteDb = {
     rpc(name, args) {
       calls.push({ name, args });

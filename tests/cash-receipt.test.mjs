@@ -7,7 +7,7 @@ import {getCashChange} from '../src/lib/finance/debts.ts';
 const id='11111111-1111-4111-8111-111111111111';
 const base={id,reference:'SG-EJEMPLO',requestId:id,kind:'debt_payment',debtBefore:60,debtAfter:40,occurredAt:'2026-10-18T03:00:00Z',amount:20,currency:'NIO',amountNio:20,amountUsd:0.5,fx:40,concept:'PRUEBA vuelto',clientId:id,clientName:'Cliente EJEMPLO',categoryName:null,accountId:'cash',accountName:'Caja EJEMPLO',methodName:'Efectivo',actorId:id,actorName:'Personal EJEMPLO',accountBefore:6,accountAfter:26};
 const load=createLoader({
-  '@/lib/data/queries':"export const getCurrentUser=async()=>({role:'admin'});",
+  '@/lib/data/queries':"export const getCurrentUser=async()=>({role:'admin',mfa:'ok'});",
   '@/lib/supabase/server':"export const getSupabaseServerClient=async()=>({rpc(){return {abortSignal:async()=>({data:globalThis.__cashReceipt,error:null})}}});",
   'next/navigation':"export function redirect(){throw Error('AUTH')};export function notFound(){throw Error('NOT_FOUND')};",
 });

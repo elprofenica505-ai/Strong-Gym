@@ -3,12 +3,47 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export type ProfileStatus = "ready" | "missing" | "error";
 export type UserRole = "member" | "staff" | "admin";
 
+export type MfaState =
+  | "not_required" // member: MFA no aplica al acceso del panel
+  | "enroll" // staff sin factor TOTP verificado: debe registrarlo
+  | "verify" // staff con factor registrado: debe ingresar el código
+  | "ok" // sesión AAL2: acceso permitido
+  | "unavailable"; // no se pudo leer el nivel de sesión: bloqueado
+
+export interface AalLevels {
+  currentLevel?: unknown;
+  nextLevel?: unknown;
+}
+
+export function isStaffRole(role: unknown): boolean {
+  return role === "admin" || role === "staff";
+}
+
+export function mfaStateFromLevels(
+  role: unknown,
+  levels: AalLevels | null | undefined,
+): MfaState {
+  if (!isStaffRole(role)) return "not_required";
+  if (!levels) return "unavailable";
+  if (levels.currentLevel === "aal2") return "ok";
+  if (levels.currentLevel === "aal1" && levels.nextLevel === "aal2") return "verify";
+  if (levels.currentLevel === "aal1" && levels.nextLevel === "aal1") return "enroll";
+  return "unavailable";
+}
+
+/** Código TOTP: exactamente 6 dígitos. */
+export function isTotpCode(value: string): boolean {
+  return /^\d{6}$/.test(value);
+}
+
 export interface AuthUser {
   id: string;
   email: string;
   fullName: string;
   // Un perfil que no se pudo leer NO equivale a un cliente sin permisos.
   role: UserRole | null;
+  // Estado de MFA de la sesión actual; sólo aplica a admin/staff.
+  mfa: MfaState;
   profileStatus: ProfileStatus;
   phone: string | null;
   planId: string | null;
@@ -16,9 +51,12 @@ export interface AuthUser {
   isDemo: false;
 }
 
-/** Misma regla para el guard del servidor y la navegación del cliente. */
-export function canAccessPanel(user: { role: unknown } | null | undefined): boolean {
-  return user?.role === "admin" || user?.role === "staff";
+/** Misma regla para el guard del servidor y la navegación del cliente.
+ * Personal sólo entra con MFA verificado (AAL2); cualquier otro estado bloquea. */
+export function canAccessPanel(
+  user: { role: unknown; mfa?: unknown } | null | undefined,
+): boolean {
+  return isStaffRole(user?.role) && user?.mfa === "ok";
 }
 
 /** Sólo usa la identidad verificada y public.profiles; nunca roles del JWT/metadata/email. */
@@ -31,6 +69,7 @@ export async function resolveCurrentUser(supabase: SupabaseClient): Promise<Auth
     email: user.email ?? "",
     fullName: (user.user_metadata?.full_name as string | undefined) ?? user.email?.split("@")[0] ?? "Cliente",
     role: null,
+    mfa: "unavailable",
     profileStatus: "error",
     phone: null,
     planId: null,
@@ -56,11 +95,16 @@ export async function resolveCurrentUser(supabase: SupabaseClient): Promise<Auth
       return result;
     }
 
+    const mfa = isStaffRole(profile.role)
+      ? await readSessionMfa(supabase, profile.role)
+      : "not_required";
+
     return {
       ...result,
       email: user.email ?? profile.email ?? "",
       fullName: profile.full_name ?? result.fullName,
       role: profile.role,
+      mfa,
       profileStatus: "ready",
       phone: profile.phone ?? null,
       planId: profile.plan_id ?? null,
@@ -69,5 +113,16 @@ export async function resolveCurrentUser(supabase: SupabaseClient): Promise<Auth
   } catch {
     console.error("[auth/profile] Falló la conexión al leer public.profiles");
     return result;
+  }
+}
+
+/** Nivel de la sesión que valida el servidor; cualquier fallo queda bloqueado. */
+async function readSessionMfa(supabase: SupabaseClient, role: unknown): Promise<MfaState> {
+  try {
+    const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (error) return "unavailable";
+    return mfaStateFromLevels(role, data);
+  } catch {
+    return "unavailable";
   }
 }

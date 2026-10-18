@@ -35,7 +35,9 @@ export async function testFinanceRecovery({ control, connect, actor, client, che
   replace("__financeRecovery", {
     async user() {
       if (!identity) return null;
-      return (await control.query("select id,role from profiles where id=$1", [identity])).rows[0] ?? null;
+      const row = (await control.query("select id,role from profiles where id=$1", [identity])).rows[0];
+        // Sesión de prueba ya verificada con MFA (AAL2); el guard exige mfa === "ok".
+        return row ? { ...row, mfa: "ok" } : null;
     },
     db: {
       rpc(name, params = {}) {

@@ -40,7 +40,7 @@ let calls = [];
 function reset(role = "staff") {
   calls = [];
   globalThis.__crmTest = {
-    user: role ? { id: "test", role } : null,
+    user: role ? { id: "test", role, mfa: "ok" } : null,
     db: {
       rpc: async (name, args) => {
         calls.push({ name, args });
