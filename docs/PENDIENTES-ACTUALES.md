@@ -150,7 +150,7 @@ explícita. No afirmar seguridad absoluta ni certificación externa por tener HT
 - [ ] Revisión visual en navegador real de las páginas nuevas (la sandbox no tiene Chromium para la prueba de layout).
 - [x] Asignación entrenador-cliente en base de datos: SQL 00035 probado (59/59), con interruptor del administrador para búsqueda y pedidos del entrenador (desactivado por defecto). Aprobación sólo del administrador; caja registra pedidos.
 - [x] Pantalla de administración: interruptor y pedidos de acceso (Administración > Entrenadores y accesos).
-- [ ] Vista del entrenador (sus clientes con asistencia).
+- [x] Vista del entrenador "Mis clientes" (clientes asignados con asistencia y pedido de acceso). Falta probarla con una cuenta real de entrenador.
 - [x] Aplicar 00034 y 00035 en Supabase (aplicadas con autorización del dueño; 00034 incluye quitar la política antigua de escritura de entrenadores para caja).
 - [ ] Aplicar 00034 en Supabase antes de desplegar este código (ver docs/ROLES-MIGRACION-PLAN.md).
 
