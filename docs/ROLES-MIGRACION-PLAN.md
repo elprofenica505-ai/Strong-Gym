@@ -37,13 +37,14 @@ Estado (18 oct 2026): **LISTA EN CÓDIGO, NO APLICADA EN SUPABASE.**
 - Pendiente de UI (requiere aprobación del lugar en el menú): vista del entrenador.
 
 ## Asignación entrenador-cliente (00035)
-Estado: BORRADOR PROBADO LOCALMENTE (47/47), NO APLICADO. Se aplica después de 00034.
+Estado: BORRADOR PROBADO LOCALMENTE (59/59), NO APLICADO. Se aplica después de 00034.
 - El entrenador sólo ve a los clientes con acceso APROBADO para él.
+- Interruptor del administrador `trainer_can_request_clients` (en staff_permissions, desactivado por defecto): si está apagado, el entrenador no busca ni pide clientes. Lo cambia sólo el administrador con MFA. Apagarlo no quita los clientes ya aprobados; los pedidos de caja siguen pendientes de aprobación.
 - El entrenador pide clientes para sí mismo. Caja puede registrar un pedido en nombre de un entrenador.
 - Caja NO aprueba. Sólo el administrador con MFA aprueba, rechaza o revoca.
 - Cada pedido queda con quién lo pidió (entrenador o caja), motivo opcional y quién decidió.
 - El entrenador busca clientes por nombre (mínimo 3 letras, máximo 10) sólo para pedirlos: ve id, nombre y su estado.
-- Prueba: `node scripts/test-trainer-access-sql.mjs`.
+- Prueba: `node scripts/test-trainer-access-sql.mjs` (59 comprobaciones).
 - Pendiente de UI: pantalla de pedidos para el administrador y vista del entrenador.
 - Finanzas (cobros, abonos, gastos, recibos): admin o caja.
 - Clientes: admin y caja ven datos de contacto; entrenador ve sólo nombre y asistencia

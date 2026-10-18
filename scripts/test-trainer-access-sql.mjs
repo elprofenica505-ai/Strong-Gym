@@ -68,6 +68,20 @@ const rosterOf = actor => as(actor, 'aal2', 'select * from trainer_roster()');
 // 1) Punto de partida: sin asignaciones, el entrenador no ve a nadie
 ok('entrenador sin asignaciones: lista vacía', (await rosterOf(trainer)).length === 0);
 
+// 1b) Interruptor del administrador (desactivado por defecto)
+const flag = async () => (await db.query("select enabled from staff_permissions where key='trainer_can_request_clients'")).rows[0].enabled;
+ok('la función viene desactivada por defecto', (await flag()) === false);
+ok('con la función desactivada, el entrenador NO busca clientes', await denied(as(trainer, 'aal2', "select * from trainer_search_clients('ana')"), /PERMISSION_DISABLED/));
+ok('con la función desactivada, el entrenador NO pide clientes', await denied(as(trainer, 'aal2', 'select public.request_trainer_access($1, $2, null)', [trainer, ana]), /PERMISSION_DISABLED/));
+await as(trainer, 'aal2', "update staff_permissions set enabled = true where key='trainer_can_request_clients'").catch(() => null);
+ok('entrenador NO puede activar su propia función', (await flag()) === false);
+await as(cashier, 'aal2', "update staff_permissions set enabled = true where key='trainer_can_request_clients'").catch(() => null);
+ok('caja NO puede activar la función', (await flag()) === false);
+await as(admin, 'aal1', "update staff_permissions set enabled = true where key='trainer_can_request_clients'").catch(() => null);
+ok('administrador sin MFA NO activa la función', (await flag()) === false);
+await as(admin, 'aal2', "update staff_permissions set enabled = true, updated_by = $1, updated_at = now() where key='trainer_can_request_clients'", [admin]);
+ok('administrador con MFA activa la función', (await flag()) === true);
+
 // 2) El entrenador pide a Ana para sí mismo: queda pendiente y NO aparece en su lista
 const reqSelf = await as(trainer, 'aal2', 'select public.request_trainer_access($1, $2, $3) as id', [trainer, ana, 'Entrena con ella']);
 const pendingId = reqSelf[0].id;
@@ -133,6 +147,15 @@ ok('administrador ve todas las solicitudes', (await as(admin, 'aal2', 'select co
 ok('entrenador NO escribe la tabla directo', await denied(as(trainer, 'aal2', `insert into trainer_client_access(trainer_id, client_id, requested_via) values ($1, $2, 'trainer')`, [trainer, luis])));
 ok('entrenador NO se aprueba cambiando la fila', await denied(as(trainer, 'aal2', `update trainer_client_access set status='approved'`)));
 ok('nadie borra solicitudes directo', await denied(as(admin, 'aal2', 'delete from trainer_client_access')));
+
+// 9b) Desactivar la función: el entrenador deja de buscar y pedir; lo ya aprobado se conserva
+await as(admin, 'aal2', "update staff_permissions set enabled = false, updated_by = $1, updated_at = now() where key='trainer_can_request_clients'", [admin]);
+ok('desactivada: el entrenador NO busca clientes', await denied(as(trainer, 'aal2', "select * from trainer_search_clients('luis')"), /PERMISSION_DISABLED/));
+ok('desactivada: el entrenador NO pide clientes', await denied(as(trainer, 'aal2', 'select public.request_trainer_access($1, $2, null)', [trainer, pausado]), /PERMISSION_DISABLED/));
+ok('desactivada: los clientes ya aprobados siguen en la lista', (await rosterOf(trainer)).some(r => r.client_id === ana));
+ok('desactivada: caja aún registra pedido, que queda pendiente para el administrador', !!(await as(cashier, 'aal2', 'select public.request_trainer_access($1, $2, null) as id', [trainer, luis]))[0].id);
+ok('desactivada: ese pedido de caja NO da acceso', !(await rosterOf(trainer)).some(r => r.client_id === luis));
+await as(admin, 'aal2', "update staff_permissions set enabled = true, updated_by = $1, updated_at = now() where key='trainer_can_request_clients'", [admin]);
 
 // 10) Revocación y cambio de rol
 await as(admin, 'aal2', 'select public.admin_decide_trainer_access($1, $2)', [pendingId, 'revoked']);

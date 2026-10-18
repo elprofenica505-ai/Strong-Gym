@@ -4,12 +4,20 @@
 -- Reglas:
 -- - El entrenador sólo ve a los clientes con acceso APROBADO para él (trainer_roster).
 -- - Pedir acceso: el entrenador para sí mismo, o caja en nombre de un entrenador.
+-- - Interruptor: el administrador activa o desactiva la búsqueda y los pedidos del entrenador (desactivado por defecto).
 -- - Caja NO aprueba. Sólo el administrador (con MFA) aprueba, rechaza o revoca.
 -- - Todas las escrituras van por funciones; las tablas no admiten INSERT/UPDATE/DELETE directo.
 -- - El entrenador busca clientes por nombre sólo para pedirlos: devuelve id, nombre y su estado. Sin contacto.
 
 begin;
 set local lock_timeout = '5s';
+
+-- 0) Interruptor del administrador: el entrenador puede buscar y pedir clientes sólo si está activo.
+--    Desactivado por defecto. Lo cambia el administrador con MFA desde staff_permissions (00033).
+--    Desactivarlo NO quita los clientes ya aprobados; sólo impide nuevos pedidos y búsquedas del entrenador.
+insert into public.staff_permissions(key, enabled)
+values ('trainer_can_request_clients', false)
+on conflict (key) do nothing;
 
 -- 1) Tabla de accesos (una fila por pedido; estado en la fila).
 create table if not exists public.trainer_client_access (
@@ -46,6 +54,14 @@ create policy trainer_access_read on public.trainer_client_access
     or (public.is_trainer() and trainer_id = auth.uid())
   );
 
+-- Lectura del interruptor desde funciones (el entrenador no lee staff_permissions directamente).
+create or replace function public.trainer_request_enabled()
+returns boolean language sql stable security definer set search_path = public, pg_temp as $$
+  select coalesce((select enabled from public.staff_permissions where key = 'trainer_can_request_clients'), false);
+$$;
+revoke all on function public.trainer_request_enabled() from public, anon;
+grant execute on function public.trainer_request_enabled() to authenticated;
+
 -- 2) Pedir acceso: entrenador (para sí mismo) o caja (en nombre de un entrenador).
 create or replace function public.request_trainer_access(p_trainer uuid, p_client uuid, p_reason text default null)
 returns uuid language plpgsql security definer set search_path = public, pg_temp set lock_timeout = '5s' as $$
@@ -53,6 +69,7 @@ declare v_caller uuid := auth.uid(); v_id uuid; v_status text; v_existing record
 begin
   if not (public.is_trainer() or public.is_cashier()) then raise exception 'AUTH'; end if;
   if public.is_trainer() and p_trainer is distinct from v_caller then raise exception 'AUTH'; end if;
+  if public.is_trainer() and not public.trainer_request_enabled() then raise exception 'PERMISSION_DISABLED'; end if;
   if p_trainer is null or not exists(select 1 from public.profiles where id = p_trainer and role = 'trainer') then
     raise exception 'INVALID_TRAINER';
   end if;
@@ -124,6 +141,7 @@ language plpgsql stable security definer set search_path = public, pg_temp as $$
 declare v_q text := lower(coalesce(trim(p_query), ''));
 begin
   if not public.is_trainer() then raise exception 'AUTH'; end if;
+  if not public.trainer_request_enabled() then raise exception 'PERMISSION_DISABLED'; end if;
   if length(v_q) < 3 then raise exception 'QUERY_TOO_SHORT'; end if;
   return query
     select c.id, c.full_name,
