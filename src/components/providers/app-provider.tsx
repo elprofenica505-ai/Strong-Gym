@@ -26,7 +26,7 @@ export interface AppUser {
   id: string;
   email: string;
   fullName: string;
-  role: "member" | "staff" | "admin" | null;
+  role: "member" | "cashier" | "trainer" | "admin" | null;
   phone: string | null;
   planId: string | null;
   createdAt: string;

@@ -8,7 +8,7 @@ test('sólo el administrador tiene 2 horas de inactividad', () => {
 });
 
 test('personal, clientes y visitantes no tienen cierre automático', () => {
-  assert.equal(inactivityLimitMs('staff'), null);
+  assert.equal(inactivityLimitMs('cashier'), null);
   assert.equal(inactivityLimitMs('member'), null);
   assert.equal(inactivityLimitMs(null), null);
   assert.equal(inactivityLimitMs(undefined), null);

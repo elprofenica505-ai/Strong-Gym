@@ -187,7 +187,7 @@ function pageLoader(role) {
 for (const page of ["caja", "cuentas", "reportes", "gastos"]) {
   test(`${page}: error visible, sin KPI cero ni falso 'sin deudas'`, async () => {
     globalThis.__financePageReads = 0;
-    const { default: Page } = await pageLoader("staff")(
+    const { default: Page } = await pageLoader(page === "reportes" ? "admin" : "cashier")(
       `app/[locale]/panel/${page}/page.tsx`,
     );
     const html = renderToStaticMarkup(
@@ -483,7 +483,7 @@ test("Cuentas: deuda USD independiente y mora/facturas no informadas", async () 
   };
   const page = createLoader({
     "@/lib/supabase/env": "export const isSupabaseConfigured=true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;",
-    "@/lib/data/queries": `export const getCurrentUser=async()=>({role:'staff',mfa:'ok'});export const getAccountsReceivable=async()=>(${JSON.stringify([ar])});`,
+    "@/lib/data/queries": `export const getCurrentUser=async()=>({role:'cashier',mfa:'ok'});export const getAccountsReceivable=async()=>(${JSON.stringify([ar])});`,
     "next/navigation": 'export function redirect(){throw Error("redirect");}',
   });
   const { default: Page } = await page("app/[locale]/panel/cuentas/page.tsx");

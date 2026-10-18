@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type ProfileStatus = "ready" | "missing" | "error";
-export type UserRole = "member" | "staff" | "admin";
+export type UserRole = "member" | "cashier" | "trainer" | "admin";
 
 export type MfaState =
   | "not_required" // member: MFA no aplica al acceso del panel
@@ -15,8 +15,19 @@ export interface AalLevels {
   nextLevel?: unknown;
 }
 
+/** Personal del gimnasio: administrador, caja o entrenador. Todos requieren MFA (aal2). */
 export function isStaffRole(role: unknown): boolean {
-  return role === "admin" || role === "staff";
+  return role === "admin" || role === "cashier" || role === "trainer";
+}
+
+/** Caja y administración: cobros, abonos, gastos, cuentas y datos de contacto. */
+export function isFinanceRole(role: unknown): boolean {
+  return role === "admin" || role === "cashier";
+}
+
+/** Sólo administrador: reportes, importación, planes, horarios y asignación de roles. */
+export function isAdminRole(role: unknown): boolean {
+  return role === "admin";
 }
 
 export function mfaStateFromLevels(
@@ -90,7 +101,7 @@ export async function resolveCurrentUser(supabase: SupabaseClient): Promise<Auth
       return result;
     }
     if (!profile) return { ...result, profileStatus: "missing" };
-    if (!["member", "staff", "admin"].includes(profile.role)) {
+    if (!["member", "cashier", "trainer", "admin"].includes(profile.role)) {
       console.error("[auth/profile] Rol inválido en public.profiles");
       return result;
     }

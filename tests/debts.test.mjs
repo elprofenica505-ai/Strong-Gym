@@ -26,7 +26,7 @@ const receipt=(d=intent(),b=balances)=>({id:'44444444-4444-4444-8444-44444444444
 const detail=(values=balances)=>({protocol:'debt-v1',clientId:client,clientName:'Cliente EJEMPLO',profileId:actor,source:'profile',balances:values,writesEnabled:true,canOpen:true,cashProtocol:'cash-v1',cashAccounts:['nio'],entries:[]});
 const options={protocol:'service-v1',finance_layout:'bank_accounts_split',writes_enabled:true,methods:[{id:'cash',name_es:'Efectivo EJEMPLO',accepts_nio:true,accepts_usd:true}],accounts:[{id:'nio',name:'Caja EJEMPLO',currency:'NIO'}],categories:[]};
 const json=(v,status=200)=>Response.json(v,{status});
-function reset(role='staff',result=receipt()) {
+function reset(role='cashier',result=receipt()) {
   let calls=[];
   globalThis.__debtTest={user:role?{id:actor,role,mfa:"ok"}:null,db:{rpc(name,args){calls.push({name,args});return {abortSignal:async()=>({data:result,error:null})};}}};
   return calls;
@@ -46,10 +46,10 @@ for(const invalid of [{...intent(),amount:'20'},{...intent(),amount:0},{...inten
   const calls=reset();assert.equal((await POST(req(invalid))).status,422);assert.equal(calls.length,0);
 });
 for(const corrupt of [null,{}, {...receipt(),requestId:actor},{...receipt(),clientId:actor},{...receipt(),after:{...balances,debt_nio:101}}])test('API no confirma comprobante incoherente '+JSON.stringify(corrupt),async()=>{
-  reset('staff',corrupt);assert.equal((await POST(req(intent()))).status,503);
+  reset('cashier',corrupt);assert.equal((await POST(req(intent()))).status,503);
 });
 test('API GET no entrega otra ficha',async()=>{
-  reset('staff',{...detail(),clientId:actor});assert.equal((await GET(new Request(`https://strong.test/api/admin/debts?client=${client}`))).status,503);
+  reset('cashier',{...detail(),clientId:actor});assert.equal((await GET(new Request(`https://strong.test/api/admin/debts?client=${client}`))).status,503);
 });
 test('API exceso de abono tiene rechazo explícito',async()=>{
   reset();globalThis.__debtTest.db.rpc=()=>({abortSignal:async()=>({data:null,error:{message:'PAYMENT_EXCEEDS_DEBT'}})});
@@ -139,10 +139,10 @@ for(const received of [19,0,-1,100.001,Infinity,'100',null])test('API efectivo i
   const calls=reset();assert.equal((await POST(req({...intent(),cashReceived:received}))).status,422);assert.equal(calls.length,0);
 });
 test('API efectivo usa RPC atómico nuevo y exige comprobante coincidente',async()=>{
-  const d={...intent(),cashReceived:100};const calls=reset('staff',receipt(d));assert.equal((await POST(req(d))).status,200);
+  const d={...intent(),cashReceived:100};const calls=reset('cashier',receipt(d));assert.equal((await POST(req(d))).status,200);
   assert.equal(calls[0].name,'finance_debt_record_with_cash');assert.equal(calls[0].args.p_amount,20);assert.equal(calls[0].args.p_cash_received,100);
-  reset('staff',receipt({...d,cashReceived:101}));assert.equal((await POST(req(d))).status,503);
-  reset('staff',{...receipt(d),changeGiven:79});assert.equal((await POST(req(d))).status,503);
+  reset('cashier',receipt({...d,cashReceived:101}));assert.equal((await POST(req(d))).status,503);
+  reset('cashier',{...receipt(d),changeGiven:79});assert.equal((await POST(req(d))).status,503);
 });
 test('contrato efectivo no admite vuelto en apertura/cargo ni pares incompletos',()=>{
   const d={...intent(),cashReceived:100};

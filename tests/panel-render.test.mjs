@@ -62,7 +62,7 @@ function context(user) {
   };
 }
 
-for (const role of ["admin", "staff"]) {
+for (const role of ["admin", "cashier"]) {
   test(`render real ${role}: tarjetas de caja/herramientas y enlace Panel en el menú móvil`, async () => {
     const load = loader(context({ ...baseUser, role }));
     const { default: Page } = await load("app/[locale]/panel/page.tsx");

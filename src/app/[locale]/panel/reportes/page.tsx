@@ -1,3 +1,4 @@
+import { isAdminRole } from "@/lib/auth/current-user";
 import { FinanceUnavailable } from "@/components/admin/finance-unavailable";
 import { readFinance } from "@/lib/finance/read-result";
 import type { Metadata } from "next";
@@ -35,7 +36,7 @@ export default async function ReportesPage({
     );
   }
   const user = await getCurrentUser();
-  if (!user || (user.role !== "admin" && user.role !== "staff")) {
+  if (!user || !isAdminRole(user.role)) {
     redirect(`/${locale}/mi-cuenta`);
   }
 

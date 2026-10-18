@@ -1,3 +1,4 @@
+import { isAdminRole } from "@/lib/auth/current-user";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/data/queries";
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
   }
 
   const user = await getCurrentUser();
-  if (!user || (user.role !== "admin" && user.role !== "staff")) {
+  if (!user || !isAdminRole(user.role)) {
     return NextResponse.json({ error: "AUTH" }, { status: 401 });
   }
 

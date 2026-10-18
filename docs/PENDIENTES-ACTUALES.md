@@ -25,7 +25,7 @@ o de un servicio de pago. No se ejecutan mientras tanto. Se retoman cuando el us
 - [ ] Política de contenido (CSP): probarla en modo informativo antes de activarla.
 - [ ] Dueño como segundo administrador: requiere su correo y autorización escrita, y que la app esté lista.
 - [x] Cierre por inactividad (18 oct, rama arena/985edb39): sólo administrador cierra sesión tras 2 horas sin actividad (personal confirmado sin cierre automático); clientes no se cierran solos (sólo cierre manual). Pruebas en tests/session-policy.test.mjs. Pendiente: verificar en navegador real.
-- [ ] Roles de caja y entrenador con permisos limitados: diseño en docs/ROLES-CAJA-ENTRENADOR.md. Incluye permiso de anulación que el administrador activa o desactiva. Requiere decidir 2 puntos y autorización de SQL.
+- [~] Roles de caja y entrenador. Fase A aplicada (00033). Fase B lista en código y SQL 00034 probada localmente (58/58), pendiente de autorización para aplicar en Supabase. Pendiente de UI: panel de asignación de roles y vista del entrenador (requieren aprobar dónde van en el menú). Fase C (anulación) sin empezar. Ver docs/ROLES-MIGRACION-PLAN.md.
 - [ ] Llave de acceso (huella o rostro): cuando Supabase la saque de versión experimental.
 - [ ] Cuenta de prueba de cliente (`baltodano19932025@gmail.com`): sólo recibe correos si se agrega como miembro del equipo o si hay correo propio; no se creó.
 

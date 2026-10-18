@@ -36,7 +36,7 @@ function client({ role = "admin", profileError = null, missing = false, authErro
   };
 }
 
-for (const role of ["admin", "staff", "member"]) {
+for (const role of ["admin", "cashier", "trainer", "member"]) {
   test(`rol ${role}: se lee desde profiles y determina acceso al panel/menú`, async () => {
     const user = await resolveCurrentUser(client({ role }));
     assert.equal(user.role, role);
@@ -87,10 +87,10 @@ test("personal sin MFA verificado (aal1) no entra al panel aunque tenga rol admi
 });
 
 test("nivel de sesión ilegible o desconocido bloquea al personal", async () => {
-  const unreadable = await resolveCurrentUser(client({ role: "staff", aalError: { message: "x" } }));
+  const unreadable = await resolveCurrentUser(client({ role: "cashier", aalError: { message: "x" } }));
   assert.equal(unreadable.mfa, "unavailable");
   assert.equal(canAccessPanel(unreadable), false);
-  const unknown = await resolveCurrentUser(client({ role: "staff", levels: { currentLevel: "aal3", nextLevel: null } }));
+  const unknown = await resolveCurrentUser(client({ role: "cashier", levels: { currentLevel: "aal3", nextLevel: null } }));
   assert.equal(canAccessPanel(unknown), false);
 });
 
