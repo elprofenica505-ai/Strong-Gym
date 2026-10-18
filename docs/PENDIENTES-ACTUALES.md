@@ -111,4 +111,5 @@ explícita. No afirmar seguridad absoluta ni certificación externa por tener HT
 - [ ] Correo del gimnasio (remitente real y dominio). En espera del dato del usuario; bloquea los pasos de recuperación con correo real.
 - [ ] Recuperación con correo real: sólo después de tener remitente. Cuenta de prueba de cliente: `baltodano19932025@gmail.com`, que no es miembro del equipo de Supabase; no recibe correos del servicio integrado.
 - [ ] Dueño como segundo administrador: sólo con correo del dueño y autorización escrita, cuando la aplicación esté lista.
+- [x] Revisión de secretos en código e historial (sólo lectura): sin claves reales; `.env` ignorado; sólo ejemplos y nombres en documentación/pruebas. Falta revisar el bundle compilado en el build de producción.
 - [ ] Llave de acceso (huella/rostro): cuando Supabase la saque de versión experimental.
