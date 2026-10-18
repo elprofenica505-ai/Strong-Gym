@@ -1,5 +1,12 @@
 # Strong Gym — Plan de producto y entrega
 
+> **Estado vigente:** [ruta única y pendientes actuales](PENDIENTES-ACTUALES.md).
+> PR10 ya mergeado (`6ed6616`). Continuación en `arena/90aa43e3-strong-gym`.
+> Etapa actual: [Seguridad1A](SEGURIDAD-ACCESOS.md), corrección00030 aplicada
+> con autorización expresa y permisos remotos verificados. Entradas antiguas de este documento son
+> históricas:00028/29 ya se comprobaron en el recorrido NIO de Carlicheta. No repetir
+> liquidación, apertura ni reinstalación. Nuevos merges requieren autorización.
+
 ## 1. Objetivo acordado
 
 Construir un **sitio web con sistema de gestión del gimnasio**, no una maqueta.
@@ -127,7 +134,7 @@ implementadas ni se inventan reglas laborales, fiscales o comerciales para ellas
 
 ## 7. Control de entregas
 
-Trabajar en `arena/9bdd978c-strong-gym`, PR #10 sin merge automático.
+PR #10 ya mergeado. Continuación en `arena/90aa43e3-strong-gym`, sin nuevos merges automáticos.
 Documentar cada bloque: cambios, pruebas, pendientes y SQL si corresponde.
 Revisión inicial: 2026-10-17, código base `9910268`.
 

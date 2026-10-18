@@ -191,7 +191,8 @@ const financeRead = readFileSync(join(ROOT, "supabase/migrations/00023_finance_r
 const accountPlanSql = readFileSync(join(ROOT, "supabase/migrations/00025_account_assigned_plan.sql"), "utf8");
 const bookingReadSql = readFileSync(join(ROOT, "supabase/migrations/00026_booking_read_policy.sql"), "utf8");
 const clientFinanceSql = readFileSync(join(ROOT, "supabase/migrations/00027_client_finance_read.sql"), "utf8");
-const crmSql = readFileSync(join(ROOT, "supabase/migrations/00020_clients_crm.sql"), "utf8") + "\n\n" + crmCompat + "\n\n" + financeRead + "\n\n" + accountPlanSql + "\n\n" + bookingReadSql + "\n\n" + clientFinanceSql;
+const accessHardeningSql = readFileSync(join(ROOT, "supabase/migrations/00030_access_hardening.sql"), "utf8");
+const crmSql = readFileSync(join(ROOT, "supabase/migrations/00020_clients_crm.sql"), "utf8") + "\n\n" + crmCompat + "\n\n" + financeRead + "\n\n" + accountPlanSql + "\n\n" + bookingReadSql + "\n\n" + clientFinanceSql + "\n\n" + accessHardeningSql;
 
 /* --- 3b. SETUP.sql: instalación desde cero --- */
 const cabecera = `-- ============================================================
@@ -305,6 +306,7 @@ sincronizarGenerado(join(ROOT, "supabase/LECTURA-RESERVAS.sql"), bookingReadSql)
 sincronizarGenerado(join(ROOT, "supabase/SALDO-CLIENTE.sql"), clientFinanceSql);
 sincronizarGenerado(join(ROOT, "supabase/DEUDAS-ABONOS.sql"), readFileSync(join(ROOT, "supabase/migrations/00028_debts_payments.sql"), "utf8"));
 sincronizarGenerado(join(ROOT, "supabase/VUELTO-ABONOS.sql"), readFileSync(join(ROOT, "supabase/migrations/00029_cash_change.sql"), "utf8"));
+sincronizarGenerado(join(ROOT, "supabase/SEGURIDAD-ACCESOS.sql"), accessHardeningSql);
 sincronizarGenerado(SETUP, setupNuevo);
 sincronizarGenerado(UPDATE, actualizarNuevo);
 
