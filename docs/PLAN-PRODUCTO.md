@@ -161,3 +161,10 @@ Mi cuenta0 y botón «Reservar». **Prueba no aceptada**. Se reparó confirmaci�
 ciega/ocupación aritmética del frontend; falta diagnóstico SELECT remoto para
 identificar si se guardó y si RLS/contrato impiden verla. No repetir operación.
 [Estado y diagnóstico](./RESERVAS-CONCILIACION.md).
+
+
+CSV posterior confirma reserva original guardada para Carlicheta; la tabla bookings
+remota tenía RLS activo y cero políticas, ocultándola en SELECT. Se prepara00026
+LECTURA-RESERVAS: lectura propia o staff, sin escritura ni cambios de registros.
+42controles SQL adicionales pasan en ambos esquemas; instalación manual y lectura
+remota de esa misma reserva pendientes. No volver a reservar ni repetir FASE2.
