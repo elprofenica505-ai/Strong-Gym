@@ -119,4 +119,5 @@ explícita. No afirmar seguridad absoluta ni certificación externa por tener HT
 - [x] Antispam básico en contacto y suscripción (18 oct): límite de 5 envíos por IP cada 10 min (en memoria por instancia) y campo trampa en ambos formularios; el campo trampa responde OK sin guardar. Pruebas en tests/antispam.test.mjs.
 - [ ] Antispam fuerte (opcional, requiere decisión y cuenta externa): verificador tipo Turnstile. Límite actual es parcial.
 - [x] Prueba en navegador tras 00032 (landing sin cuenta y panel con código): confirmada por el usuario.
+- [ ] Recuperación por correo: el enlace abre la app instalada (alcance del manifiesto era "/"). Corrección en rama: alcance "/es" (commit de manifest.ts). Requiere merge y despliegue con autorización; después, reinstalar o abrir la app para que tome el nuevo alcance.
 - [ ] Llave de acceso (huella/rostro): cuando Supabase la saque de versión experimental.
