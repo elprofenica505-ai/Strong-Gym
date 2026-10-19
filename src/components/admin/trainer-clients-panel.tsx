@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { CalendarCheck, Dumbbell, Search, UserPlus, Users } from "lucide-react";
 import type { TrainerRosterRow } from "@/lib/data/queries";
 
@@ -37,7 +38,26 @@ export function TrainerClientsPanel({
   initialRoster: TrainerRosterRow[];
   searchEnabled: boolean;
 }) {
+  const router = useRouter();
   const [query, setQuery] = useState("");
+  // Las asignaciones y aprobaciones del administrador aparecen al volver a la pantalla, sin recargar a mano.
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible") router.refresh();
+    };
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [router]);
+  const [refreshing, setRefreshing] = useState(false);
+  function refreshNow() {
+    setRefreshing(true);
+    router.refresh();
+    setTimeout(() => setRefreshing(false), 800);
+  }
   const [results, setResults] = useState<SearchResult[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
@@ -122,7 +142,14 @@ export function TrainerClientsPanel({
           <h2 id="asignados-titulo" className="text-[1rem] font-semibold text-ink">
             Tus clientes
           </h2>
-          <p className="text-[0.75rem] text-fog">Ordenados por nombre</p>
+          <button
+            type="button"
+            onClick={refreshNow}
+            disabled={refreshing}
+            className="h-8 rounded-lg border border-line px-3 text-[0.75rem] font-semibold text-mist hover:text-ink disabled:opacity-50"
+          >
+            {refreshing ? "Actualizando…" : "Actualizar"}
+          </button>
         </div>
 
         {initialRoster.length === 0 ? (

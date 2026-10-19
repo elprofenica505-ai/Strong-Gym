@@ -56,7 +56,7 @@ export function TrainerAccessManager({
 }) {
   const router = useRouter();
   const [enabled, setEnabled] = useState(initialEnabled);
-  const [rows, setRows] = useState(initialRequests);
+  const rows = initialRequests;
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const [trainerId, setTrainerId] = useState(trainers[0]?.id ?? "");
@@ -141,9 +141,7 @@ export function TrainerAccessManager({
       setNotice({ tone: "error", text: result.message });
       return;
     }
-    setRows((prev) =>
-      prev.map((r) => (r.id === row.id ? { ...r, status: decision, decidedAt: new Date().toISOString() } : r)),
-    );
+    router.refresh();
     const verb = decision === "approved" ? "aprobado" : decision === "rejected" ? "rechazado" : "revocado";
     setNotice({ tone: "ok", text: `Pedido de ${row.clientName} ${verb} para ${row.trainerName}.` });
   }
@@ -190,10 +188,10 @@ export function TrainerAccessManager({
                 <select
                   value={trainerId}
                   onChange={(e) => setTrainerId(e.target.value)}
-                  className="h-11 rounded-xl border border-line bg-white px-3 text-[0.9375rem] text-ink"
+                  className="h-11 rounded-xl border border-line bg-card px-3 text-[0.9375rem] text-ink"
                 >
                   {trainers.map((t) => (
-                    <option key={t.id} value={t.id}>
+                    <option key={t.id} value={t.id} className="bg-card text-ink">
                       {t.fullName}
                     </option>
                   ))}
@@ -204,11 +202,11 @@ export function TrainerAccessManager({
                 <select
                   value={clientId}
                   onChange={(e) => setClientId(e.target.value)}
-                  className="h-11 rounded-xl border border-line bg-white px-3 text-[0.9375rem] text-ink"
+                  className="h-11 rounded-xl border border-line bg-card px-3 text-[0.9375rem] text-ink"
                 >
-                  <option value="">Elegí un cliente…</option>
+                  <option value="" className="bg-card text-ink">Elegí un cliente…</option>
                   {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
+                    <option key={c.id} value={c.id} className="bg-card text-ink">
                       {c.fullName}
                     </option>
                   ))}

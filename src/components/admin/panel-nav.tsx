@@ -43,7 +43,7 @@ export function PanelNav({ modules }: { modules: PanelModule[] }) {
   return (
     <div className="print:hidden border-b border-line bg-paper">
       <div className="container-x">
-        <nav aria-label="Módulos del panel" className="no-scrollbar flex gap-1 overflow-x-auto py-2">
+        <nav aria-label="Módulos del panel" className="grid grid-cols-3 gap-1.5 py-2 sm:flex sm:flex-wrap sm:gap-1">
           {modules.map((m) => {
             const Icon = ICONS[m.id];
             const isActive = m.id === activeId;
@@ -53,14 +53,14 @@ export function PanelNav({ modules }: { modules: PanelModule[] }) {
                 href={`${localePrefix}${m.href}`}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2 text-[0.8125rem] font-semibold transition-colors",
+                  "flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2.5 text-center text-[0.6875rem] leading-tight font-semibold transition-colors sm:flex-row sm:gap-2 sm:px-3.5 sm:text-[0.8125rem]",
                   isActive
                     ? "bg-brand text-onbrand"
                     : "text-mist hover:bg-cloud hover:text-ink",
                 )}
               >
-                <Icon className="size-4" aria-hidden="true" />
-                {m.label}
+                <Icon className="size-5 shrink-0 sm:size-4" aria-hidden="true" />
+                <span className="break-words">{m.label}</span>
               </Link>
             );
           })}
@@ -69,7 +69,7 @@ export function PanelNav({ modules }: { modules: PanelModule[] }) {
         {active && active.children.length > 0 ? (
           <nav
             aria-label={`Secciones de ${active.label}`}
-            className="no-scrollbar flex gap-2 overflow-x-auto border-t border-line/60 py-2"
+            className="flex flex-wrap gap-2 border-t border-line/60 py-2"
           >
             {active.children.map((child) => {
               const isChildActive =
@@ -80,7 +80,7 @@ export function PanelNav({ modules }: { modules: PanelModule[] }) {
                   href={`${localePrefix}${child.href}`}
                   aria-current={isChildActive ? "page" : undefined}
                   className={cn(
-                    "shrink-0 rounded-full border px-3 py-1 text-[0.75rem] font-medium transition-colors",
+                    "rounded-full border px-3 py-1 text-[0.75rem] font-medium transition-colors",
                     isChildActive
                       ? "border-brand bg-brand/10 text-brand-300"
                       : "border-line text-fog hover:border-brand/40 hover:text-ink",
