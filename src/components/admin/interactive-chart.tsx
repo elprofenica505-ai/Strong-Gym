@@ -2,6 +2,14 @@
 
 import { useId, useState } from "react";
 import { cn } from "@/lib/utils";
+import { formatMoney } from "@/lib/finance/format-money";
+
+/** Formato de valores. Texto plano: las funciones no cruzan de Server a Client Components. */
+export type ChartFormat = "nio-compact" | "count";
+
+function formatValue(value: number, kind: ChartFormat): string {
+  return kind === "nio-compact" ? formatMoney(value, "NIO", { compact: true }) : String(value);
+}
 
 export interface ChartPoint {
   label: string;
@@ -42,7 +50,7 @@ export function InteractiveBarChart({
 }: {
   title: string;
   series: ChartSeries[];
-  format: (value: number) => string;
+  format: ChartFormat;
   emptyText?: string;
   /** Si se indica, el gráfico cuenta elementos y no muestra moneda. */
   countUnit?: string;
@@ -106,7 +114,7 @@ export function InteractiveBarChart({
             <>
               <span className="font-semibold text-ink">{focused.label}</span>:{" "}
               <span className={cn("font-semibold", TONE_TEXT[active.tone])}>
-                {countUnit ? `${focused.value} ${countUnit}` : format(focused.value)}
+                {countUnit ? `${focused.value} ${countUnit}` : formatValue(focused.value, format)}
               </span>
             </>
           ) : (
@@ -114,7 +122,7 @@ export function InteractiveBarChart({
           )}
         </p>
         <p className="text-[0.75rem] text-mist">
-          Total: <span className="font-semibold text-ink">{countUnit ? `${total} ${countUnit}` : format(total)}</span>
+          Total: <span className="font-semibold text-ink">{countUnit ? `${total} ${countUnit}` : formatValue(total, format)}</span>
         </p>
       </div>
 
@@ -135,7 +143,7 @@ export function InteractiveBarChart({
           const v = values[i];
           const pct = Math.max(3, Math.round((Math.abs(v) / max) * (hasNegative ? 46 : 100)));
           const isHover = hover === i;
-          const label = countUnit ? `${v} ${countUnit}` : format(v);
+          const label = countUnit ? `${v} ${countUnit}` : formatValue(v, format);
           return (
             <div
               key={`${d.label}-${i}`}

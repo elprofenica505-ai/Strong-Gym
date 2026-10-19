@@ -259,7 +259,7 @@ export default async function PanelHomePage({
                 countUnit="reservas"
                 emptyText="Todavía no hay reservas esta semana."
                 series={[{ id: "bookings", label: "Reservas", tone: "brand", data: bookingsByDay.map((d) => ({ label: d.label, value: d.value })) }]}
-                format={(v) => String(v)}
+                format="count"
               />
             </div>
             <div className="min-w-0 rounded-2xl border border-line bg-card p-5">
@@ -267,7 +267,7 @@ export default async function PanelHomePage({
                 <InteractiveBarChart
                   title="Finanzas · últimos 6 meses (NIO)"
                   emptyText="Sin movimientos financieros registrados."
-                  format={(v) => formatMoney(v, "NIO", { compact: true })}
+                  format="nio-compact"
                   series={[
                     {
                       id: "net",
