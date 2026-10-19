@@ -156,4 +156,4 @@ explícita. No afirmar seguridad absoluta ni certificación externa por tener HT
 
 
 - [ ] Aplicar 00036 (personal no es cliente) en Supabase: cancela la ficha de cliente de cuentas de personal, la búsqueda y los pedidos la ignoran. Borrador probado local 65/65. Requiere autorización.
-- [ ] Cierre del día para caja (SQL 00037 en `docs/SQL-PENDIENTE/`): interruptor en Accesos del administrador (apagado por defecto); caja ve sólo el cierre del día si está encendido. Prueba local 10/10. Requiere autorización para aplicar en Supabase; hasta entonces el interruptor aparece como no disponible y caja no ve el cierre. Limitación: RLS ya deja leer `transactions` a caja; un control fuerte requiere cambiar políticas (decisión aparte).
+- [x] Cierre del día para caja (SQL 00037 aplicada en Supabase el 2026-10-19, interruptor apagado): interruptor en Accesos del administrador (apagado por defecto); caja ve sólo el cierre del día si está encendido. Prueba local 10/10. Limitación: RLS ya deja leer `transactions` a caja; un control fuerte requiere cambiar políticas (decisión aparte).

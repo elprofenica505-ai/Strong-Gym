@@ -1,5 +1,5 @@
 -- 00037 CIERRE DEL DÍA PARA CAJA: interruptor del administrador.
--- ESTADO: BORRADOR. NO APLICAR sin autorización expresa del dueño.
+-- ESTADO: APLICADO en Supabase (proyecto hcnuepdxmbsmlzdmvwhx) el 2026-10-19 con autorización del dueño. Interruptor apagado.
 -- Qué hace:
 --   1) Agrega el interruptor `cashier_can_view_daily_close` (apagado por defecto) en staff_permissions.
 --   2) Crea cashier_daily_close_enabled(): devuelve true sólo si el interruptor está activo,
