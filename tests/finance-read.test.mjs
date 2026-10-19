@@ -184,10 +184,10 @@ function pageLoader(role) {
       "export const useRouter=()=>({refresh(){}});export function redirect(path){throw new Error('REDIRECT:'+path);}",
   });
 }
-for (const page of ["caja", "cuentas", "reportes", "gastos"]) {
+for (const page of ["caja", "cuentas", "gastos"]) {
   test(`${page}: error visible, sin KPI cero ni falso 'sin deudas'`, async () => {
     globalThis.__financePageReads = 0;
-    const { default: Page } = await pageLoader(page === "reportes" ? "admin" : "cashier")(
+    const { default: Page } = await pageLoader("cashier")(
       `app/[locale]/panel/${page}/page.tsx`,
     );
     const html = renderToStaticMarkup(

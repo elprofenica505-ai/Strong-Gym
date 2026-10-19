@@ -1,17 +1,18 @@
 import { isAdminRole } from "@/lib/auth/current-user";
 import { FinanceUnavailable } from "@/components/admin/finance-unavailable";
+import { FinanceReports } from "@/components/admin/finance-reports";
+import { loadFinanceReport } from "@/lib/reports/load";
+import { managuaDay } from "@/lib/reports/finance-report";
 import { readFinance } from "@/lib/finance/read-result";
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, BarChart3, Wallet } from "lucide-react";
-import {
-  getCurrentUser,
-  getMonthlyPnl,
-  getPaymentMethodsBreakdown,
-} from "@/lib/data/queries";
+import { redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+import { getCurrentUser } from "@/lib/data/queries";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { DEMO_MODE } from "@/lib/supabase/env";
-import { formatMoney } from "@/lib/finance/format-money";
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
@@ -30,7 +31,7 @@ export default async function ReportesPage({
     return (
       <Placeholder
         title="Reportes"
-        message="Conectá Supabase para ver la ganancia/pérdida de cada mes y el desglose por método de pago."
+        message="Conectá Supabase para ver el cierre del día, el comparativo mensual, los pagos pendientes y las comisiones. En modo demo no se muestran cifras inventadas."
         locale={locale}
       />
     );
@@ -40,18 +41,10 @@ export default async function ReportesPage({
     redirect(`/${locale}/mi-cuenta`);
   }
 
-  const result = await readFinance(() =>
-    Promise.all([getMonthlyPnl(12), getPaymentMethodsBreakdown()]),
-  );
-  if (!result.ok)
-    return (
-      <FinanceUnavailable
-        locale={locale}
-        code={result.code}
-        message={result.message}
-      />
-    );
-  const [pnl, methods] = result.data;
+  const supabase = await getSupabaseServerClient();
+  const result = supabase
+    ? await readFinance(() => loadFinanceReport(supabase))
+    : { ok: false as const, code: "FIN_REPORT_UNAVAILABLE", message: "No hay conexión con la base de datos." };
 
   return (
     <div className="container-x min-w-0 space-y-6 py-6">
@@ -59,167 +52,39 @@ export default async function ReportesPage({
         <Link
           href={`/${locale}/panel`}
           className="grid size-10 place-items-center rounded-full border border-line text-mist transition-colors hover:border-brand hover:text-ink"
+          aria-label="Volver al inicio del panel"
         >
           <ArrowLeft className="size-4" />
         </Link>
         <div>
           <span className="eyebrow">
             <span className="h-px w-6 bg-brand" aria-hidden="true" />
-            Caja · Reportes
+            Finanzas · Reportes
           </span>
-          <h1 className="display-xl mt-2 text-[1.75rem] sm:text-[2.25rem]">
-            Ganancias y pérdidas
-          </h1>
+          <h1 className="display-xl mt-2 text-[1.75rem] sm:text-[2.25rem]">Reportes del gimnasio</h1>
         </div>
       </div>
 
       <p className="text-sm text-fog">
-        Importes consolidados NIO guardados en los movimientos completados; no
-        se usa una tasa nueva. Las transferencias no son ingresos ni gastos.
-        Estos resultados no certifican saldos de cuentas.
+        Cada cifra sale de los movimientos guardados. Tocá cualquier ingreso, gasto, cliente o mes para ver su tarjeta de detalle.
+        El botón «Exportar Excel maestro» descarga siempre el mismo libro, con todos los datos al día.
       </p>
-      <p className="text-xs text-fog sm:hidden">
-        Deslizá la tabla horizontalmente para ver todas las columnas.
-      </p>
-      <div
-        className="w-full min-w-0 max-w-full overflow-x-auto rounded-2xl border border-line"
-        role="region"
-        aria-label="Resultados mensuales en NIO · tabla desplazable"
-        tabIndex={0}
-      >
-        <table className="w-full min-w-[32rem] whitespace-nowrap text-left text-[0.8125rem]">
-          <caption className="sr-only">
-            Resultados mensuales · equivalentes NIO guardados
-          </caption>
-          <thead className="bg-card-2 text-[0.6875rem] uppercase tracking-wider text-fog">
-            <tr>
-              <th scope="col" className="px-4 py-3 font-semibold">
-                Mes
-              </th>
-              <th scope="col" className="px-4 py-3 text-right font-semibold">
-                Ingresos
-              </th>
-              <th scope="col" className="px-4 py-3 text-right font-semibold">
-                Egresos
-              </th>
-              <th scope="col" className="px-4 py-3 text-right font-semibold">
-                Resultado
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line">
-            {pnl.map((m) => (
-              <tr key={m.month} className="bg-card">
-                <td className="px-4 py-3 font-mono text-ink">
-                  {m.month.slice(0, 7)}
-                </td>
-                <td className="px-4 py-3 text-right font-mono tabular-nums text-brand-300">
-                  {formatMoney(m.incomeNio)}
-                </td>
-                <td className="px-4 py-3 text-right font-mono tabular-nums text-fog">
-                  {formatMoney(m.expenseNio)}
-                </td>
-                <td
-                  className={
-                    "px-4 py-3 text-right font-mono font-semibold tabular-nums " +
-                    (m.netNio >= 0 ? "text-brand" : "text-alert")
-                  }
-                >
-                  {formatMoney(m.netNio)}
-                </td>
-              </tr>
-            ))}
-            {pnl.length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-fog">
-                  Sin resultados mensuales informados en esta consulta.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
 
-      <div className="rounded-2xl border border-line bg-card p-5">
-        <h2 className="text-[0.9375rem] font-semibold text-ink">
-          Movimientos por método · todo el historial
-        </h2>
-        <p className="mt-1 text-[0.75rem] text-fog">
-          Movimientos completados en equivalentes NIO guardados. Volumen =
-          ingresos + egresos; no es ganancia ni saldo de cuenta.
-        </p>
-        {methods.length === 0 ? (
-          <p className="py-6 text-center text-[0.875rem] text-fog">
-            Sin movimientos por método informados en esta consulta.
-          </p>
-        ) : (
-          <ul className="mt-4 space-y-2">
-            {methods.map((m) => (
-              <li
-                key={`${m.paymentMethodId ?? "none"}-${m.nameEs}`}
-                className="min-w-0 rounded-lg border border-line bg-card-2 p-3"
-              >
-                <p className="break-words text-[0.875rem] font-medium text-ink">
-                  {m.nameEs?.trim() || "Sin método informado"}
-                </p>
-                <p className="mt-1 text-xs text-fog">
-                  {m.txCount} movimientos completados
-                </p>
-                <dl className="mt-3 grid gap-3 sm:grid-cols-3">
-                  <div>
-                    <dt className="text-xs text-fog">Ingresos NIO</dt>
-                    <dd className="font-mono text-sm tabular-nums text-ink">
-                      {formatMoney(m.incomeNio)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-fog">Egresos NIO</dt>
-                    <dd className="font-mono text-sm tabular-nums text-ink">
-                      {formatMoney(m.expenseNio)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-fog">
-                      Volumen NIO · no es resultado
-                    </dt>
-                    <dd className="font-mono text-sm tabular-nums text-mist">
-                      {formatMoney(m.totalNio)}
-                    </dd>
-                  </div>
-                </dl>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      {result.ok ? (
+        <FinanceReports data={result.data} today={managuaDay(new Date())} />
+      ) : (
+        <FinanceUnavailable locale={locale} code={result.code} message={result.message} />
+      )}
     </div>
   );
 }
 
-function Placeholder({
-  title,
-  message,
-  locale,
-}: {
-  title: string;
-  message: string;
-  locale: string;
-}) {
+function Placeholder({ title, message, locale }: { title: string; message: string; locale: string }) {
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <Link
-          href={`/${locale}/panel`}
-          className="grid size-10 place-items-center rounded-full border border-line text-mist transition-colors hover:border-brand hover:text-ink"
-        >
-          <ArrowLeft className="size-4" />
-        </Link>
-        <h1 className="display-xl text-[1.75rem] sm:text-[2.25rem]">{title}</h1>
-      </div>
-      <div className="rounded-2xl border border-dashed border-brand/35 bg-brand-soft p-6 text-center">
-        <BarChart3 className="mx-auto size-8 text-brand-300" />
-        <p className="mt-3 text-[0.875rem] text-fog">{message}</p>
-      </div>
+    <div className="container-x py-10">
+      <Link href={`/${locale}/panel`} className="text-sm text-brand">← Volver al panel</Link>
+      <h1 className="display-xl mt-4 text-2xl">{title}</h1>
+      <p className="mt-3 text-fog">{message}</p>
     </div>
   );
 }
