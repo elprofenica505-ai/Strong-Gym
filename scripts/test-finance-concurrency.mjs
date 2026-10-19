@@ -61,7 +61,7 @@ try {
   ]) await control.query(sql(file));
   const actor = randomUUID();
   await control.query("insert into auth.users(id,email,raw_user_meta_data) values($1,'concurrencia@test.invalid','{\"full_name\":\"Prueba local\"}')", [actor]);
-  await control.query("update profiles set role='staff' where id=$1", [actor]);
+  await control.query("update profiles set role='admin' where id=$1", [actor]);
   const client = (await control.query("select id from gym_clients where profile_id=$1", [actor])).rows[0].id;
   await control.query(`
     insert into bank_accounts(id,name,account_type,currency,balance) values('concurrency-nio','EJEMPLO local','caja_fuerte','NIO',0);

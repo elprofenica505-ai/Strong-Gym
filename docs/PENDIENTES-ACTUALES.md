@@ -13,6 +13,24 @@ cobro NIO10, gasto NIO4, cobro USD1 y recorrido de deuda NIO100 → abonos40+20+
 cobrar0 y créditos intactos. No repetir esos cargos/abonos ni reinstalar00028/29.
 Esto acredita esos recorridos, no cada módulo, moneda, rol o fallo de red posible.
 
+## 1B. En espera: no hacer hasta hablar con el dueño y confirmar pago
+
+Estos pendientes dependen de una decisión del dueño, de un dato que sólo él puede dar
+o de un servicio de pago. No se ejecutan mientras tanto. Se retoman cuando el usuario lo indique.
+
+- [ ] Correo propio del gimnasio: remitente, dominio y proveedor SMTP reales. Requiere datos del dueño y autorización expresa.
+- [ ] Prueba de recuperación de contraseña con correo real desde la dirección principal (hay que esperar la hora de límite del proyecto).
+- [ ] Sesiones con tiempo límite e inactividad en Supabase: requiere plan Pro (pago).
+- [ ] Verificador antispam externo (tipo Turnstile): requiere cuenta externa y decisión.
+- [ ] Política de contenido (CSP): probarla en modo informativo antes de activarla.
+- [ ] Dueño como segundo administrador: requiere su correo y autorización escrita, y que la app esté lista.
+- [x] Cierre por inactividad (18 oct, rama arena/985edb39): sólo administrador cierra sesión tras 2 horas sin actividad (personal confirmado sin cierre automático); clientes no se cierran solos (sólo cierre manual). Pruebas en tests/session-policy.test.mjs. Pendiente: verificar en navegador real.
+- [~] Roles de caja y entrenador. Fase A aplicada (00033). Fase B lista en código y SQL 00034 probada localmente (58/58), pendiente de autorización para aplicar en Supabase. Pendiente de UI: panel de asignación de roles y vista del entrenador (requieren aprobar dónde van en el menú). Fase C (anulación) sin empezar. Ver docs/ROLES-MIGRACION-PLAN.md.
+- [ ] Llave de acceso (huella o rostro): cuando Supabase la saque de versión experimental.
+- [ ] Cuenta de prueba de cliente (`baltodano19932025@gmail.com`): sólo recibe correos si se agrega como miembro del equipo o si hay correo propio; no se creó.
+
+Ya quedó hecho en esta misma etapa (sin pendientes de pago): MFA del personal, verificación en dos pasos de la cuenta Supabase, 00031 y 00032, antispam básico, cabeceras HSTS y Permissions-Policy, revisión de bundle y secretos, alcance de la app instalada.
+
 ## 2. Una sola secuencia de trabajo
 
 ### Etapa 1 — Proteger lo construido (ACTUAL)
@@ -123,3 +141,18 @@ explícita. No afirmar seguridad absoluta ni certificación externa por tener HT
 - [x] Cabeceras (18 oct, rama arena/45b6501d): añadidas Strict-Transport-Security (1 año) y Permissions-Policy (cámara sólo para el sitio, para el lector de QR). Verificadas en build de producción local.
 - [ ] Política de contenido (CSP): pendiente; requiere probarla en modo informativo antes de activarla, para no romper páginas.
 - [ ] Llave de acceso (huella/rostro): cuando Supabase la saque de versión experimental.
+
+## Organización del panel de gestión (18 oct 2026)
+- [x] Módulos: Inicio (resumen y gráficos), Clientes, Finanzas (caja, cuentas, gastos, reportes), Operación (reservas, mensajes, clases) y Administración (personal y roles, importar, herramientas, guía).
+- [x] Menú de módulos por rol: administrador ve todo; caja ve finanzas, clientes y operación; entrenador sin módulos por ahora.
+- [x] Gráficos de barras con datos reales; si una lectura falla se muestra "no disponible", nunca cero.
+- [x] Pantalla de personal y roles (sólo administrador con MFA), conectada a admin_set_role.
+- [ ] Revisión visual en navegador real de las páginas nuevas (la sandbox no tiene Chromium para la prueba de layout).
+- [x] Asignación entrenador-cliente en base de datos: SQL 00035 probado (59/59), con interruptor del administrador para búsqueda y pedidos del entrenador (desactivado por defecto). Aprobación sólo del administrador; caja registra pedidos.
+- [x] Pantalla de administración: interruptor y pedidos de acceso (Administración > Entrenadores y accesos).
+- [x] Vista del entrenador "Mis clientes" (clientes asignados con asistencia y pedido de acceso). Falta probarla con una cuenta real de entrenador.
+- [x] Aplicar 00034 y 00035 en Supabase (aplicadas con autorización del dueño; 00034 incluye quitar la política antigua de escritura de entrenadores para caja).
+- [ ] Aplicar 00034 en Supabase antes de desplegar este código (ver docs/ROLES-MIGRACION-PLAN.md).
+
+
+- [ ] Aplicar 00036 (personal no es cliente) en Supabase: cancela la ficha de cliente de cuentas de personal, la búsqueda y los pedidos la ignoran. Borrador probado local 65/65. Requiere autorización.

@@ -1,3 +1,4 @@
+import { isFinanceRole } from "@/lib/auth/current-user";
 import { FinanceUnavailable } from "@/components/admin/finance-unavailable";
 import { readFinance } from "@/lib/finance/read-result";
 import type { Metadata } from "next";
@@ -41,7 +42,7 @@ export default async function CajaPage({
   const user = await getCurrentUser();
 
   // Sólo staff/admin.
-  if (!isDemo && (!user || (user.role !== "admin" && user.role !== "staff"))) {
+  if (!isDemo && (!user || !isFinanceRole(user.role))) {
     redirect(`/${locale}/mi-cuenta`);
   }
 

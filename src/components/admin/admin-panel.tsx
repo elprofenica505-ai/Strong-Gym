@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import {
   BadgeCheck,
-  Banknote,
   CalendarDays,
   CalendarX,
   Check,
@@ -12,7 +11,6 @@ import {
   MessageSquare,
   ShieldAlert,
   TrendingUp,
-  Upload,
   Users,
   X,
 } from "lucide-react";
@@ -157,65 +155,6 @@ export function AdminPanel({
           {dict.admin.demoNotice}
         </p>
       ) : null}
-
-      <a
-        href={`/${locale}/panel/clientes`}
-        className="rounded-2xl border border-brand/40 bg-brand/10 p-5 transition-colors hover:border-brand"
-      >
-        <p className="text-lg font-bold text-ink">Clientes · recepción y QR</p>
-        <p className="mt-1 text-sm text-fog">
-          Alta sin cuenta, búsqueda manual, etiquetas, carnet, asistencias y
-          cobros confirmados.
-        </p>
-      </a>
-
-      {/* --- Acceso rápido a la Fase 1: caja --- */}
-      <a
-        href={`/${locale}/panel/caja`}
-        className="group flex items-center justify-between gap-4 rounded-2xl border border-brand/30 bg-gradient-to-br from-brand-soft to-card p-4 transition-colors hover:border-brand"
-      >
-        <div className="flex items-center gap-3">
-          <span className="grid size-11 place-items-center rounded-xl bg-brand text-onbrand">
-            <Banknote className="size-5" />
-          </span>
-          <div>
-            <p className="text-[0.9375rem] font-semibold text-ink">
-              Caja y cuentas
-            </p>
-            <p className="text-[0.75rem] text-fog">
-              Ingresos, egresos, cuentas por cobrar y los 10 métodos de pago del
-              gimnasio
-            </p>
-          </div>
-        </div>
-        <span className="shrink-0 rounded-full border border-brand/50 px-3 py-1 text-[0.6875rem] font-semibold uppercase tracking-wider text-brand-300">
-          Fase 1 · Nuevo
-        </span>
-      </a>
-
-      {/* --- Herramientas: importar / reset / guía --- */}
-      <a
-        href={`/${locale}/panel/herramientas`}
-        className="group flex items-center justify-between gap-4 rounded-2xl border border-line bg-card p-4 transition-colors hover:border-brand"
-      >
-        <div className="flex items-center gap-3">
-          <span className="grid size-11 place-items-center rounded-xl bg-card-2 text-mist">
-            <Upload className="size-5" />
-          </span>
-          <div>
-            <p className="text-[0.9375rem] font-semibold text-ink">
-              Herramientas
-            </p>
-            <p className="text-[0.75rem] text-fog">
-              Importar clientes desde CSV, preparar la entrega al dueño y ver la
-              guía paso a paso
-            </p>
-          </div>
-        </div>
-        <span className="shrink-0 text-[0.6875rem] font-semibold text-fog group-hover:text-brand-300">
-          Abrir →
-        </span>
-      </a>
 
       {/* --- Pestañas --- */}
       <div

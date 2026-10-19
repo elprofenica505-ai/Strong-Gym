@@ -9,6 +9,7 @@ import { isLocale, type Locale } from "@/i18n/config";
 import { getCurrentUser, getMyBookings, getPlans, getMyAssignedPlan } from "@/lib/data/queries";
 import { MfaSetup } from "@/components/auth/mfa-setup";
 import { isStaffRole } from "@/lib/auth/current-user";
+import { ButtonLink } from "@/components/ui/button";
 
 export async function generateMetadata({
   params,
@@ -75,13 +76,34 @@ export default async function AccountPage({
         </section>
       )}
 
-      <ClientPass />
-      <section className="py-10 sm:py-12 lg:py-14">
-        <div className="container-x">
-          <AccountDashboard initialBookings={bookings} plans={plans}
-            accountPlan={user && assignedPlan ? { userId: user.id, ...assignedPlan } : null} />
-        </div>
-      </section>
+      {user && isStaffRole(user.role) ? (
+        // El personal (entrenador, caja, administración) no es cliente: no ve pase, reservas ni plan de socio.
+        <section className="py-10 sm:py-12 lg:py-14">
+          <div className="container-x">
+            <div className="flex max-w-xl flex-col gap-4 rounded-2xl border border-line bg-card p-6">
+              <h2 className="text-[1.0625rem] font-semibold text-ink">Cuenta de personal</h2>
+              <p className="text-[0.875rem] leading-relaxed text-mist">
+                Tu cuenta es de personal, no de cliente: no tiene pase ni reservas.{user.role === "trainer" ? " Tus clientes asignados y su asistencia están en Mis clientes." : " Tu acceso está en el panel de gestión."}
+              </p>
+              <div>
+                <ButtonLink href={`/${locale}${user.role === "trainer" ? "/panel/entrenador" : "/panel"}`} size="lg">
+                  {user.role === "trainer" ? "Ir a Mis clientes" : "Ir al panel"}
+                </ButtonLink>
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : (
+        <>
+          <ClientPass />
+          <section className="py-10 sm:py-12 lg:py-14">
+            <div className="container-x">
+              <AccountDashboard initialBookings={bookings} plans={plans}
+                accountPlan={user && assignedPlan ? { userId: user.id, ...assignedPlan } : null} />
+            </div>
+          </section>
+        </>
+      )}
     </>
   );
 }

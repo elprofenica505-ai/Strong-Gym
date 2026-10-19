@@ -1,3 +1,4 @@
+import { isFinanceRole } from "@/lib/auth/current-user";
 import { MovementForm } from "@/components/admin/movement-form";
 import { FinanceUnavailable } from "@/components/admin/finance-unavailable";
 import { readFinance } from "@/lib/finance/read-result";
@@ -31,7 +32,7 @@ export default async function GastosPage({
     );
   }
   const user = await getCurrentUser();
-  if (!user || (user.role !== "admin" && user.role !== "staff")) {
+  if (!user || !isFinanceRole(user.role)) {
     redirect(`/${locale}/mi-cuenta`);
   }
 

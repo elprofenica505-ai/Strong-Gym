@@ -22,7 +22,7 @@ const load = createLoader({
 });
 const { GET, POST } = await load("app/api/admin/finance/route.ts");
 let calls = [];
-function setup(role = "staff", result = { data: id, error: null }) {
+function setup(role = "cashier", result = { data: id, error: null }) {
   calls = [];
   globalThis.__financeUser = role ? { id, role, mfa: "ok" } : null;
   globalThis.__financeWriteDb = {
@@ -59,7 +59,7 @@ for (const role of [null, "member", "coach"])
     );
     assert.equal(calls.length, 0);
   });
-for (const role of ["admin", "staff"])
+for (const role of ["admin", "cashier"])
   test(`finanzas ${role}: un RPC atómico, misma referencia y FX explícito NIO`, async () => {
     setup(role);
     const r = await POST(req());
@@ -141,7 +141,7 @@ for (const [message, code, status] of [
   ["SECRET", "55P03", 503],
 ])
   test(`error ${message}: explícito sin éxito simulado ni filtrar detalles`, async () => {
-    setup("staff", { data: null, error: { message, code } });
+    setup("cashier", { data: null, error: { message, code } });
     const r = await POST(req());
     assert.equal(r.status, status);
     const b = await r.json();
@@ -150,11 +150,11 @@ for (const [message, code, status] of [
     assert.match(b.code, /^FIN_/);
   });
 test("respuesta SQL inválida no confirma cobro", async () => {
-  setup("staff", { data: null, error: null });
+  setup("cashier", { data: null, error: null });
   assert.equal((await POST(req())).status, 503);
 });
 test("historial valida filtro y requiere filas completas", async () => {
-  setup("staff", { data: [], error: null });
+  setup("cashier", { data: [], error: null });
   const r = await GET(
     new Request("https://gym.example/api/admin/finance?history=expense"),
   );
@@ -178,7 +178,7 @@ test("historial valida filtro y requiere filas completas", async () => {
     );
     assert.equal(calls.length, 0);
   }
-  setup("staff", { data: [{}], error: null });
+  setup("cashier", { data: [{}], error: null });
   assert.equal(
     (
       await GET(
@@ -219,7 +219,7 @@ for (const role of [null, "member", "coach", "owner", "ADMIN"])
     assert.equal(calls.length, 0);
   });
 test("rol retirado entre envío y reintento: no vuelve a llamar al writer", async () => {
-  setup("staff");
+  setup("cashier");
   assert.equal((await POST(req())).status, 200);
   globalThis.__financeUser = { id, role: "member" };
   assert.equal((await POST(req())).status, 403);

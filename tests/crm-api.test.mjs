@@ -37,7 +37,7 @@ const code = ts
   );
 const { GET, POST } = await import(dataUrl(code));
 let calls = [];
-function reset(role = "staff") {
+function reset(role = "cashier") {
   calls = [];
   globalThis.__crmTest = {
     user: role ? { id: "test", role, mfa: "ok" } : null,

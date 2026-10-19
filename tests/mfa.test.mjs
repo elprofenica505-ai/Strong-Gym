@@ -6,7 +6,7 @@ const { readMfaState, startTotpEnrollment, verifiedTotpFactorId, verifyTotpCode 
 
 test("estado MFA: sólo aal2 abre al personal; todo lo demás queda bloqueado", () => {
   assert.equal(mfaStateFromLevels("admin", { currentLevel: "aal2", nextLevel: "aal2" }), "ok");
-  assert.equal(mfaStateFromLevels("staff", { currentLevel: "aal1", nextLevel: "aal2" }), "verify");
+  assert.equal(mfaStateFromLevels("cashier", { currentLevel: "aal1", nextLevel: "aal2" }), "verify");
   assert.equal(mfaStateFromLevels("admin", { currentLevel: "aal1", nextLevel: "aal1" }), "enroll");
   assert.equal(mfaStateFromLevels("admin", null), "unavailable");
   assert.equal(mfaStateFromLevels("admin", { currentLevel: "aal1", nextLevel: null }), "unavailable");
@@ -35,7 +35,7 @@ function mfaClient(overrides = {}) {
 test("lectura de estado: error o excepción devuelve unavailable", async () => {
   assert.equal(await readMfaState(mfaClient({ aal: { data: null, error: { message: "x" } } }).client, "admin"), "unavailable");
   const throwing = { auth: { mfa: { getAuthenticatorAssuranceLevel: async () => { throw new Error("red"); } } } };
-  assert.equal(await readMfaState(throwing, "staff"), "unavailable");
+  assert.equal(await readMfaState(throwing, "cashier"), "unavailable");
 });
 
 test("registro: elimina intentos sin verificar y devuelve QR/clave; no crea si la lectura falla", async () => {

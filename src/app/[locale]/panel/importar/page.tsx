@@ -1,3 +1,4 @@
+import { isAdminRole } from "@/lib/auth/current-user";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -19,7 +20,7 @@ export default async function ImportarPage({
   const isDemo = DEMO_MODE;
   if (!isDemo) {
     const user = await getCurrentUser();
-    if (!user || (user.role !== "admin" && user.role !== "staff")) {
+    if (!user || !isAdminRole(user.role)) {
       redirect(`/${locale}/mi-cuenta`);
     }
   }

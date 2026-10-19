@@ -875,3 +875,155 @@ export { isSupabaseConfigured };
 export function currentWeek(): WeekRange {
   return getWeekRange();
 }
+
+/** Personas con perfil para asignar roles (sólo administrador; la base lo exige). */
+export async function getProfilesForRoles(): Promise<
+  { id: string; fullName: string; role: string }[]
+> {
+  return checkedRead("PROFILES_ROLES", async () => {
+    const supabase = await getSupabaseServerClient();
+    if (!supabase) return [];
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, full_name, role")
+      .order("full_name", { nullsFirst: false })
+      .limit(500)
+      .abortSignal(AbortSignal.timeout(15000));
+    if (error) throw new DataReadError("PROFILES_ROLES", error.code);
+    return (data ?? []).map((row) => ({
+      id: row.id as string,
+      fullName: (row.full_name as string | null) ?? "",
+      role: row.role as string,
+    }));
+  });
+}
+
+export type TrainerAccessStatus = "pending" | "approved" | "rejected" | "revoked";
+
+export interface TrainerAccessRow {
+  id: string;
+  trainerId: string;
+  clientId: string;
+  trainerName: string;
+  clientName: string;
+  status: TrainerAccessStatus;
+  requestedVia: "trainer" | "cashier";
+  reason: string | null;
+  createdAt: string;
+  decidedAt: string | null;
+}
+
+/** Sólo administrador (la base lo vuelve a comprobar). Sin teléfono, correo ni notas. */
+export async function getTrainerAccessAdmin(): Promise<{
+  enabled: boolean;
+  requests: TrainerAccessRow[];
+}> {
+  return checkedRead("TRAINER_ACCESS", async () => {
+    const supabase = await getSupabaseServerClient();
+    if (!supabase) return { enabled: false, requests: [] };
+    const [flag, rows] = await Promise.all([
+      supabase
+        .from("staff_permissions")
+        .select("enabled")
+        .eq("key", "trainer_can_request_clients")
+        .abortSignal(AbortSignal.timeout(15000))
+        .maybeSingle(),
+      supabase
+        .from("trainer_client_access")
+        .select(
+          "id, trainer_id, client_id, status, requested_via, reason, created_at, decided_at, trainer:profiles!trainer_id(full_name), client:gym_clients!client_id(full_name)",
+        )
+        .order("created_at", { ascending: false })
+        .limit(300)
+        .abortSignal(AbortSignal.timeout(15000)),
+    ]);
+    if (flag.error) throw new DataReadError("TRAINER_ACCESS", flag.error.code);
+    if (rows.error) throw new DataReadError("TRAINER_ACCESS", rows.error.code);
+    return {
+      enabled: flag.data?.enabled === true,
+      requests: ((rows.data ?? []) as Array<Record<string, unknown>>).map((row) => {
+        const trainer = row.trainer as unknown as { full_name: string | null } | null;
+        const client = row.client as unknown as { full_name: string | null } | null;
+        return {
+          id: row.id as string,
+          trainerId: row.trainer_id as string,
+          clientId: row.client_id as string,
+          trainerName: trainer?.full_name ?? "Sin nombre",
+          clientName: client?.full_name ?? "Sin nombre",
+          status: row.status as TrainerAccessStatus,
+          requestedVia: row.requested_via as "trainer" | "cashier",
+          reason: (row.reason as string | null) ?? null,
+          createdAt: row.created_at as string,
+          decidedAt: (row.decided_at as string | null) ?? null,
+        };
+      }),
+    };
+  });
+}
+
+export interface TrainerRosterRow {
+  clientId: string;
+  fullName: string;
+  visits30d: number;
+  visitedToday: boolean;
+}
+
+/** Entrenador: sólo sus clientes aprobados. La base no devuelve teléfono, correo ni notas. */
+export async function getTrainerRoster(): Promise<TrainerRosterRow[]> {
+  return checkedRead("TRAINER_ROSTER", async () => {
+    const supabase = await getSupabaseServerClient();
+    if (!supabase) return [];
+    const { data, error } = await supabase
+      .rpc("trainer_roster")
+      .abortSignal(AbortSignal.timeout(15000));
+    if (error) throw new DataReadError("TRAINER_ROSTER", error.code);
+    return ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
+      clientId: row.client_id as string,
+      fullName: (row.full_name as string | null) ?? "Sin nombre",
+      visits30d: Number(row.visits_30d ?? 0),
+      visitedToday: row.visited_today === true,
+    }));
+  });
+}
+
+/** Lee si el administrador activó la búsqueda y los pedidos del entrenador. */
+export async function getTrainerRequestEnabled(): Promise<boolean> {
+  return checkedRead("TRAINER_FLAG", async () => {
+    const supabase = await getSupabaseServerClient();
+    if (!supabase) return false;
+    const { data, error } = await supabase
+      .rpc("trainer_request_enabled")
+      .abortSignal(AbortSignal.timeout(15000));
+    if (error) throw new DataReadError("TRAINER_FLAG", error.code);
+    return data === true;
+  });
+}
+
+/** Clientes activos que se pueden asignar: excluye fichas ligadas a cuentas de personal. */
+export async function getAssignableClients(): Promise<{ id: string; fullName: string }[]> {
+  return checkedRead("ASSIGNABLE_CLIENTS", async () => {
+    const supabase = await getSupabaseServerClient();
+    if (!supabase) return [];
+    const [clients, staff] = await Promise.all([
+      supabase
+        .from("gym_clients")
+        .select("id, full_name, profile_id")
+        .eq("status", "active")
+        .order("full_name", { ascending: true })
+        .limit(1000)
+        .abortSignal(AbortSignal.timeout(15000)),
+      getStaffProfiles(),
+    ]);
+    if (clients.error) throw new DataReadError("ASSIGNABLE_CLIENTS", clients.error.code);
+    const staffIds = new Set(staff.map((p) => p.id));
+    return ((clients.data ?? []) as Array<Record<string, unknown>>)
+      .filter((row) => !(row.profile_id && staffIds.has(row.profile_id as string)))
+      .map((row) => ({ id: row.id as string, fullName: (row.full_name as string | null) ?? "Sin nombre" }));
+  });
+}
+
+/** Cuentas de personal (entrenador, caja, administrador). Sólo nombre y rol; sin contacto. */
+export async function getStaffProfiles(): Promise<{ id: string; fullName: string; role: string }[]> {
+  const profiles = await getProfilesForRoles();
+  return profiles.filter((p) => p.role === "trainer" || p.role === "cashier" || p.role === "admin");
+}
