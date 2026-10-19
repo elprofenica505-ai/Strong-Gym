@@ -112,7 +112,9 @@ ok('entrenador NO lee transacciones', (await as(trainer, 'aal2', 'select count(*
 
 // 6) Sólo administrador: reporte de deudas, importación, planes, clases, entrenadores, horarios
 ok('admin ejecuta el reporte de deudas', (await as(admin, 'aal2', "select public.finance_debt_report('summary') x")).length === 1);
-ok('caja NO ejecuta el reporte de deudas', await denied(as(cashier, 'aal2', "select public.finance_debt_report('summary')")));
+await db.exec(sql('docs/SQL-PENDIENTE/00038_caja_resumen_deudas.sql'));
+ok('caja ejecuta el resumen de deudas (00038)', (await as(cashier, 'aal2', "select public.finance_debt_report('summary') x")).length === 1);
+ok('caja sin aal2 NO ejecuta el resumen de deudas', await denied(as(cashier, 'aal1', "select public.finance_debt_report('summary')")));
 ok('entrenador NO ejecuta el reporte de deudas', await denied(as(trainer, 'aal2', "select public.finance_debt_report('summary')")));
 ok('caja NO importa clientes', await denied(as(cashier, 'aal2', `select public.crm_import_client('{"fullName":"NUEVO EJEMPLO"}'::jsonb)`)));
 ok('admin SÍ importa clientes (con MFA)', (await as(admin, 'aal2', `select public.crm_import_client('{"fullName":"NUEVO EJEMPLO"}'::jsonb) x`)).length === 1);
