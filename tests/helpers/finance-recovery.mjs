@@ -80,7 +80,7 @@ export async function testFinanceRecovery({ control, connect, actor, client, che
     const { GET: GETDebt, POST: POSTDebt } = await load("app/api/admin/debts/route.ts");
     const { DebtForm } = await load("components/crm/debt-form.tsx");
     const { MovementForm } = await load("components/admin/movement-form.tsx");
-    await control.query("update profiles set role='staff' where id=$1", [actor]);
+    await control.query("update profiles set role='admin' where id=$1", [actor]);
     await control.query(`
       insert into bank_accounts(id,name,account_type,currency,balance) values
         ('recovery-nio','EJEMPLO recuperación NIO','caja_fuerte','NIO',10),
