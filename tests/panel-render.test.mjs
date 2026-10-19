@@ -60,7 +60,7 @@ function context(user) {
       export const getSessionsForWeek = async () => ({ sessions: [] });
       export const getCashSummary = async () => ({ incomeToday: 0, expenseToday: 0, netToday: 0, txToday: 0, incomeMonth: 0, expenseMonth: 0, netMonth: 0, txMonth: 0, pendingInvoices: null });
       export const getDailyCash = async () => [];
-      export const getMonthlyPnl = async () => [];
+      export const getMonthlyPnl = async () => []; export const getTrainerAccessAdmin = async () => ({ enabled: false, requests: [] });
       export const getProfilesForRoles = async () => [];`,
     "@/components/providers/app-provider": `export const useApp = () => ({ user: ${JSON.stringify(user)}, hydrated: true, signOut() {}, toast() {} });`,
   };

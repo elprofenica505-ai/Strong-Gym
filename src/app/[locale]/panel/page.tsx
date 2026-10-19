@@ -1,5 +1,6 @@
 import { readData } from "@/lib/data/read-result";
 import { readFinance } from "@/lib/finance/read-result";
+import { getTrainerAccessAdmin } from "@/lib/data/queries";
 import { DataUnavailable } from "@/components/ui/data-unavailable";
 import { FinanceUnavailable } from "@/components/admin/finance-unavailable";
 import { InteractiveBarChart } from "@/components/admin/interactive-chart";
@@ -8,7 +9,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { canAccessPanel } from "@/lib/auth/current-user";
 import { panelAccess, visibleModules, type PanelModule } from "@/lib/admin/modules";
-import { CalendarCheck, CalendarDays, MessageSquare, ShieldAlert, Users } from "lucide-react";
+import { Bell, CalendarCheck, CalendarDays, MessageSquare, ShieldAlert, UserPlus, Users, Wallet, Receipt, Zap } from "lucide-react";
 import { formatMoney } from "@/lib/finance/format-money";
 import { getDictionary } from "@/i18n/dictionaries";
 import { isLocale, type Locale } from "@/i18n/config";
@@ -159,6 +160,13 @@ export default async function PanelHomePage({
     };
   });
 
+  /* ---------- Administración: pendientes de entrenadores ---------- */
+  let pendingTrainerRequests: number | null = null;
+  if (!demo && role === "admin") {
+    const access = await readData(() => getTrainerAccessAdmin());
+    if (access.ok) pendingTrainerRequests = access.data.requests.filter((r) => r.status === "pending").length;
+  }
+
   /* ---------- Finanzas: sólo caja y administración ---------- */
   let finance: Awaited<ReturnType<typeof readFinance<[Awaited<ReturnType<typeof getCashSummary>>, Awaited<ReturnType<typeof getMonthlyPnl>>]>>> | null = null;
   if (!demo && access !== "none") {
@@ -231,6 +239,16 @@ export default async function PanelHomePage({
             <FinanceUnavailable locale={locale} code={finance.code} message={finance.message} />
           ) : finance && finance.ok ? (
             <FinanceKpis summary={finance.data[0]} />
+          ) : null}
+
+          {/* Hoy y pendientes: sólo administración */}
+          {role === "admin" && !demo ? (
+            <AdminToday
+              locale={locale}
+              cash={finance && finance.ok ? finance.data[0] : null}
+              pendingTrainerRequests={pendingTrainerRequests}
+              recentMessages={messages.slice(0, 5).map((m) => ({ id: m.id, name: m.name, createdAt: m.created_at }))}
+            />
           ) : null}
 
           {/* Gráficos interactivos */}
@@ -332,3 +350,114 @@ function TrainerNotice({ locale }: { locale: Locale }) {
 
 /** Referencia a sesiones: el inicio no las usa todavía, se mantiene la lectura para la semana. */
 export const _dashboardDataKeys = ["getSessionsForWeek"] as const;
+
+const todayFormat = new Intl.DateTimeFormat("es-NI", {
+  timeZone: "America/Managua",
+  day: "2-digit",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+function AdminToday({
+  locale,
+  cash,
+  pendingTrainerRequests,
+  recentMessages,
+}: {
+  locale: Locale;
+  cash: { incomeToday: number; expenseToday: number; netToday: number; txToday: number } | null;
+  pendingTrainerRequests: number | null;
+  recentMessages: { id: string; name: string; createdAt: string }[];
+}) {
+  const quick = [
+    { href: "/panel/clientes", label: "Clientes y personal", icon: UserPlus },
+    { href: "/panel/caja", label: "Caja", icon: Wallet },
+    { href: "/panel/administracion/entrenadores", label: "Asignar cliente", icon: Zap },
+    { href: "/panel/finanzas", label: "Finanzas", icon: Receipt },
+  ];
+  return (
+    <div className="grid gap-4 lg:grid-cols-3">
+      <div className="flex flex-col gap-3 rounded-2xl border border-line bg-card p-5">
+        <p className="text-[0.6875rem] font-semibold tracking-[0.14em] text-fog uppercase">Caja de hoy</p>
+        {cash ? (
+          <dl className="grid grid-cols-3 gap-2">
+            <div>
+              <dt className="text-[0.6875rem] text-fog">Ingresos</dt>
+              <dd className="font-display text-[1.125rem] text-brand tabular-nums">{formatMoney(cash.incomeToday, "NIO", { compact: true })}</dd>
+            </div>
+            <div>
+              <dt className="text-[0.6875rem] text-fog">Egresos</dt>
+              <dd className="font-display text-[1.125rem] text-alert tabular-nums">{formatMoney(cash.expenseToday, "NIO", { compact: true })}</dd>
+            </div>
+            <div>
+              <dt className="text-[0.6875rem] text-fog">Saldo</dt>
+              <dd className="font-display text-[1.125rem] text-ink tabular-nums">{formatMoney(cash.netToday, "NIO", { compact: true })}</dd>
+            </div>
+          </dl>
+        ) : (
+          <p className="text-sm text-fog">Caja no disponible en este momento.</p>
+        )}
+        <p className="text-[0.75rem] text-mist">{cash ? `${cash.txToday} movimiento${cash.txToday === 1 ? "" : "s"} hoy` : ""}</p>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-2xl border border-line bg-card p-5">
+        <p className="text-[0.6875rem] font-semibold tracking-[0.14em] text-fog uppercase">Pendientes</p>
+        <Link
+          href={`/${locale}/panel/administracion/entrenadores`}
+          className="flex items-center justify-between gap-3 rounded-xl bg-cloud px-4 py-3 hover:bg-brand/10"
+        >
+          <span className="flex items-center gap-2 text-[0.875rem] text-ink">
+            <Bell className="size-4 text-brand" aria-hidden />
+            Pedidos de entrenadores
+          </span>
+          <span className="font-display text-[1.25rem] text-ink tabular-nums">
+            {pendingTrainerRequests ?? "—"}
+          </span>
+        </Link>
+        <Link
+          href={`/${locale}/panel/administracion/entrenadores`}
+          className="text-[0.75rem] font-semibold text-brand hover:underline"
+        >
+          Revisar y asignar →
+        </Link>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-2xl border border-line bg-card p-5">
+        <p className="text-[0.6875rem] font-semibold tracking-[0.14em] text-fog uppercase">Accesos rápidos</p>
+        <ul className="grid grid-cols-2 gap-2">
+          {quick.map((q) => (
+            <li key={q.href}>
+              <Link
+                href={`/${locale}${q.href}`}
+                className="flex h-full items-center gap-2 rounded-xl border border-line px-3 py-2.5 text-[0.8125rem] font-semibold text-ink hover:border-brand hover:text-brand-300"
+              >
+                <q.icon className="size-4 text-brand" aria-hidden />
+                {q.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-2xl border border-line bg-card p-5 lg:col-span-3">
+        <p className="text-[0.6875rem] font-semibold tracking-[0.14em] text-fog uppercase">Últimos mensajes del sitio</p>
+        {recentMessages.length === 0 ? (
+          <p className="text-sm text-fog">Todavía no hay mensajes.</p>
+        ) : (
+          <ul className="divide-y divide-line">
+            {recentMessages.map((m) => (
+              <li key={m.id} className="flex items-center justify-between gap-3 py-2.5">
+                <span className="flex min-w-0 items-center gap-2 text-[0.875rem] text-ink">
+                  <MessageSquare className="size-4 shrink-0 text-fog" aria-hidden />
+                  <span className="truncate">{m.name}</span>
+                </span>
+                <span className="shrink-0 text-[0.75rem] text-fog">{todayFormat.format(new Date(m.createdAt))}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -19,7 +19,7 @@ const connected = createLoader({
  export const getSessionsForWeek=async()=>globalThis.__dataWeek();
  export const getCashSummary=async()=>globalThis.__dataRead();
  export const getDailyCash=async()=>globalThis.__dataRead();
- export const getMonthlyPnl=async()=>globalThis.__dataRead();`,
+ export const getMonthlyPnl=async()=>globalThis.__dataRead(); export const getTrainerAccessAdmin = async () => ({ enabled: false, requests: [] });`,
   "@/lib/supabase/server":
     "export const getSupabaseServerClient=async()=>globalThis.__dataDb();",
   "next/navigation":

@@ -1,4 +1,4 @@
--- 00036 PERSONAL NO ES CLIENTE. ESTADO: BORRADOR PROBADO LOCALMENTE. NO APLICADO EN SUPABASE.
+-- 00036 PERSONAL NO ES CLIENTE. ESTADO: APLICADO EN SUPABASE (20261019015713) con autorización del dueño. Verificado: 0 fichas de personal activas.
 -- Incluye: filtro de personal en el directorio de clientes y asignación directa de clientes por el administrador.
 -- Requiere 00034 y 00035.
 -- Problema: al registrarse, crm_profile_created crea una ficha de cliente para toda cuenta
