@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { formatMoney } from "@/lib/finance/format-money";
 import {
@@ -51,15 +52,52 @@ const shiftDay = (day: string, delta: number) => {
   return d.toISOString().slice(0, 10);
 };
 
-export function FinanceReports({ data, today }: { data: FinanceReportData; today: string }) {
+/**
+ * Modo "cashier": sólo el cierre del día, con el día elegido en la URL (?dia=AAAA-MM-DD).
+ * El servidor ya filtró las filas a ese día; no hay exportación ni otras pestañas.
+ */
+export function FinanceReports({
+  data,
+  today,
+  mode = "admin",
+  day: dayFromServer,
+  basePath,
+}: {
+  data: FinanceReportData;
+  today: string;
+  mode?: "admin" | "cashier";
+  day?: string;
+  basePath?: string;
+}) {
   const [tab, setTab] = useState<Tab>("dia");
   const [selection, setSelection] = useState<Selection>(null);
-  const [day, setDay] = useState(today);
+  const [day, setDay] = useState(dayFromServer ?? today);
 
   const rows = data.rows;
   const pending = useMemo(() => pendingPayments(data.debtEntries), [data.debtEntries]);
 
   const pick = (s: Selection) => setSelection((cur) => (JSON.stringify(cur) === JSON.stringify(s) ? null : s));
+
+  if (mode === "cashier") {
+    const cashierDay = dayFromServer ?? today;
+    return (
+      <div className="flex flex-col gap-6">
+        <DayTab
+          rows={rows}
+          day={cashierDay}
+          setDay={() => undefined}
+          today={today}
+          selection={selection}
+          pick={pick}
+          cashier
+          basePath={basePath ?? ""}
+        />
+        <p className="text-[0.75rem] leading-relaxed text-fog">
+          Actualizado: {dateTime(data.generatedAt)} (Managua). Las cifras del día usan la tasa manual guardada en cada movimiento.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -241,6 +279,8 @@ function DayTab({
   today,
   selection,
   pick,
+  cashier = false,
+  basePath = "",
 }: {
   rows: LedgerRow[];
   day: string;
@@ -248,34 +288,72 @@ function DayTab({
   today: string;
   selection: Selection;
   pick: (s: Selection) => void;
+  cashier?: boolean;
+  basePath?: string;
 }) {
   const c = useMemo(() => dailyClose(rows, day), [rows, day]);
   const sel = selection?.type === "movement" ? selection.row : null;
+  const btn = "grid size-10 place-items-center rounded-full border border-line text-mist hover:border-brand hover:text-ink";
+  const prevDay = shiftDay(day, -1);
+  const nextDay = shiftDay(day, 1);
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center gap-3">
-        <button type="button" onClick={() => setDay(shiftDay(day, -1))} aria-label="Día anterior" className="grid size-10 place-items-center rounded-full border border-line text-mist hover:border-brand hover:text-ink">
-          <ChevronLeft className="size-4" />
-        </button>
-        <input
-          type="date"
-          value={day}
-          max={today}
-          onChange={(e) => e.target.value && setDay(e.target.value)}
-          className="rounded-xl border border-line bg-card px-3 py-2 text-[0.875rem] text-ink"
-          aria-label="Día del cierre"
-        />
-        <button type="button" onClick={() => setDay(shiftDay(day, 1))} disabled={day >= today} aria-label="Día siguiente" className="grid size-10 place-items-center rounded-full border border-line text-mist hover:border-brand hover:text-ink disabled:opacity-40">
-          <ChevronRight className="size-4" />
-        </button>
-        {day !== today ? (
-          <button type="button" onClick={() => setDay(today)} className="text-[0.8125rem] text-brand underline-offset-4 hover:underline">
-            Hoy
-          </button>
-        ) : null}
-        <div className="ml-auto">
-          <MasterExportButton />
-        </div>
+        {cashier ? (
+          <>
+            <Link href={`${basePath}?dia=${prevDay}`} aria-label="Día anterior" className={btn}>
+              <ChevronLeft className="size-4" />
+            </Link>
+            <form method="get" action={basePath} className="flex flex-wrap items-center gap-2">
+              <input
+                type="date"
+                name="dia"
+                defaultValue={day}
+                max={today}
+                className="rounded-xl border border-line bg-card px-3 py-2 text-[0.875rem] text-ink"
+                aria-label="Día del cierre"
+              />
+              <button type="submit" className="rounded-full border border-line px-4 py-2 text-[0.8125rem] text-mist hover:border-brand hover:text-ink">
+                Ver día
+              </button>
+            </form>
+            {day < today ? (
+              <Link href={`${basePath}?dia=${nextDay}`} aria-label="Día siguiente" className={btn}>
+                <ChevronRight className="size-4" />
+              </Link>
+            ) : null}
+            {day !== today ? (
+              <Link href={basePath} className="text-[0.8125rem] text-brand underline-offset-4 hover:underline">
+                Hoy
+              </Link>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <button type="button" onClick={() => setDay(prevDay)} aria-label="Día anterior" className={btn}>
+              <ChevronLeft className="size-4" />
+            </button>
+            <input
+              type="date"
+              value={day}
+              max={today}
+              onChange={(e) => e.target.value && setDay(e.target.value)}
+              className="rounded-xl border border-line bg-card px-3 py-2 text-[0.875rem] text-ink"
+              aria-label="Día del cierre"
+            />
+            <button type="button" onClick={() => setDay(nextDay)} disabled={day >= today} aria-label="Día siguiente" className={`${btn} disabled:opacity-40`}>
+              <ChevronRight className="size-4" />
+            </button>
+            {day !== today ? (
+              <button type="button" onClick={() => setDay(today)} className="text-[0.8125rem] text-brand underline-offset-4 hover:underline">
+                Hoy
+              </button>
+            ) : null}
+            <div className="ml-auto">
+              <MasterExportButton />
+            </div>
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

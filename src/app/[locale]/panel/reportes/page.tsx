@@ -4,7 +4,7 @@ import { FinanceReports } from "@/components/admin/finance-reports";
 import { PnlReport } from "@/components/admin/pnl-report";
 import { loadFinanceReport } from "@/lib/reports/load";
 import { managuaDay } from "@/lib/reports/finance-report";
-import { readFinance } from "@/lib/finance/read-result";
+import { FinanceReadError, readFinance } from "@/lib/finance/read-result";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -26,12 +26,17 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 export default async function ReportesPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ dia?: string | string[] }>;
 }) {
   const { locale } = await params;
+  const query = await searchParams;
   if (DEMO_MODE) {
     return (
       <Placeholder
@@ -42,6 +47,10 @@ export default async function ReportesPage({
     );
   }
   const user = await getCurrentUser();
+  const basePath = `/${locale}/panel/reportes`;
+  if (user && user.role === "cashier") {
+    return cashierView({ locale, basePath, requestedDay: query.dia });
+  }
   if (!user || !isAdminRole(user.role)) {
     redirect(`/${locale}/mi-cuenta`);
   }
@@ -94,6 +103,97 @@ export default async function ReportesPage({
           <FinanceUnavailable locale={locale} code={summary.code} message={summary.message} />
         )}
       </section>
+    </div>
+  );
+}
+
+/**
+ * Caja: sólo el cierre del día, y únicamente si el administrador activó el interruptor (00037).
+ * La base decide con cashier_daily_close_enabled(); si no puede confirmarlo, no se muestra nada.
+ */
+async function cashierView({
+  locale,
+  basePath,
+  requestedDay,
+}: {
+  locale: string;
+  basePath: string;
+  requestedDay: string | string[] | undefined;
+}) {
+  const supabase = await getSupabaseServerClient();
+  const flag = await readFinance(async () => {
+    if (!supabase) throw new FinanceReadError("CASH_CLOSE");
+    const { data, error } = await supabase.rpc("cashier_daily_close_enabled");
+    if (error) throw new FinanceReadError("CASH_CLOSE", error.code);
+    return data === true;
+  });
+  const today = managuaDay(new Date());
+
+  if (!flag.ok) {
+    return (
+      <div className="container-x min-w-0 space-y-6 py-6">
+        <Heading locale={locale} />
+        <FinanceUnavailable locale={locale} code={flag.code} message={flag.message} />
+      </div>
+    );
+  }
+  if (!flag.data) {
+    return (
+      <div className="container-x min-w-0 space-y-6 py-6">
+        <Heading locale={locale} />
+        <p className="rounded-2xl border border-dashed border-line px-5 py-8 text-center text-[0.875rem] text-mist">
+          El administrador todavía no activó el cierre del día para caja. Pedíselo si lo necesitás.
+        </p>
+      </div>
+    );
+  }
+
+  const day = typeof requestedDay === "string" && DAY_RE.test(requestedDay) && requestedDay <= today ? requestedDay : today;
+  const detail = supabase
+    ? await readFinance(() => loadFinanceReport(supabase))
+    : { ok: false as const, code: "FIN_REPORT_UNAVAILABLE", message: "No hay conexión con la base de datos." };
+
+  return (
+    <div className="container-x min-w-0 space-y-6 py-6">
+      <Heading locale={locale} />
+      {detail.ok ? (
+        <FinanceReports
+          mode="cashier"
+          day={day}
+          basePath={basePath}
+          today={today}
+          data={{
+            generatedAt: detail.data.generatedAt,
+            rows: detail.data.rows.filter((r) => managuaDay(r.occurredAt) === day),
+            debtEntries: [],
+            // Caja no recibe el listado completo de clientes; los nombres ya vienen en cada fila del día.
+            maps: { ...detail.data.maps, clients: {} },
+          }}
+        />
+      ) : (
+        <FinanceUnavailable locale={locale} code={detail.code} message={detail.message} />
+      )}
+    </div>
+  );
+}
+
+function Heading({ locale }: { locale: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <Link
+        href={`/${locale}/panel`}
+        className="grid size-10 place-items-center rounded-full border border-line text-mist transition-colors hover:border-brand hover:text-ink"
+        aria-label="Volver al inicio del panel"
+      >
+        <ArrowLeft className="size-4" />
+      </Link>
+      <div>
+        <span className="eyebrow">
+          <span className="h-px w-6 bg-brand" aria-hidden="true" />
+          Finanzas · Reportes
+        </span>
+        <h1 className="display-xl mt-2 text-[1.75rem] sm:text-[2.25rem]">Cierre del día</h1>
+      </div>
     </div>
   );
 }

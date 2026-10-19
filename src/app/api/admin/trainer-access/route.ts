@@ -19,6 +19,10 @@ const bodySchema = z.discriminatedUnion("action", [
     enabled: z.boolean(),
   }),
   z.object({
+    action: z.literal("toggle_cashier_daily_close"),
+    enabled: z.boolean(),
+  }),
+  z.object({
     action: z.literal("assign"),
     trainerId: z.string().uuid(),
     clientId: z.string().uuid(),
@@ -80,12 +84,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, requestId: data, status: "approved" }, { headers });
   }
 
+  // Interruptores de staff_permissions: el de entrenadores y el de cierre del día para caja (00037).
+  const key = body.action === "toggle_cashier_daily_close" ? "cashier_can_view_daily_close" : "trainer_can_request_clients";
   const { data, error } = await supabase
     .from("staff_permissions")
     .update({ enabled: body.enabled, updated_by: user.id, updated_at: new Date().toISOString() })
-    .eq("key", "trainer_can_request_clients")
+    .eq("key", key)
     .select("key");
-  if (error) return failure(error, "admin/trainer-access toggle");
+  if (error) return failure(error, `admin/trainer-access toggle ${key}`);
   if (!data || data.length === 0) {
     return NextResponse.json(
       { error: "NOT_FOUND", message: "No encontramos el interruptor. No se cambió nada." },
