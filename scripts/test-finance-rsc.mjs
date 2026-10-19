@@ -85,7 +85,7 @@ try {
   };
   put(
     "server.ts",
-    `export const getSupabaseServerClient=async()=>({rpc(){return {abortSignal:async()=>process.env.FINANCE_RSC_EMPTY==='1'?{data:null,error:{message:'RECEIPT_NOT_FOUND'}}:{data:${JSON.stringify(receipt)},error:null}}}});`,
+    `const CH=new Proxy({},{get:(t,p)=>p==='then'?(res:any,rej:any)=>Promise.resolve({data:[],error:null}).then(res,rej):()=>CH});export const getSupabaseServerClient=async()=>({from(){return CH;},rpc(){return {abortSignal:async()=>process.env.FINANCE_RSC_EMPTY==='1'?{data:null,error:{message:'RECEIPT_NOT_FOUND'}}:{data:${JSON.stringify(receipt)},error:null}}}});`,
   );
   put("env.ts", "export const isSupabaseConfigured = true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;");
   put(

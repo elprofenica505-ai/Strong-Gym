@@ -914,6 +914,22 @@ export interface TrainerAccessRow {
 }
 
 /** Sólo administrador (la base lo vuelve a comprobar). Sin teléfono, correo ni notas. */
+/** Interruptor para que caja vea el cierre del día (00037). Sólo lo lee el administrador. */
+export async function getCashierDailyCloseAdmin(): Promise<boolean> {
+  return checkedRead("CASHIER_DAILY_CLOSE", async () => {
+    const supabase = await getSupabaseServerClient();
+    if (!supabase) return false;
+    const { data, error } = await supabase
+      .from("staff_permissions")
+      .select("enabled")
+      .eq("key", "cashier_can_view_daily_close")
+      .abortSignal(AbortSignal.timeout(15000))
+      .maybeSingle();
+    if (error) throw new DataReadError("CASHIER_DAILY_CLOSE", error.code);
+    return data?.enabled === true;
+  });
+}
+
 export async function getTrainerAccessAdmin(): Promise<{
   enabled: boolean;
   requests: TrainerAccessRow[];

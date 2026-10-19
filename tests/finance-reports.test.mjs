@@ -7,6 +7,10 @@ import { createLoader } from "./helpers/react-loader.mjs";
 
 async function report({ pnl = [], methods = [] } = {}) {
   const load = createLoader({
+    "server-only": "export {};",
+    "@/lib/supabase/server": "export const getSupabaseServerClient=async()=>null;",
+    "@/lib/reports/load":
+      "export async function loadFinanceReport(){return {generatedAt:'',rows:[],debtEntries:[],maps:{methods:{},categories:{},accounts:{},clients:{}}};}",
     "@/lib/data/queries": `export const getCurrentUser=async()=>({role:'admin',mfa:'ok'});export const getMonthlyPnl=async()=>${JSON.stringify(pnl)};export const getPaymentMethodsBreakdown=async()=>${JSON.stringify(methods)};`,
     "@/lib/supabase/env": "export const isSupabaseConfigured=true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;",
     "next/navigation":

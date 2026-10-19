@@ -61,7 +61,7 @@ export const PANEL_MODULES: PanelModule[] = [
       { id: "caja", label: "Caja", href: "/panel/caja" },
       { id: "cuentas", label: "Cuentas por cobrar", href: "/panel/cuentas" },
       { id: "gastos", label: "Gastos", href: "/panel/gastos" },
-      { id: "reportes", label: "Reportes", href: "/panel/reportes", adminOnly: true },
+      { id: "reportes", label: "Reportes", href: "/panel/reportes" },
     ],
   },
   {

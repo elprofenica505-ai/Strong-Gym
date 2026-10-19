@@ -12,10 +12,10 @@ test("administrador ve todos los módulos y todas sus secciones", () => {
   assert.deepEqual(childIds(mods, "administracion"), ["roles", "entrenadores", "importar", "herramientas", "ayuda"]);
 });
 
-test("caja ve finanzas, clientes y operación, pero no reportes ni administración", () => {
+test("caja ve Reportes en el menú (la página decide si muestra el cierre del día), pero no administración", () => {
   const mods = visibleModules("cashier");
   assert.deepEqual(ids(mods), ["inicio", "clientes", "finanzas", "operacion"]);
-  assert.deepEqual(childIds(mods, "finanzas"), ["caja", "cuentas", "gastos"]);
+  assert.deepEqual(childIds(mods, "finanzas"), ["caja", "cuentas", "gastos", "reportes"]);
   assert.equal(mods.some((m) => m.id === "administracion"), false);
 });
 

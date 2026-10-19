@@ -14,7 +14,7 @@
     "test:metadata": "node scripts/test-metadata.mjs",
     "test:finance:rsc": "node scripts/test-finance-rsc.mjs",
     "test:auth": "node --experimental-strip-types --test tests/*.test.mjs",
-    "test:roles": "node scripts/test-roles-fase-a-sql.mjs && node scripts/test-roles-fase-b-sql.mjs && node scripts/test-trainer-access-sql.mjs",
+    "test:roles": "node scripts/test-roles-fase-a-sql.mjs && node scripts/test-roles-fase-b-sql.mjs && node scripts/test-trainer-access-sql.mjs && node scripts/test-cashier-close-sql.mjs",
     "test:layout": "node scripts/test-shell-layout.mjs",
     "test:finance:concurrency": "node scripts/test-finance-concurrency.mjs"
   },
@@ -25,6 +25,7 @@
     "@supabase/supabase-js": "^2.117.3",
     "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3",
+    "exceljs": "^4.4.0",
     "lucide-react": "^1.55.0",
     "next": "^16.4.0",
     "qrcode.react": "^4.2.0",

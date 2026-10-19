@@ -4,9 +4,16 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { isAdminRole } from "@/lib/auth/current-user";
 import { TrainerAccessManager } from "@/components/admin/trainer-access-manager";
+import { CashierDailyCloseToggle } from "@/components/admin/cashier-daily-close-toggle";
 import { DataUnavailable } from "@/components/ui/data-unavailable";
 import { readData } from "@/lib/data/read-result";
-import { getAssignableClients, getCurrentUser, getProfilesForRoles, getTrainerAccessAdmin } from "@/lib/data/queries";
+import {
+  getAssignableClients,
+  getCashierDailyCloseAdmin,
+  getCurrentUser,
+  getProfilesForRoles,
+  getTrainerAccessAdmin,
+} from "@/lib/data/queries";
 import { isLocale, type Locale } from "@/i18n/config";
 import { SectionHeading } from "@/components/ui/section";
 import { DEMO_MODE } from "@/lib/supabase/env";
@@ -35,6 +42,7 @@ export default async function EntrenadoresAccesoPage({
   }
 
   const result = DEMO_MODE ? null : await readData(() => getTrainerAccessAdmin());
+  const cashierClose = DEMO_MODE ? null : await readData(() => getCashierDailyCloseAdmin());
   const staffResult = DEMO_MODE ? null : await readData(() => getProfilesForRoles());
   const trainers =
     staffResult && staffResult.ok
@@ -72,12 +80,19 @@ export default async function EntrenadoresAccesoPage({
           ) : result && !result.ok ? (
             <DataUnavailable locale={locale} code={result.code} />
           ) : result && result.ok ? (
+            <div className="flex flex-col gap-8">
+              {cashierClose && cashierClose.ok ? (
+                <CashierDailyCloseToggle initialEnabled={cashierClose.data} />
+              ) : cashierClose && !cashierClose.ok ? (
+                <DataUnavailable locale={locale} code={cashierClose.code} />
+              ) : null}
             <TrainerAccessManager
               initialEnabled={result.data.enabled}
               initialRequests={result.data.requests}
               trainers={trainers}
               clients={clients}
             />
+            </div>
           ) : null}
         </div>
       </section>

@@ -1,17 +1,23 @@
 import { isAdminRole } from "@/lib/auth/current-user";
 import { FinanceUnavailable } from "@/components/admin/finance-unavailable";
-import { readFinance } from "@/lib/finance/read-result";
+import { FinanceReports } from "@/components/admin/finance-reports";
+import { PnlReport } from "@/components/admin/pnl-report";
+import { loadFinanceReport } from "@/lib/reports/load";
+import { managuaDay } from "@/lib/reports/finance-report";
+import { FinanceReadError, readFinance } from "@/lib/finance/read-result";
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, BarChart3, Wallet } from "lucide-react";
+import { redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import {
   getCurrentUser,
   getMonthlyPnl,
   getPaymentMethodsBreakdown,
 } from "@/lib/data/queries";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { DEMO_MODE } from "@/lib/supabase/env";
-import { formatMoney } from "@/lib/finance/format-money";
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
@@ -20,206 +26,184 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 export default async function ReportesPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ dia?: string | string[] }>;
 }) {
   const { locale } = await params;
+  const query = await searchParams;
   if (DEMO_MODE) {
     return (
       <Placeholder
         title="Reportes"
-        message="Conectá Supabase para ver la ganancia/pérdida de cada mes y el desglose por método de pago."
+        message="Conectá Supabase para ver el cierre del día, el comparativo mensual, los pagos pendientes y las comisiones. En modo demo no se muestran cifras inventadas."
         locale={locale}
       />
     );
   }
   const user = await getCurrentUser();
+  const basePath = `/${locale}/panel/reportes`;
+  if (user && user.role === "cashier") {
+    return cashierView({ locale, basePath, requestedDay: query.dia });
+  }
   if (!user || !isAdminRole(user.role)) {
     redirect(`/${locale}/mi-cuenta`);
   }
 
-  const result = await readFinance(() =>
-    Promise.all([getMonthlyPnl(12), getPaymentMethodsBreakdown()]),
-  );
-  if (!result.ok)
-    return (
-      <FinanceUnavailable
-        locale={locale}
-        code={result.code}
-        message={result.message}
-      />
-    );
-  const [pnl, methods] = result.data;
+  const supabase = await getSupabaseServerClient();
+  const [summary, detail] = await Promise.all([
+    readFinance(() => Promise.all([getMonthlyPnl(12), getPaymentMethodsBreakdown()])),
+    supabase
+      ? readFinance(() => loadFinanceReport(supabase))
+      : Promise.resolve({ ok: false as const, code: "FIN_REPORT_UNAVAILABLE", message: "No hay conexión con la base de datos." }),
+  ]);
 
   return (
-    <div className="container-x min-w-0 space-y-6 py-6">
+    <div className="container-x min-w-0 space-y-10 py-6">
       <div className="flex items-center gap-3">
         <Link
           href={`/${locale}/panel`}
           className="grid size-10 place-items-center rounded-full border border-line text-mist transition-colors hover:border-brand hover:text-ink"
+          aria-label="Volver al inicio del panel"
         >
           <ArrowLeft className="size-4" />
         </Link>
         <div>
           <span className="eyebrow">
             <span className="h-px w-6 bg-brand" aria-hidden="true" />
-            Caja · Reportes
+            Finanzas · Reportes
           </span>
-          <h1 className="display-xl mt-2 text-[1.75rem] sm:text-[2.25rem]">
-            Ganancias y pérdidas
-          </h1>
+          <h1 className="display-xl mt-2 text-[1.75rem] sm:text-[2.25rem]">Reportes del gimnasio</h1>
         </div>
       </div>
 
-      <p className="text-sm text-fog">
-        Importes consolidados NIO guardados en los movimientos completados; no
-        se usa una tasa nueva. Las transferencias no son ingresos ni gastos.
-        Estos resultados no certifican saldos de cuentas.
-      </p>
-      <p className="text-xs text-fog sm:hidden">
-        Deslizá la tabla horizontalmente para ver todas las columnas.
-      </p>
-      <div
-        className="w-full min-w-0 max-w-full overflow-x-auto rounded-2xl border border-line"
-        role="region"
-        aria-label="Resultados mensuales en NIO · tabla desplazable"
-        tabIndex={0}
-      >
-        <table className="w-full min-w-[32rem] whitespace-nowrap text-left text-[0.8125rem]">
-          <caption className="sr-only">
-            Resultados mensuales · equivalentes NIO guardados
-          </caption>
-          <thead className="bg-card-2 text-[0.6875rem] uppercase tracking-wider text-fog">
-            <tr>
-              <th scope="col" className="px-4 py-3 font-semibold">
-                Mes
-              </th>
-              <th scope="col" className="px-4 py-3 text-right font-semibold">
-                Ingresos
-              </th>
-              <th scope="col" className="px-4 py-3 text-right font-semibold">
-                Egresos
-              </th>
-              <th scope="col" className="px-4 py-3 text-right font-semibold">
-                Resultado
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line">
-            {pnl.map((m) => (
-              <tr key={m.month} className="bg-card">
-                <td className="px-4 py-3 font-mono text-ink">
-                  {m.month.slice(0, 7)}
-                </td>
-                <td className="px-4 py-3 text-right font-mono tabular-nums text-brand-300">
-                  {formatMoney(m.incomeNio)}
-                </td>
-                <td className="px-4 py-3 text-right font-mono tabular-nums text-fog">
-                  {formatMoney(m.expenseNio)}
-                </td>
-                <td
-                  className={
-                    "px-4 py-3 text-right font-mono font-semibold tabular-nums " +
-                    (m.netNio >= 0 ? "text-brand" : "text-alert")
-                  }
-                >
-                  {formatMoney(m.netNio)}
-                </td>
-              </tr>
-            ))}
-            {pnl.length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-fog">
-                  Sin resultados mensuales informados en esta consulta.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="rounded-2xl border border-line bg-card p-5">
-        <h2 className="text-[0.9375rem] font-semibold text-ink">
-          Movimientos por método · todo el historial
-        </h2>
-        <p className="mt-1 text-[0.75rem] text-fog">
-          Movimientos completados en equivalentes NIO guardados. Volumen =
-          ingresos + egresos; no es ganancia ni saldo de cuenta.
+      <section className="space-y-4" aria-labelledby="reportes-detalle">
+        <h2 id="reportes-detalle" className="display-xl text-[1.375rem]">Cierre, comparativo, pagos y comisiones</h2>
+        <p className="text-sm text-fog">
+          Cada cifra sale de los movimientos guardados. Tocá cualquier ingreso, gasto, cliente o mes para ver su tarjeta de detalle.
+          El botón «Exportar Excel maestro» descarga siempre el mismo libro, con todos los datos al día.
         </p>
-        {methods.length === 0 ? (
-          <p className="py-6 text-center text-[0.875rem] text-fog">
-            Sin movimientos por método informados en esta consulta.
-          </p>
+        {detail.ok ? (
+          <FinanceReports data={detail.data} today={managuaDay(new Date())} />
         ) : (
-          <ul className="mt-4 space-y-2">
-            {methods.map((m) => (
-              <li
-                key={`${m.paymentMethodId ?? "none"}-${m.nameEs}`}
-                className="min-w-0 rounded-lg border border-line bg-card-2 p-3"
-              >
-                <p className="break-words text-[0.875rem] font-medium text-ink">
-                  {m.nameEs?.trim() || "Sin método informado"}
-                </p>
-                <p className="mt-1 text-xs text-fog">
-                  {m.txCount} movimientos completados
-                </p>
-                <dl className="mt-3 grid gap-3 sm:grid-cols-3">
-                  <div>
-                    <dt className="text-xs text-fog">Ingresos NIO</dt>
-                    <dd className="font-mono text-sm tabular-nums text-ink">
-                      {formatMoney(m.incomeNio)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-fog">Egresos NIO</dt>
-                    <dd className="font-mono text-sm tabular-nums text-ink">
-                      {formatMoney(m.expenseNio)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-fog">
-                      Volumen NIO · no es resultado
-                    </dt>
-                    <dd className="font-mono text-sm tabular-nums text-mist">
-                      {formatMoney(m.totalNio)}
-                    </dd>
-                  </div>
-                </dl>
-              </li>
-            ))}
-          </ul>
+          <FinanceUnavailable locale={locale} code={detail.code} message={detail.message} />
         )}
+      </section>
+
+      <section className="space-y-4" aria-labelledby="reportes-resultado">
+        <h2 id="reportes-resultado" className="display-xl text-[1.375rem]">Ganancias y pérdidas · resumen oficial</h2>
+        {summary.ok ? (
+          <PnlReport pnl={summary.data[0]} methods={summary.data[1]} />
+        ) : (
+          <FinanceUnavailable locale={locale} code={summary.code} message={summary.message} />
+        )}
+      </section>
+    </div>
+  );
+}
+
+/**
+ * Caja: sólo el cierre del día, y únicamente si el administrador activó el interruptor (00037).
+ * La base decide con cashier_daily_close_enabled(); si no puede confirmarlo, no se muestra nada.
+ */
+async function cashierView({
+  locale,
+  basePath,
+  requestedDay,
+}: {
+  locale: string;
+  basePath: string;
+  requestedDay: string | string[] | undefined;
+}) {
+  const supabase = await getSupabaseServerClient();
+  const flag = await readFinance(async () => {
+    if (!supabase) throw new FinanceReadError("CASH_CLOSE");
+    const { data, error } = await supabase.rpc("cashier_daily_close_enabled");
+    if (error) throw new FinanceReadError("CASH_CLOSE", error.code);
+    return data === true;
+  });
+  const today = managuaDay(new Date());
+
+  if (!flag.ok) {
+    return (
+      <div className="container-x min-w-0 space-y-6 py-6">
+        <Heading locale={locale} />
+        <FinanceUnavailable locale={locale} code={flag.code} message={flag.message} />
+      </div>
+    );
+  }
+  if (!flag.data) {
+    return (
+      <div className="container-x min-w-0 space-y-6 py-6">
+        <Heading locale={locale} />
+        <p className="rounded-2xl border border-dashed border-line px-5 py-8 text-center text-[0.875rem] text-mist">
+          El administrador todavía no activó el cierre del día para caja. Pedíselo si lo necesitás.
+        </p>
+      </div>
+    );
+  }
+
+  const day = typeof requestedDay === "string" && DAY_RE.test(requestedDay) && requestedDay <= today ? requestedDay : today;
+  const detail = supabase
+    ? await readFinance(() => loadFinanceReport(supabase))
+    : { ok: false as const, code: "FIN_REPORT_UNAVAILABLE", message: "No hay conexión con la base de datos." };
+
+  return (
+    <div className="container-x min-w-0 space-y-6 py-6">
+      <Heading locale={locale} />
+      {detail.ok ? (
+        <FinanceReports
+          mode="cashier"
+          day={day}
+          basePath={basePath}
+          today={today}
+          data={{
+            generatedAt: detail.data.generatedAt,
+            rows: detail.data.rows.filter((r) => managuaDay(r.occurredAt) === day),
+            debtEntries: [],
+            // Caja no recibe el listado completo de clientes; los nombres ya vienen en cada fila del día.
+            maps: { ...detail.data.maps, clients: {} },
+          }}
+        />
+      ) : (
+        <FinanceUnavailable locale={locale} code={detail.code} message={detail.message} />
+      )}
+    </div>
+  );
+}
+
+function Heading({ locale }: { locale: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <Link
+        href={`/${locale}/panel`}
+        className="grid size-10 place-items-center rounded-full border border-line text-mist transition-colors hover:border-brand hover:text-ink"
+        aria-label="Volver al inicio del panel"
+      >
+        <ArrowLeft className="size-4" />
+      </Link>
+      <div>
+        <span className="eyebrow">
+          <span className="h-px w-6 bg-brand" aria-hidden="true" />
+          Finanzas · Reportes
+        </span>
+        <h1 className="display-xl mt-2 text-[1.75rem] sm:text-[2.25rem]">Cierre del día</h1>
       </div>
     </div>
   );
 }
 
-function Placeholder({
-  title,
-  message,
-  locale,
-}: {
-  title: string;
-  message: string;
-  locale: string;
-}) {
+function Placeholder({ title, message, locale }: { title: string; message: string; locale: string }) {
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <Link
-          href={`/${locale}/panel`}
-          className="grid size-10 place-items-center rounded-full border border-line text-mist transition-colors hover:border-brand hover:text-ink"
-        >
-          <ArrowLeft className="size-4" />
-        </Link>
-        <h1 className="display-xl text-[1.75rem] sm:text-[2.25rem]">{title}</h1>
-      </div>
-      <div className="rounded-2xl border border-dashed border-brand/35 bg-brand-soft p-6 text-center">
-        <BarChart3 className="mx-auto size-8 text-brand-300" />
-        <p className="mt-3 text-[0.875rem] text-fog">{message}</p>
-      </div>
+    <div className="container-x py-10">
+      <Link href={`/${locale}/panel`} className="text-sm text-brand">← Volver al panel</Link>
+      <h1 className="display-xl mt-4 text-2xl">{title}</h1>
+      <p className="mt-3 text-fog">{message}</p>
     </div>
   );
 }

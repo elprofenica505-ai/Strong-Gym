@@ -41,7 +41,7 @@ test("formato compacto conserva el comportamiento de Caja y sus umbrales", () =>
     expected(999, "USD"),
   );
 });
-for (const page of ["cuentas", "reportes"])
+for (const page of ["cuentas"])
   for (const empty of [false, true]) {
     test(`${page}: servidor renderiza ${empty ? "vacío" : "con filas"} sin llamar al módulo cliente`, async () => {
       const queries = `export const getCurrentUser=async()=>({role:'${page === "reportes" ? "admin" : "cashier"}',mfa:'ok'});
