@@ -154,3 +154,5 @@ explícita. No afirmar seguridad absoluta ni certificación externa por tener HT
 - [x] Aplicar 00034 y 00035 en Supabase (aplicadas con autorización del dueño; 00034 incluye quitar la política antigua de escritura de entrenadores para caja).
 - [ ] Aplicar 00034 en Supabase antes de desplegar este código (ver docs/ROLES-MIGRACION-PLAN.md).
 
+
+- [ ] Aplicar 00036 (personal no es cliente) en Supabase: cancela la ficha de cliente de cuentas de personal, la búsqueda y los pedidos la ignoran. Borrador probado local 65/65. Requiere autorización.

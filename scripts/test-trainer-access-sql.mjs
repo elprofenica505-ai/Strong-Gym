@@ -45,6 +45,11 @@ const member = await makeUser('cliente@test.invalid', null);
 
 await db.exec(sql('docs/SQL-PENDIENTE/00034_roles_fase_b.sql'));
 await db.exec(sql('docs/SQL-PENDIENTE/00035_asignacion_entrenador.sql'));
+await db.exec(sql('docs/SQL-PENDIENTE/00036_personal_no_es_cliente.sql'));
+// Antes de la 00036 el entrenador ya tenía una ficha de cliente activa (creada al registrarse).
+ok('00036 se aplica sobre 00035 sin error', true);
+ok('la ficha de cliente de la cuenta de entrenador queda cancelada', (await db.query(
+  "select status from gym_clients where profile_id = $1", [trainer])).rows[0].status === 'cancelled');
 ok('00035 se aplica sobre 00034 sin error', true);
 
 // Clientes de prueba: dos activos, uno congelado. Una visita de hoy para el primero.
@@ -167,5 +172,15 @@ ok('rechazado no se aprueba después (sólo pendientes)', await denied(as(admin,
 await as(admin, 'aal2', 'select public.admin_set_role($1, $2)', [trainer, 'cashier']);
 ok('un entrenador convertido en caja pierde la lista', await denied(rosterOf(trainer)));
 ok('el administrador puede ver el listado de solicitudes', (await as(admin, 'aal2', 'select count(*)::int c from trainer_client_access'))[0].c >= 1);
+
+// 11) Personal no es cliente (00036)
+const memberRow = async () => (await db.query("select status from gym_clients where profile_id = $1", [member])).rows[0].status;
+ok('el cliente sigue activo mientras es cliente', (await memberRow()) === 'active');
+await as(admin, 'aal2', 'select public.admin_set_role($1, $2)', [member, 'cashier']);
+ok('al asignarle rol de personal, su ficha de cliente se cancela', (await memberRow()) === 'cancelled');
+ok('ninguna ficha de personal queda activa', (await db.query(
+  "select count(*)::int c from gym_clients g join profiles p on p.id = g.profile_id where p.role in ('trainer','cashier','admin') and g.status = 'active'")).rows[0].c === 0);
+await as(admin, 'aal2', 'select public.admin_set_role($1, $2)', [member, 'member']);
+ok('quitar el rol de personal NO reactiva la ficha (la reactiva el administrador)', (await memberRow()) === 'cancelled');
 
 console.log(`\nPASS ${checks} comprobaciones de asignación entrenador-cliente`);
