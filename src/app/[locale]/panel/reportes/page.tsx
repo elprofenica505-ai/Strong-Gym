@@ -1,6 +1,7 @@
 import { isAdminRole } from "@/lib/auth/current-user";
 import { FinanceUnavailable } from "@/components/admin/finance-unavailable";
 import { FinanceReports } from "@/components/admin/finance-reports";
+import { PnlReport } from "@/components/admin/pnl-report";
 import { loadFinanceReport } from "@/lib/reports/load";
 import { managuaDay } from "@/lib/reports/finance-report";
 import { readFinance } from "@/lib/finance/read-result";
@@ -8,7 +9,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { getCurrentUser } from "@/lib/data/queries";
+import {
+  getCurrentUser,
+  getMonthlyPnl,
+  getPaymentMethodsBreakdown,
+} from "@/lib/data/queries";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { DEMO_MODE } from "@/lib/supabase/env";
 
@@ -42,12 +47,15 @@ export default async function ReportesPage({
   }
 
   const supabase = await getSupabaseServerClient();
-  const result = supabase
-    ? await readFinance(() => loadFinanceReport(supabase))
-    : { ok: false as const, code: "FIN_REPORT_UNAVAILABLE", message: "No hay conexión con la base de datos." };
+  const [summary, detail] = await Promise.all([
+    readFinance(() => Promise.all([getMonthlyPnl(12), getPaymentMethodsBreakdown()])),
+    supabase
+      ? readFinance(() => loadFinanceReport(supabase))
+      : Promise.resolve({ ok: false as const, code: "FIN_REPORT_UNAVAILABLE", message: "No hay conexión con la base de datos." }),
+  ]);
 
   return (
-    <div className="container-x min-w-0 space-y-6 py-6">
+    <div className="container-x min-w-0 space-y-10 py-6">
       <div className="flex items-center gap-3">
         <Link
           href={`/${locale}/panel`}
@@ -65,16 +73,27 @@ export default async function ReportesPage({
         </div>
       </div>
 
-      <p className="text-sm text-fog">
-        Cada cifra sale de los movimientos guardados. Tocá cualquier ingreso, gasto, cliente o mes para ver su tarjeta de detalle.
-        El botón «Exportar Excel maestro» descarga siempre el mismo libro, con todos los datos al día.
-      </p>
+      <section className="space-y-4" aria-labelledby="reportes-detalle">
+        <h2 id="reportes-detalle" className="display-xl text-[1.375rem]">Cierre, comparativo, pagos y comisiones</h2>
+        <p className="text-sm text-fog">
+          Cada cifra sale de los movimientos guardados. Tocá cualquier ingreso, gasto, cliente o mes para ver su tarjeta de detalle.
+          El botón «Exportar Excel maestro» descarga siempre el mismo libro, con todos los datos al día.
+        </p>
+        {detail.ok ? (
+          <FinanceReports data={detail.data} today={managuaDay(new Date())} />
+        ) : (
+          <FinanceUnavailable locale={locale} code={detail.code} message={detail.message} />
+        )}
+      </section>
 
-      {result.ok ? (
-        <FinanceReports data={result.data} today={managuaDay(new Date())} />
-      ) : (
-        <FinanceUnavailable locale={locale} code={result.code} message={result.message} />
-      )}
+      <section className="space-y-4" aria-labelledby="reportes-resultado">
+        <h2 id="reportes-resultado" className="display-xl text-[1.375rem]">Ganancias y pérdidas · resumen oficial</h2>
+        {summary.ok ? (
+          <PnlReport pnl={summary.data[0]} methods={summary.data[1]} />
+        ) : (
+          <FinanceUnavailable locale={locale} code={summary.code} message={summary.message} />
+        )}
+      </section>
     </div>
   );
 }
