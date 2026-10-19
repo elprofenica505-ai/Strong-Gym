@@ -251,9 +251,11 @@ await loginAs(userB);
 await expectError("sin lugares disponibles", `select public.book_session('${freeSession}')`, "FULL");
 
 console.log("\n▶ Clase que ya pasó");
+// El seed depende de la hora: fijamos una clase en el pasado para que la prueba sea determinista.
 const pastSession = (
   await db.query(`select id from public.sessions order by starts_at limit 1`)
 ).rows[0].id;
+await db.exec(`update public.sessions set starts_at = now() - interval '2 days', ends_at = now() - interval '2 days' + interval '1 hour' where id = '${pastSession}'`);
 await expectError("rechaza reservar en el pasado", `select public.book_session('${pastSession}')`, "PAST");
 
 console.log("\n▶ Cancelar una reserva");
