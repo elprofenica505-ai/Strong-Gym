@@ -18,6 +18,11 @@ const bodySchema = z.discriminatedUnion("action", [
     action: z.literal("toggle"),
     enabled: z.boolean(),
   }),
+  z.object({
+    action: z.literal("assign"),
+    trainerId: z.string().uuid(),
+    clientId: z.string().uuid(),
+  }),
 ]);
 
 const messages: Record<string, [string, number]> = {
@@ -25,6 +30,8 @@ const messages: Record<string, [string, number]> = {
   NOT_FOUND: ["No encontramos ese pedido. Puede que ya no exista.", 404],
   INVALID_STATE: ["Ese pedido ya fue decidido. Recargá la página para ver su estado actual.", 409],
   INVALID_DECISION: ["Decisión no válida.", 422],
+  INVALID_TRAINER: ["Esa cuenta no es de entrenador.", 409],
+  INACTIVE_CLIENT: ["Ese cliente no está activo.", 409],
 };
 
 /**
@@ -62,6 +69,15 @@ export async function POST(request: Request) {
     });
     if (error) return failure(error, "admin/trainer-access decide");
     return NextResponse.json({ ok: true, requestId: body.requestId, status: body.decision }, { headers });
+  }
+
+  if (body.action === "assign") {
+    const { data, error } = await supabase.rpc("admin_assign_trainer_client", {
+      p_trainer: body.trainerId,
+      p_client: body.clientId,
+    });
+    if (error) return failure(error, "admin/trainer-access assign");
+    return NextResponse.json({ ok: true, requestId: data, status: "approved" }, { headers });
   }
 
   const { data, error } = await supabase

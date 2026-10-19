@@ -77,7 +77,7 @@ test("render real admin: inicio con módulos, Finanzas, Operación y Administrac
   assert.ok(html.includes('href="/es/panel/administracion"'));
   assert.ok(html.includes('href="/es/panel/herramientas"'));
   assert.ok(html.includes('href="/es/panel/administracion/roles"'));
-  assert.ok(html.includes("Reservas por día"));
+  assert.ok(html.includes("Reservas · esta semana"));
   assert.ok(!html.includes(dict.admin.noAccess));
   const { SideNav } = await load("components/layout/side-nav.tsx");
   const menu = renderToStaticMarkup(createElement(SideNav, { open: true, onClose() {} }));

@@ -173,6 +173,25 @@ await as(admin, 'aal2', 'select public.admin_set_role($1, $2)', [trainer, 'cashi
 ok('un entrenador convertido en caja pierde la lista', await denied(rosterOf(trainer)));
 ok('el administrador puede ver el listado de solicitudes', (await as(admin, 'aal2', 'select count(*)::int c from trainer_client_access'))[0].c >= 1);
 
+// 10b) Asignación directa del administrador (00036) y directorio sin personal
+const assignRow = async (actor, aal, trainerId, clientId) =>
+  as(actor, aal, 'select public.admin_assign_trainer_client($1, $2) as id', [trainerId, clientId]);
+ok('caja NO asigna clientes', await denied(assignRow(cashier, 'aal2', trainer2, luis)));
+ok('entrenador NO asigna clientes', await denied(assignRow(trainer2, 'aal2', trainer2, luis)));
+ok('administrador sin MFA NO asigna', await denied(assignRow(admin, 'aal1', trainer2, luis)));
+ok('no se asigna a alguien que no es entrenador', await denied(assignRow(admin, 'aal2', member, luis), /INVALID_TRAINER/));
+ok('no se asigna una ficha inactiva', await denied(assignRow(admin, 'aal2', trainer2, pausado), /INACTIVE_CLIENT/));
+const assigned = (await assignRow(admin, 'aal2', trainer2, luis))[0].id;
+ok('el administrador asigna un cliente: queda aprobado', (await db.query(
+  'select status, requested_via from trainer_client_access where id = $1', [assigned])).rows[0].status === 'approved');
+ok('asignar otra vez no duplica', (await assignRow(admin, 'aal2', trainer2, luis))[0].id === assigned);
+ok('el entrenador asignado ve al cliente en su lista', (await rosterOf(trainer2)).some(r => r.client_id === luis));
+ok('una asignación queda marcada como hecha por el administrador', (await db.query(
+  'select requested_via from trainer_client_access where id = $1', [assigned])).rows[0].requested_via === 'admin');
+const dir = (await as(admin, 'aal2', 'select public.crm_directory()::text as d'))[0].d;
+ok('el directorio de clientes muestra clientes', dir.includes(ana));
+ok('el directorio de clientes NO muestra cuentas de personal', !dir.includes(trainer) && !dir.includes(trainer2) && !dir.includes(cashier) && !dir.includes(admin));
+
 // 11) Personal no es cliente (00036)
 const memberRow = async () => (await db.query("select status from gym_clients where profile_id = $1", [member])).rows[0].status;
 ok('el cliente sigue activo mientras es cliente', (await memberRow()) === 'active');

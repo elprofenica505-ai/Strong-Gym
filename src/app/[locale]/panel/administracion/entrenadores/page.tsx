@@ -6,7 +6,7 @@ import { isAdminRole } from "@/lib/auth/current-user";
 import { TrainerAccessManager } from "@/components/admin/trainer-access-manager";
 import { DataUnavailable } from "@/components/ui/data-unavailable";
 import { readData } from "@/lib/data/read-result";
-import { getCurrentUser, getTrainerAccessAdmin } from "@/lib/data/queries";
+import { getAssignableClients, getCurrentUser, getProfilesForRoles, getTrainerAccessAdmin } from "@/lib/data/queries";
 import { isLocale, type Locale } from "@/i18n/config";
 import { SectionHeading } from "@/components/ui/section";
 import { DEMO_MODE } from "@/lib/supabase/env";
@@ -35,6 +35,15 @@ export default async function EntrenadoresAccesoPage({
   }
 
   const result = DEMO_MODE ? null : await readData(() => getTrainerAccessAdmin());
+  const staffResult = DEMO_MODE ? null : await readData(() => getProfilesForRoles());
+  const trainers =
+    staffResult && staffResult.ok
+      ? staffResult.data
+          .filter((p) => p.role === "trainer")
+          .map((p) => ({ id: p.id, fullName: p.fullName || "Sin nombre" }))
+      : [];
+  const clientsResult = DEMO_MODE ? null : await readData(() => getAssignableClients());
+  const clients = clientsResult && clientsResult.ok ? clientsResult.data : [];
 
   return (
     <>
@@ -63,7 +72,12 @@ export default async function EntrenadoresAccesoPage({
           ) : result && !result.ok ? (
             <DataUnavailable locale={locale} code={result.code} />
           ) : result && result.ok ? (
-            <TrainerAccessManager initialEnabled={result.data.enabled} initialRequests={result.data.requests} />
+            <TrainerAccessManager
+              initialEnabled={result.data.enabled}
+              initialRequests={result.data.requests}
+              trainers={trainers}
+              clients={clients}
+            />
           ) : null}
         </div>
       </section>

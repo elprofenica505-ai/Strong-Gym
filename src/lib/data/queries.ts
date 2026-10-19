@@ -902,6 +902,8 @@ export type TrainerAccessStatus = "pending" | "approved" | "rejected" | "revoked
 
 export interface TrainerAccessRow {
   id: string;
+  trainerId: string;
+  clientId: string;
   trainerName: string;
   clientName: string;
   status: TrainerAccessStatus;
@@ -929,7 +931,7 @@ export async function getTrainerAccessAdmin(): Promise<{
       supabase
         .from("trainer_client_access")
         .select(
-          "id, status, requested_via, reason, created_at, decided_at, trainer:profiles!trainer_id(full_name), client:gym_clients!client_id(full_name)",
+          "id, trainer_id, client_id, status, requested_via, reason, created_at, decided_at, trainer:profiles!trainer_id(full_name), client:gym_clients!client_id(full_name)",
         )
         .order("created_at", { ascending: false })
         .limit(300)
@@ -944,6 +946,8 @@ export async function getTrainerAccessAdmin(): Promise<{
         const client = row.client as unknown as { full_name: string | null } | null;
         return {
           id: row.id as string,
+          trainerId: row.trainer_id as string,
+          clientId: row.client_id as string,
           trainerName: trainer?.full_name ?? "Sin nombre",
           clientName: client?.full_name ?? "Sin nombre",
           status: row.status as TrainerAccessStatus,
@@ -993,4 +997,33 @@ export async function getTrainerRequestEnabled(): Promise<boolean> {
     if (error) throw new DataReadError("TRAINER_FLAG", error.code);
     return data === true;
   });
+}
+
+/** Clientes activos que se pueden asignar: excluye fichas ligadas a cuentas de personal. */
+export async function getAssignableClients(): Promise<{ id: string; fullName: string }[]> {
+  return checkedRead("ASSIGNABLE_CLIENTS", async () => {
+    const supabase = await getSupabaseServerClient();
+    if (!supabase) return [];
+    const [clients, staff] = await Promise.all([
+      supabase
+        .from("gym_clients")
+        .select("id, full_name, profile_id")
+        .eq("status", "active")
+        .order("full_name", { ascending: true })
+        .limit(1000)
+        .abortSignal(AbortSignal.timeout(15000)),
+      getStaffProfiles(),
+    ]);
+    if (clients.error) throw new DataReadError("ASSIGNABLE_CLIENTS", clients.error.code);
+    const staffIds = new Set(staff.map((p) => p.id));
+    return ((clients.data ?? []) as Array<Record<string, unknown>>)
+      .filter((row) => !(row.profile_id && staffIds.has(row.profile_id as string)))
+      .map((row) => ({ id: row.id as string, fullName: (row.full_name as string | null) ?? "Sin nombre" }));
+  });
+}
+
+/** Cuentas de personal (entrenador, caja, administrador). Sólo nombre y rol; sin contacto. */
+export async function getStaffProfiles(): Promise<{ id: string; fullName: string; role: string }[]> {
+  const profiles = await getProfilesForRoles();
+  return profiles.filter((p) => p.role === "trainer" || p.role === "cashier" || p.role === "admin");
 }

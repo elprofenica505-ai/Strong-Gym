@@ -69,10 +69,14 @@ const fmt = (value: string) =>
 export function ClientsPanel({
   isAdmin,
   isDemo,
+  staffIds = [],
 }: {
   isAdmin: boolean;
   isDemo: boolean;
+  /** Cuentas de personal: nunca se muestran como clientes ni en la búsqueda. */
+  staffIds?: string[];
 }) {
+  const staffSet = new Set(staffIds);
   const { locale } = useDictionary();
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
@@ -161,7 +165,7 @@ export function ClientsPanel({
     <div className="container-x space-y-6 py-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="eyebrow">Fase 2 · Clientes y recepción</p>
+          <p className="eyebrow">Clientes · Personal</p>
           <h1 className="display-xl mt-3 text-3xl sm:text-4xl">
             Clientes y recepción
           </h1>
@@ -294,7 +298,7 @@ export function ClientsPanel({
               : `${directory.total} ${directory.total === 1 ? "cliente" : "clientes"} · hasta 30 por página`}
         </p>
         <div className="grid gap-3 lg:grid-cols-2">
-          {directory.rows.map((c) => (
+          {directory.rows.filter((c) => !(c.profile_id && staffSet.has(c.profile_id))).map((c) => (
             <button
               disabled={busy}
               key={c.id}

@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { UserCheck, UserPlus, Users } from "lucide-react";
 import type { TrainerAccessRow, TrainerAccessStatus } from "@/lib/data/queries";
 
 const STATUS_LABEL: Record<TrainerAccessStatus, string> = {
@@ -12,7 +14,7 @@ const STATUS_LABEL: Record<TrainerAccessStatus, string> = {
 
 const STATUS_ORDER: Record<TrainerAccessStatus, number> = { pending: 0, approved: 1, revoked: 2, rejected: 3 };
 
-const VIA_LABEL: Record<string, string> = { trainer: "Entrenador", cashier: "Caja" };
+const VIA_LABEL: Record<string, string> = { trainer: "Entrenador", cashier: "Caja", admin: "Administración" };
 
 const dateFormat = new Intl.DateTimeFormat("es-NI", {
   timeZone: "America/Managua",
@@ -25,22 +27,40 @@ const dateFormat = new Intl.DateTimeFormat("es-NI", {
 
 type Notice = { tone: "ok" | "error"; text: string } | null;
 
+export interface TrainerOption {
+  id: string;
+  fullName: string;
+}
+
+export interface ClientOption {
+  id: string;
+  fullName: string;
+}
+
 /**
- * Administración de entrenadores: interruptor de búsqueda y pedidos, y decisiones
- * sobre cada pedido. Cada acción pasa por POST /api/admin/trainer-access; la base
- * vuelve a validar sesión con verificación en dos pasos y el estado del pedido.
+ * Administración de entrenadores: asignación directa de clientes, interruptor de
+ * búsqueda y pedidos, tarjetas por entrenador y decisiones sobre cada pedido.
+ * Cada acción pasa por POST /api/admin/trainer-access; la base vuelve a validar
+ * sesión con verificación en dos pasos, rol y estado.
  */
 export function TrainerAccessManager({
   initialEnabled,
   initialRequests,
+  trainers,
+  clients,
 }: {
   initialEnabled: boolean;
   initialRequests: TrainerAccessRow[];
+  trainers: TrainerOption[];
+  clients: ClientOption[];
 }) {
+  const router = useRouter();
   const [enabled, setEnabled] = useState(initialEnabled);
   const [rows, setRows] = useState(initialRequests);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
+  const [trainerId, setTrainerId] = useState(trainers[0]?.id ?? "");
+  const [clientId, setClientId] = useState("");
 
   const sorted = useMemo(
     () =>
@@ -50,6 +70,15 @@ export function TrainerAccessManager({
     [rows],
   );
   const pendingCount = rows.filter((r) => r.status === "pending").length;
+
+  const byTrainer = useMemo(() => {
+    return trainers.map((t) => ({
+      ...t,
+      approved: rows
+        .filter((r) => r.trainerId === t.id && r.status === "approved")
+        .map((r) => ({ key: r.id, name: r.clientName })),
+    }));
+  }, [trainers, rows]);
 
   async function post(key: string, payload: unknown): Promise<{ ok: true } | { ok: false; message: string }> {
     setBusy(key);
@@ -68,6 +97,27 @@ export function TrainerAccessManager({
     } finally {
       setBusy(null);
     }
+  }
+
+  async function assign(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!trainerId || !clientId) {
+      setNotice({ tone: "error", text: "Elegí un entrenador y un cliente." });
+      return;
+    }
+    const result = await post("assign", { action: "assign", trainerId, clientId });
+    if (!result.ok) {
+      setNotice({ tone: "error", text: result.message });
+      return;
+    }
+    const trainer = trainers.find((t) => t.id === trainerId);
+    const client = clients.find((c) => c.id === clientId);
+    setNotice({
+      tone: "ok",
+      text: `${client?.fullName ?? "El cliente"} quedó asignado a ${trainer?.fullName ?? "el entrenador"}.`,
+    });
+    setClientId("");
+    router.refresh();
   }
 
   async function toggle(next: boolean) {
@@ -98,36 +148,10 @@ export function TrainerAccessManager({
     setNotice({ tone: "ok", text: `Pedido de ${row.clientName} ${verb} para ${row.trainerName}.` });
   }
 
+  const noTrainers = trainers.length === 0;
+
   return (
     <div className="flex flex-col gap-6">
-      <section aria-labelledby="interruptor-titulo" className="rounded-2xl border border-line bg-card p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="max-w-xl">
-            <h2 id="interruptor-titulo" className="text-[1rem] font-semibold text-ink">
-              Buscar y pedir clientes
-            </h2>
-            <p className="mt-1 text-[0.8125rem] text-mist">
-              Si está activado, los entrenadores pueden buscar clientes por nombre y pedir acceso a ellos. Cada pedido
-              requiere tu aprobación. Si lo desactivás, no pueden buscar ni pedir, pero conservan los clientes ya
-              aprobados.
-            </p>
-          </div>
-          <label className="flex shrink-0 cursor-pointer items-center gap-3">
-            <span className="text-[0.8125rem] font-semibold text-ink">{enabled ? "Activado" : "Desactivado"}</span>
-            <input
-              type="checkbox"
-              role="switch"
-              aria-checked={enabled}
-              aria-label="Permitir que los entrenadores busquen y pidan clientes"
-              checked={enabled}
-              disabled={busy === "toggle"}
-              onChange={(e) => toggle(e.target.checked)}
-              className="size-5 accent-brand disabled:opacity-50"
-            />
-          </label>
-        </div>
-      </section>
-
       {notice ? (
         <p
           role={notice.tone === "error" ? "alert" : "status"}
@@ -140,6 +164,141 @@ export function TrainerAccessManager({
           {notice.text}
         </p>
       ) : null}
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+        <section aria-labelledby="asignar-titulo" className="rounded-2xl border border-line bg-card p-5">
+          <div className="flex items-center gap-3">
+            <span className="grid size-10 place-items-center rounded-xl bg-brand/10 text-brand">
+              <UserPlus className="size-5" aria-hidden />
+            </span>
+            <div>
+              <h2 id="asignar-titulo" className="text-[1rem] font-semibold text-ink">
+                Asignar cliente a entrenador
+              </h2>
+              <p className="text-[0.8125rem] text-mist">El entrenador sólo ve a los clientes asignados.</p>
+            </div>
+          </div>
+
+          {noTrainers ? (
+            <p className="mt-4 rounded-xl border border-dashed border-line px-4 py-6 text-center text-[0.875rem] text-mist">
+              Todavía no hay cuentas con rol de entrenador. Asignalo desde Personal en la sección Clientes.
+            </p>
+          ) : (
+            <form onSubmit={assign} className="mt-5 grid gap-4">
+              <label className="grid gap-1.5">
+                <span className="text-[0.75rem] font-semibold tracking-[0.08em] text-fog uppercase">Entrenador</span>
+                <select
+                  value={trainerId}
+                  onChange={(e) => setTrainerId(e.target.value)}
+                  className="h-11 rounded-xl border border-line bg-white px-3 text-[0.9375rem] text-ink"
+                >
+                  {trainers.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.fullName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1.5">
+                <span className="text-[0.75rem] font-semibold tracking-[0.08em] text-fog uppercase">Cliente activo</span>
+                <select
+                  value={clientId}
+                  onChange={(e) => setClientId(e.target.value)}
+                  className="h-11 rounded-xl border border-line bg-white px-3 text-[0.9375rem] text-ink"
+                >
+                  <option value="">Elegí un cliente…</option>
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.fullName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="submit"
+                disabled={busy === "assign" || !clientId || !trainerId}
+                className="h-11 rounded-xl bg-brand px-5 text-[0.9375rem] font-semibold text-white disabled:opacity-50"
+              >
+                {busy === "assign" ? "Guardando…" : "Asignar cliente"}
+              </button>
+            </form>
+          )}
+        </section>
+
+        <section aria-labelledby="interruptor-titulo" className="rounded-2xl border border-line bg-card p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="max-w-md">
+              <h2 id="interruptor-titulo" className="text-[1rem] font-semibold text-ink">
+                Buscar y pedir clientes
+              </h2>
+              <p className="mt-1 text-[0.8125rem] text-mist">
+                Si está activado, los entrenadores pueden buscar clientes y pedir acceso a ellos. Cada pedido requiere tu
+                aprobación. Desactivado, no pueden buscar ni pedir, pero conservan los clientes ya aprobados.
+              </p>
+            </div>
+            <label className="flex shrink-0 cursor-pointer items-center gap-3">
+              <span className="text-[0.8125rem] font-semibold text-ink">{enabled ? "Activado" : "Desactivado"}</span>
+              <input
+                type="checkbox"
+                role="switch"
+                aria-checked={enabled}
+                aria-label="Permitir que los entrenadores busquen y pidan clientes"
+                checked={enabled}
+                disabled={busy === "toggle"}
+                onChange={(e) => toggle(e.target.checked)}
+                className="size-5 accent-brand disabled:opacity-50"
+              />
+            </label>
+          </div>
+        </section>
+      </div>
+
+      <section aria-labelledby="equipo-titulo" className="flex flex-col gap-3">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 id="equipo-titulo" className="text-[1rem] font-semibold text-ink">
+            Clientes por entrenador
+          </h2>
+          <p className="text-[0.75rem] text-fog">
+            {byTrainer.length} entrenador{byTrainer.length === 1 ? "" : "es"}
+          </p>
+        </div>
+        {byTrainer.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-line px-5 py-8 text-center text-[0.875rem] text-mist">
+            Todavía no hay entrenadores.
+          </p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {byTrainer.map((t) => (
+              <article key={t.id} className="flex flex-col gap-3 rounded-2xl border border-line bg-card p-5">
+                <header className="flex items-center gap-3">
+                  <span className="grid size-10 place-items-center rounded-full bg-brand/10 text-brand">
+                    <UserCheck className="size-5" aria-hidden />
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="truncate text-[0.9375rem] font-semibold text-ink">{t.fullName}</h3>
+                    <p className="text-[0.75rem] text-fog">
+                      <Users className="mr-1 inline size-3.5" aria-hidden />
+                      {t.approved.length} cliente{t.approved.length === 1 ? "" : "s"} asignado
+                      {t.approved.length === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                </header>
+                {t.approved.length === 0 ? (
+                  <p className="text-[0.8125rem] text-mist">Sin clientes asignados todavía.</p>
+                ) : (
+                  <ul className="flex flex-wrap gap-2">
+                    {t.approved.map((c) => (
+                      <li key={c.key} className="rounded-full bg-cloud px-3 py-1 text-[0.75rem] text-ink">
+                        {c.name}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
 
       <section aria-labelledby="pedidos-titulo" className="flex flex-col gap-3">
         <div className="flex items-baseline justify-between gap-3">

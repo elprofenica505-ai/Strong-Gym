@@ -2,14 +2,14 @@ import { readData } from "@/lib/data/read-result";
 import { readFinance } from "@/lib/finance/read-result";
 import { DataUnavailable } from "@/components/ui/data-unavailable";
 import { FinanceUnavailable } from "@/components/admin/finance-unavailable";
-import { CountBars } from "@/components/admin/count-bars";
+import { InteractiveBarChart } from "@/components/admin/interactive-chart";
 import { FinanceKpis } from "@/components/admin/finance-kpis";
-import { MiniBar } from "@/components/admin/cash-panel";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { canAccessPanel } from "@/lib/auth/current-user";
 import { panelAccess, visibleModules, type PanelModule } from "@/lib/admin/modules";
-import { ShieldAlert } from "lucide-react";
+import { CalendarCheck, CalendarDays, MessageSquare, ShieldAlert, Users } from "lucide-react";
+import { formatMoney } from "@/lib/finance/format-money";
 import { getDictionary } from "@/i18n/dictionaries";
 import { isLocale, type Locale } from "@/i18n/config";
 import { redirect } from "next/navigation";
@@ -166,10 +166,10 @@ export default async function PanelHomePage({
   }
 
   const kpis = [
-    { label: "Clientes", value: String(memberCount), hint: "Fichas activas" },
-    { label: "Reservas hoy", value: String(bookingsToday), hint: "Sin canceladas" },
-    { label: "Reservas esta semana", value: String(bookingsWeek), hint: "Lunes a hoy" },
-    { label: "Mensajes esta semana", value: String(messagesWeek), hint: "Contacto del sitio" },
+    { label: "Clientes", value: String(memberCount), hint: "Fichas activas", icon: Users },
+    { label: "Reservas hoy", value: String(bookingsToday), hint: "Sin canceladas", icon: CalendarCheck },
+    { label: "Reservas esta semana", value: String(bookingsWeek), hint: "Lunes a hoy", icon: CalendarDays },
+    { label: "Mensajes esta semana", value: String(messagesWeek), hint: "Contacto del sitio", icon: MessageSquare },
   ];
 
   return (
@@ -208,10 +208,15 @@ export default async function PanelHomePage({
           ) : (
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               {kpis.map((k) => (
-                <div key={k.label} className="rounded-2xl border border-line bg-card p-4">
-                  <p className="text-[0.6875rem] font-semibold tracking-[0.12em] text-fog uppercase">{k.label}</p>
-                  <p className="mt-2 font-display text-[1.75rem] leading-none text-ink">{k.value}</p>
-                  <p className="mt-1 text-[0.75rem] text-fog">{k.hint}</p>
+                <div key={k.label} className="flex flex-col gap-3 rounded-2xl border border-line bg-card p-4">
+                  <span className="grid size-9 place-items-center rounded-xl bg-brand/10 text-brand">
+                    <k.icon className="size-4" aria-hidden />
+                  </span>
+                  <div>
+                    <p className="font-display text-[1.75rem] leading-none text-ink tabular-nums">{k.value}</p>
+                    <p className="mt-1.5 text-[0.75rem] font-semibold text-mist">{k.label}</p>
+                    <p className="text-[0.6875rem] text-fog">{k.hint}</p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -228,23 +233,44 @@ export default async function PanelHomePage({
             <FinanceKpis summary={finance.data[0]} />
           ) : null}
 
-          {/* Gráficos */}
+          {/* Gráficos interactivos */}
           <div className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-2xl border border-line bg-card p-5">
-              <CountBars data={bookingsByDay} label="Reservas por día · esta semana" emptyText="Todavía no hay reservas esta semana." />
+            <div className="min-w-0 rounded-2xl border border-line bg-card p-5">
+              <InteractiveBarChart
+                title="Reservas · esta semana"
+                countUnit="reservas"
+                emptyText="Todavía no hay reservas esta semana."
+                series={[{ id: "bookings", label: "Reservas", tone: "brand", data: bookingsByDay.map((d) => ({ label: d.label, value: d.value })) }]}
+                format={(v) => String(v)}
+              />
             </div>
-            <div className="rounded-2xl border border-line bg-card p-5">
+            <div className="min-w-0 rounded-2xl border border-line bg-card p-5">
               {finance && finance.ok ? (
-                <div className="grid gap-6 sm:grid-cols-2">
-                  <MiniBar
-                    label="Ingresos por mes (NIO)"
-                    data={finance.data[1].map((m) => ({ label: m.month.slice(0, 7), value: m.incomeNio }))}
-                  />
-                  <MiniBar
-                    label="Egresos por mes (NIO)"
-                    data={finance.data[1].map((m) => ({ label: m.month.slice(0, 7), value: -m.expenseNio }))}
-                  />
-                </div>
+                <InteractiveBarChart
+                  title="Finanzas · últimos 6 meses (NIO)"
+                  emptyText="Sin movimientos financieros registrados."
+                  format={(v) => formatMoney(v, "NIO", { compact: true })}
+                  series={[
+                    {
+                      id: "net",
+                      label: "Resultado",
+                      tone: "ink",
+                      data: finance.data[1].map((m) => ({ label: m.month.slice(0, 7), value: m.incomeNio - m.expenseNio })),
+                    },
+                    {
+                      id: "income",
+                      label: "Ingresos",
+                      tone: "brand",
+                      data: finance.data[1].map((m) => ({ label: m.month.slice(0, 7), value: m.incomeNio })),
+                    },
+                    {
+                      id: "expense",
+                      label: "Egresos",
+                      tone: "alert",
+                      data: finance.data[1].map((m) => ({ label: m.month.slice(0, 7), value: m.expenseNio })),
+                    },
+                  ]}
+                />
               ) : (
                 <p className="py-8 text-sm text-fog">
                   {demo ? "Gráfico financiero disponible con Supabase conectado." : "El gráfico financiero no está disponible en este momento."}
