@@ -1,6 +1,6 @@
 # Medidas y progreso por cliente
 
-Estado: **construido en código y pruebas; SQL 00039 pendiente de aplicar**.
+Estado: **diseño APROBADO por el dueño (20 oct 2026)**. Construido en código y pruebas; SQL 00039 pendiente de aplicar en Supabase (requiere autorización expresa).
 Parte de la etapa B (operación diaria), según decisión del dueño del 19 oct 2026.
 Calorías, macros y plan alimenticio quedan para una fase posterior, con fuentes
 públicas y verificables (sección 6).
