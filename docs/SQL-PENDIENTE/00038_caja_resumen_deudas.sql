@@ -1,5 +1,5 @@
 -- 00038 CAJA VE EL RESUMEN DE DEUDAS (corrige 00034 para la página de Caja).
--- ESTADO: BORRADOR. NO APLICAR sin autorización expresa del dueño.
+-- ESTADO: APLICADO en Supabase (proyecto hcnuepdxmbsmlzdmvwhx) con autorización del dueño. Verificado: usa crm_is_staff; anon sin permiso.
 -- Motivo: 00034 dejó finance_debt_report sólo para administrador, pero la página de Caja
 -- (getCashSummary) lo usa para el resumen. Caja recibía "FIN_DEBT_REPORT_P0001" (AUTH) y no veía nada.
 -- Qué cambia: sólo el permiso de finance_debt_report. Acepta administrador o caja con aal2 (crm_is_staff),
