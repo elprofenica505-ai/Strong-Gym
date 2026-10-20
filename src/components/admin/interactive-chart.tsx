@@ -97,7 +97,7 @@ export function InteractiveBarChart({
                   }}
                   className={cn(
                     "h-8 rounded-full border px-3 text-[0.75rem] font-semibold transition-colors",
-                    selected ? "border-ink bg-ink text-white" : "border-line text-mist hover:border-ink hover:text-ink",
+                    selected ? "border-brand bg-brand text-onbrand" : "border-line text-mist hover:border-brand hover:text-ink",
                   )}
                 >
                   {s.label}
@@ -159,7 +159,7 @@ export function InteractiveBarChart({
               )}
             >
               {isHover ? (
-                <span className="pointer-events-none absolute -top-1 left-1/2 z-10 -translate-x-1/2 -translate-y-full rounded-lg bg-ink px-2.5 py-1.5 text-[0.6875rem] font-semibold whitespace-nowrap text-white shadow-lg">
+                <span className="pointer-events-none absolute -top-1 left-1/2 z-10 -translate-x-1/2 -translate-y-full rounded-lg border border-line bg-card-2 px-2.5 py-1.5 text-[0.6875rem] font-semibold whitespace-nowrap text-ink shadow-lg">
                   {d.label}: {label}
                 </span>
               ) : null}
