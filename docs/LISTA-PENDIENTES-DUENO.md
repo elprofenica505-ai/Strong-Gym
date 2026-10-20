@@ -22,7 +22,7 @@ Estado: **Existe** = funciona en código y pruebas. **Parcial** = hay una parte,
 | **Plan alimenticio** | No existe | No está en esta fase. |
 | **Calculadora automática** (calorías, macros) | No existe | Requiere fórmulas con fuente verificable antes de programar. |
 | **Plan personalizado** para el cliente | No existe | |
-| Cliente ve su progreso | Parcial (PR #21) | Sección "Mi progreso" de sólo lectura; requiere aplicar 00040 en Supabase (no aplicada). |
+| Cliente ve su progreso | Parcial (PR #21) | Sección "Mi progreso" de sólo lectura; función 00040 aplicada en Supabase. |
 | Cliente ve su plan, rutina prediseñada y calculadora | No existe | |
 
 ## Finanzas y Excel
