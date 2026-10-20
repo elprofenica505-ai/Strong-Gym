@@ -157,3 +157,49 @@ explícita. No afirmar seguridad absoluta ni certificación externa por tener HT
 
 - [ ] Aplicar 00036 (personal no es cliente) en Supabase: cancela la ficha de cliente de cuentas de personal, la búsqueda y los pedidos la ignoran. Borrador probado local 65/65. Requiere autorización.
 - [x] Cierre del día para caja (SQL 00037 aplicada en Supabase el 2026-10-19, interruptor apagado): interruptor en Accesos del administrador (apagado por defecto); caja ve sólo el cierre del día si está encendido. Prueba local 10/10. Limitación: RLS ya deja leer `transactions` a caja; un control fuerte requiere cambiar políticas (decisión aparte).
+
+## Actualización 19 oct 2026 (rama arena/903ffcdc-strong-gym)
+
+Estado al cierre de hoy. Reemplaza las marcas anteriores donde haya diferencia.
+
+**Hecho y en `main`**
+- [x] PR #17 (panel por módulos, asignación de entrenadores, personal separado de clientes), fusionado `8ea8762`.
+- [x] PR #18 (reportes financieros y Excel maestro), fusionado `ea788ab`. Producción Vercel READY.
+- [x] 00036 (personal no es cliente) aplicada en Supabase: 0 fichas de personal activas.
+
+**Hecho en la rama (pendiente de llevar a `main` con autorización)**
+- [x] 00037 aplicada en Supabase: interruptor "Cierre del día para caja" en Accesos, apagado por defecto. Verificado en base.
+- [x] 00038 aplicada en Supabase: `finance_debt_report` acepta caja con aal2 (`crm_is_staff`). Corrige el error de la página de Caja (`FIN_DEBT_REPORT_P0001`) causado por 00034. Verificado en base: anon sin permiso.
+- [x] Caja ve sólo el cierre del día en Reportes cuando el interruptor está encendido. Pruebas locales: página 8/8, 00037 10/10, Fase B 59/59.
+- [x] Gráfico de finanzas: pestaña activa y etiqueta flotante legibles en modo oscuro (`--color-ink` es blanco en el tema oscuro). `test:auth` 573/573.
+
+**Pendiente de prueba en navegador real**
+- [ ] Caja: Reportes > Cierre del día con el interruptor encendido.
+- [ ] Vista "Mis clientes" con una cuenta de entrenador real.
+- [ ] Cierre por inactividad de 2 horas (sólo administrador).
+- [ ] Recuperación de contraseña en la app instalada.
+- [ ] Gráfico de finanzas en celular tras el arreglo de contraste.
+
+**Esperando al dueño (no ejecutar sin decisión o dato)**
+- [ ] Correo propio del gimnasio (remitente, dominio y proveedor SMTP) y prueba de recuperación con correo real.
+- [ ] Sesiones con tiempo límite en Supabase: requiere plan Pro.
+- [ ] Verificador antispam externo tipo Turnstile.
+- [ ] Política de contenido (CSP): probar en modo informativo antes de activar.
+- [ ] Dueño como segundo administrador: requiere su correo y autorización escrita.
+- [ ] Llave de acceso (huella o rostro) cuando Supabase la saque de versión experimental.
+- [ ] Cuenta de prueba de cliente: requiere correo propio o ser miembro del equipo.
+- [ ] Limpieza de datos de prueba: NO hacer todavía, por instrucción del dueño.
+
+**Trabajo técnico pendiente**
+- [ ] Roles: UI de asignación de roles, vista de entrenador completa y anulación controlada (Fase C).
+- [ ] Revisión restante de RLS, Storage, abuso, CSRF y cabeceras.
+- [ ] Rediseño de navegación por etapas (Inicio, Clientes, Agenda, Finanzas, Personal, Reportes, Configuración).
+- [ ] Operación diaria: planes y vigencias, reservas y cupos, asistencia e inasistencia, mensajes leídos o no leídos, QR en dispositivo real, horarios en hora de Managua.
+- [ ] Gestión: personal con auditoría, recibido y vuelto en todos los cobros, cierres y conciliación, reglas de reversión, importación validada, comprobantes PDF.
+- [ ] Aceptación integral: recorrido completo con datos ficticios, pruebas por rol, doble clic y concurrencia, TLS, respaldo y restauración, guía de incidentes.
+
+**Entrega al dueño (no ejecutar todavía)**
+- [ ] Inventario y aprobación de limpieza de datos de prueba.
+- [ ] Carga de datos reales y conciliación de los cuatro saldos por cliente.
+- [ ] Cuenta del dueño verificada antes de retirar el administrador temporal.
+- [ ] Demostración final y manual de uso.
