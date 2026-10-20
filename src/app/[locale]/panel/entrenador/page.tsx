@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { TrainerClientsPanel } from "@/components/admin/trainer-clients-panel";
 import { DataUnavailable } from "@/components/ui/data-unavailable";
@@ -47,6 +48,9 @@ export default async function EntrenadorPage({
       </section>
       <section className="py-8 sm:py-10">
         <div className="container-x">
+          <p className="mb-6 text-sm text-fog">
+            <Link className="text-brand-300 underline" href={`/${locale}/panel/progreso`}>Ver medidas, metas y rutinas de mis clientes</Link>
+          </p>
           {DEMO_MODE ? (
             <p className="rounded-xl border border-brand/30 bg-brand/[0.06] px-4 py-3 text-[0.8125rem] text-mist">
               Modo demo: los clientes asignados requieren Supabase conectado.

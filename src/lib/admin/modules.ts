@@ -50,7 +50,7 @@ export const PANEL_MODULES: PanelModule[] = [
     label: "Clientes",
     description: "Fichas, búsqueda, recepción con QR, asistencias y etiquetas.",
     href: "/panel/clientes",
-    children: [],
+    children: [{ id: "progreso", label: "Progreso y medidas", href: "/panel/progreso" }],
   },
   {
     id: "finanzas",

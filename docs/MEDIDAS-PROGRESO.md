@@ -120,6 +120,17 @@ Archivo: `docs/SQL-PENDIENTE/00039_medidas_metas_rutinas.sql`.
    prototipo): hoy el modelo es por rol; si el dueño quiere permisos finos, es una
    decisión aparte.
 
+## 7b. Pantallas construidas
+
+- `/panel/progreso`: lista de clientes para el entrenador (sólo los asignados y aprobados).
+  Administración y caja abren la ficha desde Clientes ("Progreso y medidas").
+- `/panel/progreso/[id]`: IMC y peso sano para su altura, avance de la meta, historial de
+  mediciones (un guion = no tomada), meta activa y rutina activa.
+- Formularios: medición (caja, administrador y entrenador asignado), meta y rutina
+  (administrador y entrenador asignado). Un valor fuera de rango pide confirmación explícita.
+- `POST /api/progress`: valida otra vez en el servidor y llama a las funciones de la 00039.
+- Pruebas nuevas: 22 de formularios y reglas (`tests/progress-forms.test.mjs`, `tests/progress-rules.test.mjs`).
+
 ## 8. Entrega propuesta
 
 1. Diseño aprobado por el dueño (hecho).
