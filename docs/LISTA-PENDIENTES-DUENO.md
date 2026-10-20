@@ -39,6 +39,16 @@ Estado: **Existe** = funciona en código y pruebas. **Parcial** = hay una parte,
 - Recuperación de contraseña abre en navegador (pendiente de prueba).
 - Caja no ve cierre del día (00038 aplicada; pendiente de prueba).
 
+## Tareas pendientes (en orden, sin empezar)
+- [ ] T1. Asistencia completa: módulo de asistencia para admin, caja, entrenador y cliente (historial por fecha y reporte).
+- [ ] T2. Rutinas prediseñadas por objetivo (ganar peso distinto de bajar peso).
+- [ ] T3. Calculadora automática de calorías y macros (requiere fórmulas con fuente, explicadas al dueño antes de programar).
+- [ ] T4. Plan alimenticio y plan personalizado para el cliente.
+- [ ] T5. Excel maestro que se actualiza solo al registrar un pago en caja (mecanismo por decidir).
+- [ ] T6. Aplicar 00040 en Supabase (requiere autorización expresa).
+- [ ] T7. Pruebas en navegador de: cierre del día, recuperación de contraseña, reportes.
+
 ## Decisiones que necesita el dueño
-1. Mecanismo del Excel que se actualiza solo: (a) hoja de Google Sheets conectada, (b) Excel en OneDrive, (c) enlace de datos que Excel actualiza, (d) mantener descarga manual.
-2. Orden de prioridad de los módulos no existentes.
+1. Mecanismo del Excel que se actualiza solo: (a) Google Sheets conectado, (b) Excel en OneDrive, (c) manual (descarga, como ahora).
+2. Orden de prioridad de T1 a T5 (propuesta: T1, T2, T3, T4, T5).
+3. Calculadora (T3): ¿explicar primero las fórmulas con fuentes profesionales y no programar nutrición hasta aprobarlas?
