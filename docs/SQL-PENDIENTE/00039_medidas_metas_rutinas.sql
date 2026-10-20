@@ -1,4 +1,4 @@
--- 00039 MEDIDAS, METAS Y RUTINAS POR CLIENTE. ESTADO: PENDIENTE (no aplicada en Supabase).
+-- 00039 MEDIDAS, METAS Y RUTINAS POR CLIENTE. ESTADO: APLICADO EN SUPABASE (proyecto hcnuepdxmbsmlzdmvwhx, versión 20261020123310, nombre medidas_metas_rutinas) tras prueba local 43/43.
 -- Requiere 00033 (is_admin/is_cashier/is_trainer), 00035 (trainer_client_access) y 00036.
 -- Las reglas de negocio están en src/lib/progress/rules.ts; aquí van como restricciones duras.
 --
@@ -64,7 +64,7 @@ create index if not exists body_measurements_client_idx on public.body_measureme
 create or replace function public.body_measurements_append_only()
 returns trigger language plpgsql as $$
 begin
-  raise exception 'Las mediciones no se editan ni se borran; registra una nueva medición.';
+  raise exception 'Las mediciones no se editan ni se borran; registra una nueva medicion.';
 end;
 $$;
 drop trigger if exists body_measurements_no_update on public.body_measurements;

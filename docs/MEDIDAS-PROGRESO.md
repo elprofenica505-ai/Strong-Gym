@@ -1,6 +1,6 @@
 # Medidas y progreso por cliente
 
-Estado: **diseño APROBADO por el dueño (20 oct 2026)**. Construido en código y pruebas; SQL 00039 pendiente de aplicar en Supabase (requiere autorización expresa).
+Estado: **diseño APROBADO por el dueño (20 oct 2026)**. Construido en código y pruebas; SQL 00039 APLICADA en Supabase (20 oct 2026, con autorización expresa del dueño).
 Parte de la etapa B (operación diaria), según decisión del dueño del 19 oct 2026.
 Calorías, macros y plan alimenticio quedan para una fase posterior, con fuentes
 públicas y verificables (sección 6).
@@ -87,7 +87,7 @@ Fuente del IMC y de la clasificación (usada para mostrar peso sano por altura):
 Todas las lecturas y escrituras requieren sesión segura (MFA, aal2) para el personal,
 y la base lo revisa. Caja no cambia metas ni rutinas por separación de funciones.
 
-## 5. Modelo de datos (SQL 00039, pendiente de aplicar)
+## 5. Modelo de datos (SQL 00039, aplicada)
 
 Archivo: `docs/SQL-PENDIENTE/00039_medidas_metas_rutinas.sql`.
 
@@ -112,19 +112,17 @@ Archivo: `docs/SQL-PENDIENTE/00039_medidas_metas_rutinas.sql`.
 
 ## 7. Pendientes
 
-1. **Aplicar 00039 en Supabase**: sólo con autorización expresa del dueño.
-2. **Pantallas**: registro, historial y metas en caja, administrador y entrenador
+1. **Pantallas**: registro, historial y metas en caja, administrador y entrenador
    (se construyen después de aplicar 00039, para probar con datos reales).
-3. **Cliente ve su progreso**: pendiente de decisión. Hoy no tiene acceso.
-4. **Confirmar rangos de aviso** (sección 1) y la tolerancia de mantenimiento (2 kg).
-5. **Permisos por entrenador** (medir, meta, rutina, plan por separado, como en el
+2. **Cliente ve su progreso**: pendiente de decisión. Hoy no tiene acceso.
+3. **Confirmar rangos de aviso** (sección 1) y la tolerancia de mantenimiento (2 kg).
+4. **Permisos por entrenador** (medir, meta, rutina, plan por separado, como en el
    prototipo): hoy el modelo es por rol; si el dueño quiere permisos finos, es una
    decisión aparte.
 
 ## 8. Entrega propuesta
 
-1. Revisión de este documento por el dueño.
-2. Aplicar 00039 en Supabase (con autorización).
-3. Pantallas de registro, historial y metas.
-4. Pruebas de regresión y recorrido con datos ficticios marcados como tales.
-5. Verificación con el dueño antes de cualquier dato real.
+1. Diseño aprobado por el dueño (hecho).
+2. Pantallas de registro, historial y metas (con datos reales de prueba, marcados como tales).
+3. Pruebas de regresión y recorrido en navegador.
+4. Verificación con el dueño antes de cualquier dato real.
