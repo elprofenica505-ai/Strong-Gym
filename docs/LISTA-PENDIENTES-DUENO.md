@@ -35,7 +35,7 @@ Estado: **Existe** = funciona en código y pruebas. **Parcial** = hay una parte,
 ## Otros pendientes del dueño
 - Rangos de aviso definitivos para medidas.
 - Tolerancia ±2 kg en mantenimiento (provisional).
-- Autorizar aplicar 00040 en Supabase.
+- (Hecho) 00040 aplicada en Supabase.
 - Recuperación de contraseña abre en navegador (pendiente de prueba).
 - Caja no ve cierre del día (00038 aplicada; pendiente de prueba).
 
@@ -45,7 +45,7 @@ Estado: **Existe** = funciona en código y pruebas. **Parcial** = hay una parte,
 - [ ] T3. Calculadora automática de calorías y macros (requiere fórmulas con fuente, explicadas al dueño antes de programar).
 - [ ] T4. Plan alimenticio y plan personalizado para el cliente.
 - [ ] T5. Excel maestro que se actualiza solo al registrar un pago en caja (mecanismo por decidir).
-- [ ] T6. Aplicar 00040 en Supabase (requiere autorización expresa).
+- [x] T6. Aplicar 00040 en Supabase (aplicada 2026-10-20 con autorización del dueño).
 - [ ] T7. Pruebas en navegador de: cierre del día, recuperación de contraseña, reportes.
 
 ## Decisiones que necesita el dueño

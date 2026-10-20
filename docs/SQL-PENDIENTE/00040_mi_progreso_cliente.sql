@@ -1,4 +1,4 @@
--- 00040 MI PROGRESO PARA EL CLIENTE. ESTADO: PENDIENTE (no aplicada en Supabase).
+-- 00040 MI PROGRESO PARA EL CLIENTE. ESTADO: APLICADA en Supabase (proyecto hcnuepdxmbsmlzdmvwhx, 2026-10-20).
 -- Requiere 00039. Sólo agrega una función de lectura; no cambia las tablas ni las políticas existentes.
 --
 -- Reglas:
