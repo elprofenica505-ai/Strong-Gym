@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useDictionary } from "@/components/providers/dictionary-provider";
@@ -120,6 +120,12 @@ export function ClientsPanel({
   const options = optionsResource.data ?? emptyOptions;
   const detail = detailResource.data;
   const loading = directoryResource.loading;
+  // La ficha aparece debajo de la lista: al abrir un cliente, bajamos hasta ella.
+  const detailId = detail?.client.id;
+  useEffect(() => {
+    if (!detailId) return;
+    document.getElementById("ficha-cliente")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  }, [detailId]);
   const detailBusy = busy || detailResource.loading || !!detailResource.error;
   function select(id: string, token: string | null = null) {
     setEntryFeedback(null);
@@ -510,12 +516,24 @@ export function ClientsPanel({
       )}
       {detail && (
         <section
+          id="ficha-cliente"
           aria-busy={detailResource.loading}
-          className="rounded-2xl border border-brand/30 bg-card p-5 space-y-6"
+          className="scroll-mt-24 rounded-2xl border border-brand/30 bg-card p-5 space-y-6"
         >
           <h2 className="display-xl text-2xl">
             #{detail.client.client_number} · {detail.client.full_name}
           </h2>
+          <nav aria-label="Ir a una sección de la ficha" className="flex flex-wrap items-center gap-2 text-sm">
+            <a href="#cobro" className="rounded-full border border-line px-3 py-1.5 text-ink hover:border-brand/60">Cobrar</a>
+            <a href="#datos" className="rounded-full border border-line px-3 py-1.5 text-ink hover:border-brand/60">Datos del cliente</a>
+            <a href="#historial" className="rounded-full border border-line px-3 py-1.5 text-ink hover:border-brand/60">Historial de pagos</a>
+            <Link
+              href={`/${locale}/panel/progreso/${detail.client.id}`}
+              className="ml-auto rounded-full bg-brand px-4 py-1.5 font-semibold text-onbrand"
+            >
+              Progreso y medidas (peso, altura, rutina)
+            </Link>
+          </nav>
           <div className="flex flex-wrap gap-3">
             <Button
               disabled={detailBusy || detail.client.status !== "active"}
@@ -591,6 +609,7 @@ export function ClientsPanel({
             key={`debt:${detail.client.id}`} clientId={detail.client.id} locale={locale}
             disabled={detailBusy} onBusy={setBusy} onRefresh={() => setRevision(n => n + 1)}
           />}
+          <div id="datos" className="scroll-mt-24">
           <EditClient
             key={`${detail.client.id}:${detail.client.updated_at ?? detail.client.created_at}`}
             client={detail.client}
@@ -602,6 +621,7 @@ export function ClientsPanel({
               setNotice("Ficha guardada. Las etiquetas no cambian precios.");
             }}
           />
+          </div>
           <div className="grid gap-8 xl:grid-cols-2">
             <div className="space-y-3">
               <h3 className="text-lg font-bold">Carnet digital o impreso</h3>
@@ -641,6 +661,7 @@ export function ClientsPanel({
                 Reemplazar QR perdido
               </Button>
             </div>
+            <div id="cobro" className="scroll-mt-24">
             {options.finance_layout === "bank_accounts_split" ? (
               <MovementForm
                 key={detail.client.id}
@@ -666,8 +687,9 @@ export function ClientsPanel({
                 onRefresh={() => setRevision((n) => n + 1)}
               />
             )}
+            </div>
           </div>
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div id="historial" className="scroll-mt-24 grid gap-6 lg:grid-cols-2">
             <div>
               <h3 className="mb-3 text-lg font-bold">Últimas 60 entradas</h3>
               <ul className="space-y-2 text-sm">

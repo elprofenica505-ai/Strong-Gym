@@ -47,6 +47,8 @@ await db.exec(sql('docs/SQL-PENDIENTE/00034_roles_fase_b.sql'));
 await db.exec(sql('docs/SQL-PENDIENTE/00035_asignacion_entrenador.sql'));
 await db.exec(sql('docs/SQL-PENDIENTE/00036_personal_no_es_cliente.sql'));
 await db.exec(sql('docs/SQL-PENDIENTE/00039_medidas_metas_rutinas.sql'));
+await db.exec(sql('docs/SQL-PENDIENTE/00040_mi_progreso_cliente.sql'));
+ok('00040 se aplica sobre 00039 sin error', true);
 ok('00039 se aplica sobre 00036 sin error', true);
 
 // Clientes: ana (el entrenador tiene acceso aprobado), luis (sin acceso para nadie).
@@ -144,5 +146,16 @@ ok('caja sí lee rutinas', (await as(cashier, 'aal2', 'select id from client_rou
 // 7) Acceso sin MFA y anon en lectura
 ok('admin sin aal2 no lee medidas', (await as(admin, 'aal1', 'select id from body_measurements')).length === 0);
 ok('anon no lee metas', await denied(as(null, null, 'select id from client_goals'), /permission denied|42501/));
+
+// 8) Mi progreso (00040): el cliente ve SOLO sus datos, sin notas del personal
+const memberClient = (await db.query(`select id from gym_clients where profile_id = $1`, [member])).rows[0].id;
+await db.query(`insert into body_measurements(client_id, measured_on, weight_kg, cintura_cm, notes) values ($1, $2, 81.5, 90, 'NOTA INTERNA DEL PERSONAL')`, [memberClient, today]);
+const mine = await as(member, 'aal1', 'select public.my_progress() as p');
+ok('el cliente ve su propia medición', mine[0].p && mine[0].p.measurements.length === 1 && mine[0].p.measurements[0].weight_kg == 81.5);
+ok('la respuesta no incluye notas del personal', !JSON.stringify(mine[0].p).includes('NOTA INTERNA'));
+ok('el cliente no ve datos de otro cliente', !JSON.stringify(mine[0].p).includes('ANA EJEMPLO') && !JSON.stringify(mine[0].p).includes('LUIS EJEMPLO'));
+const other = (await as(trainer2, 'aal2', 'select public.my_progress() as p'))[0].p;
+ok('otra cuenta sin medidas propias no ve datos ajenos', other === null || (other.measurements.length === 0 && !JSON.stringify(other).includes('ANA EJEMPLO')));
+ok('anon no puede llamar my_progress', await denied(as(null, null, 'select public.my_progress()'), /permission denied|42501/));
 
 console.log(`\n${checks} comprobaciones PASS (00039 medidas, metas y rutinas)`);

@@ -7,6 +7,8 @@ import { SectionHeading } from "@/components/ui/section";
 import { getDictionary } from "@/i18n/dictionaries";
 import { isLocale, type Locale } from "@/i18n/config";
 import { getCurrentUser, getMyBookings, getPlans, getMyAssignedPlan } from "@/lib/data/queries";
+import { getMyProgress } from "@/lib/data/progress-queries";
+import { MyProgress } from "@/components/account/my-progress";
 import { MfaSetup } from "@/components/auth/mfa-setup";
 import { isStaffRole } from "@/lib/auth/current-user";
 import { ButtonLink } from "@/components/ui/button";
@@ -53,6 +55,8 @@ export default async function AccountPage({
   // Lectura separada: un fallo de plan no convierte el dato en «sin plan»
   // ni impide consultar reservas. El RPC sólo consulta la identidad de la sesión.
   const assignedPlan = user ? await readData(getMyAssignedPlan) : null;
+  // Progreso propio (00040). Si la consulta falla, el cliente ve un aviso, no «sin datos».
+  const myProgress = user && !isStaffRole(user.role) ? await readData(getMyProgress) : null;
 
   return (
     <>
@@ -100,6 +104,17 @@ export default async function AccountPage({
             <div className="container-x">
               <AccountDashboard initialBookings={bookings} plans={plans}
                 accountPlan={user && assignedPlan ? { userId: user.id, ...assignedPlan } : null} />
+            </div>
+          </section>
+          <section className="pb-10 sm:pb-12 lg:pb-14">
+            <div className="container-x">
+              {myProgress && myProgress.ok ? (
+                <MyProgress data={myProgress.data} />
+              ) : myProgress && !myProgress.ok ? (
+                <p className="rounded-2xl border border-line bg-card p-6 text-[0.9375rem] text-mist">
+                  Tu progreso no se pudo cargar en este momento. Intenta de nuevo más tarde.
+                </p>
+              ) : null}
             </div>
           </section>
         </>

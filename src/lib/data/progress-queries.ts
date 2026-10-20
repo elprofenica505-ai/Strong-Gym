@@ -122,3 +122,52 @@ export async function getMyProgressRoster(): Promise<Array<{ clientId: string; f
     }));
   });
 }
+
+/**
+ * Progreso propio del cliente (función my_progress, migración 00040).
+ * Sólo devuelve datos de la cuenta que inició sesión. Null = la cuenta no tiene ficha vinculada.
+ */
+export async function getMyProgress(): Promise<Omit<ClientProgress, "clientId"> | null> {
+  return checkedRead("MY_PROGRESS", async () => {
+    const supabase = await getSupabaseServerClient();
+    if (!supabase) return null;
+    const { data, error } = await supabase.rpc("my_progress");
+    if (error) throw new DataReadError("MY_PROGRESS", error.code);
+    if (!data) return null;
+    const d = data as Record<string, unknown>;
+    const measurements = ((d.measurements ?? []) as Array<Record<string, unknown>>).map((r): MeasurementRow => {
+      const v = (r.values ?? {}) as Record<string, unknown>;
+      return {
+        id: `${r.measured_on as string}`,
+        measuredOn: r.measured_on as string,
+        weightKg: Number(r.weight_kg),
+        heightCm: num(r.height_cm),
+        values: {
+          cintura_cm: num(v.cintura_cm), pecho_cm: num(v.pecho_cm),
+          biceps_relajado_cm: num(v.biceps_relajado_cm), biceps_contraido_cm: num(v.biceps_contraido_cm),
+          antebrazo_cm: num(v.antebrazo_cm), gluteo_cm: num(v.gluteo_cm),
+          muslo_cm: num(v.muslo_cm), pantorrilla_cm: num(v.pantorrilla_cm),
+        },
+        notes: null,
+      };
+    });
+    const g = d.goal as Record<string, unknown> | null;
+    const goal: GoalRow | null = g ? {
+      id: "meta",
+      goalType: g.goal_type as GoalRow["goalType"],
+      otherLabel: (g.other_label as string | null) ?? null,
+      startsOn: g.starts_on as string,
+      targetDate: g.target_date as string,
+      targetWeightKg: num(g.target_weight_kg),
+    } : null;
+    const r = d.routine as Record<string, unknown> | null;
+    const routine: RoutineRow | null = r ? {
+      id: "rutina",
+      name: r.name as string,
+      days: (r.days ?? []) as string[],
+      exercises: (r.exercises ?? []) as RoutineRow["exercises"],
+      startsOn: r.starts_on as string,
+    } : null;
+    return { clientName: (d.client_name as string) ?? "", measurements, goal, routine };
+  });
+}

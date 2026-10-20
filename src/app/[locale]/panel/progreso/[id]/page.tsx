@@ -53,6 +53,7 @@ export default async function ProgresoClientePage({
       </section>
       <section className="py-8 sm:py-10">
         <div className="container-x grid gap-6">
+          <a href={`/${locale}/panel/clientes`} className="text-sm text-brand-300 underline">← Volver a clientes</a>
           {DEMO_MODE ? (
             <p className="rounded-xl border border-brand/30 bg-brand/[0.06] px-4 py-3 text-[0.8125rem] text-mist">
               Modo demo: el progreso requiere Supabase conectado. No se muestran datos.
@@ -96,6 +97,22 @@ function ProgressView({
 
   return (
     <>
+      {(canRecord || canManage) && (
+        <details className="rounded-2xl border border-brand/30 bg-card p-4">
+          <summary className="cursor-pointer text-lg font-bold text-ink">
+            + Registrar medición{canManage ? ", cambiar meta o rutina" : ""}
+          </summary>
+          <div className="mt-4">
+            <ProgressForms
+              clientId={data.clientId}
+              canRecord={canRecord}
+              canManage={canManage}
+              today={today}
+              maxTargetDate={addMonths(today, 12)}
+            />
+          </div>
+        </details>
+      )}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Peso actual" value={current !== null ? `${fmt1(current)} kg` : "Sin datos"} sub={last ? `Medido el ${last.measuredOn}` : "Registra la primera medición"} />
         <Stat label="IMC (OMS)" value={index !== null ? fmt1(index) : "Sin datos"} sub={index !== null ? BMI_LABEL[bmiCategory(index)] : "Hace falta altura"} />
@@ -175,15 +192,6 @@ function ProgressView({
         )}
       </section>
 
-      {(canRecord || canManage) && (
-        <ProgressForms
-          clientId={data.clientId}
-          canRecord={canRecord}
-          canManage={canManage}
-          today={today}
-          maxTargetDate={addMonths(today, 12)}
-        />
-      )}
     </>
   );
 }

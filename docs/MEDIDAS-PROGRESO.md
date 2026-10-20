@@ -137,3 +137,12 @@ Archivo: `docs/SQL-PENDIENTE/00039_medidas_metas_rutinas.sql`.
 2. Pantallas de registro, historial y metas (con datos reales de prueba, marcados como tales).
 3. Pruebas de regresión y recorrido en navegador.
 4. Verificación con el dueño antes de cualquier dato real.
+
+## 7c. Vista del cliente y ajustes de la ficha (pendiente de aplicar 00040)
+
+- **Ficha de cliente (admin y caja):** la ficha sube sola al abrir un cliente; tiene una barra con Cobrar, Datos del cliente, Historial de pagos y un botón "Progreso y medidas".
+- **Pantalla de progreso:** el formulario de registro va arriba, plegado ("+ Registrar medición"); enlace de regreso a Clientes.
+- **Cliente (Mi cuenta):** sección "Mi progreso" con peso, IMC y peso sano, circunferencias, meta, rutina e historial de peso. Sólo lectura, sólo sus datos, sin notas del personal.
+- **Requiere:** aplicar `docs/SQL-PENDIENTE/00040_mi_progreso_cliente.sql` en Supabase. **No aplicada.** Hasta entonces el cliente ve el aviso "no se pudo cargar".
+- **Plan alimenticio:** no está en esta fase.
+- **Pruebas:** `npm run test:medidas` (SQL 00039 + 00040, 49 comprobaciones), `npm run test:auth`, `npm run test:roles`. `test:layout` requiere navegador (no disponible en este entorno).
