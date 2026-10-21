@@ -167,6 +167,13 @@ export function NutritionCalculator({
     if (ok) setShowForm(false);
   };
 
+  // Recalcular empieza con el formulario vacío (sin datos del cálculo anterior) y sin aceptación marcada.
+  const startRecalc = () => {
+    setForm({ sex: "f", age: "", weightKg: "", heightCm: "", activity: "3", goal: "mantener" });
+    setAccepted(false);
+    setShowForm(true);
+  };
+
   const submitToGym = async () => {
     await post({ action: "submit" }, "Registro guardado en el gimnasio. La meta, la rutina y el peso ya aparecen en la ficha del cliente.");
   };
@@ -443,7 +450,7 @@ export function NutritionCalculator({
                 <button type="button" className={primary} onClick={() => { setEditing(true); setMeals(plan.meal_plan); setRoutine(plan.routine); }}>Editar plan y rutina</button>
               )}
               {canCalc && !editing && (
-                <button type="button" className={button} onClick={() => setShowForm(true)}>Recalcular con nuevos datos</button>
+                <button type="button" className={button} onClick={startRecalc}>Recalcular con nuevos datos</button>
               )}
               {editing && (
                 <>
