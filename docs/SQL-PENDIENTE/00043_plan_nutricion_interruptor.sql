@@ -1,4 +1,4 @@
--- 00043 PLAN DE NUTRICIÓN Y RUTINA POR OBJETIVO + INTERRUPTOR DEL ADMINISTRADOR. ESTADO: PENDIENTE de aplicar.
+-- Aplicada en Supabase (proyecto hcnuepdxmbsmlzdmvwhx) el 2026-10-21 tras pasar scripts/test-productos-sql.mjs.
 -- Requiere 00039 (progress_can_read_client), 00033 (is_admin, is_cashier, is_trainer) y 00042.
 --
 -- Reglas:

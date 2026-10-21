@@ -1,4 +1,4 @@
--- 00042 PRODUCTOS, STOCK, VENTAS Y CATEGORÍA DE CLIENTE. ESTADO: PENDIENTE de aplicar.
+-- Aplicada en Supabase (proyecto hcnuepdxmbsmlzdmvwhx) el 2026-10-21 tras pasar scripts/test-productos-sql.mjs.
 -- Requiere 00024 (finance_record_movement), 00039 (progress_can_read_client), 00041 (asistencia).
 --
 -- Reglas:
