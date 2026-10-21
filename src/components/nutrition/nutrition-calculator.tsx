@@ -35,6 +35,7 @@ type Plan = {
   source: "cliente" | "entrenador";
   edited_by_staff: boolean;
   updated_at: string;
+  submitted_at: string | null;
 };
 type Payload = {
   client_id: string;
@@ -166,6 +167,14 @@ export function NutritionCalculator({
     if (ok) setShowForm(false);
   };
 
+  const submitToGym = async () => {
+    await post({ action: "submit" }, "Registro guardado en el gimnasio. Ya aparece en la ficha del cliente.");
+  };
+
+  const registeredAt = plan?.submitted_at
+    ? new Date(plan.submitted_at).toLocaleDateString("es-NI", { timeZone: "America/Managua" })
+    : null;
+
   const saveEdits = async () => {
     if (!plan) return;
     const ok = await post(
@@ -267,6 +276,14 @@ export function NutritionCalculator({
               {plan.source === "entrenador" ? "ajustado por el entrenador" : "calculado por el cliente"}
             </span>
           </div>
+
+          {mode === "staff" && (
+            <p className="text-[0.85rem] text-fog">
+              {registeredAt
+                ? `Registrado en el gimnasio el ${registeredAt}; su peso y altura ya están en la ficha.`
+                : "Pendiente de registro: el cliente todavía no guardó este cálculo en el gimnasio."}
+            </p>
+          )}
 
           <div className="grid gap-2">
             <h4 className="font-semibold">1. Resultados</h4>
@@ -404,6 +421,21 @@ export function NutritionCalculator({
               ))}
             </ul>
           </div>
+
+          {mode === "client" && (
+            <div className="grid gap-2 rounded-lg border border-line p-4 text-[0.9rem]">
+              {registeredAt ? (
+                <p className="text-ink">Registrado en el gimnasio el {registeredAt}. Si recalculás, tendrás que registrarlo de nuevo.</p>
+              ) : (
+                <p className="text-fog">
+                  Este cálculo todavía no está registrado en el gimnasio. Guardalo para que tu entrenador y la administración vean tu peso y altura actualizados.
+                </p>
+              )}
+              <button type="button" className={`${primary} justify-self-start`} onClick={() => void submitToGym()} disabled={busy || !!plan.submitted_at}>
+                Guardar registro en gimnasio
+              </button>
+            </div>
+          )}
 
           {(canCalc || data.can_edit) && (
             <div className="flex flex-wrap gap-3">

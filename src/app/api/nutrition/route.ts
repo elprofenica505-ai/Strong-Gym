@@ -23,6 +23,8 @@ const failures: Record<string, [number, string]> = {
   AUTH: [403, "No tenés permiso para cambiar este plan."],
   INVALID_GOAL: [422, "Elegí un objetivo de la lista."],
   NOT_FOUND: [404, "No encontramos tu ficha de cliente. Pedile al administrador que la cree."],
+  NO_PLAN: [409, "Primero calculá tu plan; después podés guardarlo en el gimnasio."],
+  NO_WEIGHT: [422, "Tu cálculo no tiene peso válido. Calculá el plan de nuevo."],
   LOCKED_BY_STAFF: [
     409,
     "Tu entrenador ajustó tu plan. Para recalcularlo, pedile que lo haga o que lo habilite.",
@@ -80,6 +82,8 @@ const postSchema = z.discriminatedUnion("action", [
     // El cliente debe aceptar la política de seguridad antes de calcular.
     acceptDisclaimer: z.literal(true, { message: "Aceptá el aviso de seguridad para calcular." }),
   }),
+  // El cliente guarda su cálculo en el gimnasio (crea la medición de peso y altura, una sola vez).
+  z.object({ action: z.literal("submit") }),
   // Entrenador o administrador guarda el cálculo, con ediciones opcionales.
   z.object({
     action: z.literal("save"),
@@ -147,6 +151,12 @@ export async function POST(request: Request) {
         p_client: body.client,
         p_trainer: body.trainer,
       });
+      if (error) return failure(error);
+      return reply({ ok: true, data });
+    }
+
+    if (body.action === "submit") {
+      const { data, error } = await ctx.db.rpc("nutrition_submit_to_gym");
       if (error) return failure(error);
       return reply({ ok: true, data });
     }

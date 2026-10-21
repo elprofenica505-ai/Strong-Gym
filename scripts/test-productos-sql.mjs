@@ -203,4 +203,31 @@ ok('entrenador sin acceso no lee el plan de luis (null)', (await getAs(trainer, 
 ok('anónimo no lee planes', await denied(as(null, null, 'select public.nutrition_get($1)', [ana])));
 ok('las tablas de herramientas no se leen directamente', await denied(as(admin, 'aal2', 'select * from client_nutrition_plans'), /permission denied|42501/));
 
-console.log(`\n${checks} comprobaciones PASS (00042 productos, stock, ventas, categoría; 00043-00044 plan de nutrición)`);
+// ===== 00045: registro en el gimnasio desde la calculadora del cliente =====
+await db.exec(sql('docs/SQL-PENDIENTE/00045_registro_gimnasio_calculadora.sql'));
+ok('00045 se aplica sobre 00044 sin error', true);
+const member2 = await makeUser('cliente2@test.invalid', null);
+const client2 = (await db.query('select id from gym_clients where profile_id = $1', [member2])).rows[0].id;
+const mCount = async (c) => Number((await db.query('select count(*)::int as n from body_measurements where client_id = $1', [c])).rows[0].n);
+const submit = (actor, aal) => as(actor, aal, 'select public.nutrition_submit_to_gym() as r', []);
+const before2 = await mCount(client2);
+
+ok('el cliente nuevo calcula su plan', (await selfCalc(member2, 'aal1'))[0].id === client2);
+ok('antes de registrar, el plan no tiene fecha de registro', (await getAs(member2, 'aal1')).plan.submitted_at === null);
+const regR1 = (await submit(member2, 'aal1'))[0].r;
+ok('guardar registro crea una medición', regR1.already === false && (await mCount(client2)) === before2 + 1);
+const regM1 = (await db.query('select weight_kg, height_cm from body_measurements where client_id = $1 order by created_at desc limit 1', [client2])).rows[0];
+ok('la medición tiene el peso y la altura del cálculo', Number(regM1.weight_kg) === 80 && Number(regM1.height_cm) === 180);
+const regR2 = (await submit(member2, 'aal1'))[0].r;
+ok('guardar otra vez no duplica la medición', regR2.already === true && (await mCount(client2)) === before2 + 1);
+ok('el cliente ve la fecha de registro en su plan', (await getAs(member2, 'aal1')).plan.submitted_at !== null);
+ok('el administrador ve la medición en la ficha', (await as(admin, 'aal2', 'select count(*)::int as n from body_measurements where client_id = $1', [client2]))[0].n === before2 + 1);
+ok('caja ve la medición en la ficha', (await as(cashier, 'aal2', 'select count(*)::int as n from body_measurements where client_id = $1', [client2]))[0].n === before2 + 1);
+ok('entrenador sin acceso no ve la medición de este cliente', (await as(trainer, 'aal2', 'select count(*)::int as n from body_measurements where client_id = $1', [client2]))[0].n === 0);
+ok('recalcular quita la marca de registro', (await selfCalc(member2, 'aal1'))[0].id === client2 && (await getAs(member2, 'aal1')).plan.submitted_at === null);
+const regR3 = (await submit(member2, 'aal1'))[0].r;
+ok('registrar el nuevo cálculo crea otra medición', regR3.already === false && (await mCount(client2)) === before2 + 2);
+ok('el personal no registra por el cliente (sin plan propio)', await denied(submit(trainer, 'aal2'), /NOT_FOUND|NO_PLAN|AUTH/));
+ok('anónimo no registra', await denied(submit(null, null), /AUTH|permission denied|42501/));
+
+console.log(`\n${checks} comprobaciones PASS (00042 productos, stock, ventas, categoría; 00043-00045 plan de nutrición y registro)`);
