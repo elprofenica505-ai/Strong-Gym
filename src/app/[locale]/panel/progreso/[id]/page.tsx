@@ -8,7 +8,7 @@ import { getCurrentUser } from "@/lib/data/queries";
 import { getClientProgress, type ClientProgress } from "@/lib/data/progress-queries";
 import { getClientAttendance } from "@/lib/data/attendance-queries";
 import { AttendanceTable } from "@/components/attendance/attendance-table";
-import { NutritionPanel } from "@/components/nutrition/nutrition-panel";
+import { NutritionCalculator } from "@/components/nutrition/nutrition-calculator";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { CLIENT_CATEGORY_LABEL } from "@/lib/clients/category";
 import type { AttendanceData } from "@/lib/attendance/summary";
@@ -86,7 +86,7 @@ export default async function ProgresoClientePage({
             <>
               {category && <p className="rounded-xl border border-line bg-card px-4 py-3 text-[0.9rem] text-ink">Categoría: <strong>{category}</strong></p>}
               <ProgressView data={data} today={today} canRecord={canRecord} canManage={canManage} attendance={attendance} attendanceFailed={!!(attResult && !attResult.ok)} />
-              {canRecord && <section className="grid gap-3"><h2 className="text-xl font-bold text-ink">Plan de alimentación y rutina</h2><NutritionPanel clientId={data.clientId} isAdmin={user?.role === "admin"} isStaff /></section>}
+              {canRecord && (<section className="grid gap-3"><h2 className="text-xl font-bold text-ink">Calculadora, plan nutricional y rutina</h2><NutritionCalculator mode="staff" clientId={data.clientId} isAdmin={user?.role === "admin"} /></section>)}
             </>
           )}
         </div>

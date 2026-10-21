@@ -145,46 +145,62 @@ ok('el cliente no ve la categoría de otro cliente (null)', (await as(member, 'a
 ok('la columna antigua gym_clients.category no cambia', (await db.query('select category from gym_clients where id=$1', [ana])).rows[0].category === 'client');
 
 
-// ===== 00043: plan de nutrición e interruptor =====
+// ===== 00044: calculadora del cliente, edición sólo de entrenador/admin =====
 await db.exec(sql('docs/SQL-PENDIENTE/00043_plan_nutricion_interruptor.sql'));
 ok('00043 se aplica sobre 00042 sin error', true);
-const planIn = { sexo: 'f', edad: 28, peso: 68, altura: 163, act: 1, goal: 'definir' };
-const planRes = { imc: 25.6, target: 1500 };
-const planMeals = [{ slot: 'Desayuno', title: 'Huevos con frijoles' }];
-const planRoutine = [{ dia: 'Lunes', ejercicios: [{ ejercicio: 'Sentadilla goblet', series: 3, reps: '10', descanso_s: 75 }] }];
-const saveAs = (actor, aal, client, goal = 'definir') => as(actor, aal,
-  'select public.nutrition_save($1,$2,$3,$4,$5,$6) as id', [client, goal, JSON.stringify(planIn), JSON.stringify(planRes), JSON.stringify(planMeals), JSON.stringify(planRoutine)]);
+await db.exec(sql('docs/SQL-PENDIENTE/00044_calculadora_cliente.sql'));
+ok('00044 se aplica sobre 00043 sin error', true);
+const memberClient = (await db.query('select id from gym_clients where profile_id = $1', [member])).rows[0].id;
+const calcInputs = { sex: 'm', age: 30, weightKg: 80, heightCm: 180, activity: 3, goal: 'peso' };
+const reportMeals = [{ id: 'desayuno', title: 'Desayuno', text: 'Avena', share: 0.25, kcal: 700, proteinG: 30, carbsG: 90, fatG: 20 }];
+const reportRoutine = [{ day: 'Fuerza 1', focus: 'Piernas', exercises: [{ name: 'Sentadilla', sets: 3, reps: '6-10', restSec: 90 }] }];
+const selfCalc = (actor, aal) => as(actor, aal,
+  'select public.nutrition_self_calculate($1,$2,$3,$4,$5,$6) as id',
+  ['peso', JSON.stringify(calcInputs), JSON.stringify({ kcal: 2800 }), JSON.stringify(reportMeals), JSON.stringify(reportRoutine), JSON.stringify(['Guía'])]);
+const staffSave = (actor, aal, client) => as(actor, aal,
+  'select public.nutrition_save($1,$2,$3,$4,$5,$6,$7) as id',
+  [client, 'peso', JSON.stringify(calcInputs), JSON.stringify({ kcal: 2800 }), JSON.stringify(reportMeals), JSON.stringify(reportRoutine), JSON.stringify(['Guía'])]);
+const getAs = async (actor, aal, client = null) => (await as(actor, aal, 'select public.nutrition_get($1) as g', [client]))[0].g;
 
-ok('admin guarda plan de ana', (await saveAs(admin, 'aal2', ana))[0].id === ana);
-ok('entrenador con acceso guarda con interruptor encendido (por defecto)', (await saveAs(trainer, 'aal2', ana))[0].id === ana);
-ok('caja guarda con interruptor encendido (por defecto)', (await saveAs(cashier, 'aal2', ana))[0].id === ana);
-ok('objetivo inválido se rechaza', await denied(saveAs(admin, 'aal2', ana, 'magia'), /INVALID_GOAL/));
-ok('entrenador sin acceso no guarda (luis)', await denied(saveAs(trainer, 'aal2', luis), /AUTH/));
-ok('otro entrenador no guarda (ana)', await denied(saveAs(trainer2, 'aal2', ana), /AUTH/));
-ok('cliente no guarda su propio plan', await denied(saveAs(member, 'aal1', (await db.query('select id from gym_clients where profile_id=$1',[member])).rows[0].id), /AUTH/));
-ok('anónimo no guarda', await denied(saveAs(null, null, ana), /AUTH|permission denied|42501/));
+ok('el cliente calcula su propio plan desde Mi cuenta', (await selfCalc(member, 'aal1'))[0].id === memberClient);
+const mine = await getAs(member, 'aal1');
+ok('el cliente ve su plan con origen cliente y puede recalcular', mine.plan?.source === 'cliente' && mine.can_self_calculate === true);
+ok('el reporte del cliente trae su nombre', typeof mine.client_name === 'string' && mine.client_name.length > 0);
+ok('el cliente no ve los permisos del personal', !JSON.stringify(mine).includes('trainer_tools_enabled'));
+ok('el cliente puede recalcular de nuevo mientras el personal no lo edite', (await selfCalc(member, 'aal1'))[0].id === memberClient);
+ok('el cliente no guarda con nutrition_save', await denied(staffSave(member, 'aal1', memberClient), /AUTH/));
+ok('anónimo no calcula', await denied(selfCalc(null, null), /AUTH|permission denied|42501/));
 
-// Interruptor: sólo admin
-ok('caja no cambia el interruptor', await denied(as(cashier, 'aal2', 'select public.admin_set_client_tools($1,false,true)', [ana]), /AUTH/));
-ok('entrenador no cambia el interruptor', await denied(as(trainer, 'aal2', 'select public.admin_set_client_tools($1,false,true)', [ana]), /AUTH/));
-await as(admin, 'aal2', 'select public.admin_set_client_tools($1,false,true)', [ana]);
-ok('admin apaga herramientas del entrenador para ana', await denied(saveAs(trainer, 'aal2', ana), /AUTH/));
-ok('admin sigue pudiendo guardar con el interruptor apagado', (await saveAs(admin, 'aal2', ana))[0].id === ana);
-ok('caja sigue pudiendo guardar (su interruptor está encendido)', (await saveAs(cashier, 'aal2', ana))[0].id === ana);
-await as(admin, 'aal2', 'select public.admin_set_client_tools($1,true,false)', [ana]);
-ok('admin apaga herramientas de caja', await denied(saveAs(cashier, 'aal2', ana), /AUTH/));
-ok('entrenador vuelve a guardar al encender su interruptor', (await (async () => { await as(admin, 'aal2', 'select public.admin_set_client_tools($1,true,true)', [ana]); return saveAs(trainer, 'aal2', ana); })())[0].id === ana);
+// Caja: sólo lectura
+ok('caja no edita el plan de ana', await denied(staffSave(cashier, 'aal2', ana), /AUTH/));
+const anaCashier = await getAs(cashier, 'aal2', ana);
+ok('caja ve el plan de ana pero no puede editarlo', anaCashier.can_edit === false);
 
-// Lectura
-const get = async (actor, aal, client = null) => (await as(actor, aal, 'select public.nutrition_get($1) as g', [client]))[0].g;
-const g1 = await get(trainer, 'aal2', ana);
-ok('entrenador lee el plan de ana con permiso de edición', g1.plan && g1.plan.goal === 'definir' && g1.can_edit === true);
-ok('caja lee el plan de ana', (await get(cashier, 'aal2', ana)).plan !== null);
-ok('entrenador sin acceso no lee el plan de luis (null)', (await get(trainer, 'aal2', luis)) === null);
-ok('el cliente lee su propio plan y no puede editar', (await get(member, 'aal1')) === null || (await get(member, 'aal1')).can_edit === false);
-ok('el cliente no lee el plan de ana (null)', (await get(member, 'aal1', ana)) === null);
-ok('la lectura del cliente no muestra interruptores del personal', !JSON.stringify(await get(member, 'aal1')).includes('cashier_tools_enabled'));
+// Entrenador con acceso edita: el cliente queda bloqueado
+ok('entrenador con acceso guarda el plan de ana', (await staffSave(trainer, 'aal2', ana))[0].id === ana);
+const anaStaff = await getAs(trainer, 'aal2', ana);
+ok('el entrenador ve que puede editar y el interruptor', anaStaff.can_edit === true && anaStaff.trainer_tools_enabled === true);
+ok('entrenador sin acceso no guarda (luis)', await denied(staffSave(trainer, 'aal2', luis), /AUTH/));
+ok('otro entrenador no guarda (ana)', await denied(staffSave(trainer2, 'aal2', ana), /AUTH/));
+ok('el admin edita el plan del propio cliente', (await staffSave(admin, 'aal2', memberClient))[0].id === memberClient);
+ok('el personal edita y bloquea el recálculo del cliente', await denied(selfCalc(member, 'aal1'), /LOCKED_BY_STAFF/));
+const afterStaff = await getAs(member, 'aal1');
+ok('tras la edición del personal el cliente ve origen entrenador y no puede recalcular', afterStaff.plan?.source === 'entrenador' && afterStaff.can_self_calculate === false);
+
+// Interruptor: sólo admin, sólo para el entrenador
+ok('caja no cambia el interruptor', await denied(as(cashier, 'aal2', 'select public.admin_set_client_tools($1,false)', [ana]), /AUTH/));
+ok('entrenador no cambia su propio interruptor', await denied(as(trainer, 'aal2', 'select public.admin_set_client_tools($1,false)', [ana]), /AUTH/));
+await as(admin, 'aal2', 'select public.admin_set_client_tools($1,false)', [ana]);
+ok('admin apaga el permiso del entrenador para ana', await denied(staffSave(trainer, 'aal2', ana), /AUTH/));
+ok('admin sigue pudiendo editar con el interruptor apagado', (await staffSave(admin, 'aal2', ana))[0].id === ana);
+ok('caja sigue sin poder editar aunque el admin lo encienda', await denied(staffSave(cashier, 'aal2', ana), /AUTH/));
+await as(admin, 'aal2', 'select public.admin_set_client_tools($1,true)', [ana]);
+ok('entrenador vuelve a editar al encender su permiso', (await staffSave(trainer, 'aal2', ana))[0].id === ana);
+
+// Lectura: el cliente no ve a otros clientes
+ok('el cliente no lee el plan de ana (null)', (await getAs(member, 'aal1', ana)) === null);
+ok('entrenador sin acceso no lee el plan de luis (null)', (await getAs(trainer, 'aal2', luis)) === null);
 ok('anónimo no lee planes', await denied(as(null, null, 'select public.nutrition_get($1)', [ana])));
-ok('las tablas de herramientas no son legibles directamente por el personal', await denied(as(admin, 'aal2', 'select * from client_nutrition_plans'), /permission denied|42501/));
+ok('las tablas de herramientas no se leen directamente', await denied(as(admin, 'aal2', 'select * from client_nutrition_plans'), /permission denied|42501/));
 
-console.log(`\n${checks} comprobaciones PASS (00042 productos, stock, ventas, categoría)`);
+console.log(`\n${checks} comprobaciones PASS (00042 productos, stock, ventas, categoría; 00043-00044 plan de nutrición)`);
