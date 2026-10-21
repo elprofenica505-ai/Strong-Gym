@@ -15,6 +15,7 @@ import type { AttendanceData } from "@/lib/attendance/summary";
 import { isLocale, type Locale } from "@/i18n/config";
 import { DEMO_MODE } from "@/lib/supabase/env";
 import { isStaffRole } from "@/lib/auth/current-user";
+import { groupRoutineByDay, formatRest, formatSeries } from "@/lib/progress/routine-view";
 import {
   addMonths, BMI_LABEL, bmi, bmiCategory, goalProgress, healthyWeightRange, managuaToday, GOAL_TYPES,
 } from "@/lib/progress/rules";
@@ -114,6 +115,7 @@ function ProgressView({
       })
     : null;
   const goalLabel = data.goal ? GOAL_TYPES.find((g) => g.key === data.goal?.goalType)?.label : null;
+  const routineGroups = data.routine ? groupRoutineByDay(data.routine.exercises) : [];
 
   return (
     <>
@@ -164,12 +166,39 @@ function ProgressView({
         <h2 className="mb-2 text-lg font-bold text-ink">Rutina activa</h2>
         {data.routine ? (
           <>
-            <p className="text-sm text-fog">{data.routine.name} · días: {data.routine.days.join(", ")} · desde {data.routine.startsOn}</p>
-            <ul className="mt-3 list-disc pl-5 text-sm text-ink">
-              {data.routine.exercises.map((e, i) => (
-                <li key={i}>{e.ejercicio}{e.series ? ` · ${e.series} series` : ""}{e.reps ? ` × ${e.reps}` : ""}{e.descanso_s !== null ? ` · descanso ${e.descanso_s} s` : ""}</li>
+            <p className="text-sm text-fog">
+              <span className="font-semibold text-ink">{data.routine.name}</span> · desde {data.routine.startsOn}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {data.routine.days.map((d) => (
+                <span key={d} className="rounded-full border border-brand/40 bg-brand/[0.08] px-3 py-1 text-xs font-semibold text-ink">{d}</span>
               ))}
-            </ul>
+            </div>
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              {routineGroups.map((g) => (
+                <div key={g.day} className="min-w-0 rounded-xl border border-line p-3">
+                  <h3 className="font-semibold text-ink">{g.day}</h3>
+                  {g.focus && <p className="text-xs text-fog">{g.focus}</p>}
+                  <div className="mt-2 overflow-x-auto">
+                    <table className="w-full min-w-[320px] text-left text-sm text-ink">
+                      <thead className="text-xs uppercase tracking-wide text-fog">
+                        <tr><th className="py-2 pr-3">Ejercicio</th><th className="pr-3">Series</th><th className="pr-3">Reps / tiempo</th><th className="pr-3">Descanso</th></tr>
+                      </thead>
+                      <tbody>
+                        {g.items.map((it, i) => (
+                          <tr key={i} className="border-t border-line">
+                            <td className="py-2 pr-3">{it.name}</td>
+                            <td className="pr-3">{formatSeries(it.series)}</td>
+                            <td className="pr-3">{it.reps ?? "—"}</td>
+                            <td className="pr-3">{formatRest(it.restSec)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
+            </div>
           </>
         ) : (
           <p className="text-sm text-fog">Sin rutina activa.</p>
