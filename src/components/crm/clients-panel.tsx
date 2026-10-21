@@ -528,6 +528,12 @@ export function ClientsPanel({
             <a href="#datos" className="rounded-full border border-line px-3 py-1.5 text-ink hover:border-brand/60">Datos del cliente</a>
             <a href="#historial" className="rounded-full border border-line px-3 py-1.5 text-ink hover:border-brand/60">Historial de pagos</a>
             <Link
+              href={`/${locale}/panel/progreso/${detail.client.id}#asistencia`}
+              className="rounded-full border border-line px-3 py-1.5 text-ink hover:border-brand/60"
+            >
+              Asistencia (día, semana, mes)
+            </Link>
+            <Link
               href={`/${locale}/panel/progreso/${detail.client.id}`}
               className="ml-auto rounded-full bg-brand px-4 py-1.5 font-semibold text-onbrand"
             >

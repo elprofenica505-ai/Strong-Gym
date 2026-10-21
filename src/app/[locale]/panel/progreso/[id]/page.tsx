@@ -6,6 +6,9 @@ import { ProgressForms } from "@/components/progress/progress-forms";
 import { readData } from "@/lib/data/read-result";
 import { getCurrentUser } from "@/lib/data/queries";
 import { getClientProgress, type ClientProgress } from "@/lib/data/progress-queries";
+import { getClientAttendance } from "@/lib/data/attendance-queries";
+import { AttendanceTable } from "@/components/attendance/attendance-table";
+import type { AttendanceData } from "@/lib/attendance/summary";
 import { isLocale, type Locale } from "@/i18n/config";
 import { DEMO_MODE } from "@/lib/supabase/env";
 import { isStaffRole } from "@/lib/auth/current-user";
@@ -38,6 +41,8 @@ export default async function ProgresoClientePage({
 
   const result = DEMO_MODE || !/^[0-9a-f-]{36}$/i.test(id) ? null : await readData(() => getClientProgress(id));
   const data: ClientProgress | null = result && result.ok ? result.data : null;
+  const attResult = DEMO_MODE || !/^[0-9a-f-]{36}$/i.test(id) ? null : await readData(() => getClientAttendance(id));
+  const attendance = attResult && attResult.ok ? attResult.data : null;
   const today = managuaToday();
 
   return (
@@ -67,7 +72,7 @@ export default async function ProgresoClientePage({
               No encontramos este cliente o no tenés acceso. Si es un cliente nuevo, pedile al administrador que te lo asigne.
             </p>
           ) : (
-            <ProgressView data={data} today={today} canRecord={canRecord} canManage={canManage} />
+            <ProgressView data={data} today={today} canRecord={canRecord} canManage={canManage} attendance={attendance} attendanceFailed={!!(attResult && !attResult.ok)} />
           )}
         </div>
       </section>
@@ -76,8 +81,8 @@ export default async function ProgresoClientePage({
 }
 
 function ProgressView({
-  data, today, canRecord, canManage,
-}: { data: ClientProgress; today: string; canRecord: boolean; canManage: boolean }) {
+  data, today, canRecord, canManage, attendance, attendanceFailed,
+}: { data: ClientProgress; today: string; canRecord: boolean; canManage: boolean; attendance: AttendanceData | null; attendanceFailed: boolean }) {
   const last = data.measurements[0];
   const withHeight = data.measurements.find((m) => m.heightCm !== null);
   const height = withHeight?.heightCm ?? null;
@@ -120,6 +125,13 @@ function ProgressView({
         <Stat label="Avance de la meta" value={progress?.percent !== null && progress?.percent !== undefined ? `${progress.percent} %` : progress ? statusText(progress.status) : "Sin meta"} sub={goalLabel ?? "Sin meta activa"} />
       </div>
 
+      {attendanceFailed ? (
+        <section id="asistencia" className="rounded-2xl border border-line bg-card p-4 scroll-mt-24">
+          <p className="text-[0.875rem] text-mist">La asistencia no se pudo cargar en este momento. Intenta de nuevo más tarde.</p>
+        </section>
+      ) : (
+        <AttendanceTable data={attendance} />
+      )}
       <section className="rounded-2xl border border-line bg-card p-4">
         <h2 className="mb-2 text-lg font-bold text-ink">Meta activa</h2>
         {data.goal ? (

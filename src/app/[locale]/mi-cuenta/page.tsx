@@ -9,6 +9,8 @@ import { isLocale, type Locale } from "@/i18n/config";
 import { getCurrentUser, getMyBookings, getPlans, getMyAssignedPlan } from "@/lib/data/queries";
 import { getMyProgress } from "@/lib/data/progress-queries";
 import { MyProgress } from "@/components/account/my-progress";
+import { getClientAttendance } from "@/lib/data/attendance-queries";
+import { AttendanceTable } from "@/components/attendance/attendance-table";
 import { MfaSetup } from "@/components/auth/mfa-setup";
 import { isStaffRole } from "@/lib/auth/current-user";
 import { ButtonLink } from "@/components/ui/button";
@@ -57,6 +59,7 @@ export default async function AccountPage({
   const assignedPlan = user ? await readData(getMyAssignedPlan) : null;
   // Progreso propio (00040). Si la consulta falla, el cliente ve un aviso, no «sin datos».
   const myProgress = user && !isStaffRole(user.role) ? await readData(getMyProgress) : null;
+  const myAttendance = user && !isStaffRole(user.role) ? await readData(() => getClientAttendance(null)) : null;
 
   return (
     <>
@@ -115,6 +118,13 @@ export default async function AccountPage({
                   Tu progreso no se pudo cargar en este momento. Intenta de nuevo más tarde.
                 </p>
               ) : null}
+              {myAttendance && (myAttendance.ok ? (
+                <div className="mt-8"><AttendanceTable data={myAttendance.data} title="Mi asistencia" /></div>
+              ) : (
+                <p className="mt-8 rounded-2xl border border-line bg-card p-6 text-[0.9375rem] text-mist">
+                  Tu asistencia no se pudo cargar en este momento. Intenta de nuevo más tarde.
+                </p>
+              ))}
             </div>
           </section>
         </>

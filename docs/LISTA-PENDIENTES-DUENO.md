@@ -7,10 +7,10 @@ Estado: **Existe** = funciona en código y pruebas. **Parcial** = hay una parte,
 | Pedido | Estado | Detalle |
 |---|---|---|
 | Registro de entrada (asistencia) del cliente | Parcial | Existe `client_visits` (un registro por día) y botón de entrada en la ficha, por QR o manual. |
-| Módulo de asistencia en el panel del administrador | No existe | No hay lista, historial ni reporte por fecha. |
-| Asistencia en caja | Parcial | Caja usa la misma ficha, pero no tiene vista de asistencia. |
-| Asistencia en entrenador | Parcial | Tarjetas con asistencia reciente en "Mis clientes"; falta historial. |
-| Asistencia del cliente en su cuenta | No existe | El cliente no ve sus entradas. |
+| Módulo de asistencia en el panel del administrador | Existe (00041) | Tabla por semana y por mes en la ficha (botón "Asistencia"). |
+| Asistencia en caja | Existe (00041) | Misma tabla desde la ficha de caja. |
+| Asistencia en entrenador | Parcial | Tabla disponible en progreso de sus clientes asignados; falta vista en "Mis clientes". |
+| Asistencia del cliente en su cuenta | Existe (00041, PR #21) | "Mi asistencia" en Mi cuenta: sólo sus visitas. |
 
 ## Progreso, medidas, rutinas y plan
 | Pedido | Estado | Detalle |
@@ -40,7 +40,7 @@ Estado: **Existe** = funciona en código y pruebas. **Parcial** = hay una parte,
 - Caja no ve cierre del día (00038 aplicada; pendiente de prueba).
 
 ## Tareas pendientes (en orden, sin empezar)
-- [ ] T1. Asistencia completa: módulo de asistencia para admin, caja, entrenador y cliente (historial por fecha y reporte).
+- [x] T1. Asistencia completa (00041 aplicada 2026-10-21): módulo de asistencia para admin, caja, entrenador y cliente (historial por fecha y reporte).
 - [ ] T2. Rutinas prediseñadas por objetivo (ganar peso distinto de bajar peso).
 - [ ] T3. Calculadora automática de calorías y macros (requiere fórmulas con fuente, explicadas al dueño antes de programar).
 - [ ] T4. Plan alimenticio y plan personalizado para el cliente.

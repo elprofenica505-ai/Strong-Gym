@@ -45,7 +45,7 @@ Campos de cada producto:
 - Alerta de stock bajo (nivel mínimo editable).
 - **Finanzas:** cada venta suma en Finanzas (caja). Cada compra de inventario se registra como gasto. ⚠ confirmar si la compra se registra como gasto al momento de comprar o como costo cuando se vende.
 
-## 5. Asistencia por cliente (tabla desplegable)
+## 5. Asistencia por cliente (tabla desplegable) — HECHA (00041, aplicada 2026-10-21)
 - Por día, por semana y por mes, para cada cliente, tenga o no plan.
 - Visible para administración y caja (todos los clientes), entrenador (solo sus clientes asignados) y el cliente (solo las suyas).
 - Fuente: registros existentes de visitas (una por cliente y día). Sin cambios en la base para la lectura básica.
