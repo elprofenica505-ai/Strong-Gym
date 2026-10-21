@@ -2,7 +2,9 @@
 import { useCallback, useEffect, useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
 import {
   ACTIVITY,
+  DISCLAIMER_ACCEPT_ES,
   DISCLAIMER_ES,
+  DISCLAIMER_TITLE,
   GOALS,
   SOURCES_ES,
   type Exercise,
@@ -89,6 +91,7 @@ export function NutritionCalculator({
   const [meals, setMeals] = useState<MealSlot[]>([]);
   const [routine, setRoutine] = useState<RoutineDay[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [accepted, setAccepted] = useState(false);
 
   const query = mode === "staff" && clientId ? `?client=${encodeURIComponent(clientId)}` : "";
 
@@ -158,7 +161,7 @@ export function NutritionCalculator({
     const inputs = inputsFromForm();
     const ok =
       mode === "client"
-        ? await post({ action: "self", inputs }, "Listo: calculamos tu plan.")
+        ? await post({ action: "self", inputs, acceptDisclaimer: true }, "Listo: calculamos tu plan.")
         : await post({ action: "save", client: data.client_id, inputs }, "Plan calculado y guardado.");
     if (ok) setShowForm(false);
   };
@@ -178,9 +181,10 @@ export function NutritionCalculator({
 
   return (
     <div className="grid gap-5">
-      <p role="note" className="rounded-xl border border-amber-400/40 bg-amber-400/10 p-4 text-[0.875rem] leading-relaxed text-ink">
-        <strong>Aviso:</strong> {DISCLAIMER_ES}
-      </p>
+      <div role="note" className="rounded-xl border border-amber-400/40 bg-amber-400/10 p-4 text-[0.875rem] leading-relaxed text-ink">
+        <strong className="block">{DISCLAIMER_TITLE}</strong>
+        <span>{DISCLAIMER_ES}</span>
+      </div>
 
       {message && (
         <p role="status" className={message.ok ? "text-brand-300" : "text-red-300"}>
@@ -238,8 +242,14 @@ export function NutritionCalculator({
               ))}
             </select>
           </label>
+          {mode === "client" && (
+            <label className="flex items-start gap-3 text-[0.875rem] sm:col-span-2">
+              <input type="checkbox" className="mt-1" required checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
+              <span>{DISCLAIMER_ACCEPT_ES}</span>
+            </label>
+          )}
           <div className="flex gap-3 sm:col-span-2">
-            <button type="submit" className={primary} disabled={busy}>{plan ? "Recalcular y reemplazar" : "Calcular mi plan"}</button>
+            <button type="submit" className={primary} disabled={busy || (mode === "client" && !accepted)}>{plan ? "Recalcular y reemplazar" : "Calcular mi plan"}</button>
             {plan && <button type="button" className={button} onClick={() => setShowForm(false)}>Cancelar</button>}
           </div>
           {plan && <p className="text-[0.85rem] text-fog sm:col-span-2">Recalcular reemplaza el plan y la rutina anteriores.</p>}

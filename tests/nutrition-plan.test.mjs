@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { computeTargets, buildPlan, inputsSchema, imcCategory, targetWeight, GOALS, DISCLAIMER_ES } from '../src/lib/nutrition/plan.ts';
+import { computeTargets, buildPlan, inputsSchema, imcCategory, targetWeight, GOALS, DISCLAIMER_ES, DISCLAIMER_ACCEPT_ES, DISCLAIMER_TITLE } from '../src/lib/nutrition/plan.ts';
 
 const base = { sex: 'm', age: 30, weightKg: 80, heightCm: 180, activity: 3, goal: 'mantener' };
 
@@ -92,7 +92,12 @@ test('validación: edad menor de 14 y peso fuera de rango se rechazan', () => {
   assert.ok(inputsSchema.safeParse(base).success);
 });
 
-test('el aviso obligatorio menciona nutricionista y entrenador', () => {
-  assert.match(DISCLAIMER_ES, /nutricionista/);
-  assert.match(DISCLAIMER_ES, /entrenador/);
+test('el aviso de seguridad dice que los resultados son genéricos y bajo responsabilidad del cliente', () => {
+  assert.match(DISCLAIMER_ES, /genéricos, no personalizados/);
+  assert.match(DISCLAIMER_ES, /bajo su propia responsabilidad/);
+  assert.match(DISCLAIMER_ES, /nutricionista profesional/);
+  assert.match(DISCLAIMER_ES, /entrenador capacitado/);
+  assert.match(DISCLAIMER_ES, /médico/);
+  assert.match(DISCLAIMER_TITLE, /seguridad/);
+  assert.match(DISCLAIMER_ACCEPT_ES, /responsabilidad/);
 });

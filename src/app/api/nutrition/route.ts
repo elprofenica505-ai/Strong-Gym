@@ -74,7 +74,12 @@ const routineSchema = z
 
 const postSchema = z.discriminatedUnion("action", [
   // El cliente calcula su propio plan desde Mi cuenta.
-  z.object({ action: z.literal("self"), inputs: inputsSchema }),
+  z.object({
+    action: z.literal("self"),
+    inputs: inputsSchema,
+    // El cliente debe aceptar la política de seguridad antes de calcular.
+    acceptDisclaimer: z.literal(true, { message: "Aceptá el aviso de seguridad para calcular." }),
+  }),
   // Entrenador o administrador guarda el cálculo, con ediciones opcionales.
   z.object({
     action: z.literal("save"),
@@ -160,7 +165,12 @@ export async function POST(request: Request) {
       body.action === "self"
         ? await ctx.db.rpc("nutrition_self_calculate", {
             p_goal: common.p_goal,
-            p_inputs: common.p_inputs,
+            // Se guarda la versión del aviso y la hora de aceptación junto con los datos.
+            p_inputs: {
+              ...common.p_inputs,
+              disclaimerVersion: DISCLAIMER_VERSION,
+              disclaimerAcceptedAt: new Date().toISOString(),
+            },
             p_results: common.p_results,
             p_meal_plan: common.p_meal_plan,
             p_routine: common.p_routine,

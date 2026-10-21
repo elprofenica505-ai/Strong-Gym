@@ -1,9 +1,12 @@
 import { z } from "zod";
 
-/** Aviso obligatorio: se muestra en cada reporte y se guarda con el plan. */
-export const DISCLAIMER_VERSION = "v2-2026-10";
+/** Política de seguridad que el cliente acepta antes de calcular. Se muestra en la calculadora y en cada reporte. */
+export const DISCLAIMER_VERSION = "v3-2026-10";
+export const DISCLAIMER_TITLE = "Aviso de seguridad: resultados genéricos, bajo su responsabilidad";
 export const DISCLAIMER_ES =
-  "Herramienta no certificada por nutricionista ni entrenador oficial. Es una orientación general, no un diagnóstico ni una prescripción. Busque un nutricionista profesional y un entrenador capacitado antes de cambiar su alimentación o su entrenamiento, sobre todo si tiene una condición de salud, toma medicamentos, está embarazada o es menor de edad. Los valores de referencia están pendientes de revisión profesional.";
+  "Los resultados de esta herramienta son genéricos, no personalizados. Son tablas de referencia general calculadas con fórmulas estándar; no consideran su historial médico, lesiones, medicamentos ni condiciones particulares, y no son un diagnóstico ni una prescripción. Usted decide si usa esta información y lo hace bajo su propia responsabilidad. Para un plan adaptado a usted, consulte con un nutricionista profesional y un entrenador capacitado. Si tiene una condición de salud, toma medicamentos, está embarazada o es menor de edad, consulte con un médico antes de cambiar su alimentación o iniciar ejercicio. Los valores de referencia están pendientes de revisión profesional.";
+export const DISCLAIMER_ACCEPT_ES =
+  "Entiendo que estos resultados son genéricos y no están personalizados por un profesional. Decido usarlos bajo mi propia responsabilidad.";
 
 /**
  * Objetivos. kcalFactor multiplica el gasto diario; targetPct cambia el peso;
