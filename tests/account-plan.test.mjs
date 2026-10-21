@@ -49,6 +49,10 @@ test("Mi cuenta SSR pasa la lectura canónica y su identidad al panel; fallo de 
       export const getMyAssignedPlan=async()=>{if(globalThis.__assignedError)throw Error('PRIVATE');return {linked:true,plan:null}};`,
     "@/components/account/account-dashboard": "export const AccountDashboard=props=>{globalThis.__passedPlan=props.accountPlan;return null};",
     "@/components/crm/client-pass": "export const ClientPass=()=>null;",
+    "@/lib/data/progress-queries": "export const getMyProgress=async()=>null;",
+    "@/components/account/my-progress": "export const MyProgress=()=>null;",
+    "@/lib/data/attendance-queries": "export const getClientAttendance=async()=>null;",
+    "@/components/attendance/attendance-table": "export const AttendanceTable=()=>null;",
   })("app/[locale]/mi-cuenta/page.tsx");
   for (const error of [false, true]) {
     globalThis.__assignedError = error;

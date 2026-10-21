@@ -50,7 +50,7 @@ export const PANEL_MODULES: PanelModule[] = [
     label: "Clientes",
     description: "Fichas, búsqueda, recepción con QR, asistencias y etiquetas.",
     href: "/panel/clientes",
-    children: [],
+    children: [{ id: "progreso", label: "Progreso y medidas", href: "/panel/progreso" }],
   },
   {
     id: "finanzas",
@@ -61,6 +61,7 @@ export const PANEL_MODULES: PanelModule[] = [
       { id: "caja", label: "Caja", href: "/panel/caja" },
       { id: "cuentas", label: "Cuentas por cobrar", href: "/panel/cuentas" },
       { id: "gastos", label: "Gastos", href: "/panel/gastos" },
+      { id: "productos", label: "Productos y stock", href: "/panel/productos" },
       { id: "reportes", label: "Reportes", href: "/panel/reportes" },
     ],
   },

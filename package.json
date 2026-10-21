@@ -15,9 +15,11 @@
     "test:finance:rsc": "node scripts/test-finance-rsc.mjs",
     "test:auth": "node --experimental-strip-types --test tests/*.test.mjs",
     "test:roles": "node scripts/test-roles-fase-a-sql.mjs && node scripts/test-roles-fase-b-sql.mjs && node scripts/test-trainer-access-sql.mjs && node scripts/test-cashier-close-sql.mjs",
-    "test:medidas": "node --experimental-strip-types --test tests/progress-rules.test.mjs && node scripts/test-progress-sql.mjs",
+    "test:medidas": "node --experimental-strip-types --test tests/progress-rules.test.mjs tests/my-progress.test.mjs tests/progress-forms.test.mjs tests/attendance-summary.test.mjs tests/attendance-table.test.mjs && node scripts/test-progress-sql.mjs && node scripts/test-attendance-sql.mjs",
     "test:layout": "node scripts/test-shell-layout.mjs",
-    "test:finance:concurrency": "node scripts/test-finance-concurrency.mjs"
+    "test:finance:concurrency": "node scripts/test-finance-concurrency.mjs",
+    "test:productos": "node --experimental-strip-types --test tests/products-rules.test.mjs && node scripts/test-productos-sql.mjs",
+    "test:nutricion": "node --experimental-strip-types --test tests/nutrition-plan.test.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",

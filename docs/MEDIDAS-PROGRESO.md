@@ -120,9 +120,29 @@ Archivo: `docs/SQL-PENDIENTE/00039_medidas_metas_rutinas.sql`.
    prototipo): hoy el modelo es por rol; si el dueño quiere permisos finos, es una
    decisión aparte.
 
+## 7b. Pantallas construidas
+
+- `/panel/progreso`: lista de clientes para el entrenador (sólo los asignados y aprobados).
+  Administración y caja abren la ficha desde Clientes ("Progreso y medidas").
+- `/panel/progreso/[id]`: IMC y peso sano para su altura, avance de la meta, historial de
+  mediciones (un guion = no tomada), meta activa y rutina activa.
+- Formularios: medición (caja, administrador y entrenador asignado), meta y rutina
+  (administrador y entrenador asignado). Un valor fuera de rango pide confirmación explícita.
+- `POST /api/progress`: valida otra vez en el servidor y llama a las funciones de la 00039.
+- Pruebas nuevas: 22 de formularios y reglas (`tests/progress-forms.test.mjs`, `tests/progress-rules.test.mjs`).
+
 ## 8. Entrega propuesta
 
 1. Diseño aprobado por el dueño (hecho).
 2. Pantallas de registro, historial y metas (con datos reales de prueba, marcados como tales).
 3. Pruebas de regresión y recorrido en navegador.
 4. Verificación con el dueño antes de cualquier dato real.
+
+## 7c. Vista del cliente y ajustes de la ficha (00040 aplicada)
+
+- **Ficha de cliente (admin y caja):** la ficha sube sola al abrir un cliente; tiene una barra con Cobrar, Datos del cliente, Historial de pagos y un botón "Progreso y medidas".
+- **Pantalla de progreso:** el formulario de registro va arriba, plegado ("+ Registrar medición"); enlace de regreso a Clientes.
+- **Cliente (Mi cuenta):** sección "Mi progreso" con peso, IMC y peso sano, circunferencias, meta, rutina e historial de peso. Sólo lectura, sólo sus datos, sin notas del personal.
+- **00040:** aplicada en Supabase el 2026-10-20.
+- **Plan alimenticio:** no está en esta fase.
+- **Pruebas:** `npm run test:medidas` (SQL 00039 + 00040, 49 comprobaciones), `npm run test:auth`, `npm run test:roles`. `test:layout` requiere navegador (no disponible en este entorno).
