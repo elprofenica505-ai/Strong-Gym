@@ -168,7 +168,7 @@ export function NutritionCalculator({
   };
 
   const submitToGym = async () => {
-    await post({ action: "submit" }, "Registro guardado en el gimnasio. Ya aparece en la ficha del cliente.");
+    await post({ action: "submit" }, "Registro guardado en el gimnasio. La meta, la rutina y el peso ya aparecen en la ficha del cliente.");
   };
 
   const registeredAt = plan?.submitted_at

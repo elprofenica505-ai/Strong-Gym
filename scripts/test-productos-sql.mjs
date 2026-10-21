@@ -156,7 +156,7 @@ const reportMeals = [{ id: 'desayuno', title: 'Desayuno', text: 'Avena', share: 
 const reportRoutine = [{ day: 'Fuerza 1', focus: 'Piernas', exercises: [{ name: 'Sentadilla', sets: 3, reps: '6-10', restSec: 90 }] }];
 const selfCalc = (actor, aal) => as(actor, aal,
   'select public.nutrition_self_calculate($1,$2,$3,$4,$5,$6) as id',
-  ['peso', JSON.stringify(calcInputs), JSON.stringify({ kcal: 2800 }), JSON.stringify(reportMeals), JSON.stringify(reportRoutine), JSON.stringify(['Guía'])]);
+  ['peso', JSON.stringify(calcInputs), JSON.stringify({ kcal: 2800, targetWeightKg: 86.4, weeksEstimate: 26 }), JSON.stringify(reportMeals), JSON.stringify(reportRoutine), JSON.stringify(['Guía'])]);
 const staffSave = (actor, aal, client) => as(actor, aal,
   'select public.nutrition_save($1,$2,$3,$4,$5,$6,$7) as id',
   [client, 'peso', JSON.stringify(calcInputs), JSON.stringify({ kcal: 2800 }), JSON.stringify(reportMeals), JSON.stringify(reportRoutine), JSON.stringify(['Guía'])]);
@@ -230,4 +230,35 @@ ok('registrar el nuevo cálculo crea otra medición', regR3.already === false &&
 ok('el personal no registra por el cliente (sin plan propio)', await denied(submit(trainer, 'aal2'), /NOT_FOUND|NO_PLAN|AUTH/));
 ok('anónimo no registra', await denied(submit(null, null), /AUTH|permission denied|42501/));
 
-console.log(`\n${checks} comprobaciones PASS (00042 productos, stock, ventas, categoría; 00043-00045 plan de nutrición y registro)`);
+// ===== 00046: meta y rutina activas desde la calculadora =====
+await db.exec(sql('docs/SQL-PENDIENTE/00046_meta_rutina_desde_calculadora.sql'));
+ok('00046 se aplica sobre 00045 sin error', true);
+const goalsOf = async (c) => (await db.query("select goal_type, status, other_label, target_weight_kg, target_date::text as target_date from client_goals where client_id = $1 order by created_at, id", [c])).rows;
+const activeRoutine = async (c) => (await db.query("select name, days, exercises from client_routines where client_id = $1 and status = 'activa'", [c])).rows;
+const gBefore = (await goalsOf(client2)).length;
+const member3 = await makeUser('cliente3@test.invalid', null);
+const client3 = (await db.query('select id from gym_clients where profile_id = $1', [member3])).rows[0].id;
+await selfCalc(member3, 'aal1');
+const r3 = (await submit(member3, 'aal1'))[0].r;
+ok('registro crea la meta activa del cálculo (Ganar peso = ganancia)', r3.goal_type === 'ganancia' && (await goalsOf(client3)).filter(g => g.status === 'activa').length === 1);
+const g3 = (await goalsOf(client3)).find(g => g.status === 'activa');
+ok('la meta tiene peso objetivo y plazo de 1 a 12 meses', g3 && Number(g3.target_weight_kg) > 80 && g3.target_date > today);
+const rt3 = await activeRoutine(client3);
+ok('registro crea la rutina activa con días y ejercicios', rt3.length === 1 && rt3[0].days.length >= 1 && rt3[0].exercises.length > 0 && rt3[0].exercises[0].ejercicio.includes(':'));
+ok('los ejercicios tienen series, repeticiones y descanso', rt3[0] && rt3[0].exercises.every(e => e.series >= 1 && e.reps && e.descanso_s >= 0));
+ok('el administrador ve la meta activa de este cliente', (await as(admin, 'aal2', "select count(*)::int as n from client_goals where client_id = $1 and status = 'activa'", [client3]))[0].n === 1);
+ok('el administrador ve la rutina activa de este cliente', (await as(admin, 'aal2', "select count(*)::int as n from client_routines where client_id = $1 and status = 'activa'", [client3]))[0].n === 1);
+ok('caja ve la meta y la rutina (sólo lectura)', (await as(cashier, 'aal2', "select count(*)::int as n from client_goals where client_id = $1 and status = 'activa'", [client3]))[0].n === 1);
+await selfCalc(member3, 'aal1');
+await db.query("update client_nutrition_plans set results = jsonb_set(results, '{weeksEstimate}', '0') where client_id = $1", [client3]);
+const r3b = (await submit(member3, 'aal1'))[0].r;
+const g3all = await goalsOf(client3);
+ok('nuevo registro cancela la meta anterior y deja una activa', r3b.already === false && g3all.filter(g => g.status === 'activa').length === 1 && g3all.filter(g => g.status === 'cancelada').length === 1);
+ok('sin semanas estimadas el plazo es de 3 meses', (await goalsOf(client3)).find(g => g.status === 'activa').target_date > today);
+const rt3b = await activeRoutine(client3);
+ok('nueva rutina reemplaza a la anterior (sólo una activa)', rt3b.length === 1 && (await db.query("select count(*)::int as n from client_routines where client_id = $1 and status = 'cerrada'", [client3])).rows[0].n === 1);
+const r3c = (await submit(member3, 'aal1'))[0].r;
+ok('guardar dos veces no cambia la meta', r3c.already === true && (await goalsOf(client3)).length === g3all.length);
+ok('la meta y la rutina de otro cliente no se tocan', (await goalsOf(client2)).length === gBefore);
+
+console.log(`\n${checks} comprobaciones PASS (00042 productos, stock, ventas, categoría; 00043-00046 plan de nutrición, registro, meta y rutina)`);
