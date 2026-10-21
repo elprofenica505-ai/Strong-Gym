@@ -9,6 +9,7 @@ import { isLocale, type Locale } from "@/i18n/config";
 import { getCurrentUser, getMyBookings, getPlans, getMyAssignedPlan } from "@/lib/data/queries";
 import { getMyProgress } from "@/lib/data/progress-queries";
 import { MyProgress } from "@/components/account/my-progress";
+import { NutritionPanel } from "@/components/nutrition/nutrition-panel";
 import { getClientAttendance } from "@/lib/data/attendance-queries";
 import { AttendanceTable } from "@/components/attendance/attendance-table";
 import { MfaSetup } from "@/components/auth/mfa-setup";
@@ -125,6 +126,12 @@ export default async function AccountPage({
                   Tu asistencia no se pudo cargar en este momento. Intenta de nuevo más tarde.
                 </p>
               ))}
+              {myProgress && (
+                <div className="mt-8 grid gap-4">
+                  <h2 className="text-xl font-bold text-ink">Mi plan de alimentación y rutina</h2>
+                  <NutritionPanel clientId={null} isStaff={false} />
+                </div>
+              )}
             </div>
           </section>
         </>

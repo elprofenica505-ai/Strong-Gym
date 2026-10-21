@@ -8,6 +8,9 @@ import { getCurrentUser } from "@/lib/data/queries";
 import { getClientProgress, type ClientProgress } from "@/lib/data/progress-queries";
 import { getClientAttendance } from "@/lib/data/attendance-queries";
 import { AttendanceTable } from "@/components/attendance/attendance-table";
+import { NutritionPanel } from "@/components/nutrition/nutrition-panel";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { CLIENT_CATEGORY_LABEL } from "@/lib/clients/category";
 import type { AttendanceData } from "@/lib/attendance/summary";
 import { isLocale, type Locale } from "@/i18n/config";
 import { DEMO_MODE } from "@/lib/supabase/env";
@@ -44,6 +47,14 @@ export default async function ProgresoClientePage({
   const attResult = DEMO_MODE || !/^[0-9a-f-]{36}$/i.test(id) ? null : await readData(() => getClientAttendance(id));
   const attendance = attResult && attResult.ok ? attResult.data : null;
   const today = managuaToday();
+  // Categoría calculada en la base (00042). Si falla, no se muestra una categoría falsa.
+  let category: string | null = null;
+  if (!DEMO_MODE && data) {
+    const db = await getSupabaseServerClient();
+    const { data: cat } = db ? await db.rpc("client_category", { p_client: id }) : { data: null };
+    const key = (cat as { category?: string } | null)?.category;
+    category = key && key in CLIENT_CATEGORY_LABEL ? CLIENT_CATEGORY_LABEL[key as keyof typeof CLIENT_CATEGORY_LABEL] : null;
+  }
 
   return (
     <>
@@ -72,7 +83,11 @@ export default async function ProgresoClientePage({
               No encontramos este cliente o no tenés acceso. Si es un cliente nuevo, pedile al administrador que te lo asigne.
             </p>
           ) : (
-            <ProgressView data={data} today={today} canRecord={canRecord} canManage={canManage} attendance={attendance} attendanceFailed={!!(attResult && !attResult.ok)} />
+            <>
+              {category && <p className="rounded-xl border border-line bg-card px-4 py-3 text-[0.9rem] text-ink">Categoría: <strong>{category}</strong></p>}
+              <ProgressView data={data} today={today} canRecord={canRecord} canManage={canManage} attendance={attendance} attendanceFailed={!!(attResult && !attResult.ok)} />
+              {canRecord && <section className="grid gap-3"><h2 className="text-xl font-bold text-ink">Plan de alimentación y rutina</h2><NutritionPanel clientId={data.clientId} isAdmin={user?.role === "admin"} isStaff /></section>}
+            </>
           )}
         </div>
       </section>
