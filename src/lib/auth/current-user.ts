@@ -64,6 +64,14 @@ export interface AuthUser {
 
 /** Misma regla para el guard del servidor y la navegación del cliente.
  * Personal sólo entra con MFA verificado (AAL2); cualquier otro estado bloquea. */
+/** Cobros, abonos y gastos: sólo caja o administración con MFA verificado.
+ * El entrenador tiene acceso al panel, pero no a movimientos ni deudas. */
+export function canManageFinance(
+  user: { role: unknown; mfa?: unknown } | null | undefined,
+): boolean {
+  return canAccessPanel(user) && isFinanceRole(user?.role);
+}
+
 export function canAccessPanel(
   user: { role: unknown; mfa?: unknown } | null | undefined,
 ): boolean {

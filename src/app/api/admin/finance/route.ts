@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/data/queries";
-import { canAccessPanel } from "@/lib/auth/current-user";
+import { canManageFinance } from "@/lib/auth/current-user";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import {
@@ -78,7 +78,7 @@ async function context() {
       ),
       db: null,
     };
-  if (!canAccessPanel(await getCurrentUser()))
+  if (!canManageFinance(await getCurrentUser()))
     return { response: reply({ error: messages.AUTH }, 403), db: null };
   const db = await getSupabaseServerClient();
   return db

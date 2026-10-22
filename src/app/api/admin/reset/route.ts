@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
  */
 export async function POST() {
   const user = await getCurrentUser();
-  if (!user || user.role !== "admin") {
+  if (!user || user.role !== "admin" || user.mfa !== "ok") {
     return NextResponse.json(
       {
         error: "AUTH",
