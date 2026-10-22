@@ -1,5 +1,6 @@
 "use client";
 
+import { todayInManagua, validBirthDate } from "@/lib/age/birth-date";
 import Link from "next/link";
 import { validNewPassword, NEW_PASSWORD_MAX } from "@/lib/auth/password-recovery";
 import { safeAuthRedirect } from "@/lib/auth/redirects";
@@ -39,6 +40,7 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
     const errors: Record<string, string> = {};
     if (!isLogin) {
       if (fullName.length < 2) errors.fullName = dict.auth.requiredField;
+      if (!validBirthDate(String(data.get("birthDate") ?? ""))) errors.birthDate = dict.auth.birthDateInvalid;
       if (!validNewPassword(password)) errors.password = dict.auth.passwordMin;
       if (password !== confirm) errors.confirmPassword = dict.auth.passwordMismatch;
     } else if (password.length < 1) {
@@ -54,7 +56,7 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
 
     const result = isLogin
       ? await signIn(email, password)
-      : await signUp({ fullName, email, password, phone });
+      : await signUp({ fullName, email, password, phone, birthDate: String(data.get("birthDate") ?? "") });
 
     if (!result.ok) {
       const message = (dict.auth as Record<string, unknown>)[result.error ?? "genericError"];
@@ -141,6 +143,20 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
         required
         error={fieldErrors.email}
       />
+
+      {!isLogin ? (
+        <Input
+          name="birthDate"
+          type="date"
+          label={dict.auth.birthDate}
+          hint={dict.auth.birthDateHint}
+          autoComplete="bday"
+          max={todayInManagua()}
+          min="1920-01-01"
+          required
+          error={fieldErrors.birthDate}
+        />
+      ) : null}
 
       {!isLogin ? (
         <Input

@@ -418,6 +418,9 @@ const en = {
     deliveryUnavailable: "The email service needs attention. Contact the administrator to complete the request.",
     genericError: "We could not complete the operation. Please try again.",
     requiredField: "Please fill in this field",
+    birthDate: "Date of birth",
+    birthDateHint: "We use it to confirm you are 18 or older. If you are under 18, you can create the account, but you will not have access to the calculator or the client panel.",
+    birthDateInvalid: "Please check your date of birth.",
     passwordMin: "Between 12 and 128 characters",
     demoNotice:
       "Read-only local demo. Login, registration and operations are disabled.",

@@ -1,5 +1,6 @@
 "use client";
 
+import { validBirthDate } from "@/lib/age/birth-date";
 import { useRouter } from "next/navigation";
 import {
   createContext,
@@ -95,6 +96,7 @@ interface AppContextValue {
     email: string;
     password: string;
     phone?: string;
+    birthDate: string;
   }) => Promise<{ ok: boolean; error?: string; needsConfirmation?: boolean }>;
   signOut: () => Promise<void>;
   updateProfile: (data: {
@@ -394,11 +396,12 @@ export function AppProvider({
   );
 
   const signUp = useCallback<AppContextValue["signUp"]>(
-    async ({ fullName, email, password, phone }) => {
+    async ({ fullName, email, password, phone, birthDate }) => {
       setAuthLoading(true);
       try {
         if (isDemo) return { ok: false, error: "genericError" };
         if (!validNewPassword(password)) return { ok: false, error: "weakPassword" };
+        if (!validBirthDate(birthDate)) return { ok: false, error: "birthDateInvalid" };
 
         const supabase = getSupabaseBrowserClient();
         if (!supabase) return { ok: false, error: "genericError" };
@@ -407,7 +410,7 @@ export function AppProvider({
           email: email.trim(),
           password,
           options: {
-            data: { full_name: fullName.trim(), phone: phone ?? null },
+            data: { full_name: fullName.trim(), phone: phone ?? null, birth_date: birthDate },
             emailRedirectTo:
               typeof window !== "undefined"
                 ? authCallbackUrl(window.location.origin, window.location.pathname.split("/")[1], "signup")

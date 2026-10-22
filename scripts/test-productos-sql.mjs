@@ -261,4 +261,87 @@ const r3c = (await submit(member3, 'aal1'))[0].r;
 ok('guardar dos veces no cambia la meta', r3c.already === true && (await goalsOf(client3)).length === g3all.length);
 ok('la meta y la rutina de otro cliente no se tocan', (await goalsOf(client2)).length === gBefore);
 
-console.log(`\n${checks} comprobaciones PASS (00042 productos, stock, ventas, categoría; 00043-00046 plan de nutrición, registro, meta y rutina)`);
+// ===== 00047: menores, consentimiento de datos de salud y aprobación de dieta/rutina =====
+await db.exec(sql('docs/SQL-PENDIENTE/00047_menores_consentimiento_aprobacion.sql'));
+ok('00047 se aplica sobre 00046 sin error', true);
+const CONSENT = 'salud-v1-2026-10-21-borrador';
+const mkAccount = async (email, birth) => {
+  const id = (await db.query('insert into auth.users(email, raw_user_meta_data) values ($1, $2) returning id',
+    [email, JSON.stringify({ full_name: 'EJEMPLO ' + email, ...(birth ? { birth_date: birth } : {}) })])).rows[0].id;
+  await db.exec('delete from auth.current_user');
+  return id;
+};
+const clientOf = async (profile) => (await db.query('select id from gym_clients where profile_id = $1', [profile])).rows[0].id;
+const ageOf = async (actor) => (await as(actor, 'aal1', 'select public.my_age_status() as s'))[0].s;
+const d18 = (await db.query("select ((now() at time zone 'America/Managua')::date - interval '18 years')::date::text as d")).rows[0].d;
+const minorProfile = await mkAccount('menor47@test.invalid', '2012-05-01');
+const edgeMinor = await mkAccount('casi47@test.invalid', (await db.query("select ((now() at time zone 'America/Managua')::date - interval '18 years' + interval '1 day')::date::text as d")).rows[0].d);
+const adultProfile = await mkAccount('adulto47@test.invalid', '1990-03-10');
+const edgeAdult = await mkAccount('justo47@test.invalid', d18);
+const noBirth = await mkAccount('sinfecha47@test.invalid', null);
+const minorClient = await clientOf(minorProfile);
+const adultClient = await clientOf(adultProfile);
+const noBirthClient = await clientOf(noBirth);
+
+ok('la fecha de nacimiento del alta pasa a la ficha', (await db.query('select birthdate::text as b from gym_clients where id = $1', [adultClient])).rows[0].b === '1990-03-10');
+ok('sin fecha en el alta, la ficha queda sin fecha', (await db.query('select birthdate from gym_clients where id = $1', [noBirthClient])).rows[0].birthdate === null);
+ok('menor de 18 años se reconoce como menor', (await ageOf(minorProfile)) === 'minor');
+ok('cumplir 18 hoy ya cuenta como adulto', (await ageOf(edgeAdult)) === 'adult');
+ok('un día antes de los 18 sigue siendo menor', (await ageOf(edgeMinor)) === 'minor');
+ok('sin fecha de nacimiento: unknown', (await ageOf(noBirth)) === 'unknown');
+ok('el menor no calcula (MINOR)', await denied(selfCalc(minorProfile, 'aal1'), /MINOR/));
+ok('el menor no registra consentimiento (MINOR)', await denied(as(minorProfile, 'aal1', 'select public.record_health_consent($1)', [CONSENT]), /MINOR/));
+ok('el menor ve su cuenta sin plan ni herramientas', await (async () => {
+  const g = await getAs(minorProfile, 'aal1');
+  return g.age_status === 'minor' && g.plan === null && g.can_self_calculate === false;
+})());
+ok('sin fecha no calcula (NO_BIRTHDATE)', await denied(selfCalc(noBirth, 'aal1'), /NO_BIRTHDATE/));
+ok('adulto sin consentimiento no calcula (NO_CONSENT)', await denied(selfCalc(adultProfile, 'aal1'), /NO_CONSENT/));
+ok('consentimiento con versión vieja se rechaza', await denied(as(adultProfile, 'aal1', 'select public.record_health_consent($1)', ['vieja']), /CONSENT_VERSION/));
+const cid1 = (await as(adultProfile, 'aal1', 'select public.record_health_consent($1) as id', [CONSENT]))[0].id;
+ok('adulto con consentimiento registra su consentimiento', !!cid1);
+ok('registrar dos veces el mismo consentimiento no duplica', (await as(adultProfile, 'aal1', 'select public.record_health_consent($1) as id', [CONSENT]))[0].id === cid1);
+ok('el consentimiento aparece en la cuenta', (await getAs(adultProfile, 'aal1')).has_consent === true);
+
+// Calcular: queda pendiente y el cliente no ve tablas.
+ok('adulto con consentimiento calcula su plan', (await selfCalc(adultProfile, 'aal1'))[0].id === adultClient);
+const pending = (await getAs(adultProfile, 'aal1')).plan;
+ok('el cliente no ve dieta ni rutina antes de aprobar', pending.approved === false && pending.results === undefined && pending.meal_plan === undefined && pending.routine === undefined && pending.guide === undefined);
+ok('el cliente sí ve sus datos de entrada', pending.inputs && pending.inputs.weightKg === 80);
+const adultGoalsBefore = (await db.query('select count(*)::int as n from client_goals where client_id = $1', [adultClient])).rows[0].n;
+ok('calcular no abre meta ni rutina', adultGoalsBefore === 0);
+const subAdult = (await as(adultProfile, 'aal1', 'select public.nutrition_submit_to_gym() as r'))[0].r;
+ok('registrar peso y altura no abre meta ni rutina', subAdult.already === false && (await db.query('select count(*)::int as n from client_goals where client_id = $1', [adultClient])).rows[0].n === 0);
+
+// Aprobación: entrenador sin acceso no aprueba; con acceso sí.
+ok('entrenador sin acceso no aprueba (AUTH)', await denied(as(trainer2, 'aal2', 'select public.nutrition_approve($1)', [adultClient]), /AUTH/));
+ok('el cliente no aprueba su propio plan (AUTH)', await denied(as(adultProfile, 'aal1', 'select public.nutrition_approve($1)', [adultClient]), /AUTH/));
+await db.query(`insert into trainer_client_access(trainer_id, client_id, status, requested_via) values ($1, $2, 'approved', 'trainer')`, [trainer, adultClient]);
+const ap1 = (await as(trainer, 'aal2', 'select public.nutrition_approve($1) as r', [adultClient]))[0].r;
+ok('entrenador con acceso aprueba y se abren meta y rutina', ap1.already === false && (await db.query("select count(*)::int as n from client_goals where client_id = $1 and status = 'activa'", [adultClient])).rows[0].n === 1 && (await db.query("select count(*)::int as n from client_routines where client_id = $1 and status = 'activa'", [adultClient])).rows[0].n === 1);
+const approvedView = (await getAs(adultProfile, 'aal1')).plan;
+ok('tras aprobar, el cliente ve dieta, rutina y guía', approvedView.approved === true && Array.isArray(approvedView.meal_plan) && approvedView.meal_plan.length > 0 && Array.isArray(approvedView.routine) && approvedView.routine.length > 0 && Array.isArray(approvedView.guide));
+ok('aprobar otra vez no repite nada', (await as(trainer, 'aal2', 'select public.nutrition_approve($1) as r', [adultClient]))[0].r.already === true);
+ok('el administrador ve el plan aunque esté pendiente', (await as(admin, 'aal2', 'select public.nutrition_get($1) as g', [adultClient]))[0].g.plan.approved_at !== null);
+
+// Recalcular o editar vuelve a dejarlo pendiente.
+await selfCalc(adultProfile, 'aal1');
+ok('recalcular deja el plan pendiente otra vez', (await getAs(adultProfile, 'aal1')).plan.approved === false);
+await as(trainer, 'aal2', 'select public.nutrition_approve($1)', [adultClient]);
+await as(trainer, 'aal2', 'select public.nutrition_save($1,$2,$3,$4,$5,$6,$7)',
+  [adultClient, 'peso', JSON.stringify(calcInputs), JSON.stringify({ kcal: 2500, targetWeightKg: 86.4, weeksEstimate: 26 }), JSON.stringify(reportMeals), JSON.stringify(reportRoutine), JSON.stringify(['Guía'])]);
+ok('guardar cambios del entrenador vuelve a dejar el plan pendiente', (await getAs(adultProfile, 'aal1')).plan.approved === false);
+
+// Consentimiento: revocar bloquea nuevos datos de salud.
+ok('revocar consentimiento devuelve 1', (await as(adultProfile, 'aal1', 'select public.revoke_health_consent() as n'))[0].n === 1);
+ok('sin consentimiento vigente no calcula', await denied(selfCalc(adultProfile, 'aal1'), /NO_CONSENT/));
+ok('sin consentimiento vigente no registra peso', await denied(as(adultProfile, 'aal1', 'select public.nutrition_submit_to_gym() as r'), /NO_CONSENT/));
+
+// Fecha de nacimiento: una sola vez desde la cuenta.
+ok('fecha inválida (futura) se rechaza', await denied(as(noBirth, 'aal1', "select public.set_my_birthdate('2999-01-01')"), /BIRTHDATE_INVALID/));
+ok('sin fecha puede fijarla una vez', (await as(noBirth, 'aal1', "select public.set_my_birthdate('1985-01-01') as s"))[0].s === 'adult');
+ok('después no la cambia desde la cuenta', await denied(as(noBirth, 'aal1', "select public.set_my_birthdate('1970-01-01')"), /BIRTHDATE_LOCKED/));
+ok('el personal ve la edad del cliente', (await as(admin, 'aal2', 'select public.nutrition_get($1) as g', [minorClient]))[0].g.age_status === 'minor');
+ok('menor: el personal ve su plan vacío y no aprueba sin plan (NO_PLAN)', await denied(as(admin, 'aal2', 'select public.nutrition_approve($1)', [minorClient]), /NO_PLAN/));
+
+console.log(`\n${checks} comprobaciones PASS (00042 productos, stock, ventas, categoría; 00043-00047 plan de nutrición, registro, edad, consentimiento y aprobación)`);

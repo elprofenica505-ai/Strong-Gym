@@ -52,6 +52,7 @@ test("Mi cuenta SSR pasa la lectura canónica y su identidad al panel; fallo de 
     "@/lib/data/progress-queries": "export const getMyProgress=async()=>null;",
     "@/components/account/my-progress": "export const MyProgress=()=>null;",
     "@/lib/data/attendance-queries": "export const getClientAttendance=async()=>null;",
+    "@/lib/data/age-queries": "export const getMyAgeStatus=async()=>'adult';",
     "@/components/attendance/attendance-table": "export const AttendanceTable=()=>null;",
   })("app/[locale]/mi-cuenta/page.tsx");
   for (const error of [false, true]) {
