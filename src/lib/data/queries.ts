@@ -1043,3 +1043,28 @@ export async function getStaffProfiles(): Promise<{ id: string; fullName: string
   const profiles = await getProfilesForRoles();
   return profiles.filter((p) => p.role === "trainer" || p.role === "cashier" || p.role === "admin");
 }
+
+/** Bitácora de cambios de rol (sólo administrador con MFA; la base lo exige con is_admin). */
+export async function getRoleChanges(): Promise<
+  { id: number; targetId: string; oldRole: string; newRole: string; changedBy: string | null; changedAt: string }[]
+> {
+  return checkedRead("ROLE_CHANGES", async () => {
+    const supabase = await getSupabaseServerClient();
+    if (!supabase) return [];
+    const { data, error } = await supabase
+      .from("role_changes")
+      .select("id, target_id, old_role, new_role, changed_by, changed_at")
+      .order("changed_at", { ascending: false })
+      .limit(100)
+      .abortSignal(AbortSignal.timeout(15000));
+    if (error) throw new DataReadError("ROLE_CHANGES", error.code);
+    return (data ?? []).map((row) => ({
+      id: Number(row.id),
+      targetId: row.target_id as string,
+      oldRole: row.old_role as string,
+      newRole: row.new_role as string,
+      changedBy: (row.changed_by as string | null) ?? null,
+      changedAt: row.changed_at as string,
+    }));
+  });
+}
