@@ -31,6 +31,23 @@ const nextConfig: NextConfig = {
           { key: "Strict-Transport-Security", value: "max-age=31536000" },
           // Cámara sólo para este sitio (lector de QR); sin micrófono, ubicación ni pago de terceros.
           { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=(), payment=()" },
+          // CSP en modo informativo: no bloquea nada; los incumplimientos sólo se ven en la consola del navegador.
+          // Activar la política real (Content-Security-Policy) cuando no haya avisos en las páginas.
+          {
+            key: "Content-Security-Policy-Report-Only",
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com",
+              "font-src 'self' data:",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+              "frame-ancestors 'self'",
+              "object-src 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+            ].join("; "),
+          },
         ],
       },
       {
