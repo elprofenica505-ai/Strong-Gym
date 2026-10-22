@@ -184,8 +184,14 @@ export function SiteFooter({ locale }: { locale: Locale }) {
             <Link href={`/${locale}#normas`} className="transition-colors hover:text-white">
               {dict.nav.rules}
             </Link>
-            <Link href={`/${locale}#contacto`} className="transition-colors hover:text-white">
+            <Link href={`/${locale}/privacidad`} className="transition-colors hover:text-white">
               {dict.footer.privacy}
+            </Link>
+            <Link href={`/${locale}/terminos`} className="transition-colors hover:text-white">
+              {locale === "en" ? "Terms" : "Términos"}
+            </Link>
+            <Link href={`/${locale}/cookies`} className="transition-colors hover:text-white">
+              {locale === "en" ? "Cookies" : "Cookies"}
             </Link>
           </div>
         </div>
