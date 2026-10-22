@@ -424,6 +424,10 @@ const es = {
     birthDate: "Fecha de nacimiento",
     birthDateHint: "La usamos para confirmar que sos mayor de 18 años. Si sos menor, podés crear la cuenta, pero no tendrás acceso a la calculadora ni al panel de cliente.",
     birthDateInvalid: "Revisá la fecha de nacimiento.",
+    acceptPrivacy: "He leído y acepto la Política de privacidad",
+    acceptTerms: "He leído y acepto los Términos y condiciones",
+    readDocument: "Ver texto",
+    legalRequired: "Debés aceptar la política de privacidad y los términos para crear tu cuenta.",
     passwordMin: "Entre 12 y 128 caracteres",
     demoNotice:
       "Demo local de sólo lectura. Ingreso, registro y operaciones deshabilitados.",

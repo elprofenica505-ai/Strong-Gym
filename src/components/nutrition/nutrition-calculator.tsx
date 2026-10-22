@@ -50,6 +50,8 @@ type Payload = {
   can_self_calculate: boolean;
   trainer_tools_enabled?: boolean;
   age_status?: "adult" | "minor" | "unknown";
+  // Edad calculada en el servidor desde la fecha de nacimiento (sólo cliente; 00048).
+  age?: number | null;
   has_consent?: boolean;
 };
 type Inputs = {
@@ -205,7 +207,8 @@ export function NutritionCalculator({
 
   const inputsFromForm = (): Inputs => ({
     sex: form.sex === "m" ? "m" : "f",
-    age: Number(form.age),
+    // El cliente no escribe la edad: la calcula el servidor desde su fecha de nacimiento.
+    age: mode === "client" ? Number(data.age ?? 0) : Number(form.age),
     weightKg: Number(form.weightKg.replace(",", ".")),
     heightCm: Number(form.heightCm.replace(",", ".")),
     activity: Number(form.activity),
@@ -307,10 +310,17 @@ export function NutritionCalculator({
               <option value="m">Hombre</option>
             </select>
           </label>
-          <label className="grid gap-1 text-[0.85rem]">
-            Edad (años)
-            <input className={input} inputMode="numeric" required value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} />
-          </label>
+          {mode === "client" ? (
+            <label className="grid gap-1 text-[0.85rem]">
+              Edad (de tu fecha de nacimiento)
+              <input className={input} value={data.age != null ? `${data.age} años` : "No disponible"} disabled />
+            </label>
+          ) : (
+            <label className="grid gap-1 text-[0.85rem]">
+              Edad (años)
+              <input className={input} inputMode="numeric" required value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} />
+            </label>
+          )}
           <label className="grid gap-1 text-[0.85rem]">
             Peso (kg)
             <input className={input} inputMode="decimal" required value={form.weightKg} onChange={(e) => setForm({ ...form, weightKg: e.target.value })} />
@@ -348,7 +358,7 @@ export function NutritionCalculator({
             </label>
           )}
           <div className="flex gap-3 sm:col-span-2">
-            <button type="submit" className={primary} disabled={busy || (mode === "client" && (!accepted || (!data.has_consent && !consentChecked)))}>{plan ? "Recalcular y reemplazar" : "Calcular mi plan"}</button>
+            <button type="submit" className={primary} disabled={busy || (mode === "client" && (!accepted || data.age == null || (!data.has_consent && !consentChecked)))}>{plan ? "Recalcular y reemplazar" : "Calcular mi plan"}</button>
             {plan && <button type="button" className={button} onClick={() => setShowForm(false)}>Cancelar</button>}
           </div>
           {plan && <p className="text-[0.85rem] text-fog sm:col-span-2">Recalcular reemplaza el plan y la rutina anteriores.</p>}

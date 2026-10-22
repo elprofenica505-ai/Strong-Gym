@@ -6,7 +6,8 @@
 import { siteConfig } from "../../config/site.ts";
 import type { Locale } from "../../i18n/config.ts";
 
-export const LEGAL_VERSION = "2026-10-21-borrador";
+import { LEGAL_VERSION } from "./version.ts";
+export { LEGAL_VERSION };
 export const LEGAL_UPDATED = "21 de octubre de 2026";
 
 export type LegalSection = { title: string; paragraphs: string[]; items?: string[] };

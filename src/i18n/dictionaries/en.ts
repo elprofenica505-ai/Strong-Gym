@@ -421,6 +421,10 @@ const en = {
     birthDate: "Date of birth",
     birthDateHint: "We use it to confirm you are 18 or older. If you are under 18, you can create the account, but you will not have access to the calculator or the client panel.",
     birthDateInvalid: "Please check your date of birth.",
+    acceptPrivacy: "I have read and accept the Privacy Policy",
+    acceptTerms: "I have read and accept the Terms and conditions",
+    readDocument: "Read text",
+    legalRequired: "You must accept the privacy policy and the terms to create your account.",
     passwordMin: "Between 12 and 128 characters",
     demoNotice:
       "Read-only local demo. Login, registration and operations are disabled.",

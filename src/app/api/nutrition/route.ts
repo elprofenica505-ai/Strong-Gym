@@ -10,6 +10,7 @@ import {
   DISCLAIMER_VERSION,
   buildPlan,
   inputsSchema,
+  type PlanInputs,
 } from "@/lib/nutrition/plan";
 
 export const dynamic = "force-dynamic";
@@ -85,9 +86,10 @@ const routineSchema = z
 
 const postSchema = z.discriminatedUnion("action", [
   // El cliente calcula su propio plan desde Mi cuenta. Queda pendiente hasta que el personal lo apruebe.
+  // La edad no se envía: el servidor la calcula desde la fecha de nacimiento (00048).
   z.object({
     action: z.literal("self"),
-    inputs: inputsSchema,
+    inputs: inputsSchema.omit({ age: true }),
     // El cliente debe aceptar la política de seguridad antes de calcular.
     acceptDisclaimer: z.literal(true, { message: "Aceptá el aviso de seguridad para calcular." }),
   }),
@@ -150,7 +152,10 @@ export async function GET(request: Request) {
       .rpc("nutrition_get", { p_client: client })
       .abortSignal(AbortSignal.timeout(15000));
     if (error) return failure(error);
-    return reply({ data, disclaimer: DISCLAIMER_ES, disclaimerVersion: DISCLAIMER_VERSION });
+    // Edad desde la fecha de nacimiento (sólo lectura). Sin edad, el servidor bloquea el cálculo del cliente.
+    const { data: age } = await ctx.db.rpc("client_age_years", { p_client: client });
+    const withAge = data && typeof data === "object" ? { ...data, age: typeof age === "number" ? age : null } : data;
+    return reply({ data: withAge, disclaimer: DISCLAIMER_ES, disclaimerVersion: DISCLAIMER_VERSION });
   } catch {
     return reply({ error: "No se pudo cargar el plan. Intentá de nuevo." }, 503);
   }
@@ -205,11 +210,24 @@ export async function POST(request: Request) {
       return reply({ ok: true, data });
     }
 
+    // Cliente: la edad sale de su fecha de nacimiento; sin fecha no hay cálculo.
+    let inputs: PlanInputs;
+    if (body.action === "self") {
+      const { data: age, error: ageError } = await ctx.db.rpc("client_age_years", { p_client: null });
+      if (ageError) return failure(ageError);
+      if (typeof age !== "number") return failure({ message: "NO_BIRTHDATE" });
+      const full = inputsSchema.safeParse({ ...body.inputs, age });
+      if (!full.success) return reply({ error: "Revisá los datos del cálculo." }, 422);
+      inputs = full.data;
+    } else {
+      inputs = body.inputs;
+    }
+
     // Los resultados se recalculan aquí; el navegador no decide kcal, IMC ni macros.
-    const built = buildPlan(body.inputs);
+    const built = buildPlan(inputs);
     const common = {
-      p_goal: body.inputs.goal,
-      p_inputs: body.inputs,
+      p_goal: inputs.goal,
+      p_inputs: inputs,
       p_results: built.results,
       p_meal_plan: built.mealPlan,
       p_routine: built.routine,

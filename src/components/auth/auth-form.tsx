@@ -41,6 +41,7 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
     if (!isLogin) {
       if (fullName.length < 2) errors.fullName = dict.auth.requiredField;
       if (!validBirthDate(String(data.get("birthDate") ?? ""))) errors.birthDate = dict.auth.birthDateInvalid;
+      if (!data.get("acceptPrivacy") || !data.get("acceptTerms")) errors.legal = dict.auth.legalRequired;
       if (!validNewPassword(password)) errors.password = dict.auth.passwordMin;
       if (password !== confirm) errors.confirmPassword = dict.auth.passwordMismatch;
     } else if (password.length < 1) {
@@ -56,7 +57,14 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
 
     const result = isLogin
       ? await signIn(email, password)
-      : await signUp({ fullName, email, password, phone, birthDate: String(data.get("birthDate") ?? "") });
+      : await signUp({
+          fullName,
+          email,
+          password,
+          phone,
+          birthDate: String(data.get("birthDate") ?? ""),
+          legalAccepted: Boolean(data.get("acceptPrivacy")) && Boolean(data.get("acceptTerms")),
+        });
 
     if (!result.ok) {
       const message = (dict.auth as Record<string, unknown>)[result.error ?? "genericError"];
@@ -156,6 +164,26 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
           required
           error={fieldErrors.birthDate}
         />
+      ) : null}
+
+      {!isLogin ? (
+        <div className="grid gap-2 text-[0.8125rem] text-mist">
+          <label className="flex items-start gap-2">
+            <input name="acceptPrivacy" type="checkbox" className="mt-1" required />
+            <span>
+              {dict.auth.acceptPrivacy}{" "}
+              <Link href={`/${locale}/privacidad`} target="_blank" className="underline">{dict.auth.readDocument}</Link>
+            </span>
+          </label>
+          <label className="flex items-start gap-2">
+            <input name="acceptTerms" type="checkbox" className="mt-1" required />
+            <span>
+              {dict.auth.acceptTerms}{" "}
+              <Link href={`/${locale}/terminos`} target="_blank" className="underline">{dict.auth.readDocument}</Link>
+            </span>
+          </label>
+          {fieldErrors.legal ? <p role="alert" className="text-alert">{fieldErrors.legal}</p> : null}
+        </div>
       ) : null}
 
       {!isLogin ? (

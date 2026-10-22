@@ -31,7 +31,7 @@ test('demo de sólo lectura: no restaura sesiones ni almacena contraseñas; limp
     assert.equal(storage.getItem('strong-gym:finance:pending'),'EXAMPLE_PENDING');
     assert.equal(storage.getItem('sb-project-auth-token'),'EXAMPLE_SESSION');
     let result;
-    await act(async()=>{result=await ctx.signUp({fullName:'EXAMPLE',email:'example@test.invalid',password:'EXAMPLE_NEW',birthDate:'1990-03-10'});});
+    await act(async()=>{result=await ctx.signUp({fullName:'EXAMPLE',email:'example@test.invalid',password:'EXAMPLE_NEW',birthDate:'1990-03-10',legalAccepted:true});});
     assert.equal(result.ok,false);
     await act(async()=>{result=await ctx.signIn('example@test.invalid','EXAMPLE_NEW');});
     assert.equal(result.ok,false);
@@ -54,18 +54,18 @@ test('demo de sólo lectura: no restaura sesiones ni almacena contraseñas; limp
     globalThis.__authBoundary={auth:{signUp:async(payload)=>{
       signups++;assert.equal(payload.password,'EXAMPLE_NEW_PASSWORD');
       assert.equal(payload.options.emailRedirectTo,'https://strong.example/api/auth/callback?locale=en&flow=signup');
-      assert.deepEqual(payload.options.data,{full_name:'EXAMPLE',phone:null,birth_date:'1990-03-10'});return {data:{session:null},error:null};
+      assert.deepEqual(Object.keys(payload.options.data).sort(),['birth_date','full_name','legal_accepted','phone']);assert.equal(payload.options.data.legal_accepted.version,'2026-10-21-borrador');assert.equal(payload.options.data.birth_date,'1990-03-10');return {data:{session:null},error:null};
     }}};
-    await act(async()=>{result=await ctx.signUp({fullName:'EXAMPLE',email:'example@test.invalid',password:'short',birthDate:'1990-03-10'});});
+    await act(async()=>{result=await ctx.signUp({fullName:'EXAMPLE',email:'example@test.invalid',password:'short',birthDate:'1990-03-10',legalAccepted:true});});
     assert.equal(result.ok,false);assert.equal(signups,0);
-    await act(async()=>{result=await ctx.signUp({fullName:' EXAMPLE ',email:'example@test.invalid',password:'EXAMPLE_NEW_PASSWORD',birthDate:'1990-03-10'});});
+    await act(async()=>{result=await ctx.signUp({fullName:' EXAMPLE ',email:'example@test.invalid',password:'EXAMPLE_NEW_PASSWORD',birthDate:'1990-03-10',legalAccepted:true});});
     assert.equal(result.ok,true);assert.equal(result.needsConfirmation,true);assert.equal(signups,1);
     for(const [providerError,key] of [[{status:429,code:'over_email_send_rate_limit'},'rateLimited'],[{code:'email_address_not_authorized'},'deliveryUnavailable']]) {
       globalThis.__authBoundary={auth:{
         signUp:async()=>({data:null,error:{...providerError,message:'EXAMPLE_PRIVATE_PROVIDER'}}),
         signInWithPassword:async()=>({data:null,error:{...providerError,message:'EXAMPLE_PRIVATE_PROVIDER'}}),
       }};
-      await act(async()=>{result=await ctx.signUp({fullName:'EXAMPLE',email:'example@test.invalid',password:'EXAMPLE_NEW_PASSWORD',birthDate:'1990-03-10'});});
+      await act(async()=>{result=await ctx.signUp({fullName:'EXAMPLE',email:'example@test.invalid',password:'EXAMPLE_NEW_PASSWORD',birthDate:'1990-03-10',legalAccepted:true});});
       assert.equal(result.ok,false);assert.equal(result.error,key);assert.equal(ctx.user,null);
       await act(async()=>{result=await ctx.signIn('example@test.invalid','EXAMPLE_NEW_PASSWORD');});
       assert.equal(result.ok,false);assert.equal(result.error,key);assert.equal(ctx.user,null);

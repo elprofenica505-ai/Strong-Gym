@@ -344,4 +344,23 @@ ok('después no la cambia desde la cuenta', await denied(as(noBirth, 'aal1', "se
 ok('el personal ve la edad del cliente', (await as(admin, 'aal2', 'select public.nutrition_get($1) as g', [minorClient]))[0].g.age_status === 'minor');
 ok('menor: el personal ve su plan vacío y no aprueba sin plan (NO_PLAN)', await denied(as(admin, 'aal2', 'select public.nutrition_approve($1)', [minorClient]), /NO_PLAN/));
 
-console.log(`\n${checks} comprobaciones PASS (00042 productos, stock, ventas, categoría; 00043-00047 plan de nutrición, registro, edad, consentimiento y aprobación)`);
+// ===== 00048: edad calculada desde la fecha de nacimiento =====
+await db.exec(sql('docs/SQL-PENDIENTE/00048_edad_desde_fecha_nacimiento.sql'));
+ok('00048 se aplica sobre 00047 sin error', true);
+const yearsSince = (iso) => {
+  const t = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Managua', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()).split('-').map(Number);
+  const b = iso.split('-').map(Number);
+  let y = t[0] - b[0];
+  if (t[1] < b[1] || (t[1] === b[1] && t[2] < b[2])) y -= 1;
+  return y;
+};
+const ageOfSelf = async (actor) => (await as(actor, 'aal1', 'select public.client_age_years() as a'))[0].a;
+ok('la edad del adulto sale de la fecha de nacimiento', (await ageOfSelf(adultProfile)) === yearsSince('1990-03-10'));
+ok('la edad del menor también sale de la fecha', (await ageOfSelf(minorProfile)) === yearsSince('2012-05-01'));
+const noDate48 = await mkAccount('sinfecha48@test.invalid', null);
+ok('sin fecha de nacimiento devuelve null', (await ageOfSelf(noDate48)) === null);
+ok('personal con acceso ve la edad del cliente', (await as(trainer, 'aal2', 'select public.client_age_years($1) as a', [adultClient]))[0].a === yearsSince('1990-03-10'));
+ok('personal sin acceso no ve la edad (AUTH)', await denied(as(trainer2, 'aal2', 'select public.client_age_years($1) as a', [adultClient]), /AUTH/));
+ok('otro cliente no ve la edad ajena (AUTH)', await denied(as(minorProfile, 'aal1', 'select public.client_age_years($1) as a', [adultClient]), /AUTH/));
+
+console.log(`\n${checks} comprobaciones PASS (00042 productos, stock, ventas, categoría; 00043-00048 plan de nutrición, registro, edad, consentimiento, aprobación y edad calculada)`);
