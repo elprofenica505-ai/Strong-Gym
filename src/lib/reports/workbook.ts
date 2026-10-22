@@ -12,6 +12,14 @@ import {
   type LedgerRow,
   type DebtEntryRow,
 } from "./finance-report.ts";
+import {
+  MOVEMENT_HEADERS,
+  describeFilters,
+  filterDebtEntries,
+  filterLedger,
+  filterPending,
+  type ExportFilters,
+} from "./export-filter.ts";
 import type { FinanceReportData } from "./load";
 
 /** Nombre fijo: el Excel maestro siempre se llama igual y se regenera con datos actuales. */
@@ -54,45 +62,64 @@ function addRows(ws: ExcelJS.Worksheet, rows: (string | number | null)[][], mone
  * Todas las hojas salen de los mismos datos, así no pueden contradecirse.
  */
 export async function buildMasterWorkbook(data: FinanceReportData, now = new Date()): Promise<Buffer> {
+  return buildLedgerWorkbook(data, now, null);
+}
+
+/** Mismo libro, limitado a los movimientos y deudas que cumplen los filtros. */
+export async function buildFilteredWorkbook(data: FinanceReportData, filters: ExportFilters, now = new Date()): Promise<Buffer> {
+  return buildLedgerWorkbook(data, now, filters);
+}
+
+async function buildLedgerWorkbook(data: FinanceReportData, now: Date, filters: ExportFilters | null): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
   wb.creator = "Strong Gym";
   wb.created = now;
   const today = managuaDay(now);
-  const rows = data.rows;
-  const pending = pendingPayments(data.debtEntries);
+  const rows = filters ? filterLedger(data.rows, filters) : data.rows;
+  const pending = filters
+    ? filterPending(pendingPayments(data.debtEntries), filters)
+    : pendingPayments(data.debtEntries);
+  const debtEntries = filters ? filterDebtEntries(data.debtEntries, filters) : data.debtEntries;
   const firstDay = rows.length ? managuaDay(rows[0].occurredAt) : today;
-  const totals = totalsFor(rows, pending, firstDay, today);
+  const totals = totalsFor(rows, pending, filters?.from ?? firstDay, filters?.to ?? today);
   const monthNow = managuaMonth(now);
   const monthTotals = totalsFor(rows, pending, `${monthNow}-01`, today);
 
   // 1. Resumen
   const res = wb.addWorksheet("Resumen");
   styleHeader(res, ["Concepto", "Valor", "Nota"], [38, 20, 70]);
+  const scope: (string | number | null)[][] = filters
+    ? [
+        ["Reporte filtrado", stamp(now), "Sólo incluye los movimientos y deudas de los filtros siguientes."],
+        ...describeFilters(filters, data.maps).map(([k, v]) => [k, v, "Filtro aplicado"] as (string | number | null)[]),
+        ["Movimientos incluidos", rows.length, rows.length === 0 ? "Ningún movimiento cumple los filtros." : "Con los filtros aplicados."],
+      ]
+    : [];
+  const monthLines: (string | number | null)[][] = filters
+    ? []
+    : [
+        ["Ingresos del mes (NIO)", monthTotals.incomeNio, `Mes ${monthNow}.`],
+        ["Egresos del mes (NIO)", monthTotals.expenseNio, `Mes ${monthNow}.`],
+      ];
   addRows(res, [
+    ...scope,
     ["Actualizado (Managua)", stamp(now), "Este archivo se regenera desde la base cada vez que lo descargás."],
     ["Día de hoy (Managua)", today, "Todos los días se calculan en America/Managua."],
-    ["Ingresos históricos (NIO)", totals.incomeNio, "Sólo movimientos completados, equivalente NIO guardado en cada uno."],
+    ["Ingresos históricos (NIO)", totals.incomeNio, filters ? "Sólo movimientos completados dentro de los filtros." : "Sólo movimientos completados, equivalente NIO guardado en cada uno."],
     ["Egresos históricos (NIO)", totals.expenseNio, "Sólo movimientos completados."],
     ["Saldo histórico (NIO)", totals.netNio, "Ingresos menos egresos."],
-    ["Ingresos del mes (NIO)", monthTotals.incomeNio, `Mes ${monthNow}.`],
-    ["Egresos del mes (NIO)", monthTotals.expenseNio, `Mes ${monthNow}.`],
+    ...monthLines,
     ["Comisión estimada histórica (NIO)", totals.commissionNio, "Estimada con el porcentaje por método. No se descuenta de la caja."],
     ["Deuda pendiente (NIO)", totals.pendingDebtNio, "Suma de saldos de deuda por cliente en córdobas."],
     ["Deuda pendiente (USD)", totals.pendingDebtUsd, "Se muestra en dólares; no se convierte."],
     ["Clientes con saldo pendiente", pending.length, "Ver hoja Pagos pendientes."],
-    ["Movimientos registrados", rows.length, "Incluye pendientes y anulados."],
+    ["Movimientos registrados", rows.length, filters ? "Con los filtros aplicados. Incluye pendientes y anulados." : "Incluye pendientes y anulados."],
   ], [1, 2]);
   res.getColumn(2).alignment = { horizontal: "right" };
 
   // 2. Movimientos
   const mv = wb.addWorksheet("Movimientos");
-  styleHeader(
-    mv,
-    ["Fecha (Managua)", "Tipo", "Origen", "Estado", "Cliente", "Concepto", "Método", "Cuenta", "Categoría",
-      "Moneda", "Monto", "Tasa manual", "Equivalente NIO", "Comisión estimada NIO", "Efectivo recibido",
-      "Vuelto", "Deuda antes", "Deuda después", "Referencia", "ID"],
-    [18, 10, 20, 12, 22, 40, 22, 22, 18, 9, 14, 12, 16, 18, 16, 12, 14, 14, 18, 38],
-  );
+  styleHeader(mv, MOVEMENT_HEADERS, [18, 10, 20, 12, 22, 40, 22, 22, 18, 9, 14, 12, 16, 18, 16, 12, 14, 14, 18, 38]);
   addRows(
     mv,
     [...rows].reverse().map((r: LedgerRow) => [
@@ -174,7 +201,7 @@ export async function buildMasterWorkbook(data: FinanceReportData, now = new Dat
     [18, 22, 14, 40, 14, 9, 16, 16, 16, 16, 16, 12, 22, 38]);
   addRows(
     hd,
-    [...data.debtEntries]
+    [...debtEntries]
       .sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : -1))
       .map((e: DebtEntryRow) => [
         stamp(e.occurredAt),
@@ -195,7 +222,7 @@ export async function buildMasterWorkbook(data: FinanceReportData, now = new Dat
     [4, 6, 7, 8, 9, 10, 11],
   );
 
-  // 8. Comisiones por método (histórico)
+  // 8. Comisiones por método
   const cm = wb.addWorksheet("Comisiones");
   styleHeader(cm, ["Método", "% estimado", "Ingresos brutos NIO", "Comisión estimada NIO", "Ingreso neto estimado NIO", "Movimientos"],
     [26, 12, 20, 22, 26, 13]);
@@ -218,4 +245,3 @@ export async function buildMasterWorkbook(data: FinanceReportData, now = new Dat
   const out = await wb.xlsx.writeBuffer();
   return Buffer.from(out as ArrayBuffer);
 }
-
