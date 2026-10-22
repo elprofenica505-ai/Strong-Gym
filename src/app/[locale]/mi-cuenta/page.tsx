@@ -11,6 +11,7 @@ import { getMyProgress } from "@/lib/data/progress-queries";
 import { MyProgress } from "@/components/account/my-progress";
 import { NutritionCalculator } from "@/components/nutrition/nutrition-calculator";
 import { getClientAttendance } from "@/lib/data/attendance-queries";
+import { getMyAgeStatus } from "@/lib/data/age-queries";
 import { AttendanceTable } from "@/components/attendance/attendance-table";
 import { MfaSetup } from "@/components/auth/mfa-setup";
 import { isStaffRole } from "@/lib/auth/current-user";
@@ -61,6 +62,10 @@ export default async function AccountPage({
   // Progreso propio (00040). Si la consulta falla, el cliente ve un aviso, no «sin datos».
   const myProgress = user && !isStaffRole(user.role) ? await readData(getMyProgress) : null;
   const myAttendance = user && !isStaffRole(user.role) ? await readData(() => getClientAttendance(null)) : null;
+  // Menores de 18: cuenta activa, pero sin pase, reservas, progreso, asistencia ni calculadora (00047).
+  const ageResult = user && !isStaffRole(user.role) ? await readData(getMyAgeStatus) : null;
+  const ageError = ageResult && !ageResult.ok ? ageResult.code : null;
+  const ageStatus = ageResult && ageResult.ok ? ageResult.data : null;
 
   return (
     <>
@@ -98,6 +103,21 @@ export default async function AccountPage({
                   {user.role === "trainer" ? "Ir a Mis clientes" : "Ir al panel"}
                 </ButtonLink>
               </div>
+            </div>
+          </div>
+        </section>
+      ) : ageError !== null ? (
+        <section className="container-x py-12">
+          <DataUnavailable locale={locale} code={ageError} />
+        </section>
+      ) : ageStatus === "minor" ? (
+        <section className="py-10 sm:py-12 lg:py-14">
+          <div className="container-x">
+            <div className="flex max-w-xl flex-col gap-4 rounded-2xl border border-line bg-card p-6">
+              <h2 className="text-[1.0625rem] font-semibold text-ink">Tu cuenta está activa</h2>
+              <p className="text-[0.875rem] leading-relaxed text-mist">
+                Esta cuenta es para mayores de 18 años. Mientras tanto no tenés acceso al pase, las reservas, el progreso, la asistencia ni la calculadora. Si tenés dudas, acercate al gimnasio.
+              </p>
             </div>
           </div>
         </section>

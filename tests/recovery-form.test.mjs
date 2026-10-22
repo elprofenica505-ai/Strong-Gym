@@ -103,7 +103,7 @@ for(const mode of ['login','register'])test(`${mode}: contraseña antigua corta 
     await withForm({mode},async(doc,event)=>{
       doc.querySelector('[name=email]').value='example@test.invalid';
       doc.querySelector('[name=password]').value='old123';
-      if(mode==='register') {doc.querySelector('[name=fullName]').value='EXAMPLE';doc.querySelector('[name=confirmPassword]').value='old123';}
+      if(mode==='register') {doc.querySelector('[name=fullName]').value='EXAMPLE';doc.querySelector('[name=confirmPassword]').value='old123';doc.querySelector('[name=birthDate]').value='1990-03-10';doc.querySelector('[name=acceptPrivacy]').checked=true;doc.querySelector('[name=acceptTerms]').checked=true;}
       await act(async()=>doc.querySelector('form').dispatchEvent(event()));
       assert.equal(calls,mode==='login'?1:0);
       assert.match(doc.querySelector('[role=alert]').textContent,mode==='login'?/incorrectos/:/12 y 128/);

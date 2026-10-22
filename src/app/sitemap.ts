@@ -11,6 +11,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/horarios", priority: 0.9, frequency: "daily" },
     { path: "/ingresar", priority: 0.3, frequency: "monthly" },
     { path: "/registro", priority: 0.4, frequency: "monthly" },
+    { path: "/privacidad", priority: 0.2, frequency: "monthly" },
+    { path: "/terminos", priority: 0.2, frequency: "monthly" },
+    { path: "/cookies", priority: 0.2, frequency: "monthly" },
     // /offline solo lo cachea el service worker; no lo indexamos.
     { path: "/offline", priority: 0, frequency: "monthly" },
   ];

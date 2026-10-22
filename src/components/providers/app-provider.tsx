@@ -1,5 +1,7 @@
 "use client";
 
+import { validBirthDate } from "@/lib/age/birth-date";
+import { LEGAL_VERSION } from "@/lib/legal/version";
 import { useRouter } from "next/navigation";
 import {
   createContext,
@@ -95,6 +97,8 @@ interface AppContextValue {
     email: string;
     password: string;
     phone?: string;
+    birthDate: string;
+    legalAccepted: boolean;
   }) => Promise<{ ok: boolean; error?: string; needsConfirmation?: boolean }>;
   signOut: () => Promise<void>;
   updateProfile: (data: {
@@ -394,11 +398,13 @@ export function AppProvider({
   );
 
   const signUp = useCallback<AppContextValue["signUp"]>(
-    async ({ fullName, email, password, phone }) => {
+    async ({ fullName, email, password, phone, birthDate, legalAccepted }) => {
       setAuthLoading(true);
       try {
         if (isDemo) return { ok: false, error: "genericError" };
         if (!validNewPassword(password)) return { ok: false, error: "weakPassword" };
+        if (!validBirthDate(birthDate)) return { ok: false, error: "birthDateInvalid" };
+        if (!legalAccepted) return { ok: false, error: "legalRequired" };
 
         const supabase = getSupabaseBrowserClient();
         if (!supabase) return { ok: false, error: "genericError" };
@@ -407,7 +413,13 @@ export function AppProvider({
           email: email.trim(),
           password,
           options: {
-            data: { full_name: fullName.trim(), phone: phone ?? null },
+            data: {
+              full_name: fullName.trim(),
+              phone: phone ?? null,
+              birth_date: birthDate,
+              // Evidencia de la aceptación en el alta (versión y hora).
+              legal_accepted: { version: LEGAL_VERSION, accepted_at: new Date().toISOString() },
+            },
             emailRedirectTo:
               typeof window !== "undefined"
                 ? authCallbackUrl(window.location.origin, window.location.pathname.split("/")[1], "signup")

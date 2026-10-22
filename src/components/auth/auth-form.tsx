@@ -1,5 +1,6 @@
 "use client";
 
+import { todayInManagua, validBirthDate } from "@/lib/age/birth-date";
 import Link from "next/link";
 import { validNewPassword, NEW_PASSWORD_MAX } from "@/lib/auth/password-recovery";
 import { safeAuthRedirect } from "@/lib/auth/redirects";
@@ -39,6 +40,8 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
     const errors: Record<string, string> = {};
     if (!isLogin) {
       if (fullName.length < 2) errors.fullName = dict.auth.requiredField;
+      if (!validBirthDate(String(data.get("birthDate") ?? ""))) errors.birthDate = dict.auth.birthDateInvalid;
+      if (!data.get("acceptPrivacy") || !data.get("acceptTerms")) errors.legal = dict.auth.legalRequired;
       if (!validNewPassword(password)) errors.password = dict.auth.passwordMin;
       if (password !== confirm) errors.confirmPassword = dict.auth.passwordMismatch;
     } else if (password.length < 1) {
@@ -54,7 +57,14 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
 
     const result = isLogin
       ? await signIn(email, password)
-      : await signUp({ fullName, email, password, phone });
+      : await signUp({
+          fullName,
+          email,
+          password,
+          phone,
+          birthDate: String(data.get("birthDate") ?? ""),
+          legalAccepted: Boolean(data.get("acceptPrivacy")) && Boolean(data.get("acceptTerms")),
+        });
 
     if (!result.ok) {
       const message = (dict.auth as Record<string, unknown>)[result.error ?? "genericError"];
@@ -141,6 +151,40 @@ export function AuthForm({ mode, redirectTo }: { mode: Mode; redirectTo?: string
         required
         error={fieldErrors.email}
       />
+
+      {!isLogin ? (
+        <Input
+          name="birthDate"
+          type="date"
+          label={dict.auth.birthDate}
+          hint={dict.auth.birthDateHint}
+          autoComplete="bday"
+          max={todayInManagua()}
+          min="1920-01-01"
+          required
+          error={fieldErrors.birthDate}
+        />
+      ) : null}
+
+      {!isLogin ? (
+        <div className="grid gap-2 text-[0.8125rem] text-mist">
+          <label className="flex items-start gap-2">
+            <input name="acceptPrivacy" type="checkbox" className="mt-1" required />
+            <span>
+              {dict.auth.acceptPrivacy}{" "}
+              <Link href={`/${locale}/privacidad`} target="_blank" className="underline">{dict.auth.readDocument}</Link>
+            </span>
+          </label>
+          <label className="flex items-start gap-2">
+            <input name="acceptTerms" type="checkbox" className="mt-1" required />
+            <span>
+              {dict.auth.acceptTerms}{" "}
+              <Link href={`/${locale}/terminos`} target="_blank" className="underline">{dict.auth.readDocument}</Link>
+            </span>
+          </label>
+          {fieldErrors.legal ? <p role="alert" className="text-alert">{fieldErrors.legal}</p> : null}
+        </div>
+      ) : null}
 
       {!isLogin ? (
         <Input

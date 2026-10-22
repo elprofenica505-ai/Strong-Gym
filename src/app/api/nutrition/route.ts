@@ -4,11 +4,13 @@ import { getCurrentUser } from "@/lib/data/queries";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { isAdminRole } from "@/lib/auth/current-user";
+import { HEALTH_CONSENT_VERSION } from "@/lib/nutrition/consent";
 import {
   DISCLAIMER_ES,
   DISCLAIMER_VERSION,
   buildPlan,
   inputsSchema,
+  type PlanInputs,
 } from "@/lib/nutrition/plan";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +27,14 @@ const failures: Record<string, [number, string]> = {
   NOT_FOUND: [404, "No encontramos tu ficha de cliente. Pedile al administrador que la cree."],
   NO_PLAN: [409, "Primero calculá tu plan; después podés guardarlo en el gimnasio."],
   NO_WEIGHT: [422, "Tu cálculo no tiene peso válido. Calculá el plan de nuevo."],
+  MINOR: [403, "Esta herramienta es sólo para mayores de 18 años."],
+  NO_BIRTHDATE: [409, "Confirmá tu fecha de nacimiento antes de usar la calculadora."],
+  NO_CONSENT: [409, "Aceptá el consentimiento de datos de salud para continuar."],
+  CONSENT_VERSION: [409, "El texto del consentimiento cambió. Recargá la página y aceptalo de nuevo."],
+  BIRTHDATE_INVALID: [422, "Revisá la fecha de nacimiento."],
+  BIRTHDATE_LOCKED: [409, "Tu fecha de nacimiento ya está registrada. Si está mal, pedile al gimnasio que la corrija."],
+  NO_TARGET: [409, "El plan no tiene peso objetivo. Recalculalo antes de aprobarlo."],
+  NO_ROUTINE: [409, "El plan no tiene ejercicios. Agregá al menos uno antes de aprobarlo."],
   LOCKED_BY_STAFF: [
     409,
     "Tu entrenador ajustó tu plan. Para recalcularlo, pedile que lo haga o que lo habilite.",
@@ -75,13 +85,25 @@ const routineSchema = z
   .max(12);
 
 const postSchema = z.discriminatedUnion("action", [
-  // El cliente calcula su propio plan desde Mi cuenta.
+  // El cliente calcula su propio plan desde Mi cuenta. Queda pendiente hasta que el personal lo apruebe.
+  // La edad no se envía: el servidor la calcula desde la fecha de nacimiento (00048).
   z.object({
     action: z.literal("self"),
-    inputs: inputsSchema,
+    inputs: inputsSchema.omit({ age: true }),
     // El cliente debe aceptar la política de seguridad antes de calcular.
     acceptDisclaimer: z.literal(true, { message: "Aceptá el aviso de seguridad para calcular." }),
   }),
+  // El cliente acepta el consentimiento de datos de salud (versión vigente).
+  z.object({ action: z.literal("consent"), version: z.literal(HEALTH_CONSENT_VERSION) }),
+  // El cliente revoca su consentimiento.
+  z.object({ action: z.literal("revoke") }),
+  // El cliente confirma su fecha de nacimiento (una sola vez).
+  z.object({
+    action: z.literal("birthdate"),
+    birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  }),
+  // Administrador o entrenador aprueba el plan: se publica la dieta y se abren meta y rutina.
+  z.object({ action: z.literal("approve"), client: z.string().uuid() }),
   // El cliente guarda su cálculo en el gimnasio (crea la medición de peso y altura, una sola vez).
   z.object({ action: z.literal("submit") }),
   // Entrenador o administrador guarda el cálculo, con ediciones opcionales.
@@ -130,7 +152,10 @@ export async function GET(request: Request) {
       .rpc("nutrition_get", { p_client: client })
       .abortSignal(AbortSignal.timeout(15000));
     if (error) return failure(error);
-    return reply({ data, disclaimer: DISCLAIMER_ES, disclaimerVersion: DISCLAIMER_VERSION });
+    // Edad desde la fecha de nacimiento (sólo lectura). Sin edad, el servidor bloquea el cálculo del cliente.
+    const { data: age } = await ctx.db.rpc("client_age_years", { p_client: client });
+    const withAge = data && typeof data === "object" ? { ...data, age: typeof age === "number" ? age : null } : data;
+    return reply({ data: withAge, disclaimer: DISCLAIMER_ES, disclaimerVersion: DISCLAIMER_VERSION });
   } catch {
     return reply({ error: "No se pudo cargar el plan. Intentá de nuevo." }, 503);
   }
@@ -155,17 +180,54 @@ export async function POST(request: Request) {
       return reply({ ok: true, data });
     }
 
+    if (body.action === "consent") {
+      const { data, error } = await ctx.db.rpc("record_health_consent", { p_version: body.version });
+      if (error) return failure(error);
+      return reply({ ok: true, data });
+    }
+
+    if (body.action === "revoke") {
+      const { data, error } = await ctx.db.rpc("revoke_health_consent");
+      if (error) return failure(error);
+      return reply({ ok: true, data });
+    }
+
+    if (body.action === "birthdate") {
+      const { data, error } = await ctx.db.rpc("set_my_birthdate", { p_birthdate: body.birthDate });
+      if (error) return failure(error);
+      return reply({ ok: true, data });
+    }
+
+    if (body.action === "approve") {
+      const { data, error } = await ctx.db.rpc("nutrition_approve", { p_client: body.client });
+      if (error) return failure(error);
+      return reply({ ok: true, data });
+    }
+
     if (body.action === "submit") {
       const { data, error } = await ctx.db.rpc("nutrition_submit_to_gym");
       if (error) return failure(error);
       return reply({ ok: true, data });
     }
 
+    // Cliente: la edad sale de su fecha de nacimiento; sin fecha no hay cálculo.
+    let inputs: PlanInputs;
+    if (body.action === "self") {
+      const { data: age, error: ageError } = await ctx.db.rpc("client_age_years", { p_client: null });
+      if (ageError) return failure(ageError);
+      if (typeof age !== "number") return failure({ message: "NO_BIRTHDATE" });
+      const full = inputsSchema.safeParse({ ...body.inputs, age });
+      if (!full.success) return reply({ error: "Revisá los datos del cálculo." }, 422);
+      inputs = full.data;
+    } else {
+      inputs = body.inputs;
+    }
+
     // Los resultados se recalculan aquí; el navegador no decide kcal, IMC ni macros.
-    const built = buildPlan(body.inputs);
+    const built = buildPlan(inputs);
     const common = {
-      p_goal: body.inputs.goal,
-      p_inputs: body.inputs,
+      p_goal: inputs.goal,
+      p_inputs: inputs,
       p_results: built.results,
       p_meal_plan: built.mealPlan,
       p_routine: built.routine,
@@ -197,7 +259,10 @@ export async function POST(request: Request) {
             p_guide: common.p_guide,
           });
     if (error) return failure(error);
-    return reply({ ok: true, results: built.results, sources: built.sources, disclaimer: DISCLAIMER_ES });
+    // Cliente: el plan queda pendiente de aprobación; no se devuelven tablas ni resultados.
+    if (body.action === "self") return reply({ ok: true, pendingApproval: true });
+    // Personal: guarda y ve el resultado; el plan sigue pendiente hasta aprobarlo.
+    return reply({ ok: true, pendingApproval: true, results: built.results, sources: built.sources, disclaimer: DISCLAIMER_ES });
   } catch {
     return reply({ error: "No se pudo guardar el plan. Revisá la conexión y recargá antes de repetir." }, 503);
   }

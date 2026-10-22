@@ -1,5 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
+import { todayInManagua } from "@/lib/age/birth-date";
+import { HEALTH_CONSENT_ES, HEALTH_CONSENT_VERSION } from "@/lib/nutrition/consent";
 import {
   ACTIVITY,
   DISCLAIMER_ACCEPT_ES,
@@ -36,6 +38,9 @@ type Plan = {
   edited_by_staff: boolean;
   updated_at: string;
   submitted_at: string | null;
+  approved_at?: string | null;
+  // Sólo en la vista del cliente: false = pendiente, no trae tablas ni resultados.
+  approved?: boolean;
 };
 type Payload = {
   client_id: string;
@@ -44,6 +49,10 @@ type Payload = {
   can_edit: boolean;
   can_self_calculate: boolean;
   trainer_tools_enabled?: boolean;
+  age_status?: "adult" | "minor" | "unknown";
+  // Edad calculada en el servidor desde la fecha de nacimiento (sólo cliente; 00048).
+  age?: number | null;
+  has_consent?: boolean;
 };
 type Inputs = {
   sex: "f" | "m";
@@ -93,6 +102,8 @@ export function NutritionCalculator({
   const [routine, setRoutine] = useState<RoutineDay[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [accepted, setAccepted] = useState(false);
+  const [consentChecked, setConsentChecked] = useState(false);
+  const [birthDate, setBirthDate] = useState("");
 
   const query = mode === "staff" && clientId ? `?client=${encodeURIComponent(clientId)}` : "";
 
@@ -116,7 +127,7 @@ export function NutritionCalculator({
     void load();
   }, [load]);
 
-  const post = async (payload: unknown, okText: string) => {
+  const post = async (payload: unknown, okText: string | null) => {
     setBusy(true);
     setMessage(null);
     try {
@@ -130,7 +141,7 @@ export function NutritionCalculator({
         setMessage({ ok: false, text: body.error ?? "No se pudo guardar. Recargá la página antes de repetir." });
         return false;
       }
-      setMessage({ ok: true, text: okText });
+      if (okText) setMessage({ ok: true, text: okText });
       await load();
       return true;
     } catch {
@@ -144,13 +155,60 @@ export function NutritionCalculator({
   if (error) return <p className="rounded-xl border border-line p-4 text-fog">{error}</p>;
   if (!data) return <p className="text-fog">Cargando calculadora…</p>;
 
+  // Cliente menor de 18: no ve calculadora ni datos de salud (00047).
+  if (mode === "client" && data.age_status === "minor") {
+    return (
+      <p role="note" className="rounded-xl border border-line p-4 text-[0.9rem] text-fog">
+        Esta herramienta es sólo para mayores de 18 años. Tu cuenta está activa, pero no tiene acceso a la calculadora ni al panel de cliente.
+      </p>
+    );
+  }
+  // Cliente sin fecha de nacimiento: la confirma una vez.
+  if (mode === "client" && data.age_status === "unknown") {
+    return (
+      <form
+        className="grid gap-3 rounded-xl border border-line p-5 sm:grid-cols-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void post({ action: "birthdate", birthDate }, "Fecha de nacimiento guardada.");
+        }}
+      >
+        <h3 className="text-[1.05rem] font-semibold sm:col-span-2">Confirmá tu fecha de nacimiento</h3>
+        <p className="text-[0.875rem] text-fog sm:col-span-2">
+          La necesitamos una sola vez para confirmar que sos mayor de 18 años. Después sólo la puede cambiar el gimnasio.
+        </p>
+        <label className="grid gap-1 text-[0.85rem] sm:col-span-2">
+          Fecha de nacimiento
+          <input
+            type="date"
+            className={input}
+            required
+            min="1920-01-01"
+            max={todayInManagua()}
+            value={birthDate}
+            onChange={(e) => setBirthDate(e.target.value)}
+          />
+        </label>
+        <div className="sm:col-span-2">
+          <button type="submit" className={primary} disabled={busy || !birthDate}>Guardar fecha</button>
+        </div>
+        {message && (
+          <p role="status" className={`sm:col-span-2 ${message.ok ? "text-brand-300" : "text-red-300"}`}>{message.text}</p>
+        )}
+      </form>
+    );
+  }
+
   const plan = data.plan;
   const canCalc = mode === "client" ? data.can_self_calculate : data.can_edit;
   const locked = mode === "client" && !!plan && !data.can_self_calculate;
+  // Pendiente: el cliente ya calculó, pero el personal todavía no aprobó la dieta y la rutina.
+  const pendingClient = mode === "client" && !!plan && plan.approved === false;
 
   const inputsFromForm = (): Inputs => ({
     sex: form.sex === "m" ? "m" : "f",
-    age: Number(form.age),
+    // El cliente no escribe la edad: la calcula el servidor desde su fecha de nacimiento.
+    age: mode === "client" ? Number(data.age ?? 0) : Number(form.age),
     weightKg: Number(form.weightKg.replace(",", ".")),
     heightCm: Number(form.heightCm.replace(",", ".")),
     activity: Number(form.activity),
@@ -160,12 +218,34 @@ export function NutritionCalculator({
   const calculate = async (e: FormEvent) => {
     e.preventDefault();
     const inputs = inputsFromForm();
-    const ok =
-      mode === "client"
-        ? await post({ action: "self", inputs, acceptDisclaimer: true }, "Listo: calculamos tu plan.")
-        : await post({ action: "save", client: data.client_id, inputs }, "Plan calculado y guardado.");
+    if (mode === "client") {
+      // Primero el consentimiento de datos de salud (si aún no está vigente), luego el cálculo.
+      if (!data.has_consent) {
+        const consented = await post({ action: "consent", version: HEALTH_CONSENT_VERSION }, null);
+        if (!consented) return;
+      }
+      const ok = await post(
+        { action: "self", inputs, acceptDisclaimer: true },
+        "Listo: tu plan quedó en revisión. Tu entrenador o la administración lo aprobarán antes de mostrártelo.",
+      );
+      if (ok) setShowForm(false);
+      return;
+    }
+    const ok = await post(
+      { action: "save", client: data.client_id, inputs },
+      "Plan calculado y guardado. Queda pendiente de aprobación hasta que lo publiques.",
+    );
     if (ok) setShowForm(false);
   };
+
+  const approve = () =>
+    post(
+      { action: "approve", client: data.client_id },
+      "Plan aprobado y publicado. Se abrieron la meta y la rutina en la ficha del cliente.",
+    );
+
+  const revokeConsent = () =>
+    post({ action: "revoke" }, "Consentimiento retirado. Para calcular o registrar datos de nuevo, volvé a aceptarlo.");
 
   // Recalcular empieza con el formulario vacío (sin datos del cálculo anterior) y sin aceptación marcada.
   const startRecalc = () => {
@@ -186,7 +266,7 @@ export function NutritionCalculator({
     if (!plan) return;
     const ok = await post(
       { action: "save", client: data.client_id, inputs: plan.inputs, mealPlan: meals, routine },
-      "Cambios guardados.",
+      "Cambios guardados. Quedan pendientes de aprobación hasta que los publiques.",
     );
     if (ok) setEditing(false);
   };
@@ -230,10 +310,17 @@ export function NutritionCalculator({
               <option value="m">Hombre</option>
             </select>
           </label>
-          <label className="grid gap-1 text-[0.85rem]">
-            Edad (años)
-            <input className={input} inputMode="numeric" required value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} />
-          </label>
+          {mode === "client" ? (
+            <label className="grid gap-1 text-[0.85rem]">
+              Edad (de tu fecha de nacimiento)
+              <input className={input} value={data.age != null ? `${data.age} años` : "No disponible"} disabled />
+            </label>
+          ) : (
+            <label className="grid gap-1 text-[0.85rem]">
+              Edad (años)
+              <input className={input} inputMode="numeric" required value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} />
+            </label>
+          )}
           <label className="grid gap-1 text-[0.85rem]">
             Peso (kg)
             <input className={input} inputMode="decimal" required value={form.weightKg} onChange={(e) => setForm({ ...form, weightKg: e.target.value })} />
@@ -258,6 +345,12 @@ export function NutritionCalculator({
               ))}
             </select>
           </label>
+          {mode === "client" && !data.has_consent && (
+            <label className="flex items-start gap-3 text-[0.875rem] sm:col-span-2">
+              <input type="checkbox" className="mt-1" required checked={consentChecked} onChange={(e) => setConsentChecked(e.target.checked)} />
+              <span>{HEALTH_CONSENT_ES}</span>
+            </label>
+          )}
           {mode === "client" && (
             <label className="flex items-start gap-3 text-[0.875rem] sm:col-span-2">
               <input type="checkbox" className="mt-1" required checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
@@ -265,7 +358,7 @@ export function NutritionCalculator({
             </label>
           )}
           <div className="flex gap-3 sm:col-span-2">
-            <button type="submit" className={primary} disabled={busy || (mode === "client" && !accepted)}>{plan ? "Recalcular y reemplazar" : "Calcular mi plan"}</button>
+            <button type="submit" className={primary} disabled={busy || (mode === "client" && (!accepted || data.age == null || (!data.has_consent && !consentChecked)))}>{plan ? "Recalcular y reemplazar" : "Calcular mi plan"}</button>
             {plan && <button type="button" className={button} onClick={() => setShowForm(false)}>Cancelar</button>}
           </div>
           {plan && <p className="text-[0.85rem] text-fog sm:col-span-2">Recalcular reemplaza el plan y la rutina anteriores.</p>}
@@ -274,7 +367,20 @@ export function NutritionCalculator({
 
       {!plan && !canCalc && <p className="text-fog">Todavía no hay un plan calculado.</p>}
 
-      {plan && (
+      {pendingClient && (
+        <p role="status" className="rounded-xl border border-line p-4 text-[0.9rem] text-fog">
+          Tu plan está en revisión. Tu entrenador o la administración lo revisarán antes de mostrarte la dieta y la rutina.
+        </p>
+      )}
+
+      {mode === "client" && data.has_consent && (
+        <div className="flex flex-wrap items-center justify-between gap-3 text-[0.8rem] text-fog">
+          <span>Aceptaste el tratamiento de tus datos de salud para esta herramienta.</span>
+          <button type="button" className={button} onClick={() => void revokeConsent()} disabled={busy}>Retirar consentimiento</button>
+        </div>
+      )}
+
+      {plan && !pendingClient && (
         <section className="grid gap-6 rounded-xl border border-line p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h3 className="text-[1.15rem] font-semibold">Reporte de {data.client_name}</h3>
@@ -283,6 +389,12 @@ export function NutritionCalculator({
               {plan.source === "entrenador" ? "ajustado por el entrenador" : "calculado por el cliente"}
             </span>
           </div>
+
+          {mode === "staff" && !plan.approved_at && (
+            <p role="status" className="rounded-lg border border-amber-400/40 bg-amber-400/10 p-3 text-[0.85rem] text-ink">
+              Pendiente de aprobación: el cliente no ve esta dieta ni esta rutina hasta que las publiques con «Aprobar y publicar».
+            </p>
+          )}
 
           {mode === "staff" && (
             <p className="text-[0.85rem] text-fog">
@@ -446,6 +558,9 @@ export function NutritionCalculator({
 
           {(canCalc || data.can_edit) && (
             <div className="flex flex-wrap gap-3">
+              {mode === "staff" && data.can_edit && !plan.approved_at && !editing && (
+                <button type="button" className={primary} onClick={() => void approve()} disabled={busy}>Aprobar y publicar</button>
+              )}
               {mode === "staff" && data.can_edit && !editing && (
                 <button type="button" className={primary} onClick={() => { setEditing(true); setMeals(plan.meal_plan); setRoutine(plan.routine); }}>Editar plan y rutina</button>
               )}
