@@ -157,3 +157,13 @@ test("un rango sin movimientos produce un Excel válido con aviso, no un error",
   });
   assert.match(note, /Ningún movimiento/);
 });
+
+test("el Excel guarda textos que parecen fórmulas como texto neutralizado", async () => {
+  const data = { generatedAt: "", rows, debtEntries: [], maps };
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(await buildMasterWorkbook(data));
+  const all = [];
+  wb.eachSheet((ws) => ws.eachRow((r) => r.eachCell((c) => all.push(String(c.value)))));
+  assert.ok(all.some((v) => v === "'=HYPERLINK(\"x\")"));
+  assert.ok(!all.some((v) => v.startsWith("=HYPERLINK")));
+});

@@ -50,9 +50,17 @@ function styleHeader(ws: ExcelJS.Worksheet, headers: string[], widths: number[])
   ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: headers.length } };
 }
 
+/**
+ * Un texto que empieza con = + - @ se guarda con apóstrofe: así ninguna herramienta
+ * (ni una conversión posterior a CSV) puede tomarlo como fórmula. Los números no cambian.
+ */
+function neutralize(v: string | number | null): string | number | null {
+  return typeof v === "string" && /^[=+\-@\t\r]/.test(v) ? `'${v}` : v;
+}
+
 function addRows(ws: ExcelJS.Worksheet, rows: (string | number | null)[][], moneyCols: number[] = []) {
   for (const r of rows) {
-    const added = ws.addRow(r);
+    const added = ws.addRow(r.map(neutralize));
     for (const c of moneyCols) added.getCell(c + 1).numFmt = MONEY;
   }
 }
