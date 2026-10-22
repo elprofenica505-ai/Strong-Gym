@@ -1,5 +1,5 @@
 -- 00048 EDAD DESDE LA FECHA DE NACIMIENTO (sólo lectura, sin cambios de datos).
--- ESTADO: PENDIENTE DE AUTORIZACIÓN DEL DUEÑO. No aplicar en producción sin su OK.
+-- ESTADO: APLICADA EN SUPABASE (proyecto hcnuepdxmbsmlzdmvwhx) con autorización del dueño.
 -- Requiere 00047.
 --
 -- El cliente ya no escribe su edad en la calculadora: la calcula el servidor desde gym_clients.birthdate.
