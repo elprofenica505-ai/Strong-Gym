@@ -2,6 +2,7 @@ import { isAdminRole } from "@/lib/auth/current-user";
 import { FinanceUnavailable } from "@/components/admin/finance-unavailable";
 import { FinanceReports } from "@/components/admin/finance-reports";
 import { PnlReport } from "@/components/admin/pnl-report";
+import { ReportExportForm } from "@/components/admin/report-export-form";
 import { loadFinanceReport } from "@/lib/reports/load";
 import { managuaDay } from "@/lib/reports/finance-report";
 import { FinanceReadError, readFinance } from "@/lib/finance/read-result";
@@ -90,6 +91,18 @@ export default async function ReportesPage({
         </p>
         {detail.ok ? (
           <FinanceReports data={detail.data} today={managuaDay(new Date())} />
+        ) : (
+          <FinanceUnavailable locale={locale} code={detail.code} message={detail.message} />
+        )}
+      </section>
+
+      <section className="space-y-4" aria-labelledby="reportes-exportar">
+        <h2 id="reportes-exportar" className="display-xl text-[1.375rem]">Exportar con filtros</h2>
+        <p className="text-sm text-fog">
+          Elegí el rango, el tipo, el método, la cuenta o el cliente. El archivo incluye todos los movimientos que cumplan esos filtros.
+        </p>
+        {detail.ok ? (
+          <ReportExportForm maps={detail.data.maps} today={managuaDay(new Date())} />
         ) : (
           <FinanceUnavailable locale={locale} code={detail.code} message={detail.message} />
         )}

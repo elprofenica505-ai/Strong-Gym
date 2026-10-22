@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/data/queries";
-import { canAccessPanel } from "@/lib/auth/current-user";
+import { canManageFinance } from "@/lib/auth/current-user";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { debtDetailSchema,debtIntentSchema,debtReceiptSchema,matchesDebtReceipt } from "@/lib/finance/debts";
@@ -27,7 +27,7 @@ function failure(error:{message?:string;code?:string}) {
   return reply({error:'No se pudo confirmar la operación. Revisá el historial y reintentá con la misma referencia; no generés otro intento.',code:['PGRST202','42883','42P01'].includes(error.code??'')?'DEBT_SETUP_REQUIRED':'DEBT_UNCONFIRMED'},503);
 }
 async function context() {
-  if(!isSupabaseConfigured||!canAccessPanel(await getCurrentUser())) return {response:reply({error:errors.AUTH},403)};
+  if(!isSupabaseConfigured||!canManageFinance(await getCurrentUser())) return {response:reply({error:errors.AUTH},403)};
   const db=await getSupabaseServerClient();
   return db?{db}:{response:reply({error:'No se confirmó la conexión.'},503)};
 }
