@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
 import { todayInManagua } from "@/lib/age/birth-date";
 import { HEALTH_CONSENT_ES, HEALTH_CONSENT_VERSION } from "@/lib/nutrition/consent";
+import { PARQ_QUESTIONS_ES, PARQ_VERSION, parqAnswersComplete, parqHasYes } from "@/lib/nutrition/parq";
 import {
   ACTIVITY,
   DISCLAIMER_ACCEPT_ES,
@@ -104,6 +105,7 @@ export function NutritionCalculator({
   const [accepted, setAccepted] = useState(false);
   const [consentChecked, setConsentChecked] = useState(false);
   const [birthDate, setBirthDate] = useState("");
+  const [parq, setParq] = useState<(boolean | null)[]>(PARQ_QUESTIONS_ES.map(() => null));
 
   const query = mode === "staff" && clientId ? `?client=${encodeURIComponent(clientId)}` : "";
 
@@ -224,8 +226,14 @@ export function NutritionCalculator({
         const consented = await post({ action: "consent", version: HEALTH_CONSENT_VERSION }, null);
         if (!consented) return;
       }
+      const answers = parq.map((a) => a === true);
       const ok = await post(
-        { action: "self", inputs, acceptDisclaimer: true },
+        {
+          action: "self",
+          inputs,
+          acceptDisclaimer: true,
+          parq: { version: PARQ_VERSION, answers },
+        },
         "Listo: tu plan quedó en revisión. Tu entrenador o la administración lo aprobarán antes de mostrártelo.",
       );
       if (ok) setShowForm(false);
@@ -251,6 +259,7 @@ export function NutritionCalculator({
   const startRecalc = () => {
     setForm({ sex: "f", age: "", weightKg: "", heightCm: "", activity: "3", goal: "mantener" });
     setAccepted(false);
+    setParq(PARQ_QUESTIONS_ES.map(() => null));
     setShowForm(true);
   };
 
@@ -345,6 +354,34 @@ export function NutritionCalculator({
               ))}
             </select>
           </label>
+          {mode === "client" && (
+            <fieldset className="grid gap-3 rounded-lg border border-line p-4 sm:col-span-2">
+              <legend className="px-1 text-[0.9rem] font-semibold">Cuestionario de actividad física</legend>
+              {PARQ_QUESTIONS_ES.map((q, i) => (
+                <div key={q} className="grid gap-2 text-[0.875rem]">
+                  <span>{i + 1}. {q}</span>
+                  <div className="flex gap-4">
+                    {[true, false].map((v) => (
+                      <label key={String(v)} className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name={`parq-${i}`}
+                          checked={parq[i] === v}
+                          onChange={() => setParq(parq.map((x, j) => (j === i ? v : x)))}
+                        />
+                        {v ? "Sí" : "No"}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {parqAnswersComplete(parq) && parqHasYes(parq) ? (
+                <p role="alert" className="text-red-300">
+                  Por tus respuestas, consultá con tu médico antes de calcular tu plan. No podés calcularlo ahora.
+                </p>
+              ) : null}
+            </fieldset>
+          )}
           {mode === "client" && !data.has_consent && (
             <label className="flex items-start gap-3 text-[0.875rem] sm:col-span-2">
               <input type="checkbox" className="mt-1" required checked={consentChecked} onChange={(e) => setConsentChecked(e.target.checked)} />
@@ -358,7 +395,7 @@ export function NutritionCalculator({
             </label>
           )}
           <div className="flex gap-3 sm:col-span-2">
-            <button type="submit" className={primary} disabled={busy || (mode === "client" && (!accepted || data.age == null || (!data.has_consent && !consentChecked)))}>{plan ? "Recalcular y reemplazar" : "Calcular mi plan"}</button>
+            <button type="submit" className={primary} disabled={busy || (mode === "client" && (!accepted || data.age == null || !parqAnswersComplete(parq) || parqHasYes(parq) || (!data.has_consent && !consentChecked)))}>{plan ? "Recalcular y reemplazar" : "Calcular mi plan"}</button>
             {plan && <button type="button" className={button} onClick={() => setShowForm(false)}>Cancelar</button>}
           </div>
           {plan && <p className="text-[0.85rem] text-fog sm:col-span-2">Recalcular reemplaza el plan y la rutina anteriores.</p>}

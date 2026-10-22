@@ -5,6 +5,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { isAdminRole } from "@/lib/auth/current-user";
 import { HEALTH_CONSENT_VERSION } from "@/lib/nutrition/consent";
+import { PARQ_VERSION, parqAnswersComplete, parqHasYes } from "@/lib/nutrition/parq";
 import {
   DISCLAIMER_ES,
   DISCLAIMER_VERSION,
@@ -35,6 +36,8 @@ const failures: Record<string, [number, string]> = {
   BIRTHDATE_LOCKED: [409, "Tu fecha de nacimiento ya está registrada. Si está mal, pedile al gimnasio que la corrija."],
   NO_TARGET: [409, "El plan no tiene peso objetivo. Recalculalo antes de aprobarlo."],
   NO_ROUTINE: [409, "El plan no tiene ejercicios. Agregá al menos uno antes de aprobarlo."],
+  PARQ_POSITIVE: [409, "Por tus respuestas, consultá con tu médico antes de calcular tu plan."],
+  PARQ_INCOMPLETE: [422, "Respondé todas las preguntas del cuestionario de actividad física."],
   LOCKED_BY_STAFF: [
     409,
     "Tu entrenador ajustó tu plan. Para recalcularlo, pedile que lo haga o que lo habilite.",
@@ -90,6 +93,11 @@ const postSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("self"),
     inputs: inputsSchema.omit({ age: true }),
+    // Cuestionario de actividad física: una respuesta por pregunta (true = sí).
+    parq: z.object({
+      version: z.literal(PARQ_VERSION),
+      answers: z.array(z.boolean()).length(7),
+    }),
     // El cliente debe aceptar la política de seguridad antes de calcular.
     acceptDisclaimer: z.literal(true, { message: "Aceptá el aviso de seguridad para calcular." }),
   }),
@@ -212,7 +220,11 @@ export async function POST(request: Request) {
 
     // Cliente: la edad sale de su fecha de nacimiento; sin fecha no hay cálculo.
     let inputs: PlanInputs;
+    let parqRecord: { version: string; answers: boolean[]; answeredAt: string } | null = null;
     if (body.action === "self") {
+      if (!parqAnswersComplete(body.parq.answers)) return failure({ message: "PARQ_INCOMPLETE" });
+      if (parqHasYes(body.parq.answers)) return failure({ message: "PARQ_POSITIVE" });
+      parqRecord = { version: body.parq.version, answers: body.parq.answers, answeredAt: new Date().toISOString() };
       const { data: age, error: ageError } = await ctx.db.rpc("client_age_years", { p_client: null });
       if (ageError) return failure(ageError);
       if (typeof age !== "number") return failure({ message: "NO_BIRTHDATE" });
@@ -242,6 +254,7 @@ export async function POST(request: Request) {
               ...common.p_inputs,
               disclaimerVersion: DISCLAIMER_VERSION,
               disclaimerAcceptedAt: new Date().toISOString(),
+              parq: parqRecord,
             },
             p_results: common.p_results,
             p_meal_plan: common.p_meal_plan,
