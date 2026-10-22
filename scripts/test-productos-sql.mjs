@@ -363,4 +363,49 @@ ok('personal con acceso ve la edad del cliente', (await as(trainer, 'aal2', 'sel
 ok('personal sin acceso no ve la edad (AUTH)', await denied(as(trainer2, 'aal2', 'select public.client_age_years($1) as a', [adultClient]), /AUTH/));
 ok('otro cliente no ve la edad ajena (AUTH)', await denied(as(minorProfile, 'aal1', 'select public.client_age_years($1) as a', [adultClient]), /AUTH/));
 
-console.log(`\n${checks} comprobaciones PASS (00042 productos, stock, ventas, categoría; 00043-00048 plan de nutrición, registro, edad, consentimiento, aprobación y edad calculada)`);
+// ===== 00049: personal, datos formales, alta, edición y baja =====
+await db.exec('alter table auth.users add column if not exists banned_until timestamptz');
+await db.exec(sql('docs/SQL-PENDIENTE/00049_personal_datos_y_baja.sql'));
+ok('00049 se aplica sobre 00048 sin error', true);
+const staffData = { fullName: 'JUAN EJEMPLO', nationalId: '001-010190-1000A', birthDate: '1990-01-01', phone: '8888-1111', address: 'Barrio Ejemplo 1', emergencyName: 'MARIA EJEMPLO', emergencyPhone: '8888-2222', positionTitle: 'Entrenador de fuerza', hiredOn: '2026-01-10', responsibilities: 'Clases de fuerza', internalNotes: '' };
+const newStaff49 = await mkAccount('personal49@test.invalid', null);
+const saveStaff = (actor, aal, profile, role, data) => as(actor, aal, 'select public.staff_save($1,$2,$3::jsonb) as r', [profile, role, JSON.stringify(data)]);
+ok('entrenador no da de alta personal (AUTH)', await denied(saveStaff(trainer, 'aal2', newStaff49, 'trainer', staffData), /AUTH/));
+ok('el administrador no se da de alta a sí mismo (SELF_STAFF_CHANGE)', await denied(saveStaff(admin, 'aal2', admin, 'admin', staffData), /SELF_STAFF_CHANGE/));
+ok('cédula con formato inválido se rechaza', await denied(saveStaff(admin, 'aal2', newStaff49, 'trainer', { ...staffData, nationalId: '001010190' }), /NATIONAL_ID_INVALID/));
+ok('menor de 18 no puede ser personal (BIRTH_INVALID)', await denied(saveStaff(admin, 'aal2', newStaff49, 'trainer', { ...staffData, birthDate: '2012-05-01' }), /BIRTH_INVALID/));
+ok('rol de cliente no es rol de personal (INVALID_ROLE)', await denied(saveStaff(admin, 'aal2', newStaff49, 'member', staffData), /INVALID_ROLE/));
+await saveStaff(admin, 'aal2', newStaff49, 'trainer', staffData);
+const row49 = (await db.query('select * from staff_members where profile_id = $1', [newStaff49])).rows[0];
+ok('el administrador da de alta al personal con datos completos', !!row49 && row49.status === 'activo' && row49.national_id === '001-010190-1000A');
+ok('el alta asigna el rol de entrenador y la ficha de personal', (await db.query('select role::text as r from profiles where id = $1', [newStaff49])).rows[0].r === 'trainer');
+const audit1 = (await db.query("select action, changed_fields from staff_audit where profile_id = $1", [newStaff49])).rows;
+ok('la bitácora registra el alta con nombres de campos', audit1.length === 1 && audit1[0].action === 'alta' && audit1[0].changed_fields.includes('nationalId'));
+ok('la bitácora no guarda valores sensibles', !JSON.stringify(audit1).includes('001-010190-1000A') && !JSON.stringify(audit1).includes('8888-1111'));
+ok('entrenador no lee datos del personal (RLS)', (await as(trainer, 'aal2', 'select count(*)::int as n from staff_members'))[0].n === 0);
+ok('entrenador no lee la bitácora de personal (RLS)', (await as(trainer, 'aal2', 'select count(*)::int as n from staff_audit'))[0].n === 0);
+ok('el administrador lee los datos del personal', (await as(admin, 'aal2', 'select count(*)::int as n from staff_members where profile_id = $1', [newStaff49]))[0].n === 1);
+
+// Edición: sólo se registran los campos que cambiaron, sin valores.
+await saveStaff(admin, 'aal2', newStaff49, 'trainer', { ...staffData, phone: '8888-9999' });
+const audit2 = (await db.query("select changed_fields from staff_audit where profile_id = $1 and action = 'edicion' order by id desc limit 1", [newStaff49])).rows[0];
+ok('editar el teléfono registra sólo ese campo', audit2 && audit2.changed_fields.length === 1 && audit2.changed_fields[0] === 'phone');
+ok('el teléfono nuevo llega al directorio', (await db.query('select phone from profiles where id = $1', [newStaff49])).rows[0].phone === '8888-9999');
+const countBefore = (await db.query('select count(*)::int as n from staff_audit where profile_id = $1', [newStaff49])).rows[0].n;
+await saveStaff(admin, 'aal2', newStaff49, 'trainer', { ...staffData, phone: '8888-9999' });
+ok('guardar sin cambios no escribe bitácora vacía', (await db.query('select count(*)::int as n from staff_audit where profile_id = $1', [newStaff49])).rows[0].n === countBefore);
+
+// Baja y reactivación.
+ok('dar de baja sin motivo se rechaza (REASON_REQUIRED)', await denied(as(admin, 'aal2', 'select public.staff_set_status($1,false,$2) as s', [newStaff49, '']), /REASON_REQUIRED/));
+ok('el administrador no se da de baja a sí mismo (SELF_STAFF_CHANGE)', await denied(as(admin, 'aal2', 'select public.staff_set_status($1,false,$2) as s', [admin, 'motivo de prueba']), /SELF_STAFF_CHANGE/));
+ok('entrenador no da de baja (AUTH)', await denied(as(trainer, 'aal2', 'select public.staff_set_status($1,false,$2) as s', [newStaff49, 'motivo de prueba']), /AUTH/));
+const st1 = (await as(admin, 'aal2', 'select public.staff_set_status($1,false,$2) as s', [newStaff49, 'Renuncia confirmada']))[0].s;
+ok('la baja marca la ficha como inactiva', st1 === 'inactivo');
+const ban1 = (await db.query('select banned_until from auth.users where id = $1', [newStaff49])).rows[0].banned_until;
+ok('la baja bloquea el inicio de sesión', ban1 !== null);
+ok('la baja no cambia el rol', (await db.query('select role::text as r from profiles where id = $1', [newStaff49])).rows[0].r === 'trainer');
+const st2 = (await as(admin, 'aal2', 'select public.staff_set_status($1,true,null) as s', [newStaff49]))[0].s;
+ok('reactivar devuelve el acceso', st2 === 'activo' && (await db.query('select banned_until from auth.users where id = $1', [newStaff49])).rows[0].banned_until === null);
+ok('la bitácora registra baja y reactivación', (await db.query("select count(*)::int as n from staff_audit where profile_id = $1 and action in ('baja','reactivacion')", [newStaff49])).rows[0].n === 2);
+
+console.log(`\n${checks} comprobaciones PASS (00042 productos, stock, ventas, categoría; 00043-00049 plan de nutrición, registro, edad, consentimiento, aprobación, edad calculada y personal)`);

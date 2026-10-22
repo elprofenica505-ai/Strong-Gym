@@ -1043,3 +1043,105 @@ export async function getStaffProfiles(): Promise<{ id: string; fullName: string
   const profiles = await getProfilesForRoles();
   return profiles.filter((p) => p.role === "trainer" || p.role === "cashier" || p.role === "admin");
 }
+
+/** Bitácora de cambios de rol (sólo administrador con MFA; la base lo exige con is_admin). */
+export async function getRoleChanges(): Promise<
+  { id: number; targetId: string; oldRole: string; newRole: string; changedBy: string | null; changedAt: string }[]
+> {
+  return checkedRead("ROLE_CHANGES", async () => {
+    const supabase = await getSupabaseServerClient();
+    if (!supabase) return [];
+    const { data, error } = await supabase
+      .from("role_changes")
+      .select("id, target_id, old_role, new_role, changed_by, changed_at")
+      .order("changed_at", { ascending: false })
+      .limit(100)
+      .abortSignal(AbortSignal.timeout(15000));
+    if (error) throw new DataReadError("ROLE_CHANGES", error.code);
+    return (data ?? []).map((row) => ({
+      id: Number(row.id),
+      targetId: row.target_id as string,
+      oldRole: row.old_role as string,
+      newRole: row.new_role as string,
+      changedBy: (row.changed_by as string | null) ?? null,
+      changedAt: row.changed_at as string,
+    }));
+  });
+}
+
+/** Ficha formal del personal (staff_members). Sólo administrador con MFA; la base lo exige con is_admin. */
+export async function getStaffMembers(): Promise<
+  {
+    profileId: string;
+    fullName: string;
+    nationalId: string;
+    birthDate: string;
+    phone: string;
+    address: string;
+    emergencyName: string;
+    emergencyPhone: string;
+    positionTitle: string;
+    hiredOn: string;
+    responsibilities: string;
+    internalNotes: string;
+    status: "activo" | "inactivo";
+    deactivatedOn: string | null;
+    deactivationReason: string | null;
+  }[]
+> {
+  return checkedRead("STAFF_MEMBERS", async () => {
+    const supabase = await getSupabaseServerClient();
+    if (!supabase) return [];
+    const { data, error } = await supabase
+      .from("staff_members")
+      .select(
+        "profile_id, full_name, national_id, birth_date, phone, address, emergency_name, emergency_phone, position_title, hired_on, responsibilities, internal_notes, status, deactivated_on, deactivation_reason",
+      )
+      .order("full_name")
+      .limit(500)
+      .abortSignal(AbortSignal.timeout(15000));
+    if (error) throw new DataReadError("STAFF_MEMBERS", error.code);
+    return (data ?? []).map((row) => ({
+      profileId: row.profile_id as string,
+      fullName: row.full_name as string,
+      nationalId: row.national_id as string,
+      birthDate: row.birth_date as string,
+      phone: row.phone as string,
+      address: row.address as string,
+      emergencyName: row.emergency_name as string,
+      emergencyPhone: row.emergency_phone as string,
+      positionTitle: row.position_title as string,
+      hiredOn: row.hired_on as string,
+      responsibilities: (row.responsibilities as string | null) ?? "",
+      internalNotes: (row.internal_notes as string | null) ?? "",
+      status: row.status as "activo" | "inactivo",
+      deactivatedOn: (row.deactivated_on as string | null) ?? null,
+      deactivationReason: (row.deactivation_reason as string | null) ?? null,
+    }));
+  });
+}
+
+/** Bitácora de personal (staff_audit). Sólo administrador con MFA; la base lo exige con is_admin. */
+export async function getStaffAudit(): Promise<
+  { id: number; profileId: string; action: string; changedFields: string[]; changedBy: string | null; changedAt: string }[]
+> {
+  return checkedRead("STAFF_AUDIT", async () => {
+    const supabase = await getSupabaseServerClient();
+    if (!supabase) return [];
+    const { data, error } = await supabase
+      .from("staff_audit")
+      .select("id, profile_id, action, changed_fields, changed_by, changed_at")
+      .order("changed_at", { ascending: false })
+      .limit(100)
+      .abortSignal(AbortSignal.timeout(15000));
+    if (error) throw new DataReadError("STAFF_AUDIT", error.code);
+    return (data ?? []).map((row) => ({
+      id: Number(row.id),
+      profileId: row.profile_id as string,
+      action: row.action as string,
+      changedFields: (row.changed_fields as string[] | null) ?? [],
+      changedBy: (row.changed_by as string | null) ?? null,
+      changedAt: row.changed_at as string,
+    }));
+  });
+}

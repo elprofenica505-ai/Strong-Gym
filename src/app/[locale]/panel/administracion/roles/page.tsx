@@ -6,7 +6,12 @@ import { isAdminRole } from "@/lib/auth/current-user";
 import { RolesManager } from "@/components/admin/roles-manager";
 import { DataUnavailable } from "@/components/ui/data-unavailable";
 import { readData } from "@/lib/data/read-result";
-import { getCurrentUser, getProfilesForRoles } from "@/lib/data/queries";
+import { getCurrentUser, getProfilesForRoles, getRoleChanges, getStaffAudit, getStaffMembers } from "@/lib/data/queries";
+import { StaffAuditList } from "@/components/admin/staff-audit-list";
+import { staffAuditItems } from "@/lib/admin/staff";
+import { StaffManager } from "@/components/admin/staff-manager";
+import { RoleAuditList } from "@/components/admin/role-audit-list";
+import { roleAuditItems } from "@/lib/admin/role-audit";
 import { isLocale, type Locale } from "@/i18n/config";
 import { SectionHeading } from "@/components/ui/section";
 import { DEMO_MODE } from "@/lib/supabase/env";
@@ -35,6 +40,12 @@ export default async function RolesPage({
   }
 
   const result = DEMO_MODE ? null : await readData(() => getProfilesForRoles());
+  const audit = DEMO_MODE ? null : await readData(() => getRoleChanges());
+  const staff = DEMO_MODE ? null : await readData(() => getStaffMembers());
+  const staffLog = DEMO_MODE ? null : await readData(() => getStaffAudit());
+  const names = new Map((result && result.ok ? result.data : []).map((p) => [p.id, p.fullName] as const));
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleString("es-NI", { timeZone: "America/Managua", dateStyle: "short", timeStyle: "short" });
 
   return (
     <>
@@ -64,6 +75,19 @@ export default async function RolesPage({
             <DataUnavailable locale={locale} code={result.code} />
           ) : result && result.ok ? (
             <RolesManager profiles={result.data} currentUserId={user?.id ?? ""} />
+          ) : null}
+          {!DEMO_MODE && result && result.ok && staff && staff.ok ? (
+            <StaffManager staff={staff.data} people={result.data} currentUserId={user?.id ?? ""} />
+          ) : !DEMO_MODE && staff && !staff.ok ? (
+            <div className="mt-8"><DataUnavailable locale={locale} code={staff.code} /></div>
+          ) : null}
+          {!DEMO_MODE && result && result.ok && staffLog && staffLog.ok ? (
+            <StaffAuditList items={staffAuditItems(staffLog.data, names, formatDate)} />
+          ) : null}
+          {!DEMO_MODE && audit && audit.ok ? (
+            <RoleAuditList items={roleAuditItems(audit.data, names, formatDate)} />
+          ) : !DEMO_MODE && audit && !audit.ok ? (
+            <div className="mt-8"><DataUnavailable locale={locale} code={audit.code} /></div>
           ) : null}
         </div>
       </section>
