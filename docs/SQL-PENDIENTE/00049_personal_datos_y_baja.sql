@@ -1,5 +1,5 @@
 -- 00049 PERSONAL: DATOS FORMALES, ALTA, EDICIÓN Y BAJA (sólo administrador con verificación en dos pasos).
--- ESTADO: PENDIENTE DE AUTORIZACIÓN DEL DUEÑO. No aplicar en producción sin su OK.
+-- ESTADO: APLICADA en producción (hcnuepdxmbsmlzdmvwhx) con autorización del dueño. Verificada: tablas, RLS, funciones y permisos.
 -- Requiere 00033 (is_admin), 00034 (admin_set_role, role_changes) y 00036 (personal no es cliente).
 --
 -- Reglas:
