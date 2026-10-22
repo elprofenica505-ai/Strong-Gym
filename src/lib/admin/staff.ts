@@ -165,3 +165,66 @@ export function staffAuditFieldsText(fields: string[]): string {
   if (fields.length === 0) return "sin campos";
   return fields.map((f) => STAFF_AUDIT_FIELD_LABEL[f] ?? f).join(", ");
 }
+
+export type StaffPersonState = "completa" | "pendiente" | "inactiva";
+
+/** Estado de una persona con rol de personal: sin ficha, con ficha completa o dada de baja. */
+export function staffPersonState(hasFicha: boolean, status?: "activo" | "inactivo"): StaffPersonState {
+  if (!hasFicha) return "pendiente";
+  return status === "inactivo" ? "inactiva" : "completa";
+}
+
+export const STAFF_STATE_LABEL: Record<StaffPersonState, string> = {
+  completa: "Ficha completa",
+  pendiente: "Falta ficha",
+  inactiva: "Inactiva",
+};
+
+export const STAFF_AUDIT_ACTION_LABEL: Record<string, string> = {
+  alta: "Alta",
+  edicion: "Edición",
+  baja: "Baja",
+  reactivacion: "Reactivación",
+};
+
+export type StaffAuditRow = {
+  id: number;
+  profileId: string;
+  action: string;
+  changedFields: string[];
+  changedBy: string | null;
+  changedAt: string;
+};
+
+export type StaffAuditItem = {
+  id: number;
+  person: string;
+  action: string;
+  detail: string;
+  by: string;
+  at: string;
+};
+
+/** Convierte la bitácora de personal en texto legible. Nunca incluye valores, sólo nombres de campos. */
+export function staffAuditItems(
+  rows: StaffAuditRow[],
+  names: Map<string, string>,
+  formatDate: (iso: string) => string,
+): StaffAuditItem[] {
+  return rows.map((r) => {
+    let detail: string;
+    if (r.action === "edicion") detail = `Cambió: ${staffAuditFieldsText(r.changedFields)}`;
+    else if (r.action === "alta") detail = "Ficha creada";
+    else if (r.action === "baja") detail = "Acceso bloqueado";
+    else if (r.action === "reactivacion") detail = "Acceso restablecido";
+    else detail = staffAuditFieldsText(r.changedFields);
+    return {
+      id: r.id,
+      person: names.get(r.profileId) ?? "Sin nombre",
+      action: STAFF_AUDIT_ACTION_LABEL[r.action] ?? r.action,
+      detail,
+      by: r.changedBy ? (names.get(r.changedBy) ?? "Sin nombre") : "Sistema",
+      at: formatDate(r.changedAt),
+    };
+  });
+}

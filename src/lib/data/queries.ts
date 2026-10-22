@@ -1120,3 +1120,28 @@ export async function getStaffMembers(): Promise<
     }));
   });
 }
+
+/** Bitácora de personal (staff_audit). Sólo administrador con MFA; la base lo exige con is_admin. */
+export async function getStaffAudit(): Promise<
+  { id: number; profileId: string; action: string; changedFields: string[]; changedBy: string | null; changedAt: string }[]
+> {
+  return checkedRead("STAFF_AUDIT", async () => {
+    const supabase = await getSupabaseServerClient();
+    if (!supabase) return [];
+    const { data, error } = await supabase
+      .from("staff_audit")
+      .select("id, profile_id, action, changed_fields, changed_by, changed_at")
+      .order("changed_at", { ascending: false })
+      .limit(100)
+      .abortSignal(AbortSignal.timeout(15000));
+    if (error) throw new DataReadError("STAFF_AUDIT", error.code);
+    return (data ?? []).map((row) => ({
+      id: Number(row.id),
+      profileId: row.profile_id as string,
+      action: row.action as string,
+      changedFields: (row.changed_fields as string[] | null) ?? [],
+      changedBy: (row.changed_by as string | null) ?? null,
+      changedAt: row.changed_at as string,
+    }));
+  });
+}

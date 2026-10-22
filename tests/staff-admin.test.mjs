@@ -70,3 +70,28 @@ test("la bitácora muestra nombres de campos, no valores", () => {
   assert.equal(staffAuditFieldsText([]), "sin campos");
   assert.equal(staffAuditFieldsText(["campo_nuevo"]), "campo_nuevo");
 });
+
+import { staffPersonState, staffAuditItems, STAFF_STATE_LABEL } from "../src/lib/admin/staff.ts";
+
+test("el estado de la persona: sin ficha, completa o inactiva", () => {
+  assert.equal(staffPersonState(false), "pendiente");
+  assert.equal(staffPersonState(true, "activo"), "completa");
+  assert.equal(staffPersonState(true, "inactivo"), "inactiva");
+  assert.equal(STAFF_STATE_LABEL.pendiente, "Falta ficha");
+});
+
+test("la bitácora de personal dice qué cambió sin mostrar valores", () => {
+  const names = new Map([["p1", "ANA EJEMPLO"], ["a1", "ADMIN EJEMPLO"]]);
+  const items = staffAuditItems(
+    [
+      { id: 1, profileId: "p1", action: "edicion", changedFields: ["phone"], changedBy: "a1", changedAt: "2026-10-22T02:00:00Z" },
+      { id: 2, profileId: "p1", action: "baja", changedFields: ["status"], changedBy: null, changedAt: "2026-10-22T03:00:00Z" },
+    ],
+    names,
+    (iso) => `F(${iso})`,
+  );
+  assert.deepEqual(items[0], { id: 1, person: "ANA EJEMPLO", action: "Edición", detail: "Cambió: teléfono", by: "ADMIN EJEMPLO", at: "F(2026-10-22T02:00:00Z)" });
+  assert.equal(items[1].detail, "Acceso bloqueado");
+  assert.equal(items[1].by, "Sistema");
+  assert.ok(!JSON.stringify(items).includes("8888"));
+});
