@@ -6,7 +6,8 @@ import { isAdminRole } from "@/lib/auth/current-user";
 import { RolesManager } from "@/components/admin/roles-manager";
 import { DataUnavailable } from "@/components/ui/data-unavailable";
 import { readData } from "@/lib/data/read-result";
-import { getCurrentUser, getProfilesForRoles, getRoleChanges } from "@/lib/data/queries";
+import { getCurrentUser, getProfilesForRoles, getRoleChanges, getStaffMembers } from "@/lib/data/queries";
+import { StaffManager } from "@/components/admin/staff-manager";
 import { RoleAuditList } from "@/components/admin/role-audit-list";
 import { roleAuditItems } from "@/lib/admin/role-audit";
 import { isLocale, type Locale } from "@/i18n/config";
@@ -38,6 +39,7 @@ export default async function RolesPage({
 
   const result = DEMO_MODE ? null : await readData(() => getProfilesForRoles());
   const audit = DEMO_MODE ? null : await readData(() => getRoleChanges());
+  const staff = DEMO_MODE ? null : await readData(() => getStaffMembers());
   const names = new Map((result && result.ok ? result.data : []).map((p) => [p.id, p.fullName] as const));
   const formatDate = (iso: string) =>
     new Date(iso).toLocaleString("es-NI", { timeZone: "America/Managua", dateStyle: "short", timeStyle: "short" });
@@ -70,6 +72,11 @@ export default async function RolesPage({
             <DataUnavailable locale={locale} code={result.code} />
           ) : result && result.ok ? (
             <RolesManager profiles={result.data} currentUserId={user?.id ?? ""} />
+          ) : null}
+          {!DEMO_MODE && result && result.ok && staff && staff.ok ? (
+            <StaffManager staff={staff.data} candidates={result.data} currentUserId={user?.id ?? ""} />
+          ) : !DEMO_MODE && staff && !staff.ok ? (
+            <div className="mt-8"><DataUnavailable locale={locale} code={staff.code} /></div>
           ) : null}
           {!DEMO_MODE && audit && audit.ok ? (
             <RoleAuditList items={roleAuditItems(audit.data, names, formatDate)} />

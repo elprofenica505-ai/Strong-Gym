@@ -1068,3 +1068,55 @@ export async function getRoleChanges(): Promise<
     }));
   });
 }
+
+/** Ficha formal del personal (staff_members). Sólo administrador con MFA; la base lo exige con is_admin. */
+export async function getStaffMembers(): Promise<
+  {
+    profileId: string;
+    fullName: string;
+    nationalId: string;
+    birthDate: string;
+    phone: string;
+    address: string;
+    emergencyName: string;
+    emergencyPhone: string;
+    positionTitle: string;
+    hiredOn: string;
+    responsibilities: string;
+    internalNotes: string;
+    status: "activo" | "inactivo";
+    deactivatedOn: string | null;
+    deactivationReason: string | null;
+  }[]
+> {
+  return checkedRead("STAFF_MEMBERS", async () => {
+    const supabase = await getSupabaseServerClient();
+    if (!supabase) return [];
+    const { data, error } = await supabase
+      .from("staff_members")
+      .select(
+        "profile_id, full_name, national_id, birth_date, phone, address, emergency_name, emergency_phone, position_title, hired_on, responsibilities, internal_notes, status, deactivated_on, deactivation_reason",
+      )
+      .order("full_name")
+      .limit(500)
+      .abortSignal(AbortSignal.timeout(15000));
+    if (error) throw new DataReadError("STAFF_MEMBERS", error.code);
+    return (data ?? []).map((row) => ({
+      profileId: row.profile_id as string,
+      fullName: row.full_name as string,
+      nationalId: row.national_id as string,
+      birthDate: row.birth_date as string,
+      phone: row.phone as string,
+      address: row.address as string,
+      emergencyName: row.emergency_name as string,
+      emergencyPhone: row.emergency_phone as string,
+      positionTitle: row.position_title as string,
+      hiredOn: row.hired_on as string,
+      responsibilities: (row.responsibilities as string | null) ?? "",
+      internalNotes: (row.internal_notes as string | null) ?? "",
+      status: row.status as "activo" | "inactivo",
+      deactivatedOn: (row.deactivated_on as string | null) ?? null,
+      deactivationReason: (row.deactivation_reason as string | null) ?? null,
+    }));
+  });
+}
