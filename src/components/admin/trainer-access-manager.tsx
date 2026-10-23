@@ -14,7 +14,7 @@ const STATUS_LABEL: Record<TrainerAccessStatus, string> = {
 
 const STATUS_ORDER: Record<TrainerAccessStatus, number> = { pending: 0, approved: 1, revoked: 2, rejected: 3 };
 
-const VIA_LABEL: Record<string, string> = { trainer: "Entrenador", cashier: "Caja", admin: "Administración" };
+const VIA_LABEL: Record<string, string> = { trainer: "Entrenador", cashier: "Cajero", admin: "Administración" };
 
 const dateFormat = new Intl.DateTimeFormat("es-NI", {
   timeZone: "America/Managua",

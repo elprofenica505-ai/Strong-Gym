@@ -10,7 +10,7 @@ export interface RoleProfile {
 
 const ROLE_LABELS: Record<string, string> = {
   member: "Cliente",
-  cashier: "Caja",
+  cashier: "Cajero",
   trainer: "Entrenador",
   admin: "Administrador",
   staff: "Personal anterior (sin acceso)",

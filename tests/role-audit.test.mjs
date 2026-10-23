@@ -20,7 +20,7 @@ test("un id desconocido no oculta el cambio y el cambio sin autor dice Sistema",
   assert.equal(item.person, "Sin nombre");
   assert.equal(item.by, "Sistema");
   assert.equal(item.from, "Entrenador");
-  assert.equal(item.to, "Caja");
+  assert.equal(item.to, "Cajero");
 });
 
 test("un rol que no conocemos se muestra tal cual", () => {
