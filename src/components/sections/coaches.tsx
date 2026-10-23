@@ -96,9 +96,13 @@ export async function Coaches({ locale }: { locale: Locale }) {
                     </div>
                   </div>
 
-                  <p className="mt-5 flex-1 text-[0.875rem] leading-relaxed text-fog">
-                    {bio}
-                  </p>
+                  {bio ? (
+                    <p className="mt-5 flex-1 text-[0.875rem] leading-relaxed text-fog">
+                      {bio}
+                    </p>
+                  ) : (
+                    <div className="flex-1" />
+                  )}
 
                   <div className="mt-5 flex items-center justify-between border-t border-line pt-4">
                     <div className="flex flex-wrap gap-1.5">

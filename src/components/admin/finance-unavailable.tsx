@@ -25,7 +25,7 @@ export function FinanceUnavailable({
         pendiente, reintentar no la instala.
       </p>
       <div className="flex flex-wrap gap-4 text-brand-300 underline">
-        <ReloadButton label="Reintentar lectura" />
+        <ReloadButton label="Reintentar" />
         <Link href={`/${locale}/panel/clientes`}>Volver a Clientes</Link>
         <Link href={`/${locale}/panel`}>Volver al panel</Link>
       </div>

@@ -199,7 +199,7 @@ for (const page of ["caja", "cuentas", "gastos"]) {
       html,
       /PRIVATE DATABASE MESSAGE|No hay cuentas pendientes|Sin movimientos en los últimos|Caja cerrada|C\$ 0/,
     );
-    assert.match(html, /Reintentar lectura/);
+    assert.match(html, /Reintentar/);
     assert.ok(globalThis.__financePageReads > 0);
   });
   test(`${page}: member no llega a consultas financieras`, async () => {

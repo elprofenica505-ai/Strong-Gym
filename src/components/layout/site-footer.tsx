@@ -179,7 +179,7 @@ export function SiteFooter({ locale }: { locale: Locale }) {
 
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[0.75rem] text-white/50">
             <span className="hidden sm:inline">
-              {dict.footer.madeWith} · {formatDateNumeric(gymNow(), locale)}
+              {dict.footer.madeWith} {siteConfig.developerBrand} · {formatDateNumeric(gymNow(), locale)}
             </span>
             <Link href={`/${locale}#normas`} className="transition-colors hover:text-white">
               {dict.nav.rules}

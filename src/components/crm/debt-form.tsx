@@ -77,7 +77,7 @@ export function DebtForm({clientId,locale,disabled=false,onBusy,onRefresh}:{clie
       <p className="text-sm text-fog">{current.balances===null?'Sin saldo inicial confirmado: administración debe registrar explícitamente los cuatro importes, sin suponer ceros.':`Deuda actual NIO: C$ ${current.balances.debt_nio.toFixed(2)} · USD: US$ ${current.balances.debt_usd.toFixed(2)}`}</p>
       {!current.writesEnabled&&<p role="alert">No se habilitarán operaciones nuevas hasta confirmar instalación y permisos.</p>}
     </>}
-    <button type="button" className="text-brand-300 underline" disabled={waiting} onClick={()=>setRevision(n=>n+1)}>Reintentar lectura de deudas</button>
+    <button type="button" className="text-brand-300 underline" disabled={waiting} onClick={()=>setRevision(n=>n+1)}>Reintentar</button>
     {recovered.error&&<div className="space-y-2">
       <p role="alert">Referencia local ilegible. No se enviará un intento nuevo; revisá historial y almacenamiento antes de continuar.</p>
       <button type="button" className="text-sm underline" disabled={waiting} onClick={()=>{

@@ -210,7 +210,7 @@ export function MovementForm({
         disabled={busy}
         onClick={() => setRevision((n) => n + 1)}
       >
-        Reintentar lectura de opciones
+        Reintentar
       </button>
       <form
         key={`${kind}:${clientId ?? "expense"}:${pending?.requestId ?? "new"}`}
