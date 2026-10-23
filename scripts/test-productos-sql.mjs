@@ -27,8 +27,8 @@ for (const f of ['supabase/migrations/00001_schema.sql', 'supabase/migrations/00
 await db.exec(`create or replace function public.crm_is_staff() returns boolean language sql stable security definer set search_path = public, pg_temp as $$
   select coalesce((select auth.jwt() ->> 'aal') = 'aal2', false) and exists(select 1 from public.profiles where id = auth.uid() and role in ('admin','staff'));$$;
   revoke all on function public.crm_is_staff() from public, anon; grant execute on function public.crm_is_staff() to authenticated;`);
-await db.exec(sql('docs/SQL-PENDIENTE/00032_mfa_is_staff_y_privilegios_anon.sql'));
-await db.exec(sql('docs/SQL-PENDIENTE/00033_roles_fase_a.sql'));
+await db.exec(sql('supabase/migrations/00032_mfa_is_staff_y_privilegios_anon.sql'));
+await db.exec(sql('supabase/migrations/00033_roles_fase_a.sql'));
 
 const makeUser = async (email, role) => {
   const id = (await db.query('insert into auth.users(email, raw_user_meta_data) values ($1, $2) returning id',
@@ -43,13 +43,13 @@ const trainer = await makeUser('entrenador@test.invalid', 'trainer');
 const trainer2 = await makeUser('entrenador2@test.invalid', 'trainer');
 const member = await makeUser('cliente@test.invalid', null);
 
-await db.exec(sql('docs/SQL-PENDIENTE/00034_roles_fase_b.sql'));
-await db.exec(sql('docs/SQL-PENDIENTE/00035_asignacion_entrenador.sql'));
-await db.exec(sql('docs/SQL-PENDIENTE/00036_personal_no_es_cliente.sql'));
-await db.exec(sql('docs/SQL-PENDIENTE/00039_medidas_metas_rutinas.sql'));
-await db.exec(sql('docs/SQL-PENDIENTE/00040_mi_progreso_cliente.sql'));
-await db.exec(sql('docs/SQL-PENDIENTE/00041_asistencia_cliente.sql'));
-await db.exec(sql('docs/SQL-PENDIENTE/00042_productos_stock_categorias.sql'));
+await db.exec(sql('supabase/migrations/00034_roles_fase_b.sql'));
+await db.exec(sql('supabase/migrations/00035_asignacion_entrenador.sql'));
+await db.exec(sql('supabase/migrations/00036_personal_no_es_cliente.sql'));
+await db.exec(sql('supabase/migrations/00039_medidas_metas_rutinas.sql'));
+await db.exec(sql('supabase/migrations/00040_mi_progreso_cliente.sql'));
+await db.exec(sql('supabase/migrations/00041_asistencia_cliente.sql'));
+await db.exec(sql('supabase/migrations/00042_productos_stock_categorias.sql'));
 ok('00042 se aplica sobre 00041 sin error', true);
 ok('00041 se aplica sobre 00040 sin error', true);
 ok('00040 se aplica sobre 00039 sin error', true);
@@ -146,9 +146,9 @@ ok('la columna antigua gym_clients.category no cambia', (await db.query('select 
 
 
 // ===== 00044: calculadora del cliente, edición sólo de entrenador/admin =====
-await db.exec(sql('docs/SQL-PENDIENTE/00043_plan_nutricion_interruptor.sql'));
+await db.exec(sql('supabase/migrations/00043_plan_nutricion_interruptor.sql'));
 ok('00043 se aplica sobre 00042 sin error', true);
-await db.exec(sql('docs/SQL-PENDIENTE/00044_calculadora_cliente.sql'));
+await db.exec(sql('supabase/migrations/00044_calculadora_cliente.sql'));
 ok('00044 se aplica sobre 00043 sin error', true);
 const memberClient = (await db.query('select id from gym_clients where profile_id = $1', [member])).rows[0].id;
 const calcInputs = { sex: 'm', age: 30, weightKg: 80, heightCm: 180, activity: 3, goal: 'peso' };
@@ -204,7 +204,7 @@ ok('anónimo no lee planes', await denied(as(null, null, 'select public.nutritio
 ok('las tablas de herramientas no se leen directamente', await denied(as(admin, 'aal2', 'select * from client_nutrition_plans'), /permission denied|42501/));
 
 // ===== 00045: registro en el gimnasio desde la calculadora del cliente =====
-await db.exec(sql('docs/SQL-PENDIENTE/00045_registro_gimnasio_calculadora.sql'));
+await db.exec(sql('supabase/migrations/00045_registro_gimnasio_calculadora.sql'));
 ok('00045 se aplica sobre 00044 sin error', true);
 const member2 = await makeUser('cliente2@test.invalid', null);
 const client2 = (await db.query('select id from gym_clients where profile_id = $1', [member2])).rows[0].id;
@@ -231,7 +231,7 @@ ok('el personal no registra por el cliente (sin plan propio)', await denied(subm
 ok('anónimo no registra', await denied(submit(null, null), /AUTH|permission denied|42501/));
 
 // ===== 00046: meta y rutina activas desde la calculadora =====
-await db.exec(sql('docs/SQL-PENDIENTE/00046_meta_rutina_desde_calculadora.sql'));
+await db.exec(sql('supabase/migrations/00046_meta_rutina_desde_calculadora.sql'));
 ok('00046 se aplica sobre 00045 sin error', true);
 const goalsOf = async (c) => (await db.query("select goal_type, status, other_label, target_weight_kg, target_date::text as target_date from client_goals where client_id = $1 order by created_at, id", [c])).rows;
 const activeRoutine = async (c) => (await db.query("select name, days, exercises from client_routines where client_id = $1 and status = 'activa'", [c])).rows;
@@ -262,7 +262,7 @@ ok('guardar dos veces no cambia la meta', r3c.already === true && (await goalsOf
 ok('la meta y la rutina de otro cliente no se tocan', (await goalsOf(client2)).length === gBefore);
 
 // ===== 00047: menores, consentimiento de datos de salud y aprobación de dieta/rutina =====
-await db.exec(sql('docs/SQL-PENDIENTE/00047_menores_consentimiento_aprobacion.sql'));
+await db.exec(sql('supabase/migrations/00047_menores_consentimiento_aprobacion.sql'));
 ok('00047 se aplica sobre 00046 sin error', true);
 const CONSENT = 'salud-v1-2026-10-21-borrador';
 const mkAccount = async (email, birth) => {
@@ -345,7 +345,7 @@ ok('el personal ve la edad del cliente', (await as(admin, 'aal2', 'select public
 ok('menor: el personal ve su plan vacío y no aprueba sin plan (NO_PLAN)', await denied(as(admin, 'aal2', 'select public.nutrition_approve($1)', [minorClient]), /NO_PLAN/));
 
 // ===== 00048: edad calculada desde la fecha de nacimiento =====
-await db.exec(sql('docs/SQL-PENDIENTE/00048_edad_desde_fecha_nacimiento.sql'));
+await db.exec(sql('supabase/migrations/00048_edad_desde_fecha_nacimiento.sql'));
 ok('00048 se aplica sobre 00047 sin error', true);
 const yearsSince = (iso) => {
   const t = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Managua', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()).split('-').map(Number);
@@ -365,7 +365,7 @@ ok('otro cliente no ve la edad ajena (AUTH)', await denied(as(minorProfile, 'aal
 
 // ===== 00049: personal, datos formales, alta, edición y baja =====
 await db.exec('alter table auth.users add column if not exists banned_until timestamptz');
-await db.exec(sql('docs/SQL-PENDIENTE/00049_personal_datos_y_baja.sql'));
+await db.exec(sql('supabase/migrations/00049_personal_datos_y_baja.sql'));
 ok('00049 se aplica sobre 00048 sin error', true);
 const staffData = { fullName: 'JUAN EJEMPLO', nationalId: '001-010190-1000A', birthDate: '1990-01-01', phone: '8888-1111', address: 'Barrio Ejemplo 1', emergencyName: 'MARIA EJEMPLO', emergencyPhone: '8888-2222', positionTitle: 'Entrenador de fuerza', hiredOn: '2026-01-10', responsibilities: 'Clases de fuerza', internalNotes: '' };
 const newStaff49 = await mkAccount('personal49@test.invalid', null);

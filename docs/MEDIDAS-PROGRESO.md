@@ -89,7 +89,7 @@ y la base lo revisa. Caja no cambia metas ni rutinas por separación de funcione
 
 ## 5. Modelo de datos (SQL 00039, aplicada)
 
-Archivo: `docs/SQL-PENDIENTE/00039_medidas_metas_rutinas.sql`.
+Archivo: `supabase/migrations/00039_medidas_metas_rutinas.sql`.
 
 - `body_measurements`: una fila por medición; ocho circunferencias como columnas
   opcionales; bloqueo de UPDATE y DELETE; no admite fechas futuras.

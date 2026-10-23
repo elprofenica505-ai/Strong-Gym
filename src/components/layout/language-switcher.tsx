@@ -6,6 +6,11 @@ import { Globe } from "lucide-react";
 import { LOCALE_COOKIE, localeShort, locales, type Locale } from "@/i18n/config";
 import { cn } from "@/lib/utils";
 
+/** Guarda la preferencia de idioma para que el proxy la recuerde. Sólo se llama desde un clic. */
+function writeLocaleCookie(next: Locale) {
+  document.cookie = `${LOCALE_COOKIE}=${next};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
+}
+
 /**
  * Cambia de idioma manteniendo la página actual.
  * /es/horarios → /en/horarios
@@ -27,7 +32,7 @@ export function LanguageSwitcher({
     if (next === locale) return;
 
     // Guardamos la preferencia en una cookie para que el proxy la recuerde.
-    document.cookie = `${LOCALE_COOKIE}=${next};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
+    writeLocaleCookie(next);
 
     const segments = pathname.split("/");
     segments[1] = next; // el primer segmento siempre es el idioma

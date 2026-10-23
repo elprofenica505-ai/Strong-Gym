@@ -24,6 +24,6 @@ test("valida fechas reales, no futuras y desde 1920", () => {
 });
 
 test("la versión del consentimiento coincide con la función SQL de la migración 00047", () => {
-  const sql = readFileSync(new URL("../docs/SQL-PENDIENTE/00047_menores_consentimiento_aprobacion.sql", import.meta.url), "utf8");
+  const sql = readFileSync(new URL("../supabase/migrations/00047_menores_consentimiento_aprobacion.sql", import.meta.url), "utf8");
   assert.ok(sql.includes(`select '${HEALTH_CONSENT_VERSION}'::text`), "health_consent_version() debe devolver la misma versión");
 });

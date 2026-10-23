@@ -1,4 +1,4 @@
--- 00041 ASISTENCIA POR CLIENTE (día, semana y mes). ESTADO: PENDIENTE de aplicar en Supabase.
+-- 00041 ASISTENCIA POR CLIENTE (día, semana y mes). ESTADO: APLICADA en Supabase (migración asistencia_cliente, 2026-10-21).
 -- Requiere 00039 (progress_can_read_client) y 00040 no es necesaria.
 -- Sólo agrega una función de lectura. No cambia tablas ni políticas.
 --

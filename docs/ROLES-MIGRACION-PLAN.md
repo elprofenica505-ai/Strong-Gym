@@ -10,7 +10,7 @@ heredarían acceso total si sólo se agregan roles. Por eso el cambio se hace po
 
 ## Fase A — base segura (sin cambiar comportamiento actual)
 
-Estado (18 oct 2026): SQL preparado en `docs/SQL-PENDIENTE/00033_roles_fase_a.sql` y probado localmente
+Estado (18 oct 2026): SQL preparado en `supabase/migrations/00033_roles_fase_a.sql` y probado localmente
 con `scripts/test-roles-fase-a-sql.mjs`: 28 de 28 comprobaciones. **APLICADO en Supabase el 18 oct 2026** con autorización; verificado en solo lectura (roles cashier y trainer, tabla staff_permissions con cashier_can_void=false, RLS activo, anon sin acceso, is_staff sin cambios).
 Nota: hoy nadie puede cambiar el rol de un perfil desde la API (sólo por SQL del administrador). Asignar roles
 desde el panel es parte de la Fase B y requiere su propia prueba.
@@ -23,7 +23,7 @@ desde el panel es parte de la Fase B y requiere su propia prueba.
 ## Fase B — separar permisos por función
 
 Estado (18 oct 2026): **LISTA EN CÓDIGO, NO APLICADA EN SUPABASE.**
-- SQL: `docs/SQL-PENDIENTE/00034_roles_fase_b.sql`. Prueba local: `node scripts/test-roles-fase-b-sql.mjs` (58/58). `npm run test:roles` corre A y B.
+- SQL: `supabase/migrations/00034_roles_fase_b.sql`. Prueba local: `node scripts/test-roles-fase-b-sql.mjs` (58/58). `npm run test:roles` corre A y B.
 - Decisiones del dueño aplicadas: las cuentas con rol `staff` pasan a `trainer`; la asignación de roles entra en esta fase.
 - Personal con acceso a datos = administrador o caja, con MFA. El entrenador queda fuera de `is_staff` y `crm_is_staff`.
 - Sólo administrador: planes, clases, entrenadores, horarios, reporte de deudas (`finance_debt_report`) e importación (`crm_import_client`).
