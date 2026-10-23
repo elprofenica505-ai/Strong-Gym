@@ -103,6 +103,12 @@ export async function POST(request: Request) {
   }
   const { error } = await supabase.rpc(rpc.name, rpc.args);
   if (error) {
+    if (error.message?.startsWith("ALTURA_DISTINTA")) {
+      return NextResponse.json(
+        { error: "HEIGHT_CONFLICT", message: "La ficha ya tiene otra altura registrada. Para corregirla, consultá al administrador. No se guardó nada." },
+        { status: 409, headers },
+      );
+    }
     const known = messages[error.message ?? ""];
     if (known) return NextResponse.json({ error: error.message, message: known[0] }, { status: known[1], headers });
     // Restricciones de la base (límites, plazo, fechas): mensaje seguro, sin SQL.
