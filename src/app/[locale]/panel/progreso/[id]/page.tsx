@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { SectionHeading } from "@/components/ui/section";
 import { DataUnavailable } from "@/components/ui/data-unavailable";
-import { ProgressForms } from "@/components/progress/progress-forms";
+import { ProgressForms, HeightCorrectionForm } from "@/components/progress/progress-forms";
 import { readData } from "@/lib/data/read-result";
 import { getCurrentUser } from "@/lib/data/queries";
 import { getClientProgress, type ClientProgress } from "@/lib/data/progress-queries";
@@ -86,7 +86,7 @@ export default async function ProgresoClientePage({
           ) : (
             <>
               {category && <p className="rounded-xl border border-line bg-card px-4 py-3 text-[0.9rem] text-ink">Categoría: <strong>{category}</strong></p>}
-              <ProgressView data={data} today={today} canRecord={canRecord} canManage={canManage} attendance={attendance} attendanceFailed={!!(attResult && !attResult.ok)} />
+              <ProgressView data={data} today={today} canRecord={canRecord} canManage={canManage} isAdmin={user?.role === "admin"} attendance={attendance} attendanceFailed={!!(attResult && !attResult.ok)} />
               {canRecord && (<section className="grid gap-3"><h2 className="text-xl font-bold text-ink">Calculadora, plan nutricional y rutina</h2><NutritionCalculator mode="staff" clientId={data.clientId} isAdmin={user?.role === "admin"} /></section>)}
             </>
           )}
@@ -97,11 +97,11 @@ export default async function ProgresoClientePage({
 }
 
 function ProgressView({
-  data, today, canRecord, canManage, attendance, attendanceFailed,
-}: { data: ClientProgress; today: string; canRecord: boolean; canManage: boolean; attendance: AttendanceData | null; attendanceFailed: boolean }) {
+  data, today, canRecord, canManage, isAdmin, attendance, attendanceFailed,
+}: { data: ClientProgress; today: string; canRecord: boolean; canManage: boolean; isAdmin: boolean; attendance: AttendanceData | null; attendanceFailed: boolean }) {
   const last = data.measurements[0];
   const withHeight = data.measurements.find((m) => m.heightCm !== null);
-  const height = withHeight?.heightCm ?? null;
+  const height = data.fichaHeightCm ?? withHeight?.heightCm ?? null;
   const first = data.measurements[data.measurements.length - 1];
   const current = last?.weightKg ?? null;
   const index = current !== null && height ? bmi(current, height) : null;
@@ -119,6 +119,7 @@ function ProgressView({
 
   return (
     <>
+      {isAdmin && <HeightCorrectionForm clientId={data.clientId} currentHeight={height} />}
       {(canRecord || canManage) && (
         <details className="rounded-2xl border border-brand/30 bg-card p-4">
           <summary className="cursor-pointer text-lg font-bold text-ink">

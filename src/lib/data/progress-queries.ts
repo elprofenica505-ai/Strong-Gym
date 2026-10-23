@@ -31,6 +31,8 @@ export interface RoutineRow {
 export interface ClientProgress {
   clientId: string;
   clientName: string;
+  /** Altura guardada en la ficha (única fuente; ver 00052). Null si aún no se registró. */
+  fichaHeightCm: number | null;
   measurements: MeasurementRow[];
   goal: GoalRow | null;
   routine: RoutineRow | null;
@@ -50,8 +52,12 @@ export async function getClientProgress(clientId: string): Promise<ClientProgres
 
     // Nombre: el personal de caja y administración lo lee de la ficha; el entrenador, de su lista asignada.
     let clientName: string | null = null;
-    const ficha = await supabase.from("gym_clients").select("full_name").eq("id", clientId).maybeSingle();
-    if (!ficha.error && ficha.data) clientName = ficha.data.full_name as string;
+    let fichaHeightCm: number | null = null;
+    const ficha = await supabase.from("gym_clients").select("full_name, height_cm").eq("id", clientId).maybeSingle();
+    if (!ficha.error && ficha.data) {
+      clientName = ficha.data.full_name as string;
+      fichaHeightCm = num(ficha.data.height_cm);
+    }
     if (!clientName) {
       const roster = await supabase.rpc("trainer_roster");
       if (!roster.error) {
@@ -89,6 +95,7 @@ export async function getClientProgress(clientId: string): Promise<ClientProgres
     return {
       clientId,
       clientName,
+      fichaHeightCm,
       measurements,
       goal: goalRow ? {
         id: goalRow.id as string,
@@ -168,6 +175,6 @@ export async function getMyProgress(): Promise<Omit<ClientProgress, "clientId"> 
       exercises: (r.exercises ?? []) as RoutineRow["exercises"],
       startsOn: r.starts_on as string,
     } : null;
-    return { clientName: (d.client_name as string) ?? "", measurements, goal, routine };
+    return { clientName: (d.client_name as string) ?? "", fichaHeightCm: null, measurements, goal, routine };
   });
 }

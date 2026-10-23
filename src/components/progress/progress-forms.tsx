@@ -256,3 +256,48 @@ function Feedback({ notice }: { notice: Notice }) {
   return <p role={notice.tone === "error" ? "alert" : "status"} className={`text-sm ${tone}`}>{notice.text}</p>;
 }
 
+
+/** Solo administrador: corrige la altura de la ficha. Queda registrada con motivo. */
+export function HeightCorrectionForm({ clientId, currentHeight }: { clientId: string; currentHeight: number | null }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<Notice>(null);
+
+  async function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    setBusy(true);
+    const r = await send({
+      action: "height_correct",
+      clientId,
+      heightCm: Number(String(f.get("heightCm") ?? "").replace(",", ".")),
+      reason: String(f.get("reason") ?? ""),
+    });
+    setBusy(false);
+    if (!r.ok) { setNotice({ tone: "error", text: r.message }); return; }
+    setNotice({ tone: "ok", text: "Altura corregida. El cambio quedó registrado en la bitácora de la ficha." });
+    router.refresh();
+  }
+
+  return (
+    <section className={card} aria-labelledby="altura-titulo">
+      <h2 id="altura-titulo" className="text-lg font-bold text-ink">Corregir altura de la ficha</h2>
+      <p className="text-sm text-fog">
+        Altura actual: <strong>{currentHeight ?? "sin registrar"}{currentHeight ? " cm" : ""}</strong>.
+        Las mediciones anteriores no se modifican. Escribí el motivo del cambio.
+      </p>
+      <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
+        <label className={label}>Altura correcta (cm)
+          <input className={input} name="heightCm" inputMode="decimal" required />
+        </label>
+        <label className={label}>Motivo (mínimo 5 caracteres)
+          <input className={input} name="reason" minLength={5} maxLength={200} required />
+        </label>
+        <div className="sm:col-span-2 flex items-center gap-3">
+          <button type="submit" disabled={busy} className={primary}>{busy ? "Guardando…" : "Corregir altura"}</button>
+          <Feedback notice={notice} />
+        </div>
+      </form>
+    </section>
+  );
+}

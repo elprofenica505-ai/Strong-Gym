@@ -22,6 +22,12 @@ const bodySchema = z.discriminatedUnion("action", [
     data: z.record(z.string(), z.unknown()),
   }),
   z.object({
+    action: z.literal("height_correct"),
+    clientId: z.string().uuid(),
+    heightCm: z.number().positive().max(250),
+    reason: z.string().trim().min(5).max(200),
+  }),
+  z.object({
     action: z.literal("routine"),
     clientId: z.string().uuid(),
     name: z.string().min(2).max(80),
@@ -33,6 +39,9 @@ const bodySchema = z.discriminatedUnion("action", [
 const messages: Record<string, [string, number]> = {
   AUTH: ["No tenés permiso para cambiar los datos de este cliente. Revisá tu sesión (verificación en dos pasos) o tu acceso.", 403],
   VALUES_INVALID: ["Los datos de la medición no tienen el formato correcto.", 422],
+  ALTURA_INVALIDA: ["La altura debe estar entre 1 y 250 cm.", 422],
+  MOTIVO_REQUERIDO: ["Escribí el motivo de la corrección (mínimo 5 caracteres).", 422],
+  NOT_FOUND: ["No encontramos la ficha de este cliente.", 404],
 };
 
 /**
@@ -51,6 +60,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "INVALID", message: "Revisá los datos del formulario." }, { status: 422, headers });
   }
   const body = parsed.data;
+  // Corregir la altura de la ficha es exclusivo del administrador (la base también lo exige).
+  if (body.action === "height_correct" && user.role !== "admin") {
+    return NextResponse.json({ error: "AUTH", message: messages.AUTH[0] }, { status: 403, headers });
+  }
 
   let rpc: { name: string; args: Record<string, unknown> };
   if (body.action === "measurement") {
@@ -87,6 +100,11 @@ export async function POST(request: Request) {
         p_target_date: result.data.targetDate,
         p_target_weight: result.data.targetWeightKg,
       },
+    };
+  } else if (body.action === "height_correct") {
+    rpc = {
+      name: "admin_corregir_altura",
+      args: { p_client: body.clientId, p_height: body.heightCm, p_motivo: body.reason },
     };
   } else {
     const ex = parseRoutineExercises(body.exercisesText);
