@@ -63,7 +63,7 @@ export async function resolveSessions(
     ),
     rowsByIds<Coach>(
       db,
-      "coaches",
+      "coaches_public",
       "*",
       rows.flatMap((row) => (row.coach_id === null ? [] : [row.coach_id])),
       "SESSION_COACHES",
