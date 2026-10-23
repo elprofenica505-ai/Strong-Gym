@@ -21,6 +21,7 @@ import {
   type ExportFilters,
 } from "./export-filter.ts";
 import type { FinanceReportData } from "./load";
+import { presentSheet } from "./present.ts";
 
 /** Nombre fijo: el Excel maestro siempre se llama igual y se regenera con datos actuales. */
 export const MASTER_FILENAME = "Strong-Gym-Maestro.xlsx";
@@ -249,6 +250,9 @@ async function buildLedgerWorkbook(data: FinanceReportData, now: Date, filters: 
   cm.getColumn(2).numFmt = "0.00%";
   cm.addRow([]);
   cm.addRow(["Las comisiones son estimadas con el porcentaje del método y no cambian la caja. Confirmá con tu proveedor."]);
+
+  // Sólo las descargas filtradas llevan la presentación de tabla; el maestro conserva su forma.
+  if (filters) for (const ws of wb.worksheets) presentSheet(ws);
 
   const out = await wb.xlsx.writeBuffer();
   return Buffer.from(out as ArrayBuffer);
