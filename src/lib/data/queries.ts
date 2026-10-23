@@ -76,7 +76,7 @@ export async function getClasses(): Promise<GymClass[]> {
 }
 export async function getCoaches(): Promise<Coach[]> {
   return activeRows(
-    "coaches",
+    "coaches_public",
     "COACHES",
     demoCoaches.filter((c) => c.is_active),
   );

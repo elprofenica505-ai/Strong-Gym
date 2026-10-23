@@ -36,7 +36,7 @@ const fixture = {
   classes: [
     { id: "c1", name_es: "Clase EJEMPLO", capacity: 10, is_active: false },
   ],
-  coaches: [{ id: "t1", name: "Entrenador EJEMPLO", is_active: false }],
+  coaches_public: [{ id: "t1", name: "Entrenador EJEMPLO", is_active: false }],
   profiles: [
     { id: "u1", full_name: "Cliente EJEMPLO", email: "prueba@example.com" },
   ],
@@ -135,7 +135,7 @@ test("reservas vacías no necesitan relaciones ni catálogos ficticios", async (
     ["bookings"],
   );
 });
-for (const table of ["sessions", "classes", "coaches", "profiles"])
+for (const table of ["sessions", "classes", "coaches_public", "profiles"])
   test(`fallo de permisos en ${table}: se conserva el error, no se elude RLS`, async () => {
     setup({ fail: table });
     await assert.rejects(
@@ -146,7 +146,7 @@ for (const table of ["sessions", "classes", "coaches", "profiles"])
         !e.message.includes("SECRET"),
     );
   });
-for (const table of ["sessions", "classes", "coaches", "profiles"])
+for (const table of ["sessions", "classes", "coaches_public", "profiles"])
   test(`relación ausente/invisible ${table}: no se pierde la reserva en silencio`, async () => {
     setup({ omit: table });
     await assert.rejects(
@@ -161,7 +161,7 @@ test("entrenador opcional NULL: no se inventa entrenador ni se consulta sin IDs"
   });
   const [row] = await q.getMyBookings("u1");
   assert.equal(row.session.coach, null);
-  assert.ok(!calls.some((c) => c.table === "coaches"));
+  assert.ok(!calls.some((c) => c.table === "coaches_public"));
 });
 test("lecturas por ID deduplican y dividen lotes grandes sin cambiar el orden de reservas", async () => {
   const ids = Array.from({ length: 205 }, (_, i) => `s${i}`);
