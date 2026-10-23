@@ -167,3 +167,29 @@ test("el Excel guarda textos que parecen fórmulas como texto neutralizado", asy
   assert.ok(all.some((v) => v === "'=HYPERLINK(\"x\")"));
   assert.ok(!all.some((v) => v.startsWith("=HYPERLINK")));
 });
+
+test("el Excel filtrado tiene formato de tabla: fechas reales, montos con miles, bordes y filas alternadas", async () => {
+  const data = { generatedAt: "", rows, debtEntries: [], maps };
+  const f = parseExportFilters(params({})).filters;
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(await buildFilteredWorkbook(data, f));
+  const mv = wb.getWorksheet("Movimientos");
+  const dateCell = mv.getRow(2).getCell(1);
+  assert.ok(dateCell.value instanceof Date, "la fecha debe ser fecha real, no texto");
+  assert.equal(dateCell.numFmt, "dd/mm/yyyy hh:mm");
+  const amountCol = mv.getRow(1).values.indexOf("Monto");
+  assert.equal(mv.getRow(2).getCell(amountCol).numFmt, "#,##0.00;[Red]-#,##0.00");
+  assert.ok(mv.getRow(2).getCell(1).border?.top);
+  assert.equal(mv.getRow(3).getCell(1).fill?.fgColor?.argb, "FFF1F5F9");
+  assert.equal(mv.getRow(1).getCell(1).fill?.fgColor?.argb, "FF0F172A");
+  assert.equal(mv.views[0].state, "frozen");
+});
+
+test("el Excel maestro conserva sus fechas como texto y sin tabla", async () => {
+  const data = { generatedAt: "", rows, debtEntries: [], maps };
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(await buildMasterWorkbook(data));
+  const cell = wb.getWorksheet("Movimientos").getRow(2).getCell(1);
+  assert.equal(typeof cell.value, "string");
+  assert.equal(cell.border, undefined);
+});
