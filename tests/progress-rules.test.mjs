@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   MEASURE_SITES, checkWeight, checkMeasure, checkHeight, bmi, bmiCategory, healthyWeightRange,
-  addMonths, reviewDates, goalErrors, goalProgress, managuaToday,
+  addMonths, reviewDates, goalErrors, goalProgress, goalStartWeight, managuaToday,
 } from "../src/lib/progress/rules.ts";
 
 test("ocho medidas ISAK, sin cadera ni tríceps", () => {
@@ -98,4 +98,16 @@ test("día de Managua en formato AAAA-MM-DD", () => {
   // 03:00 UTC del 21 de octubre todavía es 20 de octubre en Managua (UTC-6).
   assert.equal(managuaToday(new Date("2026-10-21T03:00:00Z")), "2026-10-20");
   assert.match(managuaToday(), /^\d{4}-\d{2}-\d{2}$/);
+});
+
+test("peso inicial de la meta: medición más reciente hasta la fecha de inicio", () => {
+  const ms = [
+    { measuredOn: "2026-10-20", weightKg: 80 },
+    { measuredOn: "2026-09-01", weightKg: 82 },
+    { measuredOn: "2026-10-01", weightKg: 81 },
+  ];
+  assert.equal(goalStartWeight(ms, "2026-10-05"), 81);
+  assert.equal(goalStartWeight(ms, "2026-10-01"), 81);
+  assert.equal(goalStartWeight(ms, "2026-08-01"), null);
+  assert.equal(goalStartWeight([{ measuredOn: "2026-10-01", weightKg: null }], "2026-10-05"), null);
 });
