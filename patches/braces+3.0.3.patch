@@ -1,0 +1,27 @@
+diff --git a/node_modules/braces/lib/parse.js b/node_modules/braces/lib/parse.js
+index 3a6988e..d1c5d51 100644
+--- a/node_modules/braces/lib/parse.js
++++ b/node_modules/braces/lib/parse.js
+@@ -28,6 +28,12 @@ const {
+  * parse
+  */
+ 
++/**
++ * Máximo de llaves anidadas. Evita que patrones como "{{{...}}}" agoten la
++ * pila al expandirlos (GHSA-vfj7-8cjw-p6xm). Un glob real no se acerca.
++ */
++const MAX_DEPTH = 1000;
++
+ const parse = (input, options = {}) => {
+   if (typeof input !== 'string') {
+     throw new TypeError('Expected a string');
+@@ -196,6 +202,9 @@ const parse = (input, options = {}) => {
+ 
+     if (value === CHAR_LEFT_CURLY_BRACE) {
+       depth++;
++      if (depth > MAX_DEPTH) {
++        throw new SyntaxError(`Nesting depth (${depth}) exceeds max depth (${MAX_DEPTH})`);
++      }
+ 
+       const dollar = prev.value && prev.value.slice(-1) === '$' || block.dollar === true;
+       const brace = {

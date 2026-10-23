@@ -47,6 +47,9 @@ export interface AppBooking {
   detail?: BookingDetail;
 }
 
+/** Lista vacía compartida: identidad estable cuando no hay sesión. */
+const EMPTY_BOOKINGS: AppBooking[] = [];
+
 export type BookingErrorCode =
   | "AUTH"
   | "FULL"
@@ -128,6 +131,17 @@ function clearLegacyDemoStorage() {
    Provider
    ============================================================ */
 
+/** Convierte las filas de la API al formato interno de reservas. */
+function toAppBookings(rows: BookingDetail[], userId: string): AppBooking[] {
+  return rows.map((b) => ({
+    id: b.id,
+    sessionId: b.session_id,
+    status: b.status,
+    createdAt: b.created_at,
+    detail: b.user_id === userId && b.session?.id === b.session_id ? b : undefined,
+  }));
+}
+
 export function AppProvider({
   children,
   initialUser,
@@ -138,7 +152,13 @@ export function AppProvider({
   isDemo: boolean;
 }) {
   const router = useRouter();
-  const [user, setUser] = useState<AppUser | null>(isDemo ? null : initialUser);
+  /* `initialUser` llega del servidor y cambia con router.refresh(). El cierre
+     de sesión se marca con el usuario que se cerró: así el valor se deduce
+     sin un efecto que copie el prop al estado. Una sesión nueva (otro
+     `initialUser`) descarta la marca sola. */
+  const [signedOutUser, setSignedOutUser] = useState<AppUser | null>(null);
+  const user: AppUser | null =
+    isDemo || (signedOutUser !== null && signedOutUser === initialUser) ? null : initialUser;
   const hydrated = true;
   const [authLoading, setAuthLoading] = useState(false);
   const [bookings, setBookings] = useState<AppBooking[]>([]);
@@ -187,12 +207,33 @@ export function AppProvider({
 
   useEffect(() => { clearLegacyDemoStorage(); }, []);
 
-  // Con Supabase conectado, el usuario llega desde el servidor (layout)
-  // y se actualiza cada vez que hacemos router.refresh() después del login.
-  useEffect(() => {
-    if (isDemo) return;
-    setUser(initialUser);
-  }, [initialUser, isDemo]);
+  /** Lectura pura de reservas: valida la respuesta y no toca el estado. */
+  const fetchBookings = useCallback(async (userId: string): Promise<BookingDetail[]> => {
+    const response = await fetch("/api/bookings", {
+      cache: "no-store",
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!response.ok) throw new Error("BOOKINGS_UNAVAILABLE");
+    const data = (await response.json()) as {
+      bookings: BookingDetail[];
+    };
+    if (
+      !Array.isArray(data.bookings) ||
+      data.bookings.some(
+        (b) =>
+          !b ||
+          typeof b.id !== "string" ||
+          typeof b.session_id !== "string" ||
+          !["confirmed", "attended", "cancelled", "no_show"].includes(
+            b.status,
+          ) ||
+          typeof b.created_at !== "string" ||
+          (b.user_id !== undefined && b.user_id !== userId),
+      )
+    )
+      throw new Error("INVALID_BOOKINGS");
+    return data.bookings;
+  }, []);
 
   const loadBookings = useCallback(async (expected?: {
     id: string; sessionId: string; status: "confirmed" | "cancelled";
@@ -210,42 +251,12 @@ export function AppProvider({
 
     setBookingsRead({ owner: user.id, status: "loading" });
     try {
-      const response = await fetch("/api/bookings", {
-        cache: "no-store",
-        signal: AbortSignal.timeout(15000),
-      });
-      if (!response.ok) throw new Error("BOOKINGS_UNAVAILABLE");
-      const data = (await response.json()) as {
-        bookings: BookingDetail[];
-      };
-      if (
-        !Array.isArray(data.bookings) ||
-        data.bookings.some(
-          (b) =>
-            !b ||
-            typeof b.id !== "string" ||
-            typeof b.session_id !== "string" ||
-            !["confirmed", "attended", "cancelled", "no_show"].includes(
-              b.status,
-            ) ||
-            typeof b.created_at !== "string" ||
-            (b.user_id !== undefined && b.user_id !== user.id),
-        )
-      )
-        throw new Error("INVALID_BOOKINGS");
+      const rows = await fetchBookings(user.id);
       if (request !== bookingsRequest.current) return false;
-      if (expected && !data.bookings.some(b =>
+      if (expected && !rows.some(b =>
         b.id === expected.id && b.session_id === expected.sessionId &&
         b.status === expected.status)) throw new Error("BOOKING_NOT_RECONCILED");
-      setBookings(
-        data.bookings.map((b) => ({
-          id: b.id,
-          sessionId: b.session_id,
-          status: b.status,
-          createdAt: b.created_at,
-          detail: b.user_id === user.id && b.session?.id === b.session_id ? b : undefined,
-        })),
-      );
+      setBookings(toAppBookings(rows, user.id));
       setBookingsRead({ owner: user.id, status: "ready" });
       return true;
     } catch {
@@ -254,12 +265,32 @@ export function AppProvider({
       setBookingsRead({ owner: user.id, status: "error" });
       return false;
     }
-  }, [isDemo, user]);
+  }, [isDemo, user, fetchBookings]);
 
+  /* Primera lectura de reservas: espera la respuesta antes de aplicar el
+     estado, así el efecto no encadena renders. */
   useEffect(() => {
-    void loadBookings();
-    return invalidateRequests;
-  }, [loadBookings, invalidateRequests]);
+    if (isDemo || !user) return;
+    let cancelled = false;
+    const owner = user.id;
+    const request = ++bookingsRequest.current;
+
+    void (async () => {
+      try {
+        const rows = await fetchBookings(owner);
+        if (cancelled || request !== bookingsRequest.current) return;
+        setBookings(toAppBookings(rows, owner));
+        setBookingsRead({ owner, status: "ready" });
+      } catch {
+        if (cancelled || request !== bookingsRequest.current) return;
+        setBookingsRead({ owner, status: "error" });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isDemo, user, fetchBookings]);
 
   /* ---------- reservas ---------- */
 
@@ -454,7 +485,7 @@ export function AppProvider({
   );
 
   const signOut = useCallback(async () => {
-    if (isDemo) { setUser(null); setBookings([]); return; }
+    if (isDemo) { setBookings([]); return; }
 
     try {
       const supabase = getSupabaseBrowserClient();
@@ -462,7 +493,7 @@ export function AppProvider({
       const { error } = await supabase.auth.signOut();
       if (error) throw new Error("SIGNOUT_UNCONFIRMED");
       invalidateRequests();
-      setUser(null);
+      setSignedOutUser(initialUser);
       setBookings([]);
       router.refresh();
     } catch {
@@ -470,7 +501,7 @@ export function AppProvider({
         ? "Could not confirm sign-out. Your session may still be active; please try again."
         : "No pudimos confirmar el cierre. Tu sesión puede seguir activa; intentá de nuevo.", "error");
     }
-  }, [isDemo, router, toast, invalidateRequests]);
+  }, [isDemo, initialUser, router, toast, invalidateRequests]);
 
   /* Cierre por inactividad: administrador y personal, 2 horas sin actividad.
      Clientes no se cierran solos. Demo no aplica. */
@@ -520,14 +551,17 @@ export function AppProvider({
 
   /* ---------- valor del contexto ---------- */
 
+  /* Sin sesión no se muestran reservas aunque quede una lectura anterior. */
+  const visibleBookings = user ? bookings : EMPTY_BOOKINGS;
+
   const bookedSessionIds = useMemo(
     () =>
       new Set(
-        bookings
+        visibleBookings
           .filter((b) => b.status === "confirmed" || b.status === "attended")
           .map((b) => b.sessionId),
       ),
-    [bookings],
+    [visibleBookings],
   );
 
   const value = useMemo<AppContextValue>(
@@ -536,7 +570,7 @@ export function AppProvider({
       isDemo,
       authLoading,
       hydrated,
-      bookings,
+      bookings: visibleBookings,
       bookingsLoading,
       bookingsError,
       reloadBookings: async () => { await loadBookings(); },
@@ -557,7 +591,7 @@ export function AppProvider({
       isDemo,
       authLoading,
       hydrated,
-      bookings,
+      visibleBookings,
       bookingsLoading,
       bookingsError,
       loadBookings,

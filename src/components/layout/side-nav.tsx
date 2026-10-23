@@ -39,15 +39,17 @@ export function SideNav({ open, onClose }: { open: boolean; onClose: () => void 
   const { dict, locale } = useDictionary();
   const { user, signOut, hydrated } = useApp();
   const pathname = usePathname();
-  const [sectionNav, setSectionNav] = useState<NavId>("home");
+  /* Sección del inicio marcada, junto con la pantalla donde se marcó.
+     Si la pantalla cambia, la sección vuelve a "home" sin un efecto:
+     el valor se deduce durante el render. */
+  const [spy, setSpy] = useState<{ path: string; nav: NavId }>({ path: pathname, nav: "home" });
+  const sectionNav: NavId = spy.path === pathname ? spy.nav : "home";
 
   const isHome = pathname === `/${locale}`;
 
-  /* Al cambiar de pantalla se cierra el panel (en el celular) y
-     se reinicia la sección activa del inicio. */
+  /* Al cambiar de pantalla se cierra el panel (en el celular). */
   useEffect(() => {
     onClose();
-    setSectionNav("home");
   }, [pathname, onClose]);
 
   /* Scroll-spy del inicio: marca en rojo la sección que se está viendo. */
@@ -59,7 +61,7 @@ export function SideNav({ open, onClose }: { open: boolean; onClose: () => void 
         for (const entry of entries) {
           if (!entry.isIntersecting) continue;
           const match = SECTION_TO_NAV.find((s) => s.id === entry.target.id);
-          if (match) setSectionNav(match.nav);
+          if (match) setSpy({ path: pathname, nav: match.nav });
         }
       },
       { rootMargin: "-35% 0px -55% 0px" },

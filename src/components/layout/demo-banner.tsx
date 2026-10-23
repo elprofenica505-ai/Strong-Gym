@@ -1,10 +1,48 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Database, X } from "lucide-react";
 import { useDictionary } from "@/components/providers/dictionary-provider";
 
 const STORAGE_KEY = "strong-gym:demo-banner-dismissed";
+
+/* El aviso vive en localStorage, que no existe en el servidor.
+   useSyncExternalStore lee ese dato del navegador sin un efecto que
+   provoque renders en cascada (regla react-hooks/set-state-in-effect). */
+const listeners = new Set<() => void>();
+/* Si el navegador bloquea el almacenamiento, el cierre vale para esta visita. */
+let dismissedInMemory = false;
+
+function subscribe(onChange: () => void) {
+  listeners.add(onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    listeners.delete(onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+
+function readVisible(): boolean {
+  if (dismissedInMemory) return false;
+  try {
+    return window.localStorage.getItem(STORAGE_KEY) !== "1";
+  } catch {
+    return true;
+  }
+}
+
+/** En el servidor no hay localStorage: se oculta hasta hidratar. */
+const serverVisible = () => false;
+
+function dismiss() {
+  dismissedInMemory = true;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, "1");
+  } catch {
+    // sin persistencia, el cierre vale hasta recargar
+  }
+  for (const onChange of listeners) onChange();
+}
 
 /**
  * Aviso de que el sitio corre con datos de ejemplo.
@@ -12,15 +50,7 @@ const STORAGE_KEY = "strong-gym:demo-banner-dismissed";
  */
 export function DemoBanner() {
   const dict = useDictionary().dict;
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    try {
-      if (window.localStorage.getItem(STORAGE_KEY) !== "1") setVisible(true);
-    } catch {
-      setVisible(true);
-    }
-  }, []);
+  const visible = useSyncExternalStore(subscribe, readVisible, serverVisible);
 
   if (!visible) return null;
 
@@ -36,14 +66,7 @@ export function DemoBanner() {
 
         <button
           type="button"
-          onClick={() => {
-            setVisible(false);
-            try {
-              window.localStorage.setItem(STORAGE_KEY, "1");
-            } catch {
-              // sin persistencia, no pasa nada
-            }
-          }}
+          onClick={dismiss}
           aria-label={dict.demo.dismiss}
           className="shrink-0 rounded-full p-1 text-fog transition-colors hover:text-ink"
         >

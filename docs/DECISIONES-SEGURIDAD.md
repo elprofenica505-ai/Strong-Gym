@@ -52,3 +52,17 @@ Fecha de esta versión: 2026-10-18 · Rama: `arena/85c54d7d-strong-gym` · PR ab
 
 - `docs/MFA-PERSONAL.md` — guía de activación y pendientes.
 - `docs/REVISION-CORREO-AUTH.md` — estado del correo y restricciones del servicio integrado.
+
+## 2026-10-23 · `braces` (GHSA-vfj7-8cjw-p6xm): parche propio y prueba de regresión
+
+**Situación:** `eslint-config-next` → `@next/eslint-plugin-next` → `fast-glob` → `micromatch` → `braces@3.0.3`. El aviso (severidad alta) describe un desborde de pila al expandir patrones con llaves muy anidadas. No hay versión publicada que lo corrija: 3.0.3 es la última y la rama canaria de Next sigue fijando `fast-glob@3.3.1`.
+
+**Decisión:** no ocultar el aviso ni bajar `eslint-config-next`. Se aplica un parche propio, versionado en el repositorio:
+
+- `patches/braces+3.0.3.patch`: límite de 1000 llaves anidadas en `lib/parse.js`; lanza `SyntaxError` en vez de desbordar la pila (antes: `RangeError: Maximum call stack size exceeded`).
+- `package.json`: `"postinstall": "patch-package"` y `patch-package` como dependencia de desarrollo. `npm ci` aplica el parche solo.
+- `tests/braces-depth.test.mjs`: comprueba que el patrón profundo se rechaza y que los patrones normales siguen funcionando.
+
+**Alcance:** es una herramienta de desarrollo (lint y globs de configuración); no se incluye en la app publicada. `npm audit` puede seguir nombrando el aviso porque la versión publicada no cambió: la corrección es de código, no de número de versión.
+
+**Cuándo retirar el parche:** cuando se publique una versión de `braces` que incluya la corrección (o `micromatch` deje de depender de `braces`): actualizar, borrar `patches/braces+3.0.3.patch`, quitar `postinstall` si no quedan otros parches y correr las pruebas.

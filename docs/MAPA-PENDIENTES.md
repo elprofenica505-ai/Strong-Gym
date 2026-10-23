@@ -17,7 +17,7 @@ Creado el 23 de octubre de 2026 para reunir en un solo lugar lo que quedó a med
 | Clientes (CRM), recepción y QR | `docs/FASE2-CLIENTES.md` | Varios puntos sin validación remota. |
 | Calculadora, categorías y fases A a E | `docs/ANALISIS-CALCULADORA-Y-CATEGORIAS.md` | Propuesta. Cada fase requiere aprobación. |
 | Medidas, metas y rutinas | `docs/MEDIDAS-PROGRESO.md` | Ver estado en PENDIENTES-ACTUALES. |
-| Lint (10 advertencias) | `docs/TAREA-LINT-REACT-HOOKS.md` | Tarea documentada, sin empezar. |
+| Lint y React Hooks | `docs/TAREA-LINT-REACT-HOOKS.md` | **Resuelto el 23 oct:** 0 avisos; la regla `set-state-in-effect` quedó como error. |
 | Incidentes y respaldo | `docs/GUIA-INCIDENTES.md` | **Borrador:** faltan datos entre corchetes. |
 | Reservas y conciliación | `docs/RESERVAS-CONCILIACION.md`, `docs/REPARACION-RESERVAS-MOVIL.md` | Revisar en navegador. |
 | Lecturas y validación financiera | `docs/B1-LECTURAS.md`, `docs/VALIDACION-FINANCIERA-2026-10-17.md`, `docs/VALIDACION-INVENTARIO.md` | Registros de validación. |
@@ -47,7 +47,7 @@ Para el detalle, usa la fuente indicada en la sección 1.
 - Sin abrir: CSP (activar en modo informativo), verificador anti-bots (requiere cuenta externa), llave de acceso (cuando Supabase la saque de versión experimental).
 - Sin empezar: revisión de Storage, CSRF y cabeceras completa; revisión del bundle final.
 - Requiere abogado: política de privacidad, términos, consentimiento de datos de salud, descargo de ejercicio, flujo de menores con tutor.
-- Dependencias: 0 vulnerabilidades en producción. Quedan 5 altas de desarrollo (`braces`), sin parche publicado.
+- Dependencias: 0 vulnerabilidades en producción. `braces` (herramienta de desarrollo) quedó corregido con el parche `patches/braces+3.0.3.patch`: rechaza los patrones con llaves muy anidadas que desbordaban la pila. `npm audit` puede seguir nombrando el aviso porque la versión publicada no cambió. Detalle en `docs/DECISIONES-SEGURIDAD.md`.
 
 **Correo**
 - Remitente, dominio y SMTP propios: esperan datos del dueño.
@@ -67,7 +67,6 @@ Para el detalle, usa la fuente indicada en la sección 1.
 - Importación de Excel validada. Comprobantes PDF para celular. Verificación de deudas en USD.
 
 **Calidad**
-- Lint: 10 advertencias (`docs/TAREA-LINT-REACT-HOOKS.md`).
 - Revisión visual en navegador de las páginas nuevas: pendiente (el entorno no tiene navegador).
 - Pruebas de extremo a extremo, concurrencia y recorrido completo con datos ficticios: sin empezar.
 - Retirar código de demo (`src/lib/data/demo-*`): pendiente.
