@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { SideNav } from "./side-nav";
 import { SiteHeader } from "./site-header";
 
@@ -19,6 +20,9 @@ export function SiteShell({
   footer: ReactNode;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  // Dentro de los paneles del personal no se muestran el pie largo ni el botón de reserva.
+  const pathname = usePathname() ?? "";
+  const inPanel = /(^|\/)panel(\/|$)/.test(pathname);
   const openMenu = useCallback(() => setMenuOpen(true), []);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
 
@@ -28,11 +32,11 @@ export function SiteShell({
 
       <div className="flex min-h-dvh min-w-0 max-w-full flex-col lg:pl-64">
         {banner}
-        <SiteHeader onOpenMenu={openMenu} />
+        <SiteHeader onOpenMenu={openMenu} showBookCta={!inPanel} />
         <main id="contenido" className="relative min-w-0 flex-1">
           {children}
         </main>
-        {footer}
+        {inPanel ? null : footer}
       </div>
     </>
   );

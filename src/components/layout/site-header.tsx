@@ -15,7 +15,13 @@ import { Logo } from "./logo";
  * logo (sólo en el celular, donde el panel está oculto), el estado
  * abierto/cerrado, el idioma y el acceso directo a reservar.
  */
-export function SiteHeader({ onOpenMenu }: { onOpenMenu: () => void }) {
+export function SiteHeader({
+  onOpenMenu,
+  showBookCta = true,
+}: {
+  onOpenMenu: () => void;
+  showBookCta?: boolean;
+}) {
   const { dict, locale } = useDictionary();
   const [scrolled, setScrolled] = useState(false);
   const [abierto, setAbierto] = useState<boolean | null>(null);
@@ -89,12 +95,14 @@ export function SiteHeader({ onOpenMenu }: { onOpenMenu: () => void }) {
 
             {/* La visibilidad pertenece al contenedor: ButtonLink usa inline-flex
                 y no debe competir con hidden dentro del mismo elemento. */}
+            {showBookCta ? (
             <div className="hidden sm:block">
               <ButtonLink href={`/${locale}/horarios`} size="sm">
                 <CalendarCheck className="size-4" aria-hidden="true" />
                 {dict.cta.book}
               </ButtonLink>
             </div>
+            ) : null}
           </div>
         </div>
       </div>

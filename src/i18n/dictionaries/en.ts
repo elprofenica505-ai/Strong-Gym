@@ -552,7 +552,7 @@ const en = {
     rights: "All rights reserved.",
     terms: "Terms and conditions",
     privacy: "Privacy policy",
-    madeWith: "Built with Next.js and Supabase",
+    madeWith: "Developed by",
   },
 
   demo: {

@@ -560,7 +560,7 @@ const es = {
     rights: "Todos los derechos reservados.",
     terms: "Términos y condiciones",
     privacy: "Política de privacidad",
-    madeWith: "Hecho con Next.js y Supabase",
+    madeWith: "Desarrollado por",
   },
 
   demo: {

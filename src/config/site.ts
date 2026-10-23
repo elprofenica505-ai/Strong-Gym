@@ -17,6 +17,11 @@ export interface OpeningSlot {
 }
 
 export const siteConfig = {
+  /**
+   * Marca de quien desarrolló el sistema (pie de página: «Desarrollado por …»).
+   * Para cambiarla sin tocar el código, define NEXT_PUBLIC_DEVELOPER_BRAND en Vercel y vuelve a publicar.
+   */
+  developerBrand: process.env.NEXT_PUBLIC_DEVELOPER_BRAND || "El Profe Nica 505",
   name: "Strong Fitness Gym",
   shortName: "Strong",
   /** Razón social. Si no hay una distinta, se usa el nombre comercial. */

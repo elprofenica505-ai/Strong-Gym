@@ -197,9 +197,8 @@ export function ClientsPanel({
       )}
       {!isDemo && (
         <p className="text-xs text-fog">
-          Entorno con Supabase configurado. Cada sección confirma su propia
-          lectura; un error de ficha no significa que se haya perdido toda la
-          conexión.
+          Cada sección confirma sus propios datos. Si una no carga, las demás
+          siguen funcionando.
         </p>
       )}
       {error && (
