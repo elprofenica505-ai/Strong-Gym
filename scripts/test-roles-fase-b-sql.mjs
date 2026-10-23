@@ -27,8 +27,8 @@ for (const f of ['00001_schema.sql', '00002_seed.sql', '../tests/fixtures/financ
 await db.exec(`create or replace function public.crm_is_staff() returns boolean language sql stable security definer set search_path = public, pg_temp as $$
   select coalesce((select auth.jwt() ->> 'aal') = 'aal2', false) and exists(select 1 from public.profiles where id = auth.uid() and role in ('admin','staff'));$$;
   revoke all on function public.crm_is_staff() from public, anon; grant execute on function public.crm_is_staff() to authenticated;`);
-await db.exec(sql('docs/SQL-PENDIENTE/00032_mfa_is_staff_y_privilegios_anon.sql'));
-await db.exec(sql('docs/SQL-PENDIENTE/00033_roles_fase_a.sql'));
+await db.exec(sql('supabase/migrations/00032_mfa_is_staff_y_privilegios_anon.sql'));
+await db.exec(sql('supabase/migrations/00033_roles_fase_a.sql'));
 
 const makeUser = async (email, role) => {
   const id = (await db.query('insert into auth.users(email, raw_user_meta_data) values ($1, $2) returning id',
@@ -62,7 +62,7 @@ const denied = (p, re = /AUTH|42501|permission denied|row-level/) => p.then(
 const fn = async (actor, aal, name) => (await as(actor, aal, `select public.${name}() as x`))[0].x;
 
 // Antes de 00034: el rol 'staff' existe, así que se prueba su migración.
-await db.exec(sql('docs/SQL-PENDIENTE/00034_roles_fase_b.sql'));
+await db.exec(sql('supabase/migrations/00034_roles_fase_b.sql'));
 ok('00034 se aplica sin error', true);
 
 // 1) Migración del rol staff
@@ -112,7 +112,7 @@ ok('entrenador NO lee transacciones', (await as(trainer, 'aal2', 'select count(*
 
 // 6) Sólo administrador: reporte de deudas, importación, planes, clases, entrenadores, horarios
 ok('admin ejecuta el reporte de deudas', (await as(admin, 'aal2', "select public.finance_debt_report('summary') x")).length === 1);
-await db.exec(sql('docs/SQL-PENDIENTE/00038_caja_resumen_deudas.sql'));
+await db.exec(sql('supabase/migrations/00038_caja_resumen_deudas.sql'));
 ok('caja ejecuta el resumen de deudas (00038)', (await as(cashier, 'aal2', "select public.finance_debt_report('summary') x")).length === 1);
 ok('caja sin aal2 NO ejecuta el resumen de deudas', await denied(as(cashier, 'aal1', "select public.finance_debt_report('summary')")));
 ok('entrenador NO ejecuta el reporte de deudas', await denied(as(trainer, 'aal2', "select public.finance_debt_report('summary')")));

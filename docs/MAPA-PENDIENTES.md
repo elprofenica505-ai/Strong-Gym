@@ -7,7 +7,7 @@ Creado el 23 de octubre de 2026 para reunir en un solo lugar lo que quedó a med
 | Tema | Dónde está | Estado de la fuente |
 |---|---|---|
 | Ruta general y etapas 1 a 6 | `docs/PENDIENTES-ACTUALES.md` | **La más completa.** Última sección con fecha: 19 oct. |
-| Lista corta para el dueño | `docs/LISTA-PENDIENTES-DUENO.md` | **Desactualizada** (20 oct). Dice que la calculadora, el plan y las rutinas por objetivo «no existen»; ya se hicieron en los PR #21 a #23. No usar sin revisar. |
+| Lista corta para el dueño | `docs/LISTA-PENDIENTES-DUENO.md` | **Retirada** el 23 oct. Apunta a las dos fuentes vigentes. |
 | Inventario por código de función (B01, ACC05, CRM08, FIN04…) | `docs/INVENTARIO-FUNCIONAL.md` | Útil para estado de cada función. Revisar contra PR fusionados. |
 | Seguridad: decisiones y pendientes de información | `docs/DECISIONES-SEGURIDAD.md` | Vigente. Tiene la sección «Pendientes de información». |
 | Seguridad: detalle de cada etapa | `docs/SEGURIDAD-ACCESOS.md`, `docs/DEMO-PRODUCCION.md`, `docs/AUTH-RECUPERACION.md`, `docs/MFA-PERSONAL.md` | Cada uno describe su etapa y lo que falta. |
@@ -22,26 +22,22 @@ Creado el 23 de octubre de 2026 para reunir en un solo lugar lo que quedó a med
 | Reservas y conciliación | `docs/RESERVAS-CONCILIACION.md`, `docs/REPARACION-RESERVAS-MOVIL.md` | Revisar en navegador. |
 | Lecturas y validación financiera | `docs/B1-LECTURAS.md`, `docs/VALIDACION-FINANCIERA-2026-10-17.md`, `docs/VALIDACION-INVENTARIO.md` | Registros de validación. |
 
-## 2. SQL: lo que está en el repositorio y lo que no
+## 2. SQL: fuente única
 
-- `supabase/migrations/`: migraciones versionadas. Llegan hasta la **00030**.
-- `docs/SQL-PENDIENTE/`: migraciones **00032 a 00049**, todavía fuera de `supabase/migrations/`.
+- `supabase/migrations/`: **única fuente de migraciones**, de la **00001** a la **00049**. Las 00031 a 00049 estaban antes en `docs/SQL-PENDIENTE/` y se movieron aquí el 23 de octubre, sin cambiar su contenido.
 - `supabase/*.sql` (SETUP, ACTUALIZAR, FASE2, etc.): archivos antiguos para pegar a mano. No son la fuente de verdad.
 
-Estado en Supabase (verificado en esta sesión o en documentos):
-- **Aplicadas:** 00034 a 00048 según el historial de Supabase; **00049** aplicada sin aparecer en el historial.
-- **00031 y 00032:** documentos de PENDIENTES-ACTUALES dicen que están aplicadas. No aparecen en el historial de Supabase; confirmar.
-- **00033:** no aparece en el historial; confirmar con `list_migrations` o la consulta de la base.
-- **Pendiente:** ninguna migración nueva está lista para aplicar. La 00050 no se creó.
+Estado en Supabase (verificado en solo lectura el 23 de octubre):
+- **Aplicadas y comprobadas en la base:** 00031 y 00032 (`is_staff` exige aal2), 00033 y 00034 (`is_admin`, `admin_set_role`, `role_changes`), 00035 (`trainer_client_access`), 00036, de la 00037 a la 00048 según el historial de Supabase, y **00049** (tabla de personal, funciones de baja y reactivación).
+- **Pendiente:** ninguna migración está lista para aplicar. La 00050 no existe.
+- **Advertencia:** la 00049 aparece aplicada, pero no en el historial de migraciones de Supabase. Se registró a mano. No vuelvas a ejecutarla.
 
 ## 3. Ramas de Git
 
 Verificado con el historial completo del repositorio:
 - **Todos los PR del #1 al #27** están fusionados en `main`.
 - Casi todas las ramas `arena/*` ya están contenidas en `main`. No se perdió trabajo en ellas.
-- **Sin fusionar:**
-  - `arena/10c75b47-strong-gym` (esta sesión): 2 commits (tarea de lint y cambio del selector de idioma). Sin PR.
-  - `arena/85c54d7d-strong-gym`: 1 commit (`cd3464e`), documentación preparada de la 00031 (MFA obligatorio para personal). Decidir si se integra o se descarta.
+- La rama `arena/85c54d7d-strong-gym` se integró en esta rama (solo el archivo de la 00031). Su resto ya está en `main`.
 
 ## 4. Pendientes reales por área (resumen)
 

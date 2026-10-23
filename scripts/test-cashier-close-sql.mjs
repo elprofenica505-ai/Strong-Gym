@@ -1,4 +1,4 @@
-// Prueba local del interruptor de cierre del día para caja (docs/SQL-PENDIENTE/00037).
+// Prueba local del interruptor de cierre del día para caja (supabase/migrations/00037).
 // Usa la misma cadena de migraciones que test-roles-fase-b-sql.mjs hasta 00033 y luego aplica 00037.
 // Casos: caja con interruptor apagado/encendido; admin, entrenador, cliente y visitante siempre false;
 // caja sin aal2 false.
@@ -27,9 +27,9 @@ for (const f of ['00001_schema.sql', '00002_seed.sql', '../tests/fixtures/financ
 await db.exec(`create or replace function public.crm_is_staff() returns boolean language sql stable security definer set search_path = public, pg_temp as $$
   select coalesce((select auth.jwt() ->> 'aal') = 'aal2', false) and exists(select 1 from public.profiles where id = auth.uid() and role in ('admin','staff'));$$;
   revoke all on function public.crm_is_staff() from public, anon; grant execute on function public.crm_is_staff() to authenticated;`);
-await db.exec(sql('docs/SQL-PENDIENTE/00032_mfa_is_staff_y_privilegios_anon.sql'));
-await db.exec(sql('docs/SQL-PENDIENTE/00033_roles_fase_a.sql'));
-await db.exec(sql('docs/SQL-PENDIENTE/00037_cierre_caja_interruptor.sql'));
+await db.exec(sql('supabase/migrations/00032_mfa_is_staff_y_privilegios_anon.sql'));
+await db.exec(sql('supabase/migrations/00033_roles_fase_a.sql'));
+await db.exec(sql('supabase/migrations/00037_cierre_caja_interruptor.sql'));
 
 const makeUser = async (email, role) => {
   const id = (await db.query('insert into auth.users(email, raw_user_meta_data) values ($1, $2) returning id',

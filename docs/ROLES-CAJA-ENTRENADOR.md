@@ -39,4 +39,4 @@ Estado: DISEÑO. No hay SQL aplicado ni cambios de base de datos para esto.
 
 ## Pendiente de autorización
 - SQL: nuevos roles, tabla de permisos del administrador, reglas RLS por rol y función de anulación con bitácora.
-- Se prepara en `docs/SQL-PENDIENTE/`, se prueba localmente y se aplica sólo con autorización expresa.
+- Se prepara en `supabase/migrations/`, se prueba localmente y se aplica sólo con autorización expresa.
