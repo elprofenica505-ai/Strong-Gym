@@ -17,7 +17,7 @@ import { DEMO_MODE } from "@/lib/supabase/env";
 import { isStaffRole } from "@/lib/auth/current-user";
 import { groupRoutineByDay, formatRest, formatSeries } from "@/lib/progress/routine-view";
 import {
-  addMonths, BMI_LABEL, bmi, bmiCategory, goalProgress, healthyWeightRange, managuaToday, GOAL_TYPES,
+  addMonths, BMI_LABEL, bmi, bmiCategory, goalProgress, goalStartWeight, healthyWeightRange, managuaToday, GOAL_TYPES,
 } from "@/lib/progress/rules";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
@@ -109,7 +109,7 @@ function ProgressView({
   const progress = data.goal
     ? goalProgress({
         goalType: data.goal.goalType,
-        startWeightKg: first?.weightKg ?? null,
+        startWeightKg: goalStartWeight(data.measurements, data.goal.startsOn),
         currentWeightKg: current,
         targetWeightKg: data.goal.targetWeightKg,
       })

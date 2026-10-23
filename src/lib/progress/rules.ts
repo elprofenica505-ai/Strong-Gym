@@ -190,3 +190,20 @@ export function managuaToday(now: Date = new Date()): string {
     timeZone: "America/Managua", year: "numeric", month: "2-digit", day: "2-digit",
   }).format(now);
 }
+
+/**
+ * Peso inicial de una meta: la medición más reciente hasta la fecha de inicio de la meta
+ * (el peso registrado al crearla). Si no hay medición previa, devuelve null y el avance
+ * muestra «sin datos» en lugar de tomar una medición posterior como inicio.
+ */
+export function goalStartWeight(
+  measurements: ReadonlyArray<{ measuredOn: string; weightKg: number | null }>,
+  startsOn: string,
+): number | null {
+  let best: { measuredOn: string; weightKg: number } | null = null;
+  for (const m of measurements) {
+    if (m.weightKg === null || m.measuredOn > startsOn) continue;
+    if (!best || m.measuredOn > best.measuredOn) best = { measuredOn: m.measuredOn, weightKg: m.weightKg };
+  }
+  return best ? best.weightKg : null;
+}

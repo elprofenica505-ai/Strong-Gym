@@ -131,7 +131,7 @@ export function nutritionGuide(goal: GoalKey): string[] {
   const specific: Record<GoalKey, string> = {
     bajar: "Déficit moderado: busque una pérdida de unos 0.5 kg por semana. Evite dietas extremas.",
     definir: "Déficit leve y proteína alta para conservar músculo mientras baja la grasa.",
-    mantener: "Mantenga las calorías cerca de su gasto diario y revise su peso cada semana.",
+    mantener: "Mantené las calorías cerca de tu gasto diario y revisá tu peso cada semana.",
     musculo: "Superávit leve de calorías y proteína repartida en 3 a 5 comidas.",
     peso: "Superávit moderado: agregue colaciones con carbohidratos y grasas saludables.",
   };
