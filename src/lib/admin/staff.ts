@@ -9,7 +9,7 @@ export const STAFF_ROLES: StaffRole[] = ["trainer", "cashier", "admin"];
 
 export const STAFF_ROLE_LABEL: Record<StaffRole, string> = {
   trainer: "Entrenador",
-  cashier: "Caja",
+  cashier: "Cajero",
   admin: "Administración",
 };
 

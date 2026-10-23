@@ -24,6 +24,7 @@ const reply = (body: unknown, status = 200) =>
 
 const failures: Record<string, [number, string]> = {
   AUTH: [403, "No tenés permiso para cambiar este plan."],
+  ALTURA_DISTINTA: [409, "La ficha ya tiene otra altura registrada. Para corregirla, consultá al administrador. No se guardó nada."],
   INVALID_GOAL: [422, "Elegí un objetivo de la lista."],
   NOT_FOUND: [404, "No encontramos tu ficha de cliente. Pedile al administrador que la cree."],
   NO_PLAN: [409, "Primero calculá tu plan; después podés guardarlo en el gimnasio."],
@@ -142,7 +143,9 @@ async function context() {
 }
 
 function failure(error: { message?: string }) {
-  const code = error.message && failures[error.message] ? error.message : undefined;
+  // La base envía «ALTURA_DISTINTA: …» con el detalle; se reconoce solo el prefijo.
+  const raw = error.message ?? "";
+  const code = raw.startsWith("ALTURA_DISTINTA") ? "ALTURA_DISTINTA" : raw && failures[raw] ? raw : undefined;
   const [status, message] = code
     ? failures[code]
     : [503, "No se pudo confirmar el guardado. Recargá la página antes de repetirlo."];

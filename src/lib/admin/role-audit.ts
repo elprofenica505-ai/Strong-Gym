@@ -21,7 +21,7 @@ export type RoleAuditItem = {
 
 export const ROLE_LABEL: Record<string, string> = {
   member: "Cliente",
-  cashier: "Caja",
+  cashier: "Cajero",
   trainer: "Entrenador",
   admin: "Administración",
   staff: "Personal anterior",

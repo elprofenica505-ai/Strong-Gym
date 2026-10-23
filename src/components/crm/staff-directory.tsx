@@ -2,7 +2,7 @@ import { UserCog } from "lucide-react";
 
 const ROLE_LABEL: Record<string, string> = {
   trainer: "Entrenador",
-  cashier: "Caja",
+  cashier: "Cajero",
   admin: "Administración",
 };
 
