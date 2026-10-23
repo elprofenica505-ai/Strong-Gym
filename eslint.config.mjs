@@ -19,20 +19,17 @@ const config = [
   {
     rules: {
       /**
-       * Estas dos reglas vienen del React Compiler y marcan como error
-       * patrones que acá son correctos y necesarios:
+       * Reglas del React Compiler.
        *
-       *  · set-state-in-effect → sincronizar el estado con APIs del
-       *    navegador que sólo existen en el cliente (IntersectionObserver
-       *    en Reveal, localStorage en el aviso de modo demo, la carga
-       *    inicial de reservas). Son efectos de sincronización reales,
-       *    no renders en cascada evitables.
-       *  · immutability → escribir `document.cookie` para recordar el
-       *    idioma elegido.
-       *
-       * Las dejamos como aviso para seguir viéndolas sin frenar el CI.
+       *  · set-state-in-effect → queda como error: las diez pantallas que
+       *    la incumplían se reescribieron (lectura del navegador con
+       *    useSyncExternalStore, estado deducido y cargas que esperan la
+       *    respuesta antes de tocar el estado). Si aparece de nuevo, es un
+       *    render en cascada real y hay que corregirlo, no silenciarlo.
+       *  · immutability → aviso: escribir `document.cookie` para recordar
+       *    el idioma elegido es intencional.
        */
-      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/set-state-in-effect": "error",
       "react-hooks/immutability": "warn",
     },
   },

@@ -432,29 +432,33 @@ function historyFrom(bookings: BookingDetail[], now: Date): BookingDetail[] {
 /**
  * Lector ilustrativo de horarios. La demo actual no crea ni restaura reservas.
  */
+/** Mapa vacío compartido: identidad estable para no repetir renders. */
+const EMPTY_SESSIONS = new Map<string, SessionDetail>();
+
 function useDemoBookings(bookings: AppBooking[]): {
   upcoming: BookingDetail[];
   loading: boolean;
 } {
-  const [sessions, setSessions] = useState<Map<string, SessionDetail>>(
-    new Map(),
-  );
-  const [loading, setLoading] = useState(false);
+  /* Se guarda la clave consultada junto con las sesiones: si cambia la
+     lista de reservas, las sesiones viejas dejan de usarse sin un efecto
+     que resetee el estado a mano. */
+  const [loaded, setLoaded] = useState<{ key: string; map: Map<string, SessionDetail> }>({
+    key: "",
+    map: new Map(),
+  });
 
   const activeKey = bookings
     .filter((b) => b.status === "confirmed" || b.status === "attended")
     .map((b) => b.sessionId)
     .join(",");
 
+  const sessions = loaded.key === activeKey ? loaded.map : EMPTY_SESSIONS;
+  const loading = activeKey !== "" && loaded.key !== activeKey;
+
   useEffect(() => {
-    if (!activeKey) {
-      setSessions(new Map());
-      setLoading(false);
-      return;
-    }
+    if (!activeKey) return;
 
     let cancelled = false;
-    setLoading(true);
 
     const weekKeys = [getWeekRange().key, shiftWeeks(getWeekRange(), 1).key];
 
@@ -480,11 +484,9 @@ function useDemoBookings(bookings: AppBooking[]): {
 
         const map = new Map<string, SessionDetail>();
         for (const session of responses.flat()) map.set(session.id, session);
-        setSessions(map);
+        setLoaded({ key: activeKey, map });
       } catch {
-        if (!cancelled) setSessions(new Map());
-      } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setLoaded({ key: activeKey, map: EMPTY_SESSIONS });
       }
     }
 

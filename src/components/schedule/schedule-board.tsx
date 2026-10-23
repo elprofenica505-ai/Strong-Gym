@@ -81,60 +81,70 @@ export function ScheduleBoard({ initialWeekKey }: { initialWeekKey?: string }) {
 
   /* ---------- Carga de datos ---------- */
 
+  /** Lectura pura: pide y valida la semana; no toca el estado. */
+  const fetchWeek = useCallback(async (key: string) => {
+    const url = key
+      ? `/api/sessions?week=${encodeURIComponent(key)}`
+      : "/api/sessions";
+    const response = await fetch(url, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!response.ok) throw new Error("fetch failed");
+
+    const data = (await response.json()) as {
+      weekKey: string;
+      sessions: SessionDetail[];
+    };
+
+    if (
+      !Array.isArray(data.sessions) ||
+      typeof data.weekKey !== "string" ||
+      data.sessions.some(
+        (session) =>
+          !session ||
+          typeof session.id !== "string" ||
+          !session.gymClass ||
+          typeof session.gymClass.slug !== "string" ||
+          typeof session.gymClass.name_es !== "string" ||
+          typeof session.gymClass.name_en !== "string" ||
+          typeof session.gymClass.color !== "string" ||
+          !Number.isFinite(Date.parse(session.starts_at)) ||
+          !Number.isFinite(Date.parse(session.ends_at)) ||
+          !Number.isSafeInteger(session.capacity) ||
+          session.capacity < 0 ||
+          !Number.isSafeInteger(session.bookedCount) ||
+          session.bookedCount < 0 ||
+          !Number.isSafeInteger(session.spotsLeft) ||
+          session.spotsLeft < 0,
+      )
+    )
+      throw new Error("INVALID_SESSIONS");
+
+    return data;
+  }, []);
+
+  /** Aplica una semana ya validada y mantiene la URL compartible. */
+  const applyWeek = useCallback((data: { weekKey: string; sessions: SessionDetail[] }) => {
+    setSessions(data.sessions);
+    setWeek(weekRangeFromKey(data.weekKey));
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("week", data.weekKey);
+      window.history.replaceState(null, "", url.toString());
+    }
+  }, []);
+
+  /** Carga pedida por una acción del usuario (cambiar de semana, reservar, reintentar). */
   const load = useCallback(async (key: string) => {
     const request = ++loadRequest.current;
     requestedWeek.current = key;
     setLoading(true);
     setLoadError(false);
     try {
-      const url = key
-        ? `/api/sessions?week=${encodeURIComponent(key)}`
-        : "/api/sessions";
-      const response = await fetch(url, {
-        cache: "no-store",
-        signal: AbortSignal.timeout(15000),
-      });
-      if (!response.ok) throw new Error("fetch failed");
-
-      const data = (await response.json()) as {
-        weekKey: string;
-        sessions: SessionDetail[];
-      };
-
-      if (
-        !Array.isArray(data.sessions) ||
-        typeof data.weekKey !== "string" ||
-        data.sessions.some(
-          (session) =>
-            !session ||
-            typeof session.id !== "string" ||
-            !session.gymClass ||
-            typeof session.gymClass.slug !== "string" ||
-            typeof session.gymClass.name_es !== "string" ||
-            typeof session.gymClass.name_en !== "string" ||
-            typeof session.gymClass.color !== "string" ||
-            !Number.isFinite(Date.parse(session.starts_at)) ||
-            !Number.isFinite(Date.parse(session.ends_at)) ||
-            !Number.isSafeInteger(session.capacity) ||
-            session.capacity < 0 ||
-            !Number.isSafeInteger(session.bookedCount) ||
-            session.bookedCount < 0 ||
-            !Number.isSafeInteger(session.spotsLeft) ||
-            session.spotsLeft < 0,
-        )
-      )
-        throw new Error("INVALID_SESSIONS");
+      const data = await fetchWeek(key);
       if (request !== loadRequest.current) return;
-      setSessions(data.sessions);
-      setWeek(weekRangeFromKey(data.weekKey));
-
-      // Mantenemos la URL sincronizada para poder compartir una semana
-      // concreta, sin disparar otro render del servidor.
-      if (typeof window !== "undefined") {
-        const url = new URL(window.location.href);
-        url.searchParams.set("week", data.weekKey);
-        window.history.replaceState(null, "", url.toString());
-      }
+      applyWeek(data);
     } catch {
       if (request !== loadRequest.current) return;
       setSessions(null);
@@ -142,12 +152,35 @@ export function ScheduleBoard({ initialWeekKey }: { initialWeekKey?: string }) {
     } finally {
       if (request === loadRequest.current) setLoading(false);
     }
-  }, []);
+  }, [fetchWeek, applyWeek]);
 
+  /* Primera carga: arranca con loading=true y espera la respuesta antes de
+     tocar el estado, para no encadenar renders desde el efecto. */
   useEffect(() => {
-    void load(initialWeekKey ?? "");
-    return invalidateRequests;
-  }, [load, initialWeekKey, invalidateRequests]);
+    let cancelled = false;
+    const key = initialWeekKey ?? "";
+    const request = ++loadRequest.current;
+    requestedWeek.current = key;
+
+    void (async () => {
+      try {
+        const data = await fetchWeek(key);
+        if (cancelled || request !== loadRequest.current) return;
+        applyWeek(data);
+      } catch {
+        if (cancelled || request !== loadRequest.current) return;
+        setSessions(null);
+        setLoadError(true);
+      } finally {
+        if (!cancelled && request === loadRequest.current) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      invalidateRequests();
+    };
+  }, [fetchWeek, applyWeek, initialWeekKey, invalidateRequests]);
 
   /* ---------- Derivados ---------- */
 

@@ -67,21 +67,41 @@ export function ProductManager() {
   // Referencia de la operación en curso: se conserva si la respuesta se pierde.
   const requestRef = useRef<string | null>(null);
 
+  /** Lectura pura: no toca el estado, así el efecto no encadena renders. */
+  const fetchProducts = useCallback(async () => {
+    const res = await fetch("/api/products", { cache: "no-store" });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error ?? "No se pudo cargar.");
+    return body as Data;
+  }, []);
+
+  const applyProducts = useCallback((body: Data) => {
+    setData(body);
+    setLoadError(null);
+  }, []);
+
   const load = useCallback(async () => {
     try {
-      const res = await fetch("/api/products", { cache: "no-store" });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error ?? "No se pudo cargar.");
-      setData(body as Data);
-      setLoadError(null);
+      applyProducts(await fetchProducts());
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "No se pudo cargar.");
     }
-  }, []);
+  }, [applyProducts, fetchProducts]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let cancelled = false;
+    void (async () => {
+      try {
+        const body = await fetchProducts();
+        if (!cancelled) applyProducts(body);
+      } catch (e) {
+        if (!cancelled) setLoadError(e instanceof Error ? e.message : "No se pudo cargar.");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [applyProducts, fetchProducts]);
 
   const open = (next: Mode, product: Product | null = null) => {
     setMode(next);

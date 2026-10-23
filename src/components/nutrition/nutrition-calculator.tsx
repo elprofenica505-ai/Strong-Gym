@@ -109,25 +109,44 @@ export function NutritionCalculator({
 
   const query = mode === "staff" && clientId ? `?client=${encodeURIComponent(clientId)}` : "";
 
+  /** Lectura pura: no toca el estado, así el efecto no encadena renders. */
+  const fetchSheet = useCallback(async () => {
+    const res = await fetch(`/api/nutrition${query}`, { cache: "no-store" });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error ?? "No se pudo cargar.");
+    return (body.data ?? null) as Payload | null;
+  }, [query]);
+
+  const applySheet = useCallback((d: Payload | null) => {
+    setData(d);
+    setMeals(d?.plan?.meal_plan ?? []);
+    setRoutine(d?.plan?.routine ?? []);
+    setForm(formFrom(d?.plan?.inputs ?? null));
+    setError(d ? null : "No encontramos tu ficha de cliente. Pedile al administrador que la cree.");
+  }, []);
+
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`/api/nutrition${query}`, { cache: "no-store" });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error ?? "No se pudo cargar.");
-      const d = body.data as Payload | null;
-      setData(d);
-      setMeals(d?.plan?.meal_plan ?? []);
-      setRoutine(d?.plan?.routine ?? []);
-      setForm(formFrom(d?.plan?.inputs ?? null));
-      setError(d ? null : "No encontramos tu ficha de cliente. Pedile al administrador que la cree.");
+      applySheet(await fetchSheet());
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo cargar.");
     }
-  }, [query]);
+  }, [applySheet, fetchSheet]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let cancelled = false;
+    void (async () => {
+      try {
+        const d = await fetchSheet();
+        if (!cancelled) applySheet(d);
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "No se pudo cargar.");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [applySheet, fetchSheet]);
 
   const post = async (payload: unknown, okText: string | null) => {
     setBusy(true);

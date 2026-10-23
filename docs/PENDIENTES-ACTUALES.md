@@ -203,3 +203,9 @@ Estado al cierre de hoy. Reemplaza las marcas anteriores donde haya diferencia.
 - [ ] Carga de datos reales y conciliación de los cuatro saldos por cliente.
 - [ ] Cuenta del dueño verificada antes de retirar el administrador temporal.
 - [ ] Demostración final y manual de uso.
+
+## Actualización 23 oct 2026 (rama arena/27bc8286-strong-gym)
+
+- [x] Lint: las 10 advertencias de `react-hooks/set-state-in-effect` se corrigieron de raíz (sin silenciarlas) y la regla quedó como error. Detalle: `docs/TAREA-LINT-REACT-HOOKS.md`.
+- [x] `braces` (desarrollo): parche propio en `patches/braces+3.0.3.patch`, con `postinstall` y prueba de regresión en `tests/braces-depth.test.mjs`. Detalle: `docs/DECISIONES-SEGURIDAD.md`.
+- [ ] Siguen pendientes, hasta hablar con el dueño: revisión legal de las descargas con datos personales y copia de seguridad semanal.
