@@ -59,6 +59,8 @@ export function ScheduleBoard({ initialWeekKey }: { initialWeekKey?: string }) {
     bookingsError,
     reloadBookings,
   } = useApp();
+  // El personal (administración, caja y entrenadores) no reserva clases: solo los clientes.
+  const canBook = !(user?.role === "admin" || user?.role === "cashier" || user?.role === "trainer");
 
   const [week, setWeek] = useState<WeekRange>(() =>
     weekRangeFromKey(initialWeekKey),
@@ -494,6 +496,7 @@ export function ScheduleBoard({ initialWeekKey }: { initialWeekKey?: string }) {
                         isBooked={bookedSessionIds.has(session.id)}
                         isPast={new Date(session.starts_at) < now}
                         isPending={pendingSession === session.id}
+                        canBook={canBook}
                         onBook={() => void onBook(session)}
                         onCancel={() => void onCancel(session)}
                       />
@@ -638,6 +641,7 @@ function SessionRow({
   isBooked,
   isPast,
   isPending,
+  canBook,
   onBook,
   onCancel,
 }: {
@@ -648,6 +652,7 @@ function SessionRow({
   isBooked: boolean;
   isPast: boolean;
   isPending: boolean;
+  canBook: boolean;
   onBook: () => void;
   onCancel: () => void;
 }) {
@@ -767,6 +772,10 @@ function SessionRow({
           ) : isFull ? (
             <span className="flex w-full items-center justify-center rounded-full border border-alert/30 bg-alert/10 px-4 py-2.5 text-[0.75rem] font-semibold text-alert">
               {labels.full}
+            </span>
+          ) : !canBook ? (
+            <span className="flex w-full items-center justify-center rounded-full border border-line px-4 py-2.5 text-center text-[0.7rem] font-semibold text-fog">
+              {locale === "es" ? "Solo clientes reservan" : "Only clients can book"}
             </span>
           ) : (
             <Button

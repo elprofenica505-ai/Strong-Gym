@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { CalendarCheck, Menu } from "lucide-react";
 import { isOpenAt } from "@/config/site";
 import { useDictionary } from "@/components/providers/dictionary-provider";
+import { useApp } from "@/components/providers/app-provider";
 import { ButtonLink } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LanguageSwitcher } from "./language-switcher";
@@ -23,6 +24,9 @@ export function SiteHeader({
   showBookCta?: boolean;
 }) {
   const { dict, locale } = useDictionary();
+  const { user } = useApp();
+  // El personal no reserva clases: no se muestra el botón de reserva en el encabezado.
+  const staff = user?.role === "admin" || user?.role === "cashier" || user?.role === "trainer";
   const [scrolled, setScrolled] = useState(false);
   const [abierto, setAbierto] = useState<boolean | null>(null);
 
@@ -95,7 +99,7 @@ export function SiteHeader({
 
             {/* La visibilidad pertenece al contenedor: ButtonLink usa inline-flex
                 y no debe competir con hidden dentro del mismo elemento. */}
-            {showBookCta ? (
+            {showBookCta && !staff ? (
             <div className="hidden sm:block">
               <ButtonLink href={`/${locale}/horarios`} size="sm">
                 <CalendarCheck className="size-4" aria-hidden="true" />
