@@ -150,7 +150,7 @@ explícita. No afirmar seguridad absoluta ni certificación externa por tener HT
 - [ ] Revisión visual en navegador real de las páginas nuevas (la sandbox no tiene Chromium para la prueba de layout).
 - [x] Asignación entrenador-cliente en base de datos: SQL 00035 probado (59/59), con interruptor del administrador para búsqueda y pedidos del entrenador (desactivado por defecto). Aprobación sólo del administrador; caja registra pedidos.
 - [x] Pantalla de administración: interruptor y pedidos de acceso (Administración > Entrenadores y accesos).
-- [x] Vista del entrenador "Mis clientes" (clientes asignados con asistencia y pedido de acceso). Falta probarla con una cuenta real de entrenador.
+- [x] Vista del entrenador "Mis clientes" (clientes asignados con asistencia y pedido de acceso). Probada con cuenta real de entrenador el 23 oct 2026.
 - [x] Aplicar 00034 y 00035 en Supabase (aplicadas con autorización del dueño; 00034 incluye quitar la política antigua de escritura de entrenadores para caja).
 - [ ] Aplicar 00034 en Supabase antes de desplegar este código (ver docs/ROLES-MIGRACION-PLAN.md).
 
@@ -175,7 +175,7 @@ Estado al cierre de hoy. Reemplaza las marcas anteriores donde haya diferencia.
 
 **Pendiente de prueba en navegador real**
 - [ ] Caja: Reportes > Cierre del día con el interruptor encendido.
-- [ ] Vista "Mis clientes" con una cuenta de entrenador real.
+- [x] Vista "Mis clientes" con una cuenta de entrenador real (23 oct 2026).
 - [ ] Cierre por inactividad de 2 horas (sólo administrador).
 - [ ] Recuperación de contraseña en la app instalada.
 - [ ] Gráfico de finanzas en celular tras el arreglo de contraste.
@@ -210,3 +210,6 @@ Estado al cierre de hoy. Reemplaza las marcas anteriores donde haya diferencia.
 - [x] `braces` (desarrollo): parche propio en `patches/braces+3.0.3.patch`, con `postinstall` y prueba de regresión en `tests/braces-depth.test.mjs`. Detalle: `docs/DECISIONES-SEGURIDAD.md`.
 - [ ] Siguen pendientes, hasta hablar con el dueño: revisión legal de las descargas con datos personales y copia de seguridad semanal.
 - [ ] Apariencia de demo y limpieza para la entrega: **aplazado por el dueño** el 23 oct («todavía lejos de la entrega»). Plan en tres fases en `docs/PENDIENTE-DEMO-Y-ENTREGA.md`. Faltan dos datos: si los entrenadores de la portada son reales y si se marca «PRUEBA» a los registros ficticios.
+- [x] Cuenta real de entrenador («Entrenador 2»): rol asignado con bitácora, MFA verificado y recorrido completo asignación → pedido → aprobación → revocación → reasignación probado por el usuario y verificado en la base. Decisión del usuario: un cliente puede tener dos o más entrenadores; se mantiene así.
+- [ ] Revisión visual en navegador de las pantallas reescritas al corregir el lint (horarios, Mi cuenta, productos, calculadora, animaciones, aviso de demo): sin hacer.
+- [ ] Altura en la vista del propio cliente: hoy sale de la última medición y no de la ficha (`fichaHeightCm: null` en `src/lib/data/progress-queries.ts`); la corrección del administrador se ve en el panel, pero el cliente sigue viendo la anterior hasta registrar otra medición.
