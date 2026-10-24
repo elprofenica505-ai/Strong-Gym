@@ -262,7 +262,7 @@ export function TrainerAccessManager({
         </div>
         {byTrainer.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-line px-5 py-8 text-center text-[0.875rem] text-mist">
-            Todavía no hay entrenadores.
+            Todavía no hay entrenadores. Asigná el rol de entrenador desde «Personal y roles».
           </p>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

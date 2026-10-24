@@ -64,7 +64,14 @@ export default async function SchedulePage({
   }));
 
   const perks = [
-    { Icon: CalendarDays, text: dict.schedule.subtitle },
+    {
+      Icon: CalendarDays,
+      // No repetir el subtítulo de la cabecera: cada tarjeta aporta un dato distinto.
+      text:
+        locale === "es"
+          ? "Cada clase dirigida tiene entrenador presente durante toda la sesión."
+          : "Every guided class has a coach present for the whole session.",
+    },
     {
       Icon: Timer,
       text:

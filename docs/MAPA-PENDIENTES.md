@@ -6,7 +6,7 @@ Creado el 23 de octubre de 2026 para reunir en un solo lugar lo que quedó a med
 
 | Tema | Dónde está | Estado de la fuente |
 |---|---|---|
-| Ruta general y etapas 1 a 6 | `docs/PENDIENTES-ACTUALES.md` | **La más completa.** Última sección con fecha: 19 oct. |
+| Ruta general y etapas 1 a 6 | `docs/PENDIENTES-ACTUALES.md` | **La más completa.** Última sección con fecha: 24 oct (foto actual al final). |
 | Lista corta para el dueño | `docs/LISTA-PENDIENTES-DUENO.md` | **Retirada** el 23 oct. Apunta a las dos fuentes vigentes. |
 | Inventario por código de función (B01, ACC05, CRM08, FIN04…) | `docs/INVENTARIO-FUNCIONAL.md` | Útil para estado de cada función. Revisar contra PR fusionados. |
 | Seguridad: decisiones y pendientes de información | `docs/DECISIONES-SEGURIDAD.md` | Vigente. Tiene la sección «Pendientes de información». |
@@ -25,18 +25,18 @@ Creado el 23 de octubre de 2026 para reunir en un solo lugar lo que quedó a med
 
 ## 2. SQL: fuente única
 
-- `supabase/migrations/`: **única fuente de migraciones**, de la **00001** a la **00049**. Las 00031 a 00049 estaban antes en `docs/SQL-PENDIENTE/` y se movieron aquí el 23 de octubre, sin cambiar su contenido.
+- `supabase/migrations/`: **única fuente de migraciones**, de la **00001** a la **00054**. Las 00031 a 00049 estaban antes en `docs/SQL-PENDIENTE/` y se movieron aquí el 23 de octubre, sin cambiar su contenido.
 - `supabase/*.sql` (SETUP, ACTUALIZAR, FASE2, etc.): archivos antiguos para pegar a mano. No son la fuente de verdad.
 
-Estado en Supabase (verificado en solo lectura el 23 de octubre):
-- **Aplicadas y comprobadas en la base:** 00031 y 00032 (`is_staff` exige aal2), 00033 y 00034 (`is_admin`, `admin_set_role`, `role_changes`), 00035 (`trainer_client_access`), 00036, de la 00037 a la 00048 según el historial de Supabase, y **00049** (tabla de personal, funciones de baja y reactivación).
-- **Pendiente:** ninguna migración está lista para aplicar. La 00050 no existe.
+Estado en Supabase (verificado en solo lectura el 24 de octubre):
+- **Aplicadas y comprobadas en la base:** 00031 y 00032 (`is_staff` exige aal2), 00033 y 00034 (`is_admin`, `admin_set_role`, `role_changes`), 00035 (`trainer_client_access`), 00036, de la 00037 a la 00048 según el historial de Supabase, y **00049** (tabla de personal, funciones de baja y reactivación). Después: 00050 y 00051 (vista pública de entrenadores), 00052 (altura en ficha), 00053 (corrección de altura solo admin) y 00054 (`ficha_height_cm` en `my_progress`); la última del historial remoto es `mi_progreso_altura_ficha` (00054).
+- **Pendiente:** ninguna migración está lista para aplicar; el siguiente número libre es 00055.
 - **Advertencia:** la 00049 aparece aplicada, pero no en el historial de migraciones de Supabase. Se registró a mano. No vuelvas a ejecutarla.
 
 ## 3. Ramas de Git
 
 Verificado con el historial completo del repositorio:
-- **Todos los PR del #1 al #27** están fusionados en `main`.
+- **Todos los PR del #1 al #40** están fusionados en `main` (`1e493a9`); sin PR abiertos al 24 oct antes de esta actualización.
 - Casi todas las ramas `arena/*` ya están contenidas en `main`. No se perdió trabajo en ellas.
 - La rama `arena/85c54d7d-strong-gym` se integró en esta rama (solo el archivo de la 00031). Su resto ya está en `main`.
 
@@ -68,7 +68,7 @@ Para el detalle, usa la fuente indicada en la sección 1.
 - Importación de Excel validada. Comprobantes PDF para celular. Verificación de deudas en USD.
 
 **Calidad**
-- Revisión visual en navegador de las páginas nuevas: pendiente (el entorno no tiene navegador).
+- Revisión visual en navegador de las páginas reescritas por el lint: hecha el 23 oct (demo local con Chromium). Sin probar todavía, por falta de sesión real: calculadora y resumen del socio en Mi cuenta.
 - Pruebas de extremo a extremo, concurrencia y recorrido completo con datos ficticios: sin empezar.
 - Apariencia de demo y limpieza para la entrega: plan en tres fases en `docs/PENDIENTE-DEMO-Y-ENTREGA.md`. No ejecutar hasta que el dueño lo pida.
 - Registro de errores y alertas: pendiente.
