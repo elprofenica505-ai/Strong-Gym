@@ -224,13 +224,13 @@ Estado al cierre de hoy. Reemplaza las marcas anteriores donde haya diferencia.
 - Código: PR #1 a #40 fusionados en `main` (`1e493a9`); sin PR abiertos al iniciar esta actualización.
 - CI de `main` en verde (corrida `40064327502`): tipos/build, base de datos (ya incluye `test:roles`, `test:medidas` y `test:productos`) y concurrencia PostgreSQL.
 - Producción: Vercel `strong-gym` en READY con el commit `1e493a9` (alias `strong-gym-gamma.vercel.app`); Supabase `hcnuepdxmbsmlzdmvwhx` ACTIVE_HEALTHY.
-- Base de datos: migraciones del repositorio 00001 a 00054; la última en el historial remoto es `mi_progreso_altura_ficha` (00054). La 00049 sigue aplicada pero registrada a mano (no volver a ejecutarla).
+- Base de datos: migraciones del repositorio 00001 a 00055; la última en el historial remoto es `menores_rutas_personal` (00055, versión remota `20261024190943`). La 00049 sigue aplicada pero registrada a mano (no volver a ejecutarla).
 
 **Realizado y cerrado (resumen por área):**
 
 - Seguridad/accesos: endurecimiento RLS/RPC, `crm_is_staff` con aal2, MFA de personal, token de sesión a 20 min, vista pública de entrenadores sin datos sensibles, lint en 0 con la regla de hooks como error y parche de `braces`.
 - Roles: personal y roles (admin con MFA, bitácora), entrenadores y accesos (asignación directa, pedidos con aprobación, revocación), «Mis clientes» probado con cuenta real; regla aceptada: un cliente puede tener dos o más entrenadores.
-- Cliente/progreso: altura única en ficha (00052), corrección solo admin con bitácora (00053), «Mi progreso» usando la altura de la ficha (00054), personal sin botón «Reservar», voseo unificado en las vistas tocadas (quedan los textos legales en «usted» hasta la revisión legal).
+- Cliente/progreso: altura única en ficha (00052), corrección solo admin con bitácora (00053), «Mi progreso» usando la altura de la ficha (00054), menores también bloqueados en guardar/aprobar por el personal (00055), personal sin botón «Reservar», voseo unificado en las vistas tocadas (quedan los textos legales en «usted» hasta la revisión legal).
 - Calidad: CI reparado y suites SQL olvidadas conectadas; revisión visual en navegador de las pantallas reescritas (23 oct), con la corrección del aviso de demo que no persistía.
 - Detalles de texto (esta actualización): «Intentá de nuevo» en los errores de Mi cuenta y del panel de progreso, tarjeta de Horarios que ya no repite el subtítulo, y guía en el estado vacío de entrenadores («Asigná el rol… desde Personal y roles»).
 
@@ -240,3 +240,9 @@ Estado al cierre de hoy. Reemplaza las marcas anteriores donde haya diferencia.
 2. *Depende de decisiones/datos del dueño (no ejecutar sin su palabra):* revisión legal (incluye textos legales y descargas con datos personales), copia de seguridad semanal automática, correo propio del gimnasio (remitente/dominio/SMTP) y prueba de recuperación, pagos/plan, segundo administrador, y la decisión Sheets A/B/C.
 3. *Aplazado a propósito cerca de la entrega:* quitar apariencia demo, retirar código demo y limpiar datos ficticios (`docs/PENDIENTE-DEMO-Y-ENTREGA.md`); faltan dos datos: si los entrenadores de portada son reales y si se marca «PRUEBA» a los registros ficticios.
 4. *Sigue en la ruta por etapas (secciones 2 a 6 de este documento):* lo no marcado de operación diaria, finanzas completas y aceptación integral se trabaja etapa por etapa, con inventario previo; no está «a medias» en una rama: no hay PR abiertos ni trabajo sin fusionar.
+
+## Actualización 24 oct 2026 — Etapa 3, tanda 1 cerrada
+
+- [x] Menores en rutas del personal: migración **00055** aplicada en producción (`menores_rutas_personal`, versión remota `20261024190943`). `nutrition_save` y `nutrition_approve` ahora devuelven `MINOR` si el cliente es menor y `NO_BIRTHDATE` si falta la fecha de nacimiento. `nutrition_get` sigue permitiendo al personal leer la ficha y la edad. Verificado con 170 comprobaciones en `npm run test:productos` y por consulta de solo lectura en producción.
+- [ ] Siguiente tanda de la Etapa 3: interruptores separados de caja (arrancan apagados), sobre la tabla existente `staff_permissions`, con aplicación también en servidor/base de datos.
+- [ ] Después: cierre automático del personal a los 15 minutos de inactividad, sobre la base existente de `session-policy.ts`.
