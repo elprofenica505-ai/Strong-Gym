@@ -254,6 +254,50 @@ for (const variant of ["ejemplo", "vacio", "importes-largos"]) {
       "</body></html>";
   }
 }
+// Escenarios públicos fuera del panel. Las pantallas anteriores se
+// renderizaron como personal (admin) dentro de /es/panel/reportes, donde
+// por decisión aprobada no van ni el botón de reserva ni el pie largo.
+// Acá se comprueba la otra cara: con un cliente el encabezado sí muestra
+// el botón de reserva (visible desde 640 px) y el pie sí aparece; con
+// personal fuera del panel el botón sigue oculto, pero el pie aparece.
+const cssLinks = () =>
+  readdirSync(root + "/.next/static/chunks")
+    .filter((f) => f.endsWith(".css"))
+    .map((f) => `<link rel="stylesheet" href="/_next/static/chunks/${f}">`)
+    .join("");
+for (const [name, role] of [
+  ["publico-cliente", "member"],
+  ["publico-personal", "admin"],
+]) {
+  const publicLoad = createLoader({
+    "server-only": "export {};",
+    "@/components/providers/dictionary-provider": `export const useDictionary=()=>({locale:'es',dict:${JSON.stringify(dict)}});`,
+    "@/components/providers/app-provider": `export const useApp=()=>({user:{role:'${role}',fullName:'EJEMPLO'},isDemo:false,hydrated:true,bookings:[],signOut(){},toast(){}});`,
+    "next/navigation": `export function notFound(){throw Error("NOT_FOUND")};export const usePathname=()=>'/es/horarios';export const useRouter=()=>({});export function redirect(){throw Error('redirect')}`,
+  });
+  const { SiteShell: PublicShell } = await publicLoad(
+    "components/layout/site-shell.tsx",
+  );
+  const { SiteFooter: PublicFooter } = await publicLoad(
+    "components/layout/site-footer.tsx",
+  );
+  pages[name] =
+    '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    cssLinks() +
+    "</head><body>" +
+    renderToStaticMarkup(
+      React.createElement(
+        PublicShell,
+        { footer: React.createElement(PublicFooter, { locale: "es" }) },
+        React.createElement(
+          "section",
+          { className: "container-x py-8" },
+          "EJEMPLO: página pública",
+        ),
+      ),
+    ) +
+    "</body></html>";
+}
 const server = http.createServer((req, res) => {
   if (req.url.startsWith("/_next/static/") && !req.url.includes("..")) {
     try {
@@ -308,6 +352,7 @@ try {
             display: getComputedStyle(a).display,
             right: a.getBoundingClientRect().right,
           })),
+        hasSiteFooter: Boolean(document.querySelector("footer.bg-night")),
         overflow: [...document.querySelectorAll("body *")]
           .filter((el) => {
             let r = el.getBoundingClientRect();
@@ -352,12 +397,28 @@ try {
       [],
       `${r.name}/${r.width}: elemento fuera del viewport`,
     );
-    const cta = r.before.headerCTA[0];
-    assert.ok(cta, `${r.name}: CTA falta`);
+    // El botón de reserva y el pie largo dependen del contexto (decisión
+    // aprobada): cliente fuera del panel los ve; el personal no ve el
+    // botón en ningún lado y dentro del panel tampoco va el pie.
+    if (r.name === "publico-cliente") {
+      const cta = r.before.headerCTA[0];
+      assert.ok(cta, `${r.name}: CTA falta`);
+      assert.equal(
+        cta.right > 0,
+        r.width >= 640,
+        `${r.name}/${r.width}: visibilidad CTA`,
+      );
+    } else {
+      assert.deepEqual(
+        r.before.headerCTA,
+        [],
+        `${r.name}/${r.width}: el personal no debe ver el botón de reserva`,
+      );
+    }
     assert.equal(
-      cta.right > 0,
-      r.width >= 640,
-      `${r.name}/${r.width}: visibilidad CTA`,
+      r.before.hasSiteFooter,
+      r.name.startsWith("publico-"),
+      `${r.name}/${r.width}: el pie largo sólo va fuera del panel`,
     );
     if (r.name.startsWith("reportes-") && r.width < 640)
       assert.ok(
@@ -366,7 +427,7 @@ try {
       );
   }
   console.log(
-    `PASS: ${results.length} casos (11 pantallas/formularios × 3 fixtures EJEMPLO × 8 anchos, 320–1280 px). Sin overflow global, CTA responsive y tablas desplazables. Render SSR completo con CSS de producción; no certifica hidratación ni escrituras remotas.`,
+    `PASS: ${results.length} casos (11 pantallas/formularios del panel × 3 fixtures EJEMPLO + 2 escenarios públicos, × 8 anchos, 320–1280 px). Sin overflow global, botón de reserva y pie según el contexto (cliente/personal/panel) y tablas desplazables. Render SSR completo con CSS de producción; no certifica hidratación ni escrituras remotas.`,
   );
 } finally {
   if (browser) await browser.close();
