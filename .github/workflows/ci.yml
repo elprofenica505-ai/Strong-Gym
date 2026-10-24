@@ -81,6 +81,18 @@ jobs:
       - name: Probar el SQL con PGlite (una conexión)
         run: npm run test:sql
 
+      # Estas suites existían pero no corrían en CI y se fueron quedando
+      # atrás (una fecha fija venció sin que nadie lo notara). Deben correr
+      # siempre: si una prueba no se ejecuta, no protege nada.
+      - name: Probar roles, entrenadores y cierre de caja (PGlite)
+        run: npm run test:roles
+
+      - name: Probar medidas, metas, rutinas y asistencia (PGlite)
+        run: npm run test:medidas
+
+      - name: Probar productos, nutrición y registro (PGlite)
+        run: npm run test:productos
+
   finance-concurrency:
     name: Concurrencia PostgreSQL
     runs-on: ubuntu-latest

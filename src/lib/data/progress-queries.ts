@@ -175,6 +175,8 @@ export async function getMyProgress(): Promise<Omit<ClientProgress, "clientId"> 
       exercises: (r.exercises ?? []) as RoutineRow["exercises"],
       startsOn: r.starts_on as string,
     } : null;
-    return { clientName: (d.client_name as string) ?? "", fichaHeightCm: null, measurements, goal, routine };
+    // ficha_height_cm viene de la migración 00054; si la base aún no la tiene,
+    // queda null y la vista usa la última medición como respaldo.
+    return { clientName: (d.client_name as string) ?? "", fichaHeightCm: num(d.ficha_height_cm), measurements, goal, routine };
   });
 }
