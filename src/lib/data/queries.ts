@@ -17,6 +17,14 @@ import {
   readBankFinance,
   readDebtReport,
 } from "@/lib/finance/legacy-reader";
+import {
+  CASHIER_PERMISSION_FIELDS,
+  CASHIER_PERMISSION_KEYS,
+  CASHIER_PERMISSIONS_ALL,
+  CASHIER_PERMISSIONS_OFF,
+  normalizeCashierPermissions,
+  type CashierPermissions,
+} from "@/lib/finance/cashier-permissions";
 
 import { cache } from "react";
 import { resolveCurrentUser } from "@/lib/auth/current-user";
@@ -797,6 +805,25 @@ export async function getCashSummary(): Promise<CashSummary> {
   };
 }
 
+/**
+ * Permisos efectivos de caja para la sesión actual (00056).
+ * La base devuelve todo activado para administración y, para caja, el valor
+ * de cada interruptor. Un error nunca se interpreta como permiso concedido.
+ */
+export async function getCashierPermissions(): Promise<CashierPermissions> {
+  if (DEMO_MODE) return CASHIER_PERMISSIONS_ALL;
+  const supabase = await getSupabaseServerClient();
+  if (!supabase) throw new FinanceReadError("CASHIER_PERMISSIONS", "UNAVAILABLE");
+  const { data, error } = await supabase
+    .rpc("cashier_permissions")
+    .abortSignal(AbortSignal.timeout(15000));
+  if (error) throw new FinanceReadError("CASHIER_PERMISSIONS", error.code);
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    throw new FinanceReadError("CASHIER_PERMISSIONS", "INVALID");
+  }
+  return normalizeCashierPermissions(data);
+}
+
 /* ---- mappers snake_case → camelCase ---- */
 
 function mapPaymentMethod(r: Record<string, unknown>): PaymentMethod {
@@ -914,20 +941,32 @@ export interface TrainerAccessRow {
 }
 
 /** Sólo administrador (la base lo vuelve a comprobar). Sin teléfono, correo ni notas. */
-/** Interruptor para que caja vea el cierre del día (00037). Sólo lo lee el administrador. */
-export async function getCashierDailyCloseAdmin(): Promise<boolean> {
-  return checkedRead("CASHIER_DAILY_CLOSE", async () => {
+/** Interruptores de caja guardados en staff_permissions. Sólo los lee el administrador. */
+export async function getCashierPermissionsAdmin(): Promise<CashierPermissions> {
+  return checkedRead("CASHIER_PERMISSIONS", async () => {
     const supabase = await getSupabaseServerClient();
-    if (!supabase) return false;
+    if (!supabase) return CASHIER_PERMISSIONS_OFF;
     const { data, error } = await supabase
       .from("staff_permissions")
-      .select("enabled")
-      .eq("key", "cashier_can_view_daily_close")
-      .abortSignal(AbortSignal.timeout(15000))
-      .maybeSingle();
-    if (error) throw new DataReadError("CASHIER_DAILY_CLOSE", error.code);
-    return data?.enabled === true;
+      .select("key, enabled")
+      .in("key", Object.values(CASHIER_PERMISSION_KEYS))
+      .abortSignal(AbortSignal.timeout(15000));
+    if (error) throw new DataReadError("CASHIER_PERMISSIONS", error.code);
+    const enabledByKey = new Map(
+      (data ?? []).map((row) => [row.key as string, row.enabled === true]),
+    );
+    return Object.fromEntries(
+      CASHIER_PERMISSION_FIELDS.map((field) => [
+        field,
+        enabledByKey.get(CASHIER_PERMISSION_KEYS[field]) === true,
+      ]),
+    ) as unknown as CashierPermissions;
   });
+}
+
+/** Compatibilidad: el cierre del día ahora forma parte del mismo grupo. */
+export async function getCashierDailyCloseAdmin(): Promise<boolean> {
+  return (await getCashierPermissionsAdmin()).dailyClose;
 }
 
 export async function getTrainerAccessAdmin(): Promise<{

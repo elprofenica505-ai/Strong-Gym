@@ -224,7 +224,7 @@ Estado al cierre de hoy. Reemplaza las marcas anteriores donde haya diferencia.
 - Código: PR #1 a #40 fusionados en `main` (`1e493a9`); sin PR abiertos al iniciar esta actualización.
 - CI de `main` en verde (corrida `40064327502`): tipos/build, base de datos (ya incluye `test:roles`, `test:medidas` y `test:productos`) y concurrencia PostgreSQL.
 - Producción: Vercel `strong-gym` en READY con el commit `1e493a9` (alias `strong-gym-gamma.vercel.app`); Supabase `hcnuepdxmbsmlzdmvwhx` ACTIVE_HEALTHY.
-- Base de datos: migraciones del repositorio 00001 a 00055; la última en el historial remoto es `menores_rutas_personal` (00055, versión remota `20261024190943`). La 00049 sigue aplicada pero registrada a mano (no volver a ejecutarla).
+- Base de datos: migraciones del repositorio 00001 a 00056; la última en el historial remoto es `permisos_caja_separados` (00056, versión remota `20261024205844`). La 00049 sigue aplicada pero registrada a mano (no volver a ejecutarla).
 
 **Realizado y cerrado (resumen por área):**
 
@@ -244,5 +244,13 @@ Estado al cierre de hoy. Reemplaza las marcas anteriores donde haya diferencia.
 ## Actualización 24 oct 2026 — Etapa 3, tanda 1 cerrada
 
 - [x] Menores en rutas del personal: migración **00055** aplicada en producción (`menores_rutas_personal`, versión remota `20261024190943`). `nutrition_save` y `nutrition_approve` ahora devuelven `MINOR` si el cliente es menor y `NO_BIRTHDATE` si falta la fecha de nacimiento. `nutrition_get` sigue permitiendo al personal leer la ficha y la edad. Verificado con 170 comprobaciones en `npm run test:productos` y por consulta de solo lectura en producción.
-- [ ] Siguiente tanda de la Etapa 3: interruptores separados de caja (arrancan apagados), sobre la tabla existente `staff_permissions`, con aplicación también en servidor/base de datos.
+- [x] Siguiente tanda de la Etapa 3: interruptores separados de caja (arrancan apagados), sobre la tabla existente `staff_permissions`, con aplicación también en servidor/base de datos. Cerrada en la tanda 2 de abajo.
 - [ ] Después: cierre automático del personal a los 15 minutos de inactividad, sobre la base existente de `session-policy.ts`.
+
+## Actualización 24 oct 2026 — Etapa 3, tanda 2 cerrada
+
+- [x] Permisos separados de caja: migración **00056** aplicada en producción (`permisos_caja_separados`, versión remota `20261024205844`). Reutiliza `staff_permissions`; el cierre del día quedó como estaba (**encendido**) y los cinco permisos nuevos quedaron **apagados**: resultado mensual, gráficos financieros, saldos de cuentas del gimnasio, gastos (ver/registrar) y cuentas por cobrar.
+- [x] Administración > Entrenadores y accesos muestra los seis interruptores por separado. Sirven para delegar solo lo necesario cuando caja reemplaza temporalmente al administrador; **no vencen solos**, hay que apagarlos al volver.
+- [x] La regla se aplica en páginas/componentes, en las RPC financieras y en RLS directa de `bank_accounts`, `member_balances`, `client_debt_balances` y `client_debt_entries`. Caja conserva cobrar servicios, emitir comprobantes y registrar abonos desde la ficha; el permiso de cuentas por cobrar controla la lista consolidada y sus totales.
+- [x] Verificación: 98 comprobaciones de Fase B con 00056, 685/685 en `npm run test:auth`, suites SQL/RSC/medidas/productos/metadata, tipos, lint y build; en producción se comprobaron las claves, `finance_debt_ready() = true` y las cuatro políticas restrictivas nuevas.
+- [ ] Siguiente tanda de la Etapa 3: cierre automático del personal a los 15 minutos de inactividad.

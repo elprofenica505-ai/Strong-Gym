@@ -26,6 +26,10 @@ import {
   type PaymentMethodBreakdown,
   type Transaction,
 } from "@/lib/data/queries";
+import {
+  CASHIER_PERMISSIONS_ALL,
+  type CashierPermissions,
+} from "@/lib/finance/cashier-permissions";
 
 /* ============================================================
    Tarjeta de KPI
@@ -235,6 +239,7 @@ interface Props {
     balance?: number;
   }[];
   isDemo: boolean;
+  permissions?: CashierPermissions;
 }
 
 export function CashPanel({
@@ -247,9 +252,11 @@ export function CashPanel({
   paymentMethodIcons,
   accounts,
   isDemo,
+  permissions = CASHIER_PERMISSIONS_ALL,
 }: Props) {
   const [filter, setFilter] = useState<"all" | "income" | "expense">("all");
   const [newPayment, setNewPayment] = useState(false);
+  const locale = readLocale();
 
   const filtered = useMemo(() => {
     if (filter === "all") return recent;
@@ -344,7 +351,7 @@ export function CashPanel({
       )}
 
       <a
-        href={`/${useLocale()}/panel/clientes`}
+        href={`/${locale}/panel/clientes`}
         className="flex flex-col gap-1 rounded-2xl border border-brand/40 bg-brand/10 p-5 hover:border-brand"
       >
         <span className="font-bold text-ink">
@@ -372,21 +379,25 @@ export function CashPanel({
           trend="down"
           tone="expense"
         />
-        <Kpi
-          label="Resultado del mes · NIO"
-          value={formatMoney(summary.netMonth)}
-          Icon={TrendingUp}
-          trend={summary.netMonth >= 0 ? "up" : "down"}
-        />
-        <Kpi
-          label="Deuda informada · NIO"
-          value={formatMoney(summary.totalOwed)}
-          Icon={Wallet}
-          tone="default"
-        />
+        {permissions.monthlyResult ? (
+          <Kpi
+            label="Resultado del mes · NIO"
+            value={formatMoney(summary.netMonth)}
+            Icon={TrendingUp}
+            trend={summary.netMonth >= 0 ? "up" : "down"}
+          />
+        ) : null}
+        {permissions.receivables ? (
+          <Kpi
+            label="Deuda informada · NIO"
+            value={formatMoney(summary.totalOwed)}
+            Icon={Wallet}
+            tone="default"
+          />
+        ) : null}
       </div>
 
-      {summary.totalOwedUsd !== undefined && (
+      {permissions.receivables && summary.totalOwedUsd !== undefined && (
         <Kpi
           label="Deuda informada · USD (sin convertir)"
           value={formatMoney(summary.totalOwedUsd, "USD")}
@@ -395,22 +406,27 @@ export function CashPanel({
       )}
 
       {/* ---------- Gráficos ---------- */}
-      <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="min-w-0 rounded-2xl border border-line bg-card p-5">
-          <MiniBar
-            data={dailyChart}
-            label="Ingresos NIO · 14 días con registros"
-          />
+      {permissions.charts ? (
+        <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="min-w-0 rounded-2xl border border-line bg-card p-5">
+            <MiniBar
+              data={dailyChart}
+              label="Ingresos NIO · 14 días con registros"
+            />
+          </div>
+          {permissions.monthlyResult ? (
+            <div className="min-w-0 rounded-2xl border border-line bg-card p-5">
+              <MiniBar
+                data={monthlyChart}
+                label="Resultado NIO · 6 meses con registros"
+              />
+            </div>
+          ) : null}
         </div>
-        <div className="min-w-0 rounded-2xl border border-line bg-card p-5">
-          <MiniBar
-            data={monthlyChart}
-            label="Resultado NIO · 6 meses con registros"
-          />
-        </div>
-      </div>
+      ) : null}
 
       {/* ---------- Desglose por método de pago ---------- */}
+      {permissions.charts ? (
       <div className="rounded-2xl border border-line bg-card p-5">
         <div className="mb-4 flex items-center justify-between">
           <div>
@@ -466,6 +482,7 @@ export function CashPanel({
           </ul>
         )}
       </div>
+      ) : null}
 
       {/* ---------- Movimientos recientes ---------- */}
       <div className="rounded-2xl border border-line bg-card p-5">
@@ -479,7 +496,9 @@ export function CashPanel({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
-            {(["all", "income", "expense"] as const).map((f) => (
+            {(permissions.expenses
+              ? (["all", "income", "expense"] as const)
+              : (["all", "income"] as const)).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
@@ -613,7 +632,7 @@ export function CashPanel({
                   <Badge className="border-line bg-night-3 text-mist">
                     {a.currency}
                   </Badge>
-                  {a.balance !== undefined && (
+                  {permissions.accountBalances && a.balance !== undefined && (
                     <p className="text-xs text-fog">
                       Saldo informado: {formatMoney(a.balance, a.currency)}
                     </p>
@@ -639,23 +658,33 @@ export function CashPanel({
             </h3>
           </div>
           <ul className="space-y-2">
+            {permissions.receivables ? (
+              <QuickLink
+                href={`/${locale}/panel/cuentas`}
+                label="Ver cuentas por cobrar"
+                hint="Deudas informadas por moneda"
+              />
+            ) : null}
+            {permissions.expenses ? (
+              <QuickLink
+                href={`/${locale}/panel/gastos`}
+                label="Registrar gasto y ver comprobantes"
+                hint="Gastos por cuenta y moneda · requiere actualización financiera"
+              />
+            ) : null}
+            {permissions.dailyClose || permissions.monthlyResult ? (
+              <QuickLink
+                href={`/${locale}/panel/reportes`}
+                label={permissions.monthlyResult ? "Reporte mensual" : "Cierre del día"}
+                hint={
+                  permissions.monthlyResult
+                    ? "Ingresos, egresos y resultado NIO"
+                    : "Movimientos y cierre del día"
+                }
+              />
+            ) : null}
             <QuickLink
-              href={`/${useLocale()}/panel/cuentas`}
-              label="Ver cuentas por cobrar"
-              hint="Deudas informadas por moneda"
-            />
-            <QuickLink
-              href={`/${useLocale()}/panel/gastos`}
-              label="Registrar gasto y ver comprobantes"
-              hint="Gastos por cuenta y moneda · requiere actualización financiera"
-            />
-            <QuickLink
-              href={`/${useLocale()}/panel/reportes`}
-              label="Reporte mensual"
-              hint="Ingresos, egresos y resultado NIO"
-            />
-            <QuickLink
-              href={`/${useLocale()}/panel`}
+              href={`/${locale}/panel`}
               label="Volver al panel"
               hint="Resumen, reservas, mensajes"
             />
@@ -699,7 +728,7 @@ function QuickLink({
 }
 
 /* ---- Helper: lee la locale desde window ---- */
-function useLocale(): string {
+function readLocale(): string {
   if (typeof window === "undefined") return "es";
   const seg = window.location.pathname.split("/").filter(Boolean);
   return seg[0] === "en" || seg[0] === "es" ? seg[0] : "es";

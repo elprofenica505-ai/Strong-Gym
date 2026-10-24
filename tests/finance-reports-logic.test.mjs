@@ -5,6 +5,11 @@ import {
 } from "../src/lib/reports/finance-report.ts";
 import { buildMasterWorkbook, MASTER_FILENAME } from "../src/lib/reports/workbook.ts";
 import ExcelJS from "exceljs";
+import { createLoader } from "./helpers/react-loader.mjs";
+
+const { loadFinanceReport } = await createLoader({
+  "server-only": "export {};",
+})("lib/reports/load.ts");
 
 const maps = {
   methods: { efectivo_nio: { name: "Efectivo Córdobas", feePct: 0 }, tarjeta_pos: { name: "Tarjeta POS", feePct: 3.5 } },
@@ -108,4 +113,60 @@ test("Excel maestro: nombre fijo, hojas y cifras con los mismos datos", async ()
   const day = [];
   daily.eachRow((r, n) => { if (n > 1) day.push([String(r.getCell(1).value), r.getCell(2).value, r.getCell(3).value]); });
   assert.deepEqual(day.find((d) => d[0] === "2026-10-18"), ["2026-10-18", 300, 1000]);
+});
+
+test("cierre de caja sin saldos ni ledger de deudas: el comprobante conserva cuenta y tipo abono", async () => {
+  const tables = {
+    transactions: [{
+      id: "tx-abono",
+      occurred_at: "2026-10-18T15:00:00Z",
+      type: "income",
+      status: "completed",
+      amount: 200,
+      currency: "NIO",
+      amount_nio: 200,
+      amount_usd: 5,
+      fx_used: 40,
+      method_id: "efectivo_nio",
+      category_id: null,
+      account_id: "caja",
+      client_id: "c1",
+      concept: "Abono",
+      reference: null,
+    }],
+    finance_entries: [{
+      transaction_id: "tx-abono",
+      receipt: {
+        kind: "debt_payment",
+        accountId: "caja",
+        accountName: "Caja NIO",
+        cashReceived: 250,
+        changeGiven: 50,
+        debtBefore: 300,
+        debtAfter: 100,
+      },
+    }],
+    // La RLS de cuentas por cobrar y de saldos devuelve estas tablas vacías.
+    client_debt_entries: [],
+    bank_accounts: [],
+    payment_methods: [{ id: "efectivo_nio", name: "Efectivo Córdobas", fee_pct: 0 }],
+    expense_categories: [],
+    gym_clients: [{ id: "c1", full_name: "Ana" }],
+  };
+  const supabase = {
+    from(table) {
+      const chain = {
+        select: () => chain,
+        order: () => chain,
+        range: async () => ({ data: tables[table] ?? [], error: null }),
+      };
+      return chain;
+    },
+  };
+
+  const report = await loadFinanceReport(supabase);
+  assert.equal(report.rows[0].kind, "debt_payment");
+  assert.equal(report.rows[0].accountName, "Caja NIO");
+  assert.equal(report.rows[0].debtBefore, 300);
+  assert.equal(report.rows[0].debtAfter, 100);
 });

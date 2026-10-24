@@ -3,6 +3,7 @@
 // Casos positivos y negativos para administrador, caja, entrenador, cliente y visitante.
 import { PGlite } from '@electric-sql/pglite';
 import { readFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import assert from 'node:assert/strict';
 
 const sql = p => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
@@ -157,5 +158,183 @@ ok('cliente NO se cambia a caja por API', await denied(as(member, 'aal2', "updat
 
 // 9) Visitante sin sesión
 ok('visitante NO ejecuta admin_set_role', await denied(as(null, null, 'select public.admin_set_role($1, $2)', [member, 'trainer'])));
+
+// 10) Permisos de caja separados (00056): nacen apagados y no pisan el cierre diario.
+await db.exec(sql('supabase/migrations/00037_cierre_caja_interruptor.sql'));
+await as(admin, 'aal2', "update staff_permissions set enabled=true where key='cashier_can_view_daily_close'");
+await db.exec(sql('supabase/migrations/00056_permisos_caja_separados.sql'));
+ok('00056 se aplica tras 00037 y 00038', true);
+
+const setCashierPermission = (key, enabled) =>
+  as(admin, 'aal2', 'update staff_permissions set enabled=$2 where key=$1', [key, enabled]);
+const cashierPermissionsAs = async (actor, aal = 'aal2') =>
+  (await as(actor, aal, 'select public.cashier_permissions() as x'))[0].x;
+const financeReadAs = async (actor, section) =>
+  (await as(actor, 'aal2', 'select public.finance_read($1, 30) as x', [section]))[0].x.data;
+
+const storedPermissions = await db.query(
+  `select key, enabled from staff_permissions
+   where key like 'cashier_can_%' and key <> 'cashier_can_void' order by key`,
+);
+const storedByKey = Object.fromEntries(storedPermissions.rows.map((r) => [r.key, r.enabled]));
+ok('00056 conserva encendido el cierre diario ya activado', storedByKey.cashier_can_view_daily_close === true);
+ok('los cinco permisos nuevos nacen apagados', [
+  'cashier_can_view_monthly_result',
+  'cashier_can_view_charts',
+  'cashier_can_view_account_balances',
+  'cashier_can_manage_expenses',
+  'cashier_can_view_receivables',
+].every((key) => storedByKey[key] === false));
+
+const initialCashierPermissions = await cashierPermissionsAs(cashier);
+ok('cashier_permissions devuelve cierre diario y demás permisos apagados',
+  initialCashierPermissions.dailyClose === true &&
+  ['monthlyResult', 'charts', 'accountBalances', 'expenses', 'receivables']
+    .every((key) => initialCashierPermissions[key] === false));
+const adminPermissions = await cashierPermissionsAs(admin);
+ok('admin conserva todos los permisos aunque los interruptores de caja estén apagados',
+  Object.values(adminPermissions).every((value) => value === true));
+const trainerPermissions = await cashierPermissionsAs(trainer);
+ok('entrenador no recibe permisos de caja', Object.values(trainerPermissions).every((value) => value === false));
+const cashierNoMfaPermissions = await cashierPermissionsAs(cashier, 'aal1');
+ok('caja sin MFA no recibe permisos financieros', Object.values(cashierNoMfaPermissions).every((value) => value === false));
+ok('visitante NO ejecuta cashier_permissions',
+  await denied(as(null, null, 'select public.cashier_permissions()'), /42501|permission denied/));
+
+// Datos financieros ficticios para probar lecturas, saldos, gastos y deudas por rol.
+await db.exec(`
+  insert into bank_accounts(id,name,account_type,currency,balance)
+    values('perm-nio','CUENTA EJEMPLO NIO','caja_fuerte','NIO',900);
+  insert into payment_methods(id,name,currency) values('perm-both','EJEMPLO ambas monedas','BOTH');
+  insert into expense_categories(id,name) values('perm-category','GASTO EJEMPLO');
+`);
+await db.query(
+  'insert into member_balances(member_id,credit_nio,credit_usd,debt_nio,debt_usd) values($1,0,0,50,2)',
+  [member],
+);
+await db.query(
+  'insert into client_debt_balances(client_id,credit_nio,credit_usd,debt_nio,debt_usd) values($1,0,0,25,0)',
+  [clientId],
+);
+await db.exec(`
+  insert into transactions(type,status,occurred_at,account_id,method_id,amount,currency,amount_nio,amount_usd,fx_used,concept)
+  values
+    ('income','completed',((date_trunc('month',(now() at time zone 'America/Managua')) - interval '1 month' + interval '1 day') at time zone 'America/Managua'),'perm-nio','perm-both',500,'NIO',500,12.5,40,'INGRESO EJEMPLO MES ANTERIOR'),
+    ('expense','completed',((date_trunc('month',(now() at time zone 'America/Managua')) - interval '1 month' + interval '1 day') at time zone 'America/Managua'),'perm-nio','perm-both',200,'NIO',200,5,40,'GASTO EJEMPLO MES ANTERIOR');
+`);
+
+const recordMovement = (actor, kind, amount, categoryId = null) =>
+  as(actor, 'aal2',
+    'select public.finance_record_movement($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) as id',
+    [randomUUID(), kind, kind === 'expense' ? null : clientId, amount, 'NIO', 'perm-both', 'perm-nio',
+      kind === 'expense' ? 'GASTO EJEMPLO HOY' : 'SERVICIO EJEMPLO HOY', 40, categoryId]);
+
+const serviceTx = (await recordMovement(cashier, 'service_income', 100))[0].id;
+ok('con los permisos nuevos apagados, caja sigue cobrando servicios', !!serviceTx);
+ok('con gastos apagado, caja NO registra un gasto',
+  await denied(recordMovement(cashier, 'expense', 30, 'perm-category'), /AUTH/));
+const adminExpenseTx = (await recordMovement(admin, 'expense', 30, 'perm-category'))[0].id;
+ok('admin sí registra el gasto de ejemplo', !!adminExpenseTx);
+ok('caja puede recuperar el comprobante de su cobro',
+  (await as(cashier, 'aal2', 'select public.finance_receipt($1) as x', [serviceTx]))[0].x.id === serviceTx);
+ok('con gastos apagado, caja NO abre el comprobante de un gasto',
+  await denied(as(cashier, 'aal2', 'select public.finance_receipt($1)', [adminExpenseTx]), /AUTH/));
+ok('con gastos apagado, caja NO lista comprobantes de gastos',
+  await denied(as(cashier, 'aal2', "select public.finance_recent_receipts('expense')"), /AUTH/));
+
+const paymentReceipt = (await as(cashier, 'aal2',
+  'select public.finance_debt_record($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) as x',
+  [randomUUID(), 'payment', clientId, 10, 'NIO', 'ABONO EJEMPLO', 'perm-both', 'perm-nio', 40, null]))[0].x;
+ok('con cuentas por cobrar apagado, caja sigue registrando un abono desde la ficha',
+  paymentReceipt.after.debt_nio === 15);
+const operationalDebtDetail = (await as(cashier, 'aal2',
+  'select public.finance_debt_detail($1) as x', [clientId]))[0].x;
+ok('el detalle operativo de la ficha sigue disponible para registrar abonos',
+  operationalDebtDetail.balances.debt_nio === 15);
+
+for (const section of ['monthly', 'daily', 'method_totals', 'receivables', 'categories']) {
+  ok(`caja sin permiso NO lee finance_read('${section}')`,
+    await denied(financeReadAs(cashier, section), /AUTH/));
+}
+const maskedSummary = await financeReadAs(cashier, 'summary');
+ok('el resumen diario sigue, pero mes y deuda consolidada quedan en cero sin permiso',
+  maskedSummary.incomeToday === 110 && maskedSummary.incomeMonth === 0 &&
+  maskedSummary.expenseMonth === 0 && maskedSummary.netMonth === 0 &&
+  maskedSummary.totalOwed === 0 && maskedSummary.totalOwedUsd === 0);
+const maskedAccounts = await financeReadAs(cashier, 'accounts');
+ok('sin permiso de saldos, finance_read conserva cuentas operativas pero oculta el monto',
+  maskedAccounts.some((a) => a.name === 'CUENTA EJEMPLO NIO') &&
+  maskedAccounts.every((a) => a.balance === 0));
+const visibleTransactions = await financeReadAs(cashier, 'transactions');
+ok('sin permiso de gastos, los movimientos recientes no incluyen egresos',
+  visibleTransactions.every((t) => t.type !== 'expense'));
+ok('sin permiso, caja NO abre la lista consolidada de cuentas por cobrar',
+  await denied(as(cashier, 'aal2', "select public.finance_debt_report('receivables')"), /AUTH/));
+const maskedDebtSummary = (await as(cashier, 'aal2',
+  "select public.finance_debt_report('summary') as x"))[0].x;
+ok('el resumen de deuda responde en cero sin permiso de cuentas por cobrar',
+  maskedDebtSummary.data.totalOwed === 0 && maskedDebtSummary.data.totalOwedUsd === 0);
+const cashierOptionsOff = (await as(cashier, 'aal2', 'select public.finance_options() as x'))[0].x;
+ok('sin permiso de gastos, finance_options no entrega categorías',
+  Array.isArray(cashierOptionsOff.categories) && cashierOptionsOff.categories.length === 0);
+
+ok('RLS: sin permiso de saldos, caja no lee bank_accounts directamente',
+  (await as(cashier, 'aal2', 'select count(*)::int c from bank_accounts'))[0].c === 0);
+ok('RLS: sin cuentas por cobrar, caja no lee saldos de clientes directamente',
+  (await as(cashier, 'aal2', 'select count(*)::int c from member_balances'))[0].c === 0 &&
+  (await as(cashier, 'aal2', 'select count(*)::int c from client_debt_balances'))[0].c === 0 &&
+  (await as(cashier, 'aal2', 'select count(*)::int c from client_debt_entries'))[0].c === 0);
+ok('RLS: el cliente conserva la lectura de su propio saldo',
+  (await as(member, 'aal2', 'select count(*)::int c from member_balances where member_id=$1', [member]))[0].c === 1);
+ok('admin lee el resultado mensual real',
+  (await financeReadAs(admin, 'monthly')).some((r) => r.income_nio === 500 && r.net_nio === 300));
+ok('admin lee el saldo real de la cuenta',
+  (await financeReadAs(admin, 'accounts')).some((a) => a.name === 'CUENTA EJEMPLO NIO' && a.balance === 980));
+
+await setCashierPermission('cashier_can_view_monthly_result', true);
+ok('al encender resultado mensual, caja lee el mes pero no la lista de deudas',
+  (await financeReadAs(cashier, 'monthly')).some((r) => r.net_nio === 300) &&
+  await denied(as(cashier, 'aal2', "select public.finance_debt_report('receivables')"), /AUTH/));
+
+await setCashierPermission('cashier_can_view_charts', true);
+const chartDaily = await financeReadAs(cashier, 'daily');
+const chartMethods = await financeReadAs(cashier, 'method_totals');
+ok('al encender gráficos, caja lee series sin exponer egresos si gastos sigue apagado',
+  chartDaily.length > 0 && chartDaily.every((r) => r.expense_nio === 0) &&
+  chartMethods.length > 0 && chartMethods.every((r) => r.expense_nio === 0));
+
+await setCashierPermission('cashier_can_view_account_balances', true);
+ok('al encender saldos, caja ve el monto real por RPC y por tabla',
+  (await financeReadAs(cashier, 'accounts')).some((a) => a.balance === 980) &&
+  (await as(cashier, 'aal2', 'select count(*)::int c from bank_accounts'))[0].c === 1);
+
+await setCashierPermission('cashier_can_view_receivables', true);
+const receivablesReport = (await as(cashier, 'aal2',
+  "select public.finance_debt_report('receivables') as x"))[0].x;
+ok('al encender cuentas por cobrar, caja abre la lista y lee saldos por RLS',
+  receivablesReport.data.some((r) => r.client_id === clientId && r.total_owed_nio === 15) &&
+  (await as(cashier, 'aal2', 'select count(*)::int c from member_balances'))[0].c === 1 &&
+  (await as(cashier, 'aal2', 'select count(*)::int c from client_debt_balances'))[0].c === 1);
+
+await setCashierPermission('cashier_can_manage_expenses', true);
+const cashierExpenseTx = (await recordMovement(cashier, 'expense', 5, 'perm-category'))[0].id;
+const expenseReceipts = (await as(cashier, 'aal2',
+  "select public.finance_recent_receipts('expense') as x"))[0].x;
+ok('al encender gastos, caja registra y lista comprobantes de gastos',
+  !!cashierExpenseTx && expenseReceipts.some((r) => r.id === cashierExpenseTx));
+ok('al encender gastos, finance_options entrega las categorías',
+  (await as(cashier, 'aal2', 'select public.finance_options() as x'))[0].x.categories
+    .some((c) => c.id === 'perm-category'));
+
+for (const key of [
+  'cashier_can_view_monthly_result',
+  'cashier_can_view_charts',
+  'cashier_can_view_account_balances',
+  'cashier_can_manage_expenses',
+  'cashier_can_view_receivables',
+]) await setCashierPermission(key, false);
+ok('al apagar de nuevo, caja pierde las vistas delegadas',
+  await denied(financeReadAs(cashier, 'monthly'), /AUTH/) &&
+  (await as(cashier, 'aal2', 'select count(*)::int c from bank_accounts'))[0].c === 0);
 
 console.log(`\nPASS ${checks} comprobaciones de Fase B`);

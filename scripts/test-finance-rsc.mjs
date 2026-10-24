@@ -93,6 +93,7 @@ try {
     `const empty=process.env.FINANCE_RSC_EMPTY==='1';
 export const getExpenseCategories=async()=>[];
 export const getCurrentUser=async()=>({id:'fixture',role:'admin',mfa:'ok'});
+export const getCashierPermissions=async()=>({dailyClose:true,monthlyResult:true,charts:true,accountBalances:true,expenses:true,receivables:true});
 export const getAccountsReceivable=async()=>empty?[]:[{memberId:'fixture',fullName:'EJEMPLO RSC',email:'',phone:null,totalOwedNio:20,totalOwedUsd:3,invoicesOpen:null,oldestDue:null,daysOverdue:null}];
 export const getMonthlyPnl=async()=>empty?[]:[{month:'2026-10-01',incomeNio:0,expenseNio:86600,netNio:-86600}];
 export const getPaymentMethodsBreakdown=async()=>empty?[]:[{paymentMethodId:null,nameEs:null,icon:'Wallet',txCount:1,totalNio:86600,incomeNio:0,expenseNio:86600}];`,

@@ -167,8 +167,49 @@ test("código de diagnóstico no incorpora código de base no seguro", () => {
   const e = new FinanceReadError("ACCOUNTS", "private-token@example.com");
   assert.equal(e.code, "FIN_ACCOUNTS_UNKNOWN");
 });
+test("permisos de caja: solo booleanos verdaderos conceden acceso y un error no abre vistas", async () => {
+  globalThis.__financeDb = {
+    rpc(name) {
+      assert.equal(name, "cashier_permissions");
+      return {
+        abortSignal: async () => ({
+          data: { dailyClose: true, charts: "true", expenses: 1 },
+          error: null,
+        }),
+      };
+    },
+  };
+  assert.deepEqual(await queries.getCashierPermissions(), {
+    dailyClose: true,
+    monthlyResult: false,
+    charts: false,
+    accountBalances: false,
+    expenses: false,
+    receivables: false,
+  });
 
-const queryNames = [...functions, "getCurrentUser"];
+  globalThis.__financeDb = {
+    rpc: () => ({
+      abortSignal: async () => ({ data: null, error: { code: "42501" } }),
+    }),
+  };
+  await assert.rejects(
+    queries.getCashierPermissions(),
+    (error) => error instanceof FinanceReadError && error.code === "FIN_CASHIER_PERMISSIONS_42501",
+  );
+
+  globalThis.__financeDb = {
+    rpc: () => ({
+      abortSignal: async () => ({ data: [], error: null }),
+    }),
+  };
+  await assert.rejects(
+    queries.getCashierPermissions(),
+    (error) => error instanceof FinanceReadError && error.code === "FIN_CASHIER_PERMISSIONS_INVALID",
+  );
+});
+
+const queryNames = [...functions, "getCashierPermissions", "getCurrentUser"];
 function pageLoader(role) {
   const code = queryNames
     .map((fn) =>
@@ -483,7 +524,7 @@ test("Cuentas: deuda USD independiente y mora/facturas no informadas", async () 
   };
   const page = createLoader({
     "@/lib/supabase/env": "export const isSupabaseConfigured=true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;",
-    "@/lib/data/queries": `export const getCurrentUser=async()=>({role:'cashier',mfa:'ok'});export const getAccountsReceivable=async()=>(${JSON.stringify([ar])});`,
+    "@/lib/data/queries": `export const getCurrentUser=async()=>({role:'cashier',mfa:'ok'});export const getCashierPermissions=async()=>({dailyClose:true,monthlyResult:true,charts:true,accountBalances:true,expenses:true,receivables:true});export const getAccountsReceivable=async()=>(${JSON.stringify([ar])});`,
     "next/navigation": 'export function redirect(){throw Error("redirect");}',
   });
   const { default: Page } = await page("app/[locale]/panel/cuentas/page.tsx");

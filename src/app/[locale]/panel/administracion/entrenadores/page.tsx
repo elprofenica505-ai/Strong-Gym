@@ -4,12 +4,12 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { isAdminRole } from "@/lib/auth/current-user";
 import { TrainerAccessManager } from "@/components/admin/trainer-access-manager";
-import { CashierDailyCloseToggle } from "@/components/admin/cashier-daily-close-toggle";
+import { CashierPermissionsToggles } from "@/components/admin/cashier-permissions-toggles";
 import { DataUnavailable } from "@/components/ui/data-unavailable";
 import { readData } from "@/lib/data/read-result";
 import {
   getAssignableClients,
-  getCashierDailyCloseAdmin,
+  getCashierPermissionsAdmin,
   getCurrentUser,
   getProfilesForRoles,
   getTrainerAccessAdmin,
@@ -42,7 +42,7 @@ export default async function EntrenadoresAccesoPage({
   }
 
   const result = DEMO_MODE ? null : await readData(() => getTrainerAccessAdmin());
-  const cashierClose = DEMO_MODE ? null : await readData(() => getCashierDailyCloseAdmin());
+  const cashierPermissions = DEMO_MODE ? null : await readData(() => getCashierPermissionsAdmin());
   const staffResult = DEMO_MODE ? null : await readData(() => getProfilesForRoles());
   const trainers =
     staffResult && staffResult.ok
@@ -81,10 +81,10 @@ export default async function EntrenadoresAccesoPage({
             <DataUnavailable locale={locale} code={result.code} />
           ) : result && result.ok ? (
             <div className="flex flex-col gap-8">
-              {cashierClose && cashierClose.ok ? (
-                <CashierDailyCloseToggle initialEnabled={cashierClose.data} />
-              ) : cashierClose && !cashierClose.ok ? (
-                <DataUnavailable locale={locale} code={cashierClose.code} />
+              {cashierPermissions && cashierPermissions.ok ? (
+                <CashierPermissionsToggles initialPermissions={cashierPermissions.data} />
+              ) : cashierPermissions && !cashierPermissions.ok ? (
+                <DataUnavailable locale={locale} code={cashierPermissions.code} />
               ) : null}
             <TrainerAccessManager
               initialEnabled={result.data.enabled}

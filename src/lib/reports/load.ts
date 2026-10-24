@@ -104,7 +104,16 @@ export async function loadFinanceReport(supabase: SupabaseClient): Promise<Finan
   };
 
   const finByTx = new Map<string, Record<string, unknown>>();
-  for (const f of fin) finByTx.set(String(f.transaction_id), (f.receipt ?? {}) as Record<string, unknown>);
+  for (const f of fin) {
+    const receipt = (f.receipt ?? {}) as Record<string, unknown>;
+    finByTx.set(String(f.transaction_id), receipt);
+    // Con el permiso de saldos apagado, la RLS oculta bank_accounts a caja.
+    // El comprobante ya autorizado conserva el nombre operativo de la cuenta,
+    // así que el cierre del día no pierde esa etiqueta ni expone el saldo.
+    const accountId = receipt.accountId ? String(receipt.accountId) : null;
+    const accountName = receipt.accountName ? String(receipt.accountName) : null;
+    if (accountId && accountName && !maps.accounts[accountId]) maps.accounts[accountId] = accountName;
+  }
 
   const debtTx = new Map<string, Record<string, unknown>>();
   const debtEntries: DebtEntryRow[] = debt.map((d) => {
@@ -140,7 +149,10 @@ export async function loadFinanceReport(supabase: SupabaseClient): Promise<Finan
     const debtReceipt = debtTx.get(id);
     let kind: LedgerKind = "legacy";
     if (type === "expense") kind = "expense";
-    else if (type === "income" && debtReceipt) kind = "debt_payment";
+    // Si caja no tiene permiso de cuentas por cobrar, la RLS oculta el ledger
+    // de deudas; el comprobante del movimiento alcanza para no confundir un
+    // abono del día con un cobro por servicio en el cierre.
+    else if (type === "income" && (debtReceipt || fin?.kind === "debt_payment")) kind = "debt_payment";
     else if (type === "income" && (clientId || fin)) kind = "service_income";
     const src = debtReceipt ?? fin;
     return {
@@ -161,8 +173,16 @@ export async function loadFinanceReport(supabase: SupabaseClient): Promise<Finan
       reference: t.reference ? String(t.reference) : null,
       cashReceived: src ? numOrNull(src.cashReceived) : null,
       changeGiven: src ? numOrNull(src.changeGiven) : null,
-      debtBefore: debtReceipt ? toBalance(debtReceipt.before as Balance)?.debtNio ?? null : null,
-      debtAfter: debtReceipt ? toBalance(debtReceipt.after as Balance)?.debtNio ?? null : null,
+      debtBefore: debtReceipt
+        ? toBalance(debtReceipt.before as Balance)?.debtNio ?? null
+        : kind === "debt_payment" && t.currency === "NIO"
+          ? numOrNull(fin?.debtBefore)
+          : null,
+      debtAfter: debtReceipt
+        ? toBalance(debtReceipt.after as Balance)?.debtNio ?? null
+        : kind === "debt_payment" && t.currency === "NIO"
+          ? numOrNull(fin?.debtAfter)
+          : null,
       kind,
     };
   });

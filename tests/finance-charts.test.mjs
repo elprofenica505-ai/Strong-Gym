@@ -7,6 +7,12 @@ import { JSDOM } from "jsdom";
 const { MiniBar, CashPanel } = await createLoader()(
   "components/admin/cash-panel.tsx",
 );
+const { FinanceKpis } = await createLoader()(
+  "components/admin/finance-kpis.tsx",
+);
+const { normalizeCashierPermissions } = await createLoader()(
+  "lib/finance/cashier-permissions.ts",
+);
 const render = (data) =>
   renderToStaticMarkup(
     React.createElement(MiniBar, { data, label: "Resultado informado" }),
@@ -124,4 +130,132 @@ test("contenedores de gráficos permiten encoger el grid sin trasladar el ancho 
   assert.equal(scroll.firstElementChild.style.minWidth, "476px");
   assert.equal(scroll.style.minWidth, "");
   dom.window.close();
+});
+
+const permissionSummary = {
+  incomeToday: 100,
+  expenseToday: 30,
+  netToday: 70,
+  txToday: 2,
+  incomeMonth: 1000,
+  expenseMonth: 400,
+  netMonth: 600,
+  txMonth: 5,
+  pendingInvoices: null,
+  totalOwed: 777,
+  totalOwedUsd: 8,
+  sourceModel: "bank_accounts_split",
+  openRegisterCount: 0,
+  openRegister: null,
+};
+
+test("permisos de caja apagados: Caja conserva el día y oculta informes, saldos y accesos delegados", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(CashPanel, {
+      summary: permissionSummary,
+      recent: [
+        {
+          id: "tx-ingreso",
+          occurredAt: "2026-10-24T12:00:00.000Z",
+          direction: "income",
+          amount: 100,
+          currency: "NIO",
+          concept: "Cobro de ejemplo",
+          accountId: "cuenta-1",
+          methodId: "metodo-1",
+          categoryId: null,
+          memberId: null,
+          clientId: null,
+          status: "completed",
+        },
+      ],
+      daily: [
+        {
+          day: "2026-10-24",
+          incomeNio: 100,
+          expenseNio: 30,
+          netNio: 70,
+          txCount: 2,
+        },
+      ],
+      monthly: [
+        {
+          month: "2026-10-01",
+          incomeNio: 1000,
+          expenseNio: 400,
+          netNio: 600,
+        },
+      ],
+      methods: [
+        {
+          methodId: "metodo-1",
+          incomeNio: 100,
+          expenseNio: 30,
+          txCount: 2,
+        },
+      ],
+      paymentMethodNames: { "metodo-1": "Efectivo" },
+      paymentMethodIcons: {},
+      accounts: [
+        {
+          id: "cuenta-1",
+          name: "Caja principal",
+          currency: "NIO",
+          kind: "caja_fuerte",
+          balance: 12345,
+        },
+      ],
+      isDemo: false,
+      permissions: {
+        dailyClose: true,
+        monthlyResult: false,
+        charts: false,
+        accountBalances: false,
+        expenses: false,
+        receivables: false,
+      },
+    }),
+  );
+
+  assert.match(html, /Ingresos hoy/);
+  assert.match(html, /Cobro de ejemplo/);
+  assert.match(html, /Cierre del día/);
+  assert.doesNotMatch(html, /Resultado del mes|Deuda informada/);
+  assert.doesNotMatch(html, /Ingresos NIO · 14 días|Desglose por método de pago/);
+  assert.doesNotMatch(html, /12[,.]345/);
+  assert.doesNotMatch(html, /Ver cuentas por cobrar|Registrar gasto y ver comprobantes/);
+  assert.doesNotMatch(html, />Egresos<\/button>/);
+});
+
+test("FinanceKpis oculta el mes cuando caja no tiene ese permiso", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(FinanceKpis, {
+      summary: permissionSummary,
+      showMonthly: false,
+    }),
+  );
+  assert.match(html, /Ingresos de hoy/);
+  assert.doesNotMatch(html, /Ingresos del mes|Egresos del mes|Saldo del mes/);
+});
+
+test("la normalización de permisos falla cerrada ante datos incompletos", () => {
+  assert.deepEqual(normalizeCashierPermissions(null), {
+    dailyClose: false,
+    monthlyResult: false,
+    charts: false,
+    accountBalances: false,
+    expenses: false,
+    receivables: false,
+  });
+  assert.deepEqual(
+    normalizeCashierPermissions({ dailyClose: true, charts: "true", expenses: 1 }),
+    {
+      dailyClose: true,
+      monthlyResult: false,
+      charts: false,
+      accountBalances: false,
+      expenses: false,
+      receivables: false,
+    },
+  );
 });

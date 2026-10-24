@@ -6,7 +6,11 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Clock, Mail, Phone, Wallet } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { getAccountsReceivable, getCurrentUser } from "@/lib/data/queries";
+import {
+  getAccountsReceivable,
+  getCashierPermissions,
+  getCurrentUser,
+} from "@/lib/data/queries";
 import { DEMO_MODE } from "@/lib/supabase/env";
 import { formatMoney } from "@/lib/finance/format-money";
 
@@ -39,6 +43,25 @@ export default async function CuentasPage({
   const user = await getCurrentUser();
   if (!user || !isFinanceRole(user.role)) {
     redirect(`/${locale}/mi-cuenta`);
+  }
+
+  const permissionResult = await readFinance(() => getCashierPermissions());
+  if (!permissionResult.ok)
+    return (
+      <FinanceUnavailable
+        locale={locale}
+        code={permissionResult.code}
+        message={permissionResult.message}
+      />
+    );
+  if (!permissionResult.data.receivables) {
+    return (
+      <Placeholder
+        title="Cuentas por cobrar"
+        message="El administrador todavía no activó las cuentas por cobrar para caja. Podés seguir registrando abonos desde la ficha del cliente."
+        locale={locale}
+      />
+    );
   }
 
   const result = await readFinance(() => getAccountsReceivable());

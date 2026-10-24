@@ -3,6 +3,10 @@ import { z } from "zod";
 import { isAdminRole } from "@/lib/auth/current-user";
 import { getCurrentUser } from "@/lib/data/queries";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  CASHIER_PERMISSION_FIELDS,
+  CASHIER_PERMISSION_KEYS,
+} from "@/lib/finance/cashier-permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +27,11 @@ const bodySchema = z.discriminatedUnion("action", [
     enabled: z.boolean(),
   }),
   z.object({
+    action: z.literal("toggle_cashier_permission"),
+    permission: z.enum(CASHIER_PERMISSION_FIELDS),
+    enabled: z.boolean(),
+  }),
+  z.object({
     action: z.literal("assign"),
     trainerId: z.string().uuid(),
     clientId: z.string().uuid(),
@@ -39,9 +48,11 @@ const messages: Record<string, [string, number]> = {
 };
 
 /**
- * Acciones del administrador sobre accesos de entrenadores: aprobar, rechazar,
- * revocar un pedido y activar o desactivar la búsqueda y los pedidos del entrenador.
- * La regla vive en la base (admin_decide_trainer_access y RLS de staff_permissions).
+ * Acciones del administrador sobre accesos: aprobar, rechazar o revocar un
+ * pedido de entrenador y activar o desactivar interruptores del personal.
+ * La regla vive en la base (admin_decide_trainer_access y RLS de
+ * staff_permissions). El cliente nunca envía la clave SQL: solo el nombre
+ * corto permitido y esta ruta lo traduce a una clave conocida.
  */
 export async function POST(request: Request) {
   const user = await getCurrentUser();
@@ -84,8 +95,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, requestId: data, status: "approved" }, { headers });
   }
 
-  // Interruptores de staff_permissions: el de entrenadores y el de cierre del día para caja (00037).
-  const key = body.action === "toggle_cashier_daily_close" ? "cashier_can_view_daily_close" : "trainer_can_request_clients";
+  // Interruptores de staff_permissions: entrenadores y permisos de caja.
+  const key =
+    body.action === "toggle_cashier_permission"
+      ? CASHIER_PERMISSION_KEYS[body.permission]
+      : body.action === "toggle_cashier_daily_close"
+        ? CASHIER_PERMISSION_KEYS.dailyClose
+        : "trainer_can_request_clients";
   const { data, error } = await supabase
     .from("staff_permissions")
     .update({ enabled: body.enabled, updated_by: user.id, updated_at: new Date().toISOString() })
