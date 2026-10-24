@@ -209,3 +209,4 @@ Estado al cierre de hoy. Reemplaza las marcas anteriores donde haya diferencia.
 - [x] Lint: las 10 advertencias de `react-hooks/set-state-in-effect` se corrigieron de raíz (sin silenciarlas) y la regla quedó como error. Detalle: `docs/TAREA-LINT-REACT-HOOKS.md`.
 - [x] `braces` (desarrollo): parche propio en `patches/braces+3.0.3.patch`, con `postinstall` y prueba de regresión en `tests/braces-depth.test.mjs`. Detalle: `docs/DECISIONES-SEGURIDAD.md`.
 - [ ] Siguen pendientes, hasta hablar con el dueño: revisión legal de las descargas con datos personales y copia de seguridad semanal.
+- [ ] Apariencia de demo y limpieza para la entrega: **aplazado por el dueño** el 23 oct («todavía lejos de la entrega»). Plan en tres fases en `docs/PENDIENTE-DEMO-Y-ENTREGA.md`. Faltan dos datos: si los entrenadores de la portada son reales y si se marca «PRUEBA» a los registros ficticios.

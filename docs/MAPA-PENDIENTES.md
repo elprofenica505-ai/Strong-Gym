@@ -18,6 +18,7 @@ Creado el 23 de octubre de 2026 para reunir en un solo lugar lo que quedó a med
 | Calculadora, categorías y fases A a E | `docs/ANALISIS-CALCULADORA-Y-CATEGORIAS.md` | Propuesta. Cada fase requiere aprobación. |
 | Medidas, metas y rutinas | `docs/MEDIDAS-PROGRESO.md` | Ver estado en PENDIENTES-ACTUALES. |
 | Lint y React Hooks | `docs/TAREA-LINT-REACT-HOOKS.md` | **Resuelto el 23 oct:** 0 avisos; la regla `set-state-in-effect` quedó como error. |
+| Apariencia de demo y entrega | `docs/PENDIENTE-DEMO-Y-ENTREGA.md` | **Pendiente por decisión del dueño (23 oct).** Sin tocar código ni datos. |
 | Incidentes y respaldo | `docs/GUIA-INCIDENTES.md` | **Borrador:** faltan datos entre corchetes. |
 | Reservas y conciliación | `docs/RESERVAS-CONCILIACION.md`, `docs/REPARACION-RESERVAS-MOVIL.md` | Revisar en navegador. |
 | Lecturas y validación financiera | `docs/B1-LECTURAS.md`, `docs/VALIDACION-FINANCIERA-2026-10-17.md`, `docs/VALIDACION-INVENTARIO.md` | Registros de validación. |
@@ -69,7 +70,7 @@ Para el detalle, usa la fuente indicada en la sección 1.
 **Calidad**
 - Revisión visual en navegador de las páginas nuevas: pendiente (el entorno no tiene navegador).
 - Pruebas de extremo a extremo, concurrencia y recorrido completo con datos ficticios: sin empezar.
-- Retirar código de demo (`src/lib/data/demo-*`): pendiente.
+- Apariencia de demo y limpieza para la entrega: plan en tres fases en `docs/PENDIENTE-DEMO-Y-ENTREGA.md`. No ejecutar hasta que el dueño lo pida.
 - Registro de errores y alertas: pendiente.
 
 **Decisiones y datos del dueño**
