@@ -136,14 +136,14 @@ export default async function AccountPage({
                 <MyProgress data={myProgress.data} />
               ) : myProgress && !myProgress.ok ? (
                 <p className="rounded-2xl border border-line bg-card p-6 text-[0.9375rem] text-mist">
-                  Tu progreso no se pudo cargar en este momento. Intenta de nuevo más tarde.
+                  Tu progreso no se pudo cargar en este momento. Intentá de nuevo más tarde.
                 </p>
               ) : null}
               {myAttendance && (myAttendance.ok ? (
                 <div className="mt-8"><AttendanceTable data={myAttendance.data} title="Mi asistencia" /></div>
               ) : (
                 <p className="mt-8 rounded-2xl border border-line bg-card p-6 text-[0.9375rem] text-mist">
-                  Tu asistencia no se pudo cargar en este momento. Intenta de nuevo más tarde.
+                  Tu asistencia no se pudo cargar en este momento. Intentá de nuevo más tarde.
                 </p>
               ))}
               {user && !isStaffRole(user.role) && (

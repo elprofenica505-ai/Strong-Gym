@@ -145,7 +145,7 @@ function ProgressView({
 
       {attendanceFailed ? (
         <section id="asistencia" className="rounded-2xl border border-line bg-card p-4 scroll-mt-24">
-          <p className="text-[0.875rem] text-mist">La asistencia no se pudo cargar en este momento. Intenta de nuevo más tarde.</p>
+          <p className="text-[0.875rem] text-mist">La asistencia no se pudo cargar en este momento. Intentá de nuevo más tarde.</p>
         </section>
       ) : (
         <AttendanceTable data={attendance} />

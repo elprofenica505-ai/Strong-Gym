@@ -1,7 +1,10 @@
 # Strong Gym — Ruta única y pendientes actuales
 
-Actualizada:18 de octubre de2026. PR10, PR11 y PR12 ya mergeados; base vigente `538101e`.
-Continuación activa: `arena/1e67d1fd-strong-gym`. Esta lista separa construir de
+Actualizada: 24 de octubre de 2026. PR #1 a #40 fusionados en `main`
+(base vigente `1e493a9`, merge del PR #40); CI en verde y producción en Vercel
+con ese mismo commit. Las secciones con fecha al final («Actualización …»)
+reemplazan las marcas anteriores donde haya diferencia: si dos casillas se
+contradicen, vale la de fecha más nueva. Esta lista separa construir de
 verificar: no asigna un porcentaje inventado ni certifica toda la plataforma.
 
 ## 1. Base funcional conservada: no volver a empezar
@@ -147,15 +150,15 @@ explícita. No afirmar seguridad absoluta ni certificación externa por tener HT
 - [x] Menú de módulos por rol: administrador ve todo; caja ve finanzas, clientes y operación; entrenador sin módulos por ahora.
 - [x] Gráficos de barras con datos reales; si una lectura falla se muestra "no disponible", nunca cero.
 - [x] Pantalla de personal y roles (sólo administrador con MFA), conectada a admin_set_role.
-- [ ] Revisión visual en navegador real de las páginas nuevas (la sandbox no tiene Chromium para la prueba de layout).
+- [x] Revisión visual en navegador real de las páginas nuevas (hecha el 23 oct en demo local con Chromium, ver «Actualización 23 oct 2026»; quedan fuera solo las vistas que exigen sesión real de cliente).
 - [x] Asignación entrenador-cliente en base de datos: SQL 00035 probado (59/59), con interruptor del administrador para búsqueda y pedidos del entrenador (desactivado por defecto). Aprobación sólo del administrador; caja registra pedidos.
 - [x] Pantalla de administración: interruptor y pedidos de acceso (Administración > Entrenadores y accesos).
 - [x] Vista del entrenador "Mis clientes" (clientes asignados con asistencia y pedido de acceso). Probada con cuenta real de entrenador el 23 oct 2026.
 - [x] Aplicar 00034 y 00035 en Supabase (aplicadas con autorización del dueño; 00034 incluye quitar la política antigua de escritura de entrenadores para caja).
-- [ ] Aplicar 00034 en Supabase antes de desplegar este código (ver docs/ROLES-MIGRACION-PLAN.md).
+- [x] Aplicar 00034 en Supabase antes de desplegar este código (hecho: es la misma aplicación marcada en la línea anterior; esta casilla quedó duplicada).
 
 
-- [ ] Aplicar 00036 (personal no es cliente) en Supabase: cancela la ficha de cliente de cuentas de personal, la búsqueda y los pedidos la ignoran. Borrador probado local 65/65. Requiere autorización.
+- [x] Aplicar 00036 (personal no es cliente) en Supabase: aplicada (ver «Actualización 19 oct 2026»: 0 fichas de personal activas). Esta casilla era el paso previo a esa aplicación.
 - [x] Cierre del día para caja (SQL 00037 aplicada en Supabase el 2026-10-19, interruptor apagado): interruptor en Accesos del administrador (apagado por defecto); caja ve sólo el cierre del día si está encendido. Prueba local 10/10. Limitación: RLS ya deja leer `transactions` a caja; un control fuerte requiere cambiar políticas (decisión aparte).
 
 ## Actualización 19 oct 2026 (rama arena/903ffcdc-strong-gym)
@@ -213,3 +216,27 @@ Estado al cierre de hoy. Reemplaza las marcas anteriores donde haya diferencia.
 - [x] Cuenta real de entrenador («Entrenador 2»): rol asignado con bitácora, MFA verificado y recorrido completo asignación → pedido → aprobación → revocación → reasignación probado por el usuario y verificado en la base. Decisión del usuario: un cliente puede tener dos o más entrenadores; se mantiene así.
 - [x] Revisión visual en navegador de las pantallas reescritas al corregir el lint (23 oct, modo demo local con Chromium): inicio con animaciones (59/59 visibles al recorrer), aviso de demo, horarios con cambio de semana y filtro por día, Mi cuenta sin sesión, puerta de Productos en demo y menú de celular OK; sin desborde horizontal. Se encontró y corrigió que el cierre del aviso de demo no persistía tras recargar (la limpieza de claves legadas `strong-gym:demo-*` también borraba la clave del aviso). **Siguen sin poder probarse en demo** la calculadora y el resumen del socio con sesión real: requieren una cuenta de cliente conectada.
 - [x] Altura en la vista del propio cliente (24 oct): la migración 00054 agrega `ficha_height_cm` a la función `my_progress` (aplicada en producción y verificada: `authenticated` ejecuta, `anon` no), `getMyProgress` la mapea a `fichaHeightCm` y «Mi progreso» prefiere la altura de la ficha igual que el panel, con la última medición solo como respaldo. Así, una corrección del administrador se refleja al cliente sin esperar la próxima medición. Pruebas: unidad (`tests/my-progress.test.mjs`) y PGlite (sección 9 de `scripts/test-progress-sql.mjs`). De paso se reparó una fecha fija vencida en esa suite y se conectaron al CI las suites `test:roles`, `test:medidas` y `test:productos`, que existían pero no corrían.
+
+## Actualización 24 oct 2026 — foto actual (reemplaza marcas anteriores en conflicto)
+
+**Estado comprobado hoy (no de memoria):**
+
+- Código: PR #1 a #40 fusionados en `main` (`1e493a9`); sin PR abiertos al iniciar esta actualización.
+- CI de `main` en verde (corrida `40064327502`): tipos/build, base de datos (ya incluye `test:roles`, `test:medidas` y `test:productos`) y concurrencia PostgreSQL.
+- Producción: Vercel `strong-gym` en READY con el commit `1e493a9` (alias `strong-gym-gamma.vercel.app`); Supabase `hcnuepdxmbsmlzdmvwhx` ACTIVE_HEALTHY.
+- Base de datos: migraciones del repositorio 00001 a 00054; la última en el historial remoto es `mi_progreso_altura_ficha` (00054). La 00049 sigue aplicada pero registrada a mano (no volver a ejecutarla).
+
+**Realizado y cerrado (resumen por área):**
+
+- Seguridad/accesos: endurecimiento RLS/RPC, `crm_is_staff` con aal2, MFA de personal, token de sesión a 20 min, vista pública de entrenadores sin datos sensibles, lint en 0 con la regla de hooks como error y parche de `braces`.
+- Roles: personal y roles (admin con MFA, bitácora), entrenadores y accesos (asignación directa, pedidos con aprobación, revocación), «Mis clientes» probado con cuenta real; regla aceptada: un cliente puede tener dos o más entrenadores.
+- Cliente/progreso: altura única en ficha (00052), corrección solo admin con bitácora (00053), «Mi progreso» usando la altura de la ficha (00054), personal sin botón «Reservar», voseo unificado en las vistas tocadas (quedan los textos legales en «usted» hasta la revisión legal).
+- Calidad: CI reparado y suites SQL olvidadas conectadas; revisión visual en navegador de las pantallas reescritas (23 oct), con la corrección del aviso de demo que no persistía.
+- Detalles de texto (esta actualización): «Intentá de nuevo» en los errores de Mi cuenta y del panel de progreso, tarjeta de Horarios que ya no repite el subtítulo, y guía en el estado vacío de entrenadores («Asigná el rol… desde Personal y roles»).
+
+**Qué falta, en orden (sin mezclar con lo hecho):**
+
+1. *Depende de una cuenta real de cliente (la crea el usuario):* probar con sesión real la calculadora de nutrición y el resumen del socio en Mi cuenta; no se pueden validar en modo demo.
+2. *Depende de decisiones/datos del dueño (no ejecutar sin su palabra):* revisión legal (incluye textos legales y descargas con datos personales), copia de seguridad semanal automática, correo propio del gimnasio (remitente/dominio/SMTP) y prueba de recuperación, pagos/plan, segundo administrador, y la decisión Sheets A/B/C.
+3. *Aplazado a propósito cerca de la entrega:* quitar apariencia demo, retirar código demo y limpiar datos ficticios (`docs/PENDIENTE-DEMO-Y-ENTREGA.md`); faltan dos datos: si los entrenadores de portada son reales y si se marca «PRUEBA» a los registros ficticios.
+4. *Sigue en la ruta por etapas (secciones 2 a 6 de este documento):* lo no marcado de operación diaria, finanzas completas y aceptación integral se trabaja etapa por etapa, con inventario previo; no está «a medias» en una rama: no hay PR abiertos ni trabajo sin fusionar.
