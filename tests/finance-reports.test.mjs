@@ -11,7 +11,7 @@ async function report({ pnl = [], methods = [] } = {}) {
     "@/lib/supabase/server": "export const getSupabaseServerClient=async()=>null;",
     "@/lib/reports/load":
       "export async function loadFinanceReport(){return {generatedAt:'',rows:[],debtEntries:[],maps:{methods:{},categories:{},accounts:{},clients:{}}};}",
-    "@/lib/data/queries": `export const getCurrentUser=async()=>({role:'admin',mfa:'ok'});export const getMonthlyPnl=async()=>${JSON.stringify(pnl)};export const getPaymentMethodsBreakdown=async()=>${JSON.stringify(methods)};`,
+    "@/lib/data/queries": `export const getCurrentUser=async()=>({role:'admin',mfa:'ok'});export const getCashierPermissions=async()=>({dailyClose:true,monthlyResult:true,charts:true,accountBalances:true,expenses:true,receivables:true});export const getMonthlyPnl=async()=>${JSON.stringify(pnl)};export const getPaymentMethodsBreakdown=async()=>${JSON.stringify(methods)};`,
     "@/lib/supabase/env": "export const isSupabaseConfigured=true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;",
     "next/navigation":
       'export function redirect(){throw Error("unexpected redirect");}',

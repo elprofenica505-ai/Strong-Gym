@@ -6,7 +6,11 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Receipt, Wallet } from "lucide-react";
-import { getCurrentUser, getExpenseCategories } from "@/lib/data/queries";
+import {
+  getCashierPermissions,
+  getCurrentUser,
+  getExpenseCategories,
+} from "@/lib/data/queries";
 import { DEMO_MODE } from "@/lib/supabase/env";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -34,6 +38,25 @@ export default async function GastosPage({
   const user = await getCurrentUser();
   if (!user || !isFinanceRole(user.role)) {
     redirect(`/${locale}/mi-cuenta`);
+  }
+
+  const permissionResult = await readFinance(() => getCashierPermissions());
+  if (!permissionResult.ok)
+    return (
+      <FinanceUnavailable
+        locale={locale}
+        code={permissionResult.code}
+        message={permissionResult.message}
+      />
+    );
+  if (!permissionResult.data.expenses) {
+    return (
+      <Placeholder
+        title="Gastos"
+        message="El administrador todavía no activó los gastos para caja. Hasta que lo active, no podés abrir ni registrar gastos desde aquí."
+        locale={locale}
+      />
+    );
   }
 
   const result = await readFinance(() => getExpenseCategories());

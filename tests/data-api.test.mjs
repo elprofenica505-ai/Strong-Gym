@@ -17,6 +17,7 @@ const connected = createLoader({
  export const countMembers=async()=>globalThis.__dataRead();
  export const getBookedSessionIds=async()=>globalThis.__dataIds();
  export const getSessionsForWeek=async()=>globalThis.__dataWeek();
+ export const getCashierPermissions=async()=>globalThis.__dataRead();
  export const getCashSummary=async()=>globalThis.__dataRead();
  export const getDailyCash=async()=>globalThis.__dataRead();
  export const getMonthlyPnl=async()=>globalThis.__dataRead(); export const getTrainerAccessAdmin = async () => ({ enabled: false, requests: [] });`,

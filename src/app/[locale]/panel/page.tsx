@@ -16,9 +16,11 @@ import { isLocale, type Locale } from "@/i18n/config";
 import { redirect } from "next/navigation";
 import { SectionHeading } from "@/components/ui/section";
 import { ButtonLink } from "@/components/ui/button";
+import { CASHIER_PERMISSIONS_ALL, type CashierPermissions } from "@/lib/finance/cashier-permissions";
 import {
   countMembers,
   getAllBookings,
+  getCashierPermissions,
   getCashSummary,
   getContactMessages,
   getCurrentUser,
@@ -169,8 +171,20 @@ export default async function PanelHomePage({
 
   /* ---------- Finanzas: sólo caja y administración ---------- */
   let finance: Awaited<ReturnType<typeof readFinance<[Awaited<ReturnType<typeof getCashSummary>>, Awaited<ReturnType<typeof getMonthlyPnl>>]>>> | null = null;
+  let cashierPermissions: CashierPermissions = CASHIER_PERMISSIONS_ALL;
   if (!demo && access !== "none") {
-    finance = await readFinance(() => Promise.all([getCashSummary(), getMonthlyPnl(6)]));
+    const permissionResult = await readFinance(() => getCashierPermissions());
+    if (!permissionResult.ok) {
+      finance = permissionResult;
+    } else {
+      cashierPermissions = permissionResult.data;
+      finance = await readFinance(() =>
+        Promise.all([
+          getCashSummary(),
+          cashierPermissions.monthlyResult ? getMonthlyPnl(6) : Promise.resolve([]),
+        ]),
+      );
+    }
   }
 
   const kpis = [
@@ -238,7 +252,7 @@ export default async function PanelHomePage({
           ) : finance && !finance.ok ? (
             <FinanceUnavailable locale={locale} code={finance.code} message={finance.message} />
           ) : finance && finance.ok ? (
-            <FinanceKpis summary={finance.data[0]} />
+            <FinanceKpis summary={finance.data[0]} showMonthly={cashierPermissions.monthlyResult} />
           ) : null}
 
           {/* Hoy y pendientes: sólo administración */}
@@ -263,7 +277,7 @@ export default async function PanelHomePage({
               />
             </div>
             <div className="min-w-0 rounded-2xl border border-line bg-card p-5">
-              {finance && finance.ok ? (
+              {finance && finance.ok && cashierPermissions.charts && cashierPermissions.monthlyResult ? (
                 <InteractiveBarChart
                   title="Finanzas · últimos 6 meses (NIO)"
                   emptyText="Sin movimientos financieros registrados."
@@ -291,7 +305,11 @@ export default async function PanelHomePage({
                 />
               ) : (
                 <p className="py-8 text-sm text-fog">
-                  {demo ? "Gráfico financiero disponible con Supabase conectado." : "El gráfico financiero no está disponible en este momento."}
+                  {demo
+                    ? "Gráfico financiero disponible con Supabase conectado."
+                    : finance && finance.ok
+                      ? "Administración todavía no activó este gráfico financiero para caja."
+                      : "El gráfico financiero no está disponible en este momento."}
                 </p>
               )}
             </div>

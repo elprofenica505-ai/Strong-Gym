@@ -20,13 +20,16 @@ const SAMPLE = {
 
 // flag: true | false (interruptor de caja) | "error" (la base no puede confirmarlo).
 function loaderFor({ role = "admin", demo = false, data = SAMPLE, fail = false, flag = false } = {}) {
+  const permissionsCode = flag === "error"
+    ? "export const getCashierPermissions=async()=>{throw new Error('x');};"
+    : `export const getCashierPermissions=async()=>({dailyClose:${flag === true},monthlyResult:false,charts:false,accountBalances:false,expenses:false,receivables:false});`;
   return createLoader({
     "server-only": "export {};",
     "@/lib/supabase/env": `export const isSupabaseConfigured=${!demo};export const DEMO_MODE=${demo};export const CONFIGURATION_UNAVAILABLE=false;`,
     "@/lib/supabase/server": `export const getSupabaseServerClient=async()=>({ rpc: async () => ${
       flag === "error" ? "({ data: null, error: { code: '42501' } })" : `({ data: ${flag === true}, error: null })`
     } });`,
-    "@/lib/data/queries": `export const getCurrentUser=async()=>({id:'t',role:${JSON.stringify(role)},mfa:'ok'});export const getMonthlyPnl=async()=>[];export const getPaymentMethodsBreakdown=async()=>[];`,
+    "@/lib/data/queries": `export const getCurrentUser=async()=>({id:'t',role:${JSON.stringify(role)},mfa:'ok'});${permissionsCode}export const getMonthlyPnl=async()=>[];export const getPaymentMethodsBreakdown=async()=>[];`,
     "@/lib/reports/load": `export async function loadFinanceReport(){ if (${fail}) { const e = new Error('x'); e.code='42501'; throw e; } return ${JSON.stringify(data)}; }`,
     "next/navigation": "export function redirect(p){throw new Error('REDIRECT:'+p);}",
   });

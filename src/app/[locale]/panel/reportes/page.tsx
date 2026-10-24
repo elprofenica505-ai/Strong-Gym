@@ -11,6 +11,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import {
+  getCashierPermissions,
   getCurrentUser,
   getMonthlyPnl,
   getPaymentMethodsBreakdown,
@@ -121,8 +122,9 @@ export default async function ReportesPage({
 }
 
 /**
- * Caja: sólo el cierre del día, y únicamente si el administrador activó el interruptor (00037).
- * La base decide con cashier_daily_close_enabled(); si no puede confirmarlo, no se muestra nada.
+ * Caja: sólo el cierre del día, y únicamente si el administrador activó su
+ * interruptor. La base decide con cashier_permissions(); si no puede
+ * confirmarlo, no se muestra nada.
  */
 async function cashierView({
   locale,
@@ -136,9 +138,7 @@ async function cashierView({
   const supabase = await getSupabaseServerClient();
   const flag = await readFinance(async () => {
     if (!supabase) throw new FinanceReadError("CASH_CLOSE");
-    const { data, error } = await supabase.rpc("cashier_daily_close_enabled");
-    if (error) throw new FinanceReadError("CASH_CLOSE", error.code);
-    return data === true;
+    return (await getCashierPermissions()).dailyClose;
   });
   const today = managuaDay(new Date());
 

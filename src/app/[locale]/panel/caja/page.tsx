@@ -8,6 +8,7 @@ import { getDictionary } from "@/i18n/dictionaries";
 import { isLocale, type Locale } from "@/i18n/config";
 import {
   getAccounts,
+  getCashierPermissions,
   getCashSummary,
   getCurrentUser,
   getDailyCash,
@@ -46,13 +47,24 @@ export default async function CajaPage({
     redirect(`/${locale}/mi-cuenta`);
   }
 
+  const permissionResult = await readFinance(() => getCashierPermissions());
+  if (!permissionResult.ok)
+    return (
+      <FinanceUnavailable
+        locale={locale}
+        code={permissionResult.code}
+        message={permissionResult.message}
+      />
+    );
+  const permissions = permissionResult.data;
+
   const result = await readFinance(() =>
     Promise.all([
       getCashSummary(),
       getRecentTransactions(30),
-      getDailyCash(14),
-      getMonthlyPnl(6),
-      getPaymentMethodsBreakdown(),
+      permissions.charts ? getDailyCash(14) : Promise.resolve([]),
+      permissions.monthlyResult ? getMonthlyPnl(6) : Promise.resolve([]),
+      permissions.charts ? getPaymentMethodsBreakdown() : Promise.resolve([]),
       getPaymentMethods(),
       getAccounts(),
     ]),
@@ -67,6 +79,17 @@ export default async function CajaPage({
     );
   const [summary, recent, daily, monthly, methods, paymentMethods, accounts] =
     result.data;
+  const visibleRecent = permissions.expenses
+    ? recent
+    : recent.filter((transaction) => transaction.direction !== "expense");
+  const visibleAccounts = permissions.accountBalances
+    ? accounts
+    : accounts.map((account) => ({
+        id: account.id,
+        name: account.name,
+        currency: account.currency,
+        kind: account.kind,
+      }));
 
   const paymentMethodNames = Object.fromEntries(
     paymentMethods.map((m) => [m.id, m.nameEs]),
@@ -78,14 +101,15 @@ export default async function CajaPage({
   return (
     <CashPanel
       summary={summary}
-      recent={recent}
+      recent={visibleRecent}
       daily={daily}
       monthly={monthly}
       methods={methods}
       paymentMethodNames={paymentMethodNames}
       paymentMethodIcons={paymentMethodIcons}
-      accounts={accounts}
+      accounts={visibleAccounts}
       isDemo={isDemo}
+      permissions={permissions}
     />
   );
 }

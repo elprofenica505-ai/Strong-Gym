@@ -58,6 +58,7 @@ function context(user) {
       export const getClasses = async () => [];
       export const getContactMessages = async () => [];
       export const getSessionsForWeek = async () => ({ sessions: [] });
+      export const getCashierPermissions = async () => ({ dailyClose: true, monthlyResult: true, charts: true, accountBalances: true, expenses: true, receivables: true });
       export const getCashSummary = async () => ({ incomeToday: 0, expenseToday: 0, netToday: 0, txToday: 0, incomeMonth: 0, expenseMonth: 0, netMonth: 0, txMonth: 0, pendingInvoices: null });
       export const getDailyCash = async () => [];
       export const getMonthlyPnl = async () => []; export const getTrainerAccessAdmin = async () => ({ enabled: false, requests: [] });

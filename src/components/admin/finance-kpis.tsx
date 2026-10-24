@@ -1,12 +1,22 @@
 import { formatMoney } from "@/lib/finance/format-money";
 import type { CashSummary } from "@/lib/data/queries";
 
-/** Indicadores de caja del día y del mes. Recibe cifras ya confirmadas por la base. */
-export function FinanceKpis({ summary }: { summary: CashSummary }) {
+/** Indicadores de caja confirmados por la base. El mes solo se pinta si el permiso lo permite. */
+export function FinanceKpis({
+  summary,
+  showMonthly = true,
+}: {
+  summary: CashSummary;
+  showMonthly?: boolean;
+}) {
   const items = [
-    { label: "Ingresos del mes", value: formatMoney(summary.incomeMonth) },
-    { label: "Egresos del mes", value: formatMoney(summary.expenseMonth) },
-    { label: "Saldo del mes", value: formatMoney(summary.netMonth) },
+    ...(showMonthly
+      ? [
+          { label: "Ingresos del mes", value: formatMoney(summary.incomeMonth) },
+          { label: "Egresos del mes", value: formatMoney(summary.expenseMonth) },
+          { label: "Saldo del mes", value: formatMoney(summary.netMonth) },
+        ]
+      : []),
     { label: "Ingresos de hoy", value: formatMoney(summary.incomeToday) },
   ];
   return (

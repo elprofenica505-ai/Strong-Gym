@@ -10,7 +10,9 @@ import { visibleModules } from "@/lib/admin/modules";
 import { getDictionary } from "@/i18n/dictionaries";
 import { isLocale, type Locale } from "@/i18n/config";
 import { SectionHeading } from "@/components/ui/section";
+import { CASHIER_PERMISSIONS_ALL } from "@/lib/finance/cashier-permissions";
 import {
+  getCashierPermissions,
   getCashSummary,
   getCurrentUser,
   getDailyCash,
@@ -46,11 +48,29 @@ export default async function FinanzasPage({
     redirect(`/${locale}/panel`);
   }
 
-  const children = visibleModules(user?.role, demo).find((m) => m.id === "finanzas")?.children ?? [];
+  const permissionResult = demo
+    ? { ok: true as const, data: CASHIER_PERMISSIONS_ALL }
+    : await readFinance(() => getCashierPermissions());
+  const permissions = permissionResult.ok ? permissionResult.data : null;
+  const children = (visibleModules(user?.role, demo).find((m) => m.id === "finanzas")?.children ?? []).filter(
+    (child) =>
+      permissions &&
+      (child.id !== "cuentas" || permissions.receivables) &&
+      (child.id !== "gastos" || permissions.expenses) &&
+      (child.id !== "reportes" || permissions.dailyClose || user?.role === "admin"),
+  );
 
   const result = demo
     ? null
-    : await readFinance(() => Promise.all([getCashSummary(), getDailyCash(14), getMonthlyPnl(6)]));
+    : !permissionResult.ok
+      ? permissionResult
+      : await readFinance(() =>
+          Promise.all([
+            getCashSummary(),
+            permissions?.charts ? getDailyCash(14) : Promise.resolve([]),
+            permissions?.monthlyResult ? getMonthlyPnl(6) : Promise.resolve([]),
+          ]),
+        );
 
   return (
     <>
@@ -74,28 +94,32 @@ export default async function FinanzasPage({
             <FinanceUnavailable locale={locale} code={result.code} message={result.message} />
           ) : result && result.ok ? (
             <>
-              <FinanceKpis summary={result.data[0]} />
+              <FinanceKpis summary={result.data[0]} showMonthly={permissions?.monthlyResult === true} />
 
-              <div className="grid gap-6 lg:grid-cols-2">
-                <div className="rounded-2xl border border-line bg-card p-5">
-                  <MiniBar
-                    label="Ingresos por día · últimos 14 días (NIO)"
-                    data={result.data[1].map((d) => ({ label: d.day.slice(5), value: d.incomeNio }))}
-                  />
-                </div>
-                <div className="rounded-2xl border border-line bg-card p-5">
-                  <div className="grid gap-6 sm:grid-cols-2">
+              {permissions?.charts ? (
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <div className="rounded-2xl border border-line bg-card p-5">
                     <MiniBar
-                      label="Ingresos por mes (NIO)"
-                      data={result.data[2].map((m) => ({ label: m.month.slice(0, 7), value: m.incomeNio }))}
-                    />
-                    <MiniBar
-                      label="Egresos por mes (NIO)"
-                      data={result.data[2].map((m) => ({ label: m.month.slice(0, 7), value: m.expenseNio }))}
+                      label="Ingresos por día · últimos 14 días (NIO)"
+                      data={result.data[1].map((d) => ({ label: d.day.slice(5), value: d.incomeNio }))}
                     />
                   </div>
+                  {permissions.monthlyResult ? (
+                    <div className="rounded-2xl border border-line bg-card p-5">
+                      <div className="grid gap-6 sm:grid-cols-2">
+                        <MiniBar
+                          label="Ingresos por mes (NIO)"
+                          data={result.data[2].map((m) => ({ label: m.month.slice(0, 7), value: m.incomeNio }))}
+                        />
+                        <MiniBar
+                          label="Egresos por mes (NIO)"
+                          data={result.data[2].map((m) => ({ label: m.month.slice(0, 7), value: m.expenseNio }))}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
-              </div>
+              ) : null}
             </>
           ) : null}
 
