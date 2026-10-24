@@ -4,7 +4,10 @@ import { useSyncExternalStore } from "react";
 import { Database, X } from "lucide-react";
 import { useDictionary } from "@/components/providers/dictionary-provider";
 
-const STORAGE_KEY = "strong-gym:demo-banner-dismissed";
+/* No usar el prefijo «strong-gym:demo-»: la limpieza de almacenamiento
+   demo legado del AppProvider borra esas claves en cada carga y el
+   cierre del aviso nunca persistía tras recargar. */
+const STORAGE_KEY = "strong-gym:ui:demo-banner-dismissed";
 
 /* El aviso vive en localStorage, que no existe en el servidor.
    useSyncExternalStore lee ese dato del navegador sin un efecto que
