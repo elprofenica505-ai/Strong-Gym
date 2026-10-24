@@ -85,7 +85,10 @@ for(const layout of ['repository','bank_accounts_split']) {
           check(`${v}: ingreso total no queda limitado al propio perfil`,all.reduce((n,r)=>n+Number(r.income_nio),0)===787);
       }
       const rows=(await as(member,`select * from ${v}`)).rows;
-      check(`${v}: cliente A no recibe identidad/importe de B`,!JSON.stringify(rows).includes(other)&&!JSON.stringify(rows).includes('777')&&!JSON.stringify(rows).includes('55.00'));
+      // Importes por valor exacto, no por texto: un UUID aleatorio puede
+      // contener «777» (pasó con el del propio cliente A) y eso no es fuga.
+      const importes=rows.flatMap(r=>Object.values(r)).map(Number);
+      check(`${v}: cliente A no recibe identidad/importe de B`,!JSON.stringify(rows).includes(other)&&!importes.includes(777)&&!importes.includes(55));
       check(`${v}: autenticado sin identidad no ve datos`,(await as(null,`select * from ${v}`,[],'authenticated')).rows.length===0);
     }
     for(const [field,value] of [['plan_id',"'pln_musculacion'"],['role',"'admin'"],['email',"'otro@test.invalid'"],['id',"gen_random_uuid()"],['created_at','now()'],['updated_at','now()']])
