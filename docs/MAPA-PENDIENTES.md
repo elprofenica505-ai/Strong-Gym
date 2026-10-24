@@ -56,7 +56,7 @@ Para el detalle, usa la fuente indicada en la sección 1.
 
 **Navegación y roles**
 - Rediseño por etapas (Inicio, Clientes, Agenda, Finanzas, Personal, Reportes, Configuración): sin empezar.
-- Roles de caja y entrenador, fase C: sin empezar. Vista «Mis clientes» pendiente de prueba con cuenta real de entrenador.
+- Roles de caja y entrenador, fase C: sin empezar. Vista «Mis clientes» probada con cuenta real de entrenador el 23 oct 2026 (rol, MFA, asignación, pedido, aprobación, revocación y reasignación OK). Decisión: un cliente puede tener dos o más entrenadores (ver `docs/ROLES-MIGRACION-PLAN.md`).
 
 **Operación diaria**
 - Planes y vigencias, reservas y cupos, mensajes leídos y disciplinas, QR en dispositivo real, hora de Managua en páginas abiertas, asistencia en Mi cuenta, categoría del cliente: pendientes.

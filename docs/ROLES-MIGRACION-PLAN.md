@@ -39,6 +39,8 @@ Estado (18 oct 2026): **LISTA EN CÓDIGO, NO APLICADA EN SUPABASE.**
 ## Asignación entrenador-cliente (00035)
 Estado: APLICADO en Supabase (después de 00034). Prueba local 59/59.
 - El entrenador sólo ve a los clientes con acceso APROBADO para él.
+- Decisión del usuario (23 oct 2026): un cliente puede tener dos o más entrenadores a la vez. La asignación es un permiso por pareja entrenador-cliente, no una pertenencia exclusiva; no cambiar esta regla sin una decisión nueva.
+- Prueba con cuenta real (23 oct 2026, cuenta «Entrenador 2»): rol asignado desde Personal y roles con bitácora, ficha de cliente cancelada al pasar a personal, MFA TOTP verificado, asignación directa del administrador, pedido del entrenador, aprobación, revocación por pareja (no afecta a otro entrenador) y reasignación posterior. «Mis clientes» mostró solo la cliente asignada, sin datos de contacto (verificado en la base y en el celular del usuario).
 - Interruptor del administrador `trainer_can_request_clients` (en staff_permissions, desactivado por defecto): si está apagado, el entrenador no busca ni pide clientes. Lo cambia sólo el administrador con MFA. Apagarlo no quita los clientes ya aprobados; los pedidos de caja siguen pendientes de aprobación.
 - El entrenador pide clientes para sí mismo. Caja puede registrar un pedido en nombre de un entrenador.
 - Caja NO aprueba. Sólo el administrador con MFA aprueba, rechaza o revoca.
