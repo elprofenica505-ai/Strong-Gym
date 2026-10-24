@@ -159,7 +159,7 @@ const selfCalc = (actor, aal) => as(actor, aal,
   ['peso', JSON.stringify(calcInputs), JSON.stringify({ kcal: 2800, targetWeightKg: 86.4, weeksEstimate: 26 }), JSON.stringify(reportMeals), JSON.stringify(reportRoutine), JSON.stringify(['Guía'])]);
 const staffSave = (actor, aal, client) => as(actor, aal,
   'select public.nutrition_save($1,$2,$3,$4,$5,$6,$7) as id',
-  [client, 'peso', JSON.stringify(calcInputs), JSON.stringify({ kcal: 2800 }), JSON.stringify(reportMeals), JSON.stringify(reportRoutine), JSON.stringify(['Guía'])]);
+  [client, 'peso', JSON.stringify(calcInputs), JSON.stringify({ kcal: 2800, targetWeightKg: 86.4, weeksEstimate: 26 }), JSON.stringify(reportMeals), JSON.stringify(reportRoutine), JSON.stringify(['Guía'])]);
 const getAs = async (actor, aal, client = null) => (await as(actor, aal, 'select public.nutrition_get($1) as g', [client]))[0].g;
 
 ok('el cliente calcula su propio plan desde Mi cuenta', (await selfCalc(member, 'aal1'))[0].id === memberClient);
@@ -408,4 +408,35 @@ const st2 = (await as(admin, 'aal2', 'select public.staff_set_status($1,true,nul
 ok('reactivar devuelve el acceso', st2 === 'activo' && (await db.query('select banned_until from auth.users where id = $1', [newStaff49])).rows[0].banned_until === null);
 ok('la bitácora registra baja y reactivación', (await db.query("select count(*)::int as n from staff_audit where profile_id = $1 and action in ('baja','reactivacion')", [newStaff49])).rows[0].n === 2);
 
-console.log(`\n${checks} comprobaciones PASS (00042 productos, stock, ventas, categoría; 00043-00049 plan de nutrición, registro, edad, consentimiento, aprobación, edad calculada y personal)`);
+// ===== 00050-00055: cadena completa y menores en rutas del personal =====
+// Compatibilidad solo de la prueba local: 00001 define coaches con name/role_es,
+// mientras que producción divergió y 00050/00051 esperan full_name/specialty.
+// Igualamos el esquema local al de producción; no cambiamos migraciones aplicadas.
+await db.exec(`alter table public.coaches add column if not exists full_name text;
+  alter table public.coaches add column if not exists specialty text;
+  update public.coaches set full_name = coalesce(full_name, name), specialty = coalesce(specialty, role_es);`);
+await db.exec(sql('supabase/migrations/00050_coaches_vista_publica.sql'));
+ok('00050 se aplica sobre 00049 sin error', true);
+await db.exec(sql('supabase/migrations/00051_coaches_vista_landing.sql'));
+ok('00051 se aplica sobre 00050 sin error', true);
+await db.exec(sql('supabase/migrations/00052_altura_en_ficha.sql'));
+ok('00052 se aplica sobre 00051 sin error', true);
+await db.exec(sql('supabase/migrations/00053_correccion_altura_admin.sql'));
+ok('00053 se aplica sobre 00052 sin error', true);
+await db.exec(sql('supabase/migrations/00054_mi_progreso_altura_ficha.sql'));
+ok('00054 se aplica sobre 00053 sin error', true);
+await db.exec(sql('supabase/migrations/00055_menores_rutas_personal.sql'));
+ok('00055 se aplica sobre 00054 sin error', true);
+
+const noBirthClient55 = await clientOf(noDate48);
+ok('administrador no guarda dieta ni rutina a un menor (MINOR)', await denied(staffSave(admin, 'aal2', minorClient), /MINOR/));
+ok('administrador no guarda dieta ni rutina sin fecha de nacimiento (NO_BIRTHDATE)', await denied(staffSave(admin, 'aal2', noBirthClient55), /NO_BIRTHDATE/));
+ok('administrador sí sigue guardando el plan de un adulto', (await staffSave(admin, 'aal2', adultClient))[0].id === adultClient);
+ok('administrador no aprueba un plan de menor (MINOR)', await denied(as(admin, 'aal2', 'select public.nutrition_approve($1)', [minorClient]), /MINOR/));
+ok('administrador no aprueba un plan sin fecha de nacimiento (NO_BIRTHDATE)', await denied(as(admin, 'aal2', 'select public.nutrition_approve($1)', [noBirthClient55]), /NO_BIRTHDATE/));
+ok('adulto sí se aprueba tras el control de edad', (await as(admin, 'aal2', 'select public.nutrition_approve($1) as r', [adultClient]))[0].r.already === false);
+ok('staffSave sobre menor no crea filas de plan', (await db.query('select count(*)::int as n from client_nutrition_plans where client_id=$1', [minorClient])).rows[0].n === 0);
+ok('staffSave sin fecha no crea filas de plan', (await db.query('select count(*)::int as n from client_nutrition_plans where client_id=$1', [noBirthClient55])).rows[0].n === 0);
+ok('el personal sigue leyendo la edad del menor con nutrition_get', (await as(admin, 'aal2', 'select public.nutrition_get($1) as g', [minorClient]))[0].g.age_status === 'minor');
+
+console.log(`\n${checks} comprobaciones PASS (00042 productos, stock, ventas, categoría; 00043-00055 plan de nutrición, registro, edad, consentimiento, aprobación, edad calculada, personal, coaches, altura y menores en rutas del personal)`);

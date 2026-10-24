@@ -25,12 +25,12 @@ Creado el 23 de octubre de 2026 para reunir en un solo lugar lo que quedó a med
 
 ## 2. SQL: fuente única
 
-- `supabase/migrations/`: **única fuente de migraciones**, de la **00001** a la **00054**. Las 00031 a 00049 estaban antes en `docs/SQL-PENDIENTE/` y se movieron aquí el 23 de octubre, sin cambiar su contenido.
+- `supabase/migrations/`: **única fuente de migraciones**, de la **00001** a la **00055**. Las 00031 a 00049 estaban antes en `docs/SQL-PENDIENTE/` y se movieron aquí el 23 de octubre, sin cambiar su contenido.
 - `supabase/*.sql` (SETUP, ACTUALIZAR, FASE2, etc.): archivos antiguos para pegar a mano. No son la fuente de verdad.
 
 Estado en Supabase (verificado en solo lectura el 24 de octubre):
-- **Aplicadas y comprobadas en la base:** 00031 y 00032 (`is_staff` exige aal2), 00033 y 00034 (`is_admin`, `admin_set_role`, `role_changes`), 00035 (`trainer_client_access`), 00036, de la 00037 a la 00048 según el historial de Supabase, y **00049** (tabla de personal, funciones de baja y reactivación). Después: 00050 y 00051 (vista pública de entrenadores), 00052 (altura en ficha), 00053 (corrección de altura solo admin) y 00054 (`ficha_height_cm` en `my_progress`); la última del historial remoto es `mi_progreso_altura_ficha` (00054).
-- **Pendiente:** ninguna migración está lista para aplicar; el siguiente número libre es 00055.
+- **Aplicadas y comprobadas en la base:** 00031 y 00032 (`is_staff` exige aal2), 00033 y 00034 (`is_admin`, `admin_set_role`, `role_changes`), 00035 (`trainer_client_access`), 00036, de la 00037 a la 00048 según el historial de Supabase, y **00049** (tabla de personal, funciones de baja y reactivación). Después: 00050 y 00051 (vista pública de entrenadores), 00052 (altura en ficha), 00053 (corrección de altura solo admin), 00054 (`ficha_height_cm` en `my_progress`) y 00055 (menores bloqueados en guardar/aprobar por el personal); la última del historial remoto es `menores_rutas_personal` (00055, versión remota `20261024190943`).
+- **Pendiente:** ninguna migración está lista para aplicar; el siguiente número libre es 00056.
 - **Advertencia:** la 00049 aparece aplicada, pero no en el historial de migraciones de Supabase. Se registró a mano. No vuelvas a ejecutarla.
 
 ## 3. Ramas de Git
