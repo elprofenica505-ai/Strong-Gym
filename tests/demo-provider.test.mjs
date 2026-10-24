@@ -15,6 +15,9 @@ test('demo de sólo lectura: no restaura sesiones ni almacena contraseñas; limp
   const previous={window:globalThis.window,document:globalThis.document,act:globalThis.IS_REACT_ACT_ENVIRONMENT};
   globalThis.window=dom.window;globalThis.document=dom.window.document;globalThis.IS_REACT_ACT_ENVIRONMENT=true;
   const storage=dom.window.localStorage;
+  const bannerKey=readFileSync(new URL('../src/components/layout/demo-banner.tsx',import.meta.url),'utf8')
+    .match(/const STORAGE_KEY = "([^"]+)"/)[1];
+  storage.setItem(bannerKey,'1');
   storage.setItem('strong-gym:demo-users',JSON.stringify([{id:'demo-admin',role:'admin',password:'EXAMPLE_OLD'}]));
   storage.setItem('strong-gym:demo-session','demo-admin');storage.setItem('strong-gym:demo-bookings:demo-admin','[]');
   storage.setItem('strong-gym:finance:pending','EXAMPLE_PENDING');storage.setItem('sb-project-auth-token','EXAMPLE_SESSION');
@@ -28,6 +31,8 @@ test('demo de sólo lectura: no restaura sesiones ni almacena contraseñas; limp
     assert.equal(storage.getItem('strong-gym:demo-users'),null);
     assert.equal(storage.getItem('strong-gym:demo-session'),null);
     assert.equal(storage.getItem('strong-gym:demo-bookings:demo-admin'),null);
+    // El cierre del aviso de demo no es una credencial legada: debe sobrevivir.
+    assert.equal(storage.getItem(bannerKey),'1');
     assert.equal(storage.getItem('strong-gym:finance:pending'),'EXAMPLE_PENDING');
     assert.equal(storage.getItem('sb-project-auth-token'),'EXAMPLE_SESSION');
     let result;
