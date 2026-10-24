@@ -65,6 +65,10 @@ const as = async (actor, aal, q, args = []) => {
 const denied = (p, re = /AUTH|42501|permission denied|row-level|violates|check|no se/i) => p.then(
   () => false, e => re.test(`${e.code ?? ''} ${e.message}`));
 const today = (await db.query("select (now() at time zone 'America/Managua')::date::text as d")).rows[0].d;
+// Fechas de borde de la regla de 12 meses, calculadas desde hoy (nunca fijas:
+// una fecha escrita a mano vence en cuanto pasa el día en que se escribió).
+const borde = (await db.query(`select ($1::date + interval '12 months')::date::text as limite,
+  ($1::date + interval '12 months' + interval '1 day')::date::text as excede`, [today])).rows[0];
 const vals = { cintura_cm: 80, biceps_relajado_cm: 30.5 };
 
 // 1) Registro de medidas por rol
@@ -121,8 +125,8 @@ ok('la meta anterior queda cancelada, no borrada (sigue en la tabla)',
   (await as(admin, 'aal2', "select count(*)::int as n from client_goals where client_id=$1 and status='cancelada'", [ana]))[0].n === 1);
 ok('entrenador sin acceso no cambia metas de luis', await denied(
   as(trainer, 'aal2', 'select public.set_client_goal($1,$2,null,$3,$4,$5)', [luis, 'perdida', today, '2027-01-20', 60])));
-ok('meta de más de 12 meses se rechaza', await denied(goal(admin, 'perdida', today, '2027-10-21', 65)));
-ok('meta de 12 meses exactos se acepta', (await goal(admin, 'perdida', today, '2027-10-20', 65)).length === 1);
+ok('meta de más de 12 meses se rechaza', await denied(goal(admin, 'perdida', today, borde.excede, 65)));
+ok('meta de 12 meses exactos se acepta', (await goal(admin, 'perdida', today, borde.limite, 65)).length === 1);
 ok('pérdida sin peso objetivo se rechaza', await denied(goal(admin, 'perdida', today, '2027-01-20', null)));
 ok('meta "otra" sin descripción se rechaza', await denied(goal(admin, 'otra', today, '2027-01-20', null, '')));
 ok('meta "otra" con descripción se acepta', (await goal(admin, 'otra', today, '2027-01-20', null, 'Correr 5 km')).length === 1);
@@ -149,7 +153,7 @@ ok('anon no lee metas', await denied(as(null, null, 'select id from client_goals
 
 // 8) Mi progreso (00040): el cliente ve SOLO sus datos, sin notas del personal
 const memberClient = (await db.query(`select id from gym_clients where profile_id = $1`, [member])).rows[0].id;
-await db.query(`insert into body_measurements(client_id, measured_on, weight_kg, cintura_cm, notes) values ($1, $2, 81.5, 90, 'NOTA INTERNA DEL PERSONAL')`, [memberClient, today]);
+await db.query(`insert into body_measurements(client_id, measured_on, weight_kg, height_cm, cintura_cm, notes) values ($1, $2, 81.5, 165, 90, 'NOTA INTERNA DEL PERSONAL')`, [memberClient, today]);
 const mine = await as(member, 'aal1', 'select public.my_progress() as p');
 ok('el cliente ve su propia medición', mine[0].p && mine[0].p.measurements.length === 1 && mine[0].p.measurements[0].weight_kg == 81.5);
 ok('la respuesta no incluye notas del personal', !JSON.stringify(mine[0].p).includes('NOTA INTERNA'));
@@ -157,5 +161,20 @@ ok('el cliente no ve datos de otro cliente', !JSON.stringify(mine[0].p).includes
 const other = (await as(trainer2, 'aal2', 'select public.my_progress() as p'))[0].p;
 ok('otra cuenta sin medidas propias no ve datos ajenos', other === null || (other.measurements.length === 0 && !JSON.stringify(other).includes('ANA EJEMPLO')));
 ok('anon no puede llamar my_progress', await denied(as(null, null, 'select public.my_progress()'), /permission denied|42501/));
+
+// 9) Altura de ficha en Mi progreso (00052 + 00054): manda la ficha, no la medición
+await db.exec(sql('supabase/migrations/00052_altura_en_ficha.sql'));
+await db.exec(sql('supabase/migrations/00054_mi_progreso_altura_ficha.sql'));
+const consFicha = (await as(member, 'aal1', 'select public.my_progress() as p'))[0].p;
+ok('00052 rellena la ficha con la última medición y my_progress la devuelve',
+  consFicha.ficha_height_cm == 165);
+// La corrección de altura (00053) solo cambia la ficha; la medición histórica no se toca.
+await db.query(`update gym_clients set height_cm = 172 where id = $1`, [memberClient]);
+const corregido = (await as(member, 'aal1', 'select public.my_progress() as p'))[0].p;
+ok('tras corregir la ficha, el cliente ve la altura nueva sin esperar otra medición',
+  corregido.ficha_height_cm == 172 && corregido.measurements[0].height_cm == 165);
+const ajeno = (await as(trainer2, 'aal2', 'select public.my_progress() as p'))[0].p;
+ok('otra cuenta no recibe la altura ajena', ajeno === null || ajeno.ficha_height_cm == null);
+ok('anon sigue sin poder llamar my_progress (00054)', await denied(as(null, null, 'select public.my_progress()'), /permission denied|42501/));
 
 console.log(`\n${checks} comprobaciones PASS (00039 medidas, metas y rutinas)`);

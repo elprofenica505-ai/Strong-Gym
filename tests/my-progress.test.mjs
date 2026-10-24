@@ -39,6 +39,14 @@ test("sin medidas muestra mensaje, nunca ceros", () => {
   assert.ok(!h.includes("0 kg"));
 });
 
+test("la altura de la ficha manda sobre la última medición", () => {
+  const h = html({ ...base, fichaHeightCm: 165 });
+  assert.ok(h.includes("165 cm"));
+  assert.ok(h.includes("Guardada en tu ficha"));
+  assert.ok(h.includes("25.7")); // 70 / 1.65^2 (si usara la medición de 170 cm sería 24.2)
+  assert.ok(!h.includes("24.2"));
+});
+
 test("sin altura no inventa IMC", () => {
   const h = html({ ...base, measurements: [{ ...base.measurements[0], heightCm: null }] });
   assert.ok(h.includes("Hace falta la altura para calcularlo"));

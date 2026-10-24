@@ -11,7 +11,8 @@ const fmtDay = (iso: string) => {
 /** Progreso propio del cliente: sólo lectura. No es consejo médico. */
 export function MyProgress({ data }: { data: MyProgressData | null }) {
   const latest = data?.measurements[0] ?? null;
-  const height = data?.measurements.find(m => m.heightCm)?.heightCm ?? null;
+  // La altura de la ficha manda (como en el panel); la última medición es el respaldo.
+  const height = data?.fichaHeightCm ?? data?.measurements.find(m => m.heightCm)?.heightCm ?? null;
   const index = latest ? bmi(latest.weightKg, height) : null;
 
   return (
@@ -23,13 +24,13 @@ export function MyProgress({ data }: { data: MyProgressData | null }) {
 
       {!latest ? (
         <div className="rounded-2xl border border-line bg-card p-6 text-[0.9375rem] text-mist">
-          Todavía no hay medidas registradas para tu cuenta. Pregunta en recepción en tu próxima visita.
+          Todavía no hay medidas registradas para tu cuenta. Preguntá en recepción en tu próxima visita.
         </div>
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-3">
             <Stat label="Peso actual" value={`${latest.weightKg} kg`} hint={`Medido el ${fmtDay(latest.measuredOn)}`} />
-            <Stat label="Altura" value={height ? `${height} cm` : "Sin registrar"} hint={height ? "Último dato registrado" : "Se registra en tu siguiente medición"} />
+            <Stat label="Altura" value={height ? `${height} cm` : "Sin registrar"} hint={data?.fichaHeightCm ? "Guardada en tu ficha" : height ? "Último dato registrado" : "Se registra en tu siguiente medición"} />
             <Stat
               label="Índice de masa corporal (IMC)"
               value={index !== null ? index.toFixed(1) : "—"}
