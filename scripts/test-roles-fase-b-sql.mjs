@@ -376,7 +376,115 @@ ok('admin puede quitar la tarifa rápida con NULL sin borrar el plan',
   clearedTariff.price_nio === null);
 await as(admin, 'aal2', 'select public.admin_set_day_pass_price_nio(40)');
 storedDayPass = await dayPassRow();
-ok('la prueba termina restaurando la tarifa aprobada de C$40',
+ok('la prueba de 00057 termina restaurando la tarifa aprobada de C$40',
   Number(storedDayPass.price_nio) === 40 && storedDayPass.price === null);
+
+// 12) Tarifas completas de pesas y máquinas (00058), sin tocar Boxeo.
+await db.exec(sql('supabase/migrations/00058_tarifas_gimnasio_nio.sql'));
+ok('00058 se aplica tras 00057', true);
+
+const gymTariffRows = async () =>
+  (await db.query(`select slug, period, price, price_nio, sort_order, is_active
+     from plans
+    where slug in ('pase-del-dia', 'gimnasio-semanal', 'gimnasio-quincenal', 'gimnasio-mensual')
+    order by sort_order`)).rows;
+const expectedGymTariffs = [
+  ['pase-del-dia', 'session', 40, 2],
+  ['gimnasio-semanal', 'week', 150, 3],
+  ['gimnasio-quincenal', 'fortnight', 280, 4],
+  ['gimnasio-mensual', 'month', 560, 5],
+];
+let storedGymTariffs = await gymTariffRows();
+ok('00058 publica Día C$40, Semana C$150, Quincena C$280 y Mes C$560 en orden',
+  storedGymTariffs.length === expectedGymTariffs.length &&
+  storedGymTariffs.every((row, index) => {
+    const [slug, period, priceNio, sortOrder] = expectedGymTariffs[index];
+    return row.slug === slug && row.period === period &&
+      Number(row.price_nio) === priceNio && row.sort_order === sortOrder &&
+      row.is_active === true;
+  }));
+
+const periodConstraint = (await db.query(`select pg_get_constraintdef(oid) as def
+  from pg_constraint
+ where conname = 'plans_period_check'
+   and conrelid = 'plans'::regclass`)).rows[0]?.def ?? '';
+ok('00058 permite el periodo fortnight sin abrir otros periodos',
+  periodConstraint.includes("'fortnight'") &&
+  periodConstraint.includes("'session'") &&
+  periodConstraint.includes("'week'") &&
+  periodConstraint.includes("'month'"));
+
+const boxingAfterTariffs = async () => {
+  const row = (await db.query(`select slug::text as slug,
+      price::float8 as price,
+      price_nio::float8 as price_nio,
+      period::text as period
+    from public.plans
+   where id = 'pln_boxeo'
+   limit 1`)).rows[0];
+  return row ? JSON.parse(JSON.stringify(row)) : row;
+};
+let storedBoxing = await boxingAfterTariffs();
+ok('00058 deja Boxeo fuera de las tarifas NIO',
+  String(storedBoxing?.slug) === String.fromCharCode(98, 111, 120, 101, 111) &&
+  Number(storedBoxing.price) === 20 && storedBoxing.price_nio === null &&
+  storedBoxing.period === 'month');
+
+const crmTariffOptionsForCashier = (await as(cashier, 'aal2', 'select public.crm_options() as x'))[0].x;
+ok('crm_options entrega a caja las cuatro tarifas de pesas y máquinas',
+  expectedGymTariffs.every(([slug, period, priceNio]) => {
+    const offered = crmTariffOptionsForCashier.plans.find((plan) => plan.slug === slug);
+    return offered?.period === period && Number(offered.price_nio) === priceNio;
+  }));
+
+const changedWeeklyTariff = (await as(admin, 'aal2',
+  'select public.admin_set_plan_price_nio($1, $2) as x', ['gimnasio-semanal', 155.25]))[0].x;
+ok('admin con MFA cambia una tarifa NIO de la lista cerrada',
+  changedWeeklyTariff.slug === 'gimnasio-semanal' &&
+  changedWeeklyTariff.period === 'week' &&
+  Number(changedWeeklyTariff.price_nio) === 155.25);
+ok('caja NO cambia las tarifas de pesas y máquinas',
+  await denied(as(cashier, 'aal2',
+    "select public.admin_set_plan_price_nio('gimnasio-semanal', 999)"), /AUTH/));
+ok('admin sin MFA NO cambia las tarifas de pesas y máquinas',
+  await denied(as(admin, 'aal1',
+    "select public.admin_set_plan_price_nio('gimnasio-semanal', 999)"), /AUTH/));
+ok('visitante NO ejecuta el editor genérico de tarifas',
+  await denied(as(null, null,
+    "select public.admin_set_plan_price_nio('gimnasio-semanal', 999)"), /42501|permission denied/));
+ok('el editor genérico rechaza Boxeo y cualquier slug fuera de la lista',
+  await denied(as(admin, 'aal2',
+    'select public.admin_set_plan_price_nio($1, $2)',
+    [String.fromCharCode(98, 111, 120, 101, 111), 750]), /INVALID_PLAN/) &&
+  await denied(as(admin, 'aal2',
+    "select public.admin_set_plan_price_nio('plan-inventado', 100)"), /INVALID_PLAN/) &&
+  await denied(as(admin, 'aal2',
+    'select public.admin_set_plan_price_nio($1, $2)', [null, 100]), /INVALID_PLAN/));
+ok('el editor genérico rechaza cero y más de dos decimales',
+  await denied(as(admin, 'aal2',
+    "select public.admin_set_plan_price_nio('gimnasio-mensual', 0)"), /INVALID_PRICE/) &&
+  await denied(as(admin, 'aal2',
+    "select public.admin_set_plan_price_nio('gimnasio-mensual', 10.999)"), /INVALID_PRICE/));
+
+await db.exec("update plans set period = 'month' where slug = 'gimnasio-semanal'");
+ok('un slug válido con el periodo cruzado no se edita como otra tarifa',
+  await denied(as(admin, 'aal2',
+    "select public.admin_set_plan_price_nio('gimnasio-semanal', 150)"), /NOT_FOUND/));
+await db.exec("update plans set period = 'week' where slug = 'gimnasio-semanal'");
+
+const clearedFortnightTariff = (await as(admin, 'aal2',
+  'select public.admin_set_plan_price_nio($1, $2) as x', ['gimnasio-quincenal', null]))[0].x;
+ok('admin puede quitar solo una tarifa rápida con NULL sin borrar el plan',
+  clearedFortnightTariff.slug === 'gimnasio-quincenal' &&
+  clearedFortnightTariff.price_nio === null);
+
+await as(admin, 'aal2', "select public.admin_set_plan_price_nio('gimnasio-semanal', 150)");
+await as(admin, 'aal2', "select public.admin_set_plan_price_nio('gimnasio-quincenal', 280)");
+storedGymTariffs = await gymTariffRows();
+storedBoxing = await boxingAfterTariffs();
+ok('la prueba de 00058 restaura las tarifas aprobadas y Boxeo sigue intacto',
+  storedGymTariffs.every((row, index) =>
+    Number(row.price_nio) === expectedGymTariffs[index][2]) &&
+  Number(storedBoxing.price) === 20 && storedBoxing.price_nio === null);
 
 console.log(`\nPASS ${checks} comprobaciones de Fase B`);

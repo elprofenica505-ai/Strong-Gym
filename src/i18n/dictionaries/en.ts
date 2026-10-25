@@ -243,6 +243,8 @@ const en = {
     subtitle:
       "Check each card for its current price or whether you should ask us on WhatsApp.",
     month: "per month",
+    week: "per week",
+    fortnight: "per 15 days",
     session: "per visit",
     popular: "Most popular",
     choose: "I want it",
@@ -328,7 +330,7 @@ const en = {
       },
       {
         q: "How much is the gym membership?",
-        a: "The Prices card shows the current day-pass rate in córdobas when it is published; if it says “Ask us”, message us on WhatsApp. We give the weights and machines membership price over WhatsApp because it can change with promotions.",
+        a: "The Prices cards show the current weights and machines rates by day, week, 15 days and month in córdobas when they are published. If one says “Ask us”, message us on WhatsApp and we will send you the current price.",
       },
       {
         q: "Do you run zumba or dance cardio classes?",

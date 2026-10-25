@@ -97,15 +97,85 @@ export async function getPlans(): Promise<Plan[]> {
   );
 }
 
-export interface DayPassTariffAdmin {
+export interface PlanTariffAdmin {
   id: string;
   slug: string;
+  period: Plan["period"];
   nameEs: string;
   /** Tarifa de recepción en córdobas. Nunca se mezcla con `priceUsd`. */
   priceNio: number | null;
   /** Precio histórico de la tabla (`plans.price`), solo informativo. */
   priceUsd: number | null;
   isActive: boolean;
+}
+
+export type DayPassTariffAdmin = PlanTariffAdmin;
+
+const GYM_TARIFF_PLANS = [
+  { slug: "pase-del-dia", period: "session", fallbackName: "Pase del día" },
+  { slug: "gimnasio-semanal", period: "week", fallbackName: "Gimnasio semanal" },
+  {
+    slug: "gimnasio-quincenal",
+    period: "fortnight",
+    fallbackName: "Gimnasio quincenal",
+  },
+  { slug: "gimnasio-mensual", period: "month", fallbackName: "Gimnasio mensual" },
+] as const satisfies readonly {
+  slug: string;
+  period: Plan["period"];
+  fallbackName: string;
+}[];
+
+function tariffPrice(scope: string, value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount < 0)
+    throw new DataReadError(scope, "INVALID");
+  return amount;
+}
+
+function mapPlanTariffRow(
+  scope: string,
+  row: Record<string, unknown>,
+  expected: (typeof GYM_TARIFF_PLANS)[number],
+): PlanTariffAdmin {
+  if (
+    typeof row.id !== "string" ||
+    row.slug !== expected.slug ||
+    row.period !== expected.period
+  )
+    throw new DataReadError(scope, "INVALID");
+
+  return {
+    id: row.id,
+    slug: expected.slug,
+    period: expected.period,
+    nameEs:
+      typeof row.name_es === "string" && row.name_es
+        ? row.name_es
+        : expected.fallbackName,
+    priceNio: tariffPrice(scope, row.price_nio),
+    priceUsd: tariffPrice(scope, row.price),
+    isActive: row.is_active === true,
+  };
+}
+
+function demoPlanTariff(
+  scope: string,
+  expected: (typeof GYM_TARIFF_PLANS)[number],
+): PlanTariffAdmin | null {
+  const demo = demoPlans.find((plan) => plan.slug === expected.slug);
+  if (!demo) return null;
+  if (demo.period !== expected.period) throw new DataReadError(scope, "INVALID");
+  return {
+    id: demo.id,
+    slug: demo.slug,
+    period: demo.period,
+    nameEs: demo.name_es,
+    priceNio: tariffPrice(scope, demo.price_nio),
+    priceUsd: tariffPrice(scope, demo.price),
+    isActive: demo.is_active,
+  };
 }
 
 /**
@@ -116,54 +186,65 @@ export interface DayPassTariffAdmin {
  */
 export async function getDayPassTariffAdmin(): Promise<DayPassTariffAdmin | null> {
   return checkedRead("DAY_PASS_TARIFF", async () => {
-    const toPrice = (value: unknown): number | null => {
-      if (value === null || value === undefined) return null;
-      const amount = Number(value);
-      if (!Number.isFinite(amount) || amount < 0)
-        throw new DataReadError("DAY_PASS_TARIFF", "INVALID");
-      return amount;
-    };
-
+    const expected = GYM_TARIFF_PLANS[0];
     const supabase = await getSupabaseServerClient();
-    if (!supabase) {
-      const demo = demoPlans.find((plan) => plan.slug === "pase-del-dia");
-      return demo
-        ? {
-            id: demo.id,
-            slug: demo.slug,
-            nameEs: demo.name_es,
-            priceNio: toPrice(demo.price_nio),
-            priceUsd: toPrice(demo.price),
-            isActive: demo.is_active,
-          }
-        : null;
-    }
+    if (!supabase) return demoPlanTariff("DAY_PASS_TARIFF", expected);
 
     const { data, error } = await supabase
       .from("plans")
       .select("*")
-      .eq("slug", "pase-del-dia")
+      .eq("slug", expected.slug)
       .abortSignal(AbortSignal.timeout(15000))
       .maybeSingle();
     if (error) throw new DataReadError("DAY_PASS_TARIFF", error.code);
     if (!data) return null;
 
-    const row = data as unknown as Record<string, unknown>;
-    if (
-      typeof row.id !== "string" ||
-      row.slug !== "pase-del-dia" ||
-      row.period !== "session"
-    )
-      throw new DataReadError("DAY_PASS_TARIFF", "INVALID");
+    return mapPlanTariffRow(
+      "DAY_PASS_TARIFF",
+      data as unknown as Record<string, unknown>,
+      expected,
+    );
+  });
+}
 
-    return {
-      id: row.id,
-      slug: row.slug,
-      nameEs: typeof row.name_es === "string" && row.name_es ? row.name_es : "Pase del día",
-      priceNio: toPrice(row.price_nio),
-      priceUsd: toPrice(row.price),
-      isActive: row.is_active === true,
-    };
+/**
+ * Las cuatro tarifas NIO de pesas y máquinas para Administración, en orden
+ * de duración. También lee planes inactivos para avisar en pantalla; si falta
+ * una fila no inventa un plan: la página mostrará la configuración faltante.
+ */
+export async function getGymTariffsAdmin(): Promise<PlanTariffAdmin[]> {
+  return checkedRead("GYM_TARIFFS", async () => {
+    const supabase = await getSupabaseServerClient();
+    if (!supabase) {
+      return GYM_TARIFF_PLANS.flatMap((expected) => {
+        const tariff = demoPlanTariff("GYM_TARIFFS", expected);
+        return tariff ? [tariff] : [];
+      });
+    }
+
+    const { data, error } = await supabase
+      .from("plans")
+      .select("*")
+      .in(
+        "slug",
+        GYM_TARIFF_PLANS.map((plan) => plan.slug),
+      )
+      .abortSignal(AbortSignal.timeout(15000));
+    if (error) throw new DataReadError("GYM_TARIFFS", error.code);
+    if (!Array.isArray(data)) throw new DataReadError("GYM_TARIFFS", "INVALID");
+
+    const bySlug = new Map<string, Record<string, unknown>>();
+    for (const item of data as unknown[]) {
+      const row = item as Record<string, unknown> | null;
+      if (!row || typeof row.slug !== "string" || bySlug.has(row.slug))
+        throw new DataReadError("GYM_TARIFFS", "INVALID");
+      bySlug.set(row.slug, row);
+    }
+
+    return GYM_TARIFF_PLANS.flatMap((expected) => {
+      const row = bySlug.get(expected.slug);
+      return row ? [mapPlanTariffRow("GYM_TARIFFS", row, expected)] : [];
+    });
   });
 }
 
