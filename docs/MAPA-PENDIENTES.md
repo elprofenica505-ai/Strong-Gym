@@ -59,7 +59,7 @@ Para el detalle, usa la fuente indicada en la sección 1.
 - Roles de caja y entrenador, fase C: sin empezar. Vista «Mis clientes» probada con cuenta real de entrenador el 23 oct 2026 (rol, MFA, asignación, pedido, aprobación, revocación y reasignación OK). Decisión: un cliente puede tener dos o más entrenadores (ver `docs/ROLES-MIGRACION-PLAN.md`).
 
 **Operación diaria**
-- Tarifas de pesas y máquinas: NIO administrables por Día C$40, Semana C$150, Quincena C$280 y Mes C$560 (00057–00058), públicas en la web y con cobro rápido en la ficha; la entrada opcional solo se registra tras confirmar el pago. Boxeo queda aparte en US$20. Cobrar Semana, Quincena o Mes todavía no activa vigencia. Falta la prueba guiada del usuario tras publicar, sin cobros ficticios en producción.
+- Tarifas de pesas y máquinas: NIO administrables por Día C$40, Semana C$150, Quincena C$280 y Mes C$560 (00057–00058), públicas en la web y con cobro rápido en la ficha; la entrada opcional solo se registra tras confirmar el pago. Boxeo queda aparte en US$20. Cobrar Semana, Quincena o Mes todavía no activa vigencia. El usuario ya vio el flujo en el celular y pidió botones con aspecto uniforme; falta confirmar ese ajuste tras publicarlo y completar la prueba guiada, sin cobros ficticios en producción.
 - Planes y vigencias generales, reservas y cupos, mensajes leídos y disciplinas, QR en dispositivo real, hora de Managua en páginas abiertas, asistencia en Mi cuenta, categoría del cliente: pendientes.
 
 **Finanzas**

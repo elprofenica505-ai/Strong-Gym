@@ -22,6 +22,8 @@ import { ClientFinanceSummary, ClientIncomeHistory } from "./client-finance";
 import { useCrmResource } from "./use-crm-resource";
 const input =
   "w-full rounded-lg border border-line bg-paper px-3 py-2.5 text-ink disabled:opacity-60";
+const detailNavLink =
+  "inline-flex items-center rounded-full border border-line bg-night-3 px-3 py-1.5 font-medium text-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition hover:border-brand/70 hover:bg-brand/15 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-paper";
 const emptyOptions: CrmOptions = {
   plans: [],
   methods: [],
@@ -636,18 +638,18 @@ export function ClientsPanel({
             #{detail.client.client_number} · {detail.client.full_name}
           </h2>
           <nav aria-label="Ir a una sección de la ficha" className="flex flex-wrap items-center gap-2 text-sm">
-            <a href="#cobro" className="rounded-full border border-line px-3 py-1.5 text-ink hover:border-brand/60">Cobrar</a>
-            <a href="#datos" className="rounded-full border border-line px-3 py-1.5 text-ink hover:border-brand/60">Datos del cliente</a>
-            <a href="#historial" className="rounded-full border border-line px-3 py-1.5 text-ink hover:border-brand/60">Historial de pagos</a>
+            <a href="#cobro" className={detailNavLink}>Cobrar</a>
+            <a href="#datos" className={detailNavLink}>Datos del cliente</a>
+            <a href="#historial" className={detailNavLink}>Historial de pagos</a>
             <Link
               href={`/${locale}/panel/progreso/${detail.client.id}#asistencia`}
-              className="rounded-full border border-line px-3 py-1.5 text-ink hover:border-brand/60"
+              className={detailNavLink}
             >
               Asistencia (día, semana, mes)
             </Link>
             <Link
               href={`/${locale}/panel/progreso/${detail.client.id}`}
-              className="ml-auto rounded-full bg-brand px-4 py-1.5 font-semibold text-onbrand"
+              className="ml-auto inline-flex items-center rounded-full bg-brand px-4 py-1.5 font-semibold text-onbrand shadow-[0_10px_30px_-12px_rgba(216,26,34,0.65)] transition hover:bg-brand-600 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
             >
               Progreso y medidas (peso, altura, rutina)
             </Link>
@@ -656,7 +658,13 @@ export function ClientsPanel({
             {quickTariffs.map((tariff) => (
               <Button
                 key={tariff.plan.id}
-                variant={tariff.isDayPass ? "primary" : "outline"}
+                variant="primary"
+                aria-pressed={selectedQuickTariff?.plan.id === tariff.plan.id}
+                className={
+                  selectedQuickTariff?.plan.id === tariff.plan.id
+                    ? "ring-2 ring-white/90 ring-offset-2 ring-offset-paper"
+                    : undefined
+                }
                 disabled={detailBusy || detail.client.status !== "active"}
                 onClick={() => {
                   if (detailBusy || detail.client.status !== "active") return;
@@ -679,7 +687,7 @@ export function ClientsPanel({
               </Button>
             ))}
             <Button
-              variant={quickTariffs.length > 0 ? "outline" : "primary"}
+              variant={quickTariffs.length > 0 ? "dark" : "primary"}
               disabled={detailBusy || detail.client.status !== "active"}
               aria-describedby="crm-entry-feedback"
               onClick={() => {

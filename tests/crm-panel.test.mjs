@@ -756,12 +756,21 @@ test("tarifas rápidas muestran Día, Semana, Quincena y Mes, pero nunca Boxeo",
   );
   await open();
   await heading();
-  assert.ok(
+  const tariffButtons = [
     await screen.findByRole("button", { name: /Cobrar pase del día.*C\$40/ }),
+    screen.getByRole("button", { name: /Cobrar semana.*C\$150/ }),
+    screen.getByRole("button", { name: /Cobrar quincena.*C\$280/ }),
+    screen.getByRole("button", { name: /Cobrar mes.*C\$560/ }),
+  ];
+  for (const button of tariffButtons) {
+    assert.ok(button.classList.contains("bg-brand"));
+    assert.equal(button.getAttribute("aria-pressed"), "false");
+  }
+  assert.ok(
+    screen
+      .getByRole("button", { name: /Solo confirmar entrada/ })
+      .classList.contains("bg-night-3"),
   );
-  assert.ok(screen.getByRole("button", { name: /Cobrar semana.*C\$150/ }));
-  assert.ok(screen.getByRole("button", { name: /Cobrar quincena.*C\$280/ }));
-  assert.ok(screen.getByRole("button", { name: /Cobrar mes.*C\$560/ }));
   assert.equal(screen.queryByRole("button", { name: /Boxeo/ }), null);
   assert.equal(calls.filter((call) => call.body).length, 0);
 });

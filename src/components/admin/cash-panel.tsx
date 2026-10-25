@@ -352,15 +352,24 @@ export function CashPanel({
 
       <a
         href={`/${locale}/panel/clientes`}
-        className="flex flex-col gap-1 rounded-2xl border border-brand/40 bg-brand/10 p-5 hover:border-brand"
+        className="group flex items-center gap-4 rounded-2xl bg-brand p-5 text-onbrand shadow-[0_16px_38px_-16px_rgba(216,26,34,0.85)] transition hover:bg-brand-600 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
       >
-        <span className="font-bold text-ink">
-          Cobrar o registrar entrada · buscar cliente →
+        <span className="grid size-12 shrink-0 place-items-center rounded-full bg-white/15 shadow-[inset_0_1px_0_rgba(255,255,255,0.22)]">
+          <Banknote className="size-6" aria-hidden="true" />
         </span>
-        <span className="text-sm text-fog">
-          Buscás o creás la ficha, cobrás el pase del día u otro servicio y,
-          si corresponde, registrás la entrada. Sin celular obligatorio.
+        <span className="min-w-0 flex-1">
+          <span className="block text-[1rem] font-bold leading-snug">
+            Cobrar o registrar entrada · buscar cliente
+          </span>
+          <span className="mt-1 block text-sm leading-relaxed text-white/85">
+            Buscás o creás la ficha, cobrás el pase del día u otro servicio y,
+            si corresponde, registrás la entrada. Sin celular obligatorio.
+          </span>
         </span>
+        <ChevronRight
+          className="size-7 shrink-0 transition-transform group-hover:translate-x-1"
+          aria-hidden="true"
+        />
       </a>
 
       {/* ---------- KPIs principales ---------- */}

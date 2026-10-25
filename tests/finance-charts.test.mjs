@@ -108,6 +108,11 @@ test("contenedores de gráficos permiten encoger el grid sin trasladar el ancho 
     }),
   );
   const dom = new JSDOM(html);
+  const clientChargeLink = [...dom.window.document.querySelectorAll("a")].find(
+    (link) => link.textContent.includes("Cobrar o registrar entrada"),
+  );
+  assert.ok(clientChargeLink.classList.contains("bg-brand"));
+  assert.ok(clientChargeLink.querySelector("svg"));
   const charts = [
     ...dom.window.document.querySelectorAll("section[aria-label]"),
   ];
