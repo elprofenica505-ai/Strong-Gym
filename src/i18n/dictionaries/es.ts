@@ -244,7 +244,7 @@ const es = {
   plans: {
     title: "Precios",
     subtitle:
-      "El boxeo tiene precio fijo mensual. Para la mensualidad del gimnasio y el pase del día, escribinos por WhatsApp.",
+      "Revisá cada tarjeta para ver su precio vigente o si debés consultarlo por WhatsApp.",
     month: "por mes",
     session: "por visita",
     popular: "Más elegido",
@@ -258,7 +258,7 @@ const es = {
       "Vestuario y área de boxeo",
       "Suplementos y ropa deportiva a la venta",
     ],
-    note: "Precios en dólares. Preguntá por las promociones vigentes.",
+    note: "Cada precio se muestra en la moneda indicada en su tarjeta. Preguntá por las promociones vigentes.",
     askForPlan: "Consultar por este plan",
   },
 
@@ -331,7 +331,7 @@ const es = {
       },
       {
         q: "¿Cuánto cuesta la mensualidad del gimnasio?",
-        a: "El precio de la mensualidad de pesas y máquinas y el del pase del día los damos por WhatsApp, porque cambian con las promociones. Escribinos y te pasamos el vigente.",
+        a: "La tarjeta de Precios muestra la tarifa vigente del pase del día en córdobas cuando está publicada; si dice «Consultar», escribinos por WhatsApp. El precio de la mensualidad de pesas y máquinas lo damos por WhatsApp, porque puede cambiar con las promociones.",
       },
       {
         q: "¿Hay clases de zumba o bailoterapia?",
