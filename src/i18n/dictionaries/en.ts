@@ -241,7 +241,7 @@ const en = {
   plans: {
     title: "Prices",
     subtitle:
-      "Boxing has a fixed monthly fee. For the gym membership and the day pass, message us on WhatsApp.",
+      "Check each card for its current price or whether you should ask us on WhatsApp.",
     month: "per month",
     session: "per visit",
     popular: "Most popular",
@@ -255,7 +255,7 @@ const en = {
       "Changing area and boxing zone",
       "Supplements and sportswear for sale",
     ],
-    note: "Prices in US dollars. Ask about current promotions.",
+    note: "Each price is shown in the currency indicated on its card. Ask about current promotions.",
     askForPlan: "Ask about this plan",
   },
 
@@ -328,7 +328,7 @@ const en = {
       },
       {
         q: "How much is the gym membership?",
-        a: "We give the price of the weights and machines membership, and of the day pass, over WhatsApp, because they change with our promotions. Message us and we will send you the current one.",
+        a: "The Prices card shows the current day-pass rate in córdobas when it is published; if it says “Ask us”, message us on WhatsApp. We give the weights and machines membership price over WhatsApp because it can change with promotions.",
       },
       {
         q: "Do you run zumba or dance cardio classes?",
