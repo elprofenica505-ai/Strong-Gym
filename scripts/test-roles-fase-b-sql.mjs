@@ -337,4 +337,46 @@ ok('al apagar de nuevo, caja pierde las vistas delegadas',
   await denied(financeReadAs(cashier, 'monthly'), /AUTH/) &&
   (await as(cashier, 'aal2', 'select count(*)::int c from bank_accounts'))[0].c === 0);
 
+// 11) Pase del día (00057): tarifa NIO separada del precio histórico USD.
+await db.exec(sql('supabase/migrations/00057_pase_del_dia_tarifa.sql'));
+ok('00057 se aplica tras 00056', true);
+
+const dayPassRow = async () =>
+  (await db.query("select price, price_nio, period from plans where slug='pase-del-dia'")).rows[0];
+const boxingRow = (await db.query("select price, price_nio from plans where slug='boxeo'")).rows[0];
+let storedDayPass = await dayPassRow();
+ok('00057 deja el pase del día en C$40 sin tocar su precio USD',
+  storedDayPass.price === null && Number(storedDayPass.price_nio) === 40 &&
+  storedDayPass.period === 'session');
+ok('00057 no convierte el precio histórico de Boxeo (US$20) a córdobas',
+  Number(boxingRow.price) === 20 && boxingRow.price_nio === null);
+
+const crmOptionsForCashier = (await as(cashier, 'aal2', 'select public.crm_options() as x'))[0].x;
+const offeredDayPass = crmOptionsForCashier.plans.find((p) => p.slug === 'pase-del-dia');
+ok('crm_options entrega a caja la tarifa NIO del pase del día',
+  offeredDayPass?.period === 'session' && Number(offeredDayPass.price_nio) === 40);
+
+const changedTariff = (await as(admin, 'aal2',
+  'select public.admin_set_day_pass_price_nio($1) as x', [45.5]))[0].x;
+ok('admin con MFA cambia solo la tarifa NIO del pase del día',
+  Number(changedTariff.price_nio) === 45.5 && changedTariff.is_active === true);
+ok('caja NO cambia la tarifa del pase del día',
+  await denied(as(cashier, 'aal2', 'select public.admin_set_day_pass_price_nio(50)'), /AUTH/));
+ok('admin sin MFA NO cambia la tarifa del pase del día',
+  await denied(as(admin, 'aal1', 'select public.admin_set_day_pass_price_nio(50)'), /AUTH/));
+ok('visitante NO ejecuta el editor de tarifa',
+  await denied(as(null, null, 'select public.admin_set_day_pass_price_nio(50)'), /42501|permission denied/));
+ok('la tarifa rechaza cero y más de dos decimales',
+  await denied(as(admin, 'aal2', 'select public.admin_set_day_pass_price_nio(0)'), /INVALID_PRICE/) &&
+  await denied(as(admin, 'aal2', 'select public.admin_set_day_pass_price_nio(10.999)'), /INVALID_PRICE/));
+
+const clearedTariff = (await as(admin, 'aal2',
+  'select public.admin_set_day_pass_price_nio($1) as x', [null]))[0].x;
+ok('admin puede quitar la tarifa rápida con NULL sin borrar el plan',
+  clearedTariff.price_nio === null);
+await as(admin, 'aal2', 'select public.admin_set_day_pass_price_nio(40)');
+storedDayPass = await dayPassRow();
+ok('la prueba termina restaurando la tarifa aprobada de C$40',
+  Number(storedDayPass.price_nio) === 40 && storedDayPass.price === null);
+
 console.log(`\nPASS ${checks} comprobaciones de Fase B`);

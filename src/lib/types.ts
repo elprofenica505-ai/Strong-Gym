@@ -49,6 +49,12 @@ export interface Plan {
   tagline_en: string;
   /** Precio en USD. `null` = todavía no publicado: la web muestra "Consultar". */
   price: number | null;
+  /**
+   * Tarifa opcional en córdobas (NIO), separada del precio histórico en USD.
+   * Hoy solo la usa el pase del día para recepción y para mostrar C$ en la web.
+   * Puede venir como texto desde la base; quien la muestre debe convertirla.
+   */
+  price_nio?: number | string | null;
   /** Cada cuánto se paga: "month" | "week" | "session" */
   period: "month" | "week" | "session";
   features_es: string[];

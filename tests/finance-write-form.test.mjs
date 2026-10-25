@@ -210,6 +210,58 @@ test("cobro por servicio advierte que no paga deuda ni crea crédito", async () 
   assert.equal(screen.queryByLabelText("Categoría"), null);
 });
 
+test("preset opcional precarga monto y concepto; onSuccess solo corre tras confirmar", async () => {
+  const confirmed = [];
+  const { posts } = mount(undefined, options, {
+    defaultAmount: 12.5,
+    defaultConcept: "Preset EJEMPLO",
+    presetKey: "preset-ejemplo",
+    onSuccess: async (receiptId) => {
+      confirmed.push(receiptId);
+    },
+  });
+  await waitFor(() =>
+    assert.equal(
+      screen.getByRole("button", { name: "Confirmar gasto" }).disabled,
+      false,
+    ),
+  );
+  assert.equal(screen.getByLabelText("Monto").value, "12.5");
+  assert.equal(screen.getByLabelText("Concepto").value, "Preset EJEMPLO");
+  for (const [name, value] of [
+    ["Método", "cash"],
+    ["Cuenta", "nio"],
+    ["Tasa NIO por 1 USD", "36.7244"],
+    ["Categoría", "cat"],
+  ])
+    fireEvent.change(screen.getByLabelText(name), { target: { value } });
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar gasto" }));
+  await screen.findByRole("link", { name: /Abrir comprobante interno/ });
+  assert.equal(posts.length, 1);
+  assert.equal(posts[0].amount, 12.5);
+  assert.equal(posts[0].concept, "Preset EJEMPLO");
+  assert.deepEqual(confirmed, [id]);
+});
+
+test("onSuccess no se llama si la respuesta del movimiento se pierde", async () => {
+  let successCalls = 0;
+  mount(
+    () => {
+      throw new TypeError("network");
+    },
+    options,
+    {
+      onSuccess: async () => {
+        successCalls += 1;
+      },
+    },
+  );
+  await fill();
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar gasto" }));
+  await screen.findByText(/Conservá esta referencia/);
+  assert.equal(successCalls, 0);
+});
+
 test("reintento confirmado se puede recuperar aunque la escritura de intentos nuevos esté deshabilitada", async () => {
   sessionStorage.setItem(key, JSON.stringify(pending));
   const { posts } = mount(undefined, { ...options, writes_enabled: false });

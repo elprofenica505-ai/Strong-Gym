@@ -82,6 +82,7 @@ export const demoPlans: Plan[] = [
     tagline_es: "Para todas las edades, con entrenador",
     tagline_en: "All ages, coach included",
     price: 20,
+    price_nio: null,
     period: "month",
     features_es: [
       "Martes, miércoles y jueves",
@@ -107,6 +108,7 @@ export const demoPlans: Plan[] = [
     tagline_es: "Pesas y máquinas todo el mes",
     tagline_en: "Weights and machines all month",
     price: null,
+    price_nio: null,
     period: "month",
     features_es: [
       "Máquinas modernas y pesas libres",
@@ -132,6 +134,7 @@ export const demoPlans: Plan[] = [
     tagline_es: "Una visita para conocernos",
     tagline_en: "A single visit to try us out",
     price: null,
+    price_nio: 40,
     period: "session",
     features_es: [
       "Una visita, sin compromiso",

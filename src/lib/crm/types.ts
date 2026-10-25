@@ -68,7 +68,14 @@ export interface CrmOptions {
   payments_enabled: boolean;
   finance_layout?: string;
   payment_block_reason?: string | null;
-  plans: { id: string; name_es: string }[];
+  plans: {
+    id: string;
+    name_es: string;
+    slug?: string;
+    period?: string;
+    /** Tarifa NIO opcional; la base puede devolverla como número o texto. */
+    price_nio?: number | string | null;
+  }[];
   methods: {
     id: string;
     name_es: string;
