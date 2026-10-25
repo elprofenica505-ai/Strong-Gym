@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseAttributes, profitOf, dataUrlBytes, productSchema, actionSchema, productFailureMessage, MAX_IMAGE_CHARS } from '../src/lib/products/rules.ts';
+import { parseAttributes, profitOf, dataUrlBytes, productSchema, actionSchema, productFailureMessage, saleCatalogSchema, MAX_IMAGE_CHARS } from '../src/lib/products/rules.ts';
 
 test('atributos: una línea por dato, ignora líneas sin clave o valor', () => {
   assert.deepEqual(parseAttributes('Sabor: chocolate\n\n: sin clave\nTamaño: 2 lb\nvacío:   \n'), { Sabor: 'chocolate', 'Tamaño': '2 lb' });
@@ -37,6 +37,29 @@ test('acciones: compra exige costo mayor que cero y referencia', () => {
   assert.equal(actionSchema.safeParse({ action: 'purchase', purchase: { request: req, product: pid, qty: 2, unit_cost: 0, method: 'm', account: 'a', note: null } }).success, false);
   assert.ok(actionSchema.safeParse({ action: 'purchase', purchase: { request: req, product: pid, qty: 2, unit_cost: 10, method: 'm', account: 'a', note: null } }).success);
   assert.equal(actionSchema.safeParse({ action: 'adjust', adjust: { product: pid, qty: 0, note: 'conteo' } }).success, false);
+});
+
+test('catálogo de venta: solo precio y stock vendibles, sin costo ni ganancia', () => {
+  const pid = '22222222-2222-4222-8222-222222222222';
+  const parsed = saleCatalogSchema.parse({
+    products: [{
+      id: pid,
+      name: 'Agua mineral',
+      category: 'Bebidas',
+      subcategory: null,
+      attributes: { Tamaño: '600 ml' },
+      price: 25,
+      stock: 4,
+      low_stock: false,
+      cost: 10,
+      profit: 15,
+    }],
+  });
+  assert.deepEqual(Object.keys(parsed.products[0]).sort(), [
+    'attributes', 'category', 'id', 'low_stock', 'name', 'price', 'stock', 'subcategory',
+  ]);
+  assert.equal(saleCatalogSchema.safeParse({ products: [{ ...parsed.products[0], price: 0 }] }).success, false);
+  assert.equal(saleCatalogSchema.safeParse({ products: [{ ...parsed.products[0], stock: 0 }] }).success, false);
 });
 
 test('mensajes: códigos conocidos en español, desconocidos sin detalle técnico', () => {

@@ -10,22 +10,74 @@ const fields = {
   // Ambos tipos de moneda requieren una tasa explícita, nunca una tasa fija.
   fx: z.number().min(0.0001).max(10000).multipleOf(0.0001),
 };
-export const movementSchema = z.discriminatedUnion("kind", [
-  z
-    .object({
-      ...fields,
-      kind: z.literal("service_income"),
-      clientId: z.string().uuid(),
-    })
-    .strict(),
-  z
-    .object({
-      ...fields,
-      kind: z.literal("expense"),
-      category: z.string().min(1).max(80),
-    })
-    .strict(),
-]);
+export const checkoutItemSchema = z
+  .object({
+    product: z.string().uuid(),
+    qty: z.number().int().positive().max(1000),
+    unitPrice: z.number().positive().max(9999999).multipleOf(0.01),
+  })
+  .strict();
+export type CheckoutItem = z.infer<typeof checkoutItemSchema>;
+const toCents = (value: number) => Math.round(value * 100);
+export const movementSchema = z
+  .discriminatedUnion("kind", [
+    z
+      .object({
+        ...fields,
+        // En un cobro combinado, este importe es solo la parte de servicio.
+        // Puede ser cero únicamente cuando hay productos para vender.
+        amount: z.number().nonnegative().max(99999999).multipleOf(0.01),
+        kind: z.literal("service_income"),
+        clientId: z.string().uuid(),
+        items: z.array(checkoutItemSchema).max(50).default([]),
+      })
+      .strict(),
+    z
+      .object({
+        ...fields,
+        kind: z.literal("expense"),
+        category: z.string().min(1).max(80),
+      })
+      .strict(),
+  ])
+  .superRefine((movement, ctx) => {
+    if (movement.kind !== "service_income") return;
+    const products = new Set<string>();
+    let productsTotalCents = 0;
+    for (const item of movement.items) {
+      if (products.has(item.product)) {
+        ctx.addIssue({
+          code: "custom",
+          message: "DUPLICATE_CHECKOUT_PRODUCT",
+          path: ["items"],
+        });
+        return;
+      }
+      products.add(item.product);
+      productsTotalCents += toCents(item.unitPrice) * item.qty;
+    }
+    if (movement.items.length === 0 && movement.amount <= 0) {
+      ctx.addIssue({
+        code: "custom",
+        message: "EMPTY_SERVICE_MOVEMENT",
+        path: ["amount"],
+      });
+    }
+    if (movement.items.length > 0 && movement.currency !== "NIO") {
+      ctx.addIssue({
+        code: "custom",
+        message: "PRODUCTS_REQUIRE_NIO",
+        path: ["currency"],
+      });
+    }
+    if (toCents(movement.amount) + productsTotalCents > 9999999900) {
+      ctx.addIssue({
+        code: "custom",
+        message: "CHECKOUT_TOTAL_TOO_HIGH",
+        path: ["items"],
+      });
+    }
+  });
 export type MovementIntent = z.infer<typeof movementSchema>;
 export const financeOptionsSchema = z.object({
   protocol: z.literal("service-v1"),
@@ -83,4 +135,48 @@ export const receiptSchema = z.object({
 });
 export type MovementReceipt = z.infer<typeof receiptSchema>;
 
-export const movementResultSchema = z.object({ id: z.string().uuid() });
+const resultMoney = z.number().finite().nonnegative().max(99999999).multipleOf(0.01);
+export const movementResultSchema = z
+  .object({
+    id: z.string().uuid(),
+    transactionIds: z.array(z.string().uuid()).min(1).max(51).optional(),
+    receipts: z
+      .array(
+        z.object({
+          id: z.string().uuid(),
+          label: z.string().trim().min(2).max(200),
+          amount: resultMoney.refine((value) => value > 0),
+        }),
+      )
+      .min(1)
+      .max(51)
+      .optional(),
+    serviceTransactionId: z.string().uuid().nullable().optional(),
+    serviceAmount: resultMoney.optional(),
+    productsTotal: resultMoney.optional(),
+    total: resultMoney.refine((value) => value > 0).optional(),
+    currency: z.enum(["NIO", "USD"]).optional(),
+  })
+  .superRefine((result, ctx) => {
+    if (
+      result.serviceAmount !== undefined &&
+      result.productsTotal !== undefined &&
+      result.total !== undefined &&
+      toCents(result.serviceAmount) + toCents(result.productsTotal) !==
+        toCents(result.total)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: "CHECKOUT_RESULT_TOTAL_MISMATCH",
+        path: ["total"],
+      });
+    }
+    if (result.receipts && !result.receipts.some((r) => r.id === result.id)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "CHECKOUT_PRIMARY_RECEIPT_MISSING",
+        path: ["receipts"],
+      });
+    }
+  });
+export type MovementResult = z.infer<typeof movementResultSchema>;

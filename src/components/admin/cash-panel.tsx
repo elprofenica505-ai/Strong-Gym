@@ -362,8 +362,9 @@ export function CashPanel({
             Cobrar o registrar entrada · buscar cliente
           </span>
           <span className="mt-1 block text-sm leading-relaxed text-white/85">
-            Buscás o creás la ficha, cobrás el pase del día u otro servicio y,
-            si corresponde, registrás la entrada. Sin celular obligatorio.
+            Buscás o creás la ficha, cobrás el pase del día u otro servicio,
+            agregás productos con stock si los lleva y, si corresponde,
+            registrás la entrada. Sin celular obligatorio.
           </span>
         </span>
         <ChevronRight
@@ -692,6 +693,11 @@ export function CashPanel({
                 }
               />
             ) : null}
+            <QuickLink
+              href={`/${locale}/panel/productos`}
+              label="Productos y stock"
+              hint="Crear productos, registrar compras y revisar existencias"
+            />
             <QuickLink
               href={`/${locale}/panel`}
               label="Volver al panel"

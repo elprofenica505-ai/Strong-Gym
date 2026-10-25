@@ -84,6 +84,23 @@ export const saleSchema = z.object({
   account: z.string().min(1).max(60),
 });
 
+/** Catálogo mínimo para vender: nunca expone costo ni ganancia. */
+export const saleCatalogProductSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(2).max(120),
+  category: z.string().trim().min(2).max(60),
+  subcategory: z.string().trim().min(1).max(60).nullable(),
+  attributes: z.record(z.string().max(40), z.string().max(120)).default({}),
+  price: money.refine((value) => value > 0, "El precio debe ser mayor que cero."),
+  stock: z.number().int().positive().max(100000),
+  low_stock: z.boolean(),
+});
+export type SaleCatalogProduct = z.infer<typeof saleCatalogProductSchema>;
+export const saleCatalogSchema = z.object({
+  products: z.array(saleCatalogProductSchema).max(5000),
+});
+export type SaleCatalog = z.infer<typeof saleCatalogSchema>;
+
 export const adjustSchema = z.object({
   product: z.string().uuid(),
   qty: z.number().int().min(-100000).max(100000).refine((n) => n !== 0, "Escribí una cantidad distinta de cero."),

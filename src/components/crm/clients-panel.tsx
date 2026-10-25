@@ -729,7 +729,8 @@ export function ClientsPanel({
                   </strong>{" "}
                   El monto de {formatMoney(selectedQuickTariff.priceNio, "NIO")}{" "}
                   y el concepto ya están cargados; elegí método, cuenta y tasa
-                  como siempre.
+                  como siempre. También podés agregar productos con stock al
+                  mismo total antes de confirmar.
                 </p>
                 {!selectedQuickTariff.isDayPass && (
                   <p className="text-fog">
@@ -780,14 +781,23 @@ export function ClientsPanel({
                     ? `quick-tariff:${selectedQuickTariff.plan.slug ?? selectedQuickTariff.plan.id}:${quickTariffPreset.stamp}`
                     : "standard"
                 }
-                onSuccess={async () => {
+                onSuccess={async (_receiptId, result) => {
                   if (!quickTariffArmed) return;
                   const clientId = detail.client.id;
+                  const includedService = result.serviceAmount !== 0;
                   const shouldRegisterEntry =
-                    registerEntryAfterQuickTariff;
+                    registerEntryAfterQuickTariff && includedService;
                   setQuickTariffPreset(null);
-                  if (shouldRegisterEntry)
+                  if (shouldRegisterEntry) {
                     await registerEntry(clientId, true);
+                  } else if (registerEntryAfterQuickTariff && !includedService) {
+                    setEntryFeedback({
+                      clientId,
+                      failed: true,
+                      message:
+                        "Venta de productos confirmada. No se registró la entrada porque este cobro no incluyó el servicio; no repitas la venta.",
+                    });
+                  }
                 }}
               />
             ) : (

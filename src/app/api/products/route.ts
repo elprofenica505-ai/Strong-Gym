@@ -9,6 +9,7 @@ import {
   actionSchema,
   productFailureMessage,
   profitOf,
+  saleCatalogSchema,
   type ProductAction,
 } from "@/lib/products/rules";
 
@@ -50,11 +51,22 @@ async function context() {
       };
 }
 
-/** Lectura: productos, cuentas NIO, métodos NIO y clientes activos para la venta. */
-export async function GET() {
+/** Lectura: gestión completa o, con catalog=sale, solo productos vendibles. */
+export async function GET(request: Request) {
   try {
     const ctx = await context();
     if (!ctx.db) return ctx.response;
+    if (new URL(request.url).searchParams.get("catalog") === "sale") {
+      const { data, error } = await ctx.db
+        .rpc("product_sale_catalog")
+        .abortSignal(AbortSignal.timeout(15000));
+      if (error)
+        return reply({ error: productFailureMessage(undefined) }, 503);
+      const parsed = saleCatalogSchema.safeParse(data);
+      return parsed.success
+        ? reply(parsed.data)
+        : reply({ error: productFailureMessage(undefined) }, 503);
+    }
     const [products, options, clients] = await Promise.all([
       ctx.db.rpc("product_list").abortSignal(AbortSignal.timeout(15000)),
       ctx.db.rpc("finance_options").abortSignal(AbortSignal.timeout(15000)),

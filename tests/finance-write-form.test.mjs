@@ -28,6 +28,22 @@ const { MovementForm } = await createLoader({
   "next/navigation": "export const useRouter=()=>({refresh(){}});",
 })("components/admin/movement-form.tsx");
 const id = "11111111-1111-4111-8111-111111111111";
+const productId = "22222222-2222-4222-8222-222222222222";
+const productReceiptId = "33333333-3333-4333-8333-333333333333";
+const waterCatalog = {
+  products: [
+    {
+      id: productId,
+      name: "Agua EJEMPLO",
+      category: "Bebidas",
+      subcategory: null,
+      attributes: { Tamaño: "600 ml" },
+      price: 15,
+      stock: 3,
+      low_stock: false,
+    },
+  ],
+};
 const options = {
   protocol: "service-v1",
   writes_enabled: true,
@@ -63,7 +79,12 @@ const pending = {
   concept: "Gasto EJEMPLO",
   category: "cat",
 };
-function mount(handler = () => json({ id }), opts = options, props = {}) {
+function mount(
+  handler = () => json({ id }),
+  opts = options,
+  props = {},
+  catalog = { products: [] },
+) {
   const posts = [];
   globalThis.fetch = async (url, init = {}) => {
     if (init.method === "POST") {
@@ -71,6 +92,7 @@ function mount(handler = () => json({ id }), opts = options, props = {}) {
       posts.push(body);
       return handler(body);
     }
+    if (String(url).includes("catalog=sale")) return json(catalog);
     return json(String(url).includes("history=") ? [] : opts);
   };
   window.confirm = () => true;
@@ -208,6 +230,122 @@ test("cobro por servicio advierte que no paga deuda ni crea crédito", async () 
     ),
   );
   assert.equal(screen.queryByLabelText("Categoría"), null);
+});
+
+test("servicio y productos se confirman como un solo intento con total y comprobantes por línea", async () => {
+  const results = [];
+  const checkoutResult = {
+    id,
+    transactionIds: [id, productReceiptId],
+    receipts: [
+      { id, label: "Servicio EJEMPLO", amount: 40 },
+      { id: productReceiptId, label: "Venta: Agua EJEMPLO x2", amount: 30 },
+    ],
+    serviceTransactionId: id,
+    serviceAmount: 40,
+    productsTotal: 30,
+    total: 70,
+    currency: "NIO",
+  };
+  const { posts } = mount(
+    () => json(checkoutResult),
+    options,
+    {
+      kind: "service_income",
+      clientId: id,
+      onSuccess: async (receiptId, result) => {
+        results.push({ receiptId, result });
+      },
+    },
+    waterCatalog,
+  );
+  const submit = await screen.findByRole("button", {
+    name: "Confirmar cobro por servicio",
+  });
+  await waitFor(() => assert.equal(submit.disabled, false));
+  fireEvent.change(screen.getByLabelText("Cantidad de Agua EJEMPLO"), {
+    target: { value: "2" },
+  });
+  assert.ok(await screen.findByText(/Total a cobrar:.*C\$30/));
+  for (const [name, value] of [
+    ["Monto", "40"],
+    ["Método", "cash"],
+    ["Cuenta", "nio"],
+    ["Tasa NIO por 1 USD", "36.7244"],
+    ["Concepto", "Servicio EJEMPLO"],
+  ])
+    fireEvent.change(screen.getByLabelText(name), { target: { value } });
+  assert.ok(await screen.findByText(/Total a cobrar:.*C\$70/));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Confirmar cobro y productos" }),
+  );
+  assert.ok(
+    await screen.findByRole("link", { name: /Venta: Agua EJEMPLO x2/ }),
+  );
+  assert.equal(posts.length, 1);
+  assert.equal(posts[0].amount, 40);
+  assert.deepEqual(posts[0].items, [
+    { product: productId, qty: 2, unitPrice: 15 },
+  ]);
+  assert.deepEqual(results, [{ receiptId: id, result: checkoutResult }]);
+});
+
+test("solo productos: monto y concepto de servicio pueden quedar vacíos", async () => {
+  const checkoutResult = {
+    id: productReceiptId,
+    transactionIds: [productReceiptId],
+    receipts: [
+      { id: productReceiptId, label: "Venta: Agua EJEMPLO x1", amount: 15 },
+    ],
+    serviceTransactionId: null,
+    serviceAmount: 0,
+    productsTotal: 15,
+    total: 15,
+    currency: "NIO",
+  };
+  const { posts } = mount(
+    () => json(checkoutResult),
+    options,
+    { kind: "service_income", clientId: id },
+    waterCatalog,
+  );
+  await screen.findByLabelText("Cantidad de Agua EJEMPLO");
+  fireEvent.change(screen.getByLabelText("Cantidad de Agua EJEMPLO"), {
+    target: { value: "1" },
+  });
+  for (const [name, value] of [
+    ["Método", "cash"],
+    ["Cuenta", "nio"],
+    ["Tasa NIO por 1 USD", "36.7244"],
+  ])
+    fireEvent.change(screen.getByLabelText(name), { target: { value } });
+  fireEvent.click(
+    screen.getByRole("button", { name: "Confirmar venta de productos" }),
+  );
+  await screen.findByText(/Movimiento confirmado/);
+  assert.equal(posts.length, 1);
+  assert.equal(posts[0].amount, 0);
+  assert.equal(posts[0].concept, "Venta de productos");
+  assert.deepEqual(posts[0].items, [
+    { product: productId, qty: 1, unitPrice: 15 },
+  ]);
+});
+
+test("si el catálogo falla, el cobro solo por servicio sigue disponible", async () => {
+  mount(
+    undefined,
+    options,
+    { kind: "service_income", clientId: id },
+    { productos: "respuesta inválida" },
+  );
+  assert.ok(await screen.findByText(/No pudimos cargar los productos/));
+  await waitFor(() =>
+    assert.equal(
+      screen.getByRole("button", { name: "Confirmar cobro por servicio" })
+        .disabled,
+      false,
+    ),
+  );
 });
 
 test("preset opcional precarga monto y concepto; onSuccess solo corre tras confirmar", async () => {

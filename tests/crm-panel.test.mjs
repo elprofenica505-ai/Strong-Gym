@@ -31,11 +31,13 @@ const { ClientsPanel } = await createLoader({
 })("components/crm/clients-panel.tsx");
 const originalFetch = globalThis.fetch;
 const originalConfirm = window.confirm;
+let saleCatalogResponse = { products: [] };
 afterEach(() => {
   cleanup();
   globalThis.fetch = originalFetch;
   sessionStorage.clear();
   window.confirm = originalConfirm;
+  saleCatalogResponse = { products: [] };
 });
 const id = "11111111-1111-4111-8111-111111111111",
   other = "22222222-2222-4222-8222-222222222222";
@@ -87,6 +89,7 @@ function setup(
       body: init.body ? JSON.parse(init.body) : null,
     });
     const u = new URL(url, "https://strong.test");
+    if (u.pathname === "/api/products") return json(saleCatalogResponse);
     if (u.pathname === "/api/admin/finance") return handler(u, init);
     if (u.searchParams.get("mode") === "options") return optionsResponse();
     if (!u.searchParams.has("id") && init.method !== "POST")
@@ -572,6 +575,8 @@ test("ficha bancaria usa el nuevo protocolo de cobro sin depender del escritor l
 });
 
 const quickTariffReceiptId = "44444444-4444-4444-8444-444444444444";
+const checkoutProductId = "55555555-5555-4555-8555-555555555555";
+const checkoutProductReceiptId = "66666666-6666-4666-8666-666666666666";
 const quickTariffPlans = [
   {
     id: "pln_boxeo",
@@ -630,7 +635,40 @@ function setupQuickTariffs(checkIn, plans = quickTariffPlans) {
   return setup(
     (url, init) => {
       if (url.pathname === "/api/admin/finance") {
-        if (init.method === "POST") return json({ id: quickTariffReceiptId });
+        if (init.method === "POST") {
+          const body = JSON.parse(init.body);
+          if (body.items?.length) {
+            const productsTotal = body.items.reduce(
+              (sum, item) => sum + item.qty * item.unitPrice,
+              0,
+            );
+            return json({
+              id: quickTariffReceiptId,
+              transactionIds: [
+                quickTariffReceiptId,
+                checkoutProductReceiptId,
+              ],
+              receipts: [
+                {
+                  id: quickTariffReceiptId,
+                  label: body.concept,
+                  amount: body.amount,
+                },
+                {
+                  id: checkoutProductReceiptId,
+                  label: "Venta: Agua EJEMPLO x2",
+                  amount: productsTotal,
+                },
+              ],
+              serviceTransactionId: quickTariffReceiptId,
+              serviceAmount: body.amount,
+              productsTotal,
+              total: body.amount + productsTotal,
+              currency: "NIO",
+            });
+          }
+          return json({ id: quickTariffReceiptId });
+        }
         return json(
           url.searchParams.has("history")
             ? []
@@ -718,6 +756,54 @@ test("pase del día precarga C$40 y registra la entrada solo tras confirmar el c
   assert.equal(dayPassCharges(calls)[0].body.clientId, id);
   assert.equal(dayPassCheckIns(calls).length, 1);
   assert.equal(dayPassCheckIns(calls)[0].body.id, id);
+});
+
+test("pase del día y productos se cobran en un solo intento antes de registrar la entrada", async () => {
+  saleCatalogResponse = {
+    products: [
+      {
+        id: checkoutProductId,
+        name: "Agua EJEMPLO",
+        category: "Bebidas",
+        subcategory: null,
+        attributes: {},
+        price: 20,
+        stock: 5,
+        low_stock: false,
+      },
+    ],
+  };
+  const calls = setupDayPass(() =>
+    json({ data: { already: false, id: token } }),
+  );
+  await open();
+  await heading();
+  fireEvent.click(
+    await screen.findByRole("button", { name: /Cobrar pase del día/ }),
+  );
+  fireEvent.change(await screen.findByLabelText("Cantidad de Agua EJEMPLO"), {
+    target: { value: "2" },
+  });
+  assert.ok(await screen.findByText(/Total a cobrar:.*C\$80/));
+  fireEvent.change(screen.getByLabelText("Método"), {
+    target: { value: "cash" },
+  });
+  fireEvent.change(screen.getByLabelText("Cuenta"), {
+    target: { value: "cash_nio" },
+  });
+  fireEvent.change(screen.getByLabelText("Tasa NIO por 1 USD"), {
+    target: { value: "36.7244" },
+  });
+  fireEvent.click(
+    screen.getByRole("button", { name: "Confirmar cobro y productos" }),
+  );
+  await screen.findByText("Cobro confirmado y entrada registrada.");
+  assert.equal(dayPassCharges(calls).length, 1);
+  assert.equal(dayPassCharges(calls)[0].body.amount, 40);
+  assert.deepEqual(dayPassCharges(calls)[0].body.items, [
+    { product: checkoutProductId, qty: 2, unitPrice: 20 },
+  ]);
+  assert.equal(dayPassCheckIns(calls).length, 1);
 });
 
 test("pase del día con entrada de hoy no duplica la visita", async () => {
