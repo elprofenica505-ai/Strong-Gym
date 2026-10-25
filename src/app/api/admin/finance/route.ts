@@ -6,6 +6,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import {
   financeOptionsSchema,
+  movementResultSchema,
   movementSchema,
   receiptSchema,
 } from "@/lib/finance/movements";
@@ -30,6 +31,19 @@ const messages: Record<string, string> = {
     "Este movimiento no tiene un comprobante del nuevo registro. No significa que no exista en el historial.",
   FINANCE_REVIEW_REQUIRED:
     "La escritura no está habilitada con esta configuración. Revisá permisos y disparadores; no se registró un movimiento nuevo por este rechazo.",
+  CLIENT_REQUIRED: "Elegí primero la ficha del cliente para registrar este cobro.",
+  INVALID_ITEMS:
+    "Revisá los productos y cantidades elegidos. No se registró el cobro.",
+  PRODUCT_NOT_FOUND:
+    "Uno de los productos elegidos ya no existe en el catálogo. Actualizá la lista; no se registró el cobro.",
+  PRODUCT_INACTIVE:
+    "Uno de los productos elegidos está inactivo. Actualizá la lista; no se registró el cobro.",
+  INVALID_PRODUCT_PRICE:
+    "Uno de los productos elegidos no tiene un precio válido. Corregilo en Productos y stock; no se registró el cobro.",
+  PRICE_CHANGED:
+    "El precio de un producto cambió mientras armabas el cobro. Revisá el total nuevo antes de confirmar; no se registró nada.",
+  SIN_STOCK:
+    "Ya no hay suficiente stock de uno de los productos. Revisá las cantidades; no se registró el cobro.",
 };
 function failure(error: { code?: string; message?: string }) {
   const code = /^[A-Z0-9]{5,12}$/.test(error.code ?? "")
@@ -175,6 +189,37 @@ export async function POST(request: Request) {
         422,
       );
     const d = parsed.data;
+    if (d.kind === "service_income" && d.items.length > 0) {
+      const { data, error } = await ctx.db
+        .rpc("finance_record_checkout", {
+          p_request: d.requestId,
+          p_client: d.clientId,
+          p_service_amount: d.amount,
+          p_service_concept: d.concept,
+          p_currency: d.currency,
+          p_method: d.method,
+          p_account: d.account,
+          p_fx: d.fx,
+          p_items: d.items.map((item) => ({
+            product: item.product,
+            qty: item.qty,
+            unit_price: item.unitPrice,
+          })),
+        })
+        .abortSignal(AbortSignal.timeout(25000));
+      if (error) return failure(error);
+      const result = movementResultSchema.safeParse(data);
+      return result.success
+        ? reply(result.data)
+        : reply(
+            {
+              error:
+                "No se pudo confirmar la referencia. Revisá el historial y conservá el mismo intento.",
+              code: "FIN_RESPONSE_INVALID",
+            },
+            503,
+          );
+    }
     const { data, error } = await ctx.db
       .rpc("finance_record_movement", {
         p_request: d.requestId,

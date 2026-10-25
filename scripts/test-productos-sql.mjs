@@ -439,4 +439,90 @@ ok('staffSave sobre menor no crea filas de plan', (await db.query('select count(
 ok('staffSave sin fecha no crea filas de plan', (await db.query('select count(*)::int as n from client_nutrition_plans where client_id=$1', [noBirthClient55])).rows[0].n === 0);
 ok('el personal sigue leyendo la edad del menor con nutrition_get', (await as(admin, 'aal2', 'select public.nutrition_get($1) as g', [minorClient]))[0].g.age_status === 'minor');
 
-console.log(`\n${checks} comprobaciones PASS (00042 productos, stock, ventas, categoría; 00043-00055 plan de nutrición, registro, edad, consentimiento, aprobación, edad calculada, personal, coaches, altura y menores en rutas del personal)`);
+// ===== 00059: cobro combinado de servicio y productos =====
+await db.exec(sql('supabase/migrations/00059_cobro_con_productos.sql'));
+ok('00059 se aplica sobre la cadena de productos sin error', true);
+
+const waterId = (await as(admin, 'aal2', "select public.product_save(null,'Agua EJEMPLO','Bebidas',null,'{}','activo',10,20,1,null) as id", []))[0].id;
+await as(admin, 'aal2', 'select public.product_stock_adjust($1,4,$2) as s', [waterId, 'existencia inicial de prueba']);
+ok('el agua de prueba queda con stock para el cobro combinado', (await stockOf(waterId)) === 4);
+
+const saleCatalog = (await as(cashier, 'aal2', 'select public.product_sale_catalog() as c'))[0].c;
+const catalogWater = saleCatalog.products.find((p) => p.id === waterId);
+ok('caja ve el catálogo de venta con precio y stock, sin costo ni ganancia',
+  !!catalogWater && Number(catalogWater.price) === 20 && catalogWater.stock === 4 &&
+  !('cost' in catalogWater) && !('profit' in catalogWater));
+ok('entrenador no ve el catálogo de venta', await denied(as(trainer, 'aal2', 'select public.product_sale_catalog()'), /AUTH/));
+ok('visitante no ejecuta el catálogo de venta', await denied(as(null, null, 'select public.product_sale_catalog()'), /42501|permission denied/));
+
+const checkout59 = (actor, request, serviceAmount, items, concept = 'Pase EJEMPLO', currency = 'NIO') => as(
+  actor,
+  'aal2',
+  'select public.finance_record_checkout($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb) as r',
+  [request, ana, serviceAmount, concept, currency, 'prueba-nio', 'prueba-nio', 36.7244, JSON.stringify(items)],
+);
+const creatineBefore59 = await stockOf(prodId);
+const waterBefore59 = await stockOf(waterId);
+const balanceBefore59 = await bal();
+const checkoutItems59 = [
+  { product: prodId, qty: 1, unit_price: 35 },
+  { product: waterId, qty: 2, unit_price: 20 },
+];
+const checkoutResult59 = (await checkout59(cashier, '66666666-6666-4666-8666-666666666666', 40, checkoutItems59))[0].r;
+ok('cobro combinado suma servicio y productos en la cuenta (40 + 35 + 40 = 115)',
+  Number(checkoutResult59.total) === 115 && (await bal()) === balanceBefore59 + 115);
+ok('cobro combinado baja el stock de cada producto una sola vez',
+  (await stockOf(prodId)) === creatineBefore59 - 1 && (await stockOf(waterId)) === waterBefore59 - 2);
+ok('cobro combinado devuelve comprobante del servicio y de cada producto',
+  checkoutResult59.transactionIds.length === 3 && checkoutResult59.receipts.length === 3 &&
+  checkoutResult59.serviceTransactionId === checkoutResult59.id);
+
+const checkoutRetry59 = (await checkout59(cashier, '66666666-6666-4666-8666-666666666666', 40, checkoutItems59))[0].r;
+ok('reintentar el mismo cobro combinado no duplica dinero ni stock',
+  JSON.stringify(checkoutRetry59.transactionIds) === JSON.stringify(checkoutResult59.transactionIds) &&
+  (await bal()) === balanceBefore59 + 115 &&
+  (await stockOf(prodId)) === creatineBefore59 - 1 &&
+  (await stockOf(waterId)) === waterBefore59 - 2);
+ok('la misma referencia con otro payload es conflicto',
+  await denied(checkout59(cashier, '66666666-6666-4666-8666-666666666666', 41, checkoutItems59), /REQUEST_CONFLICT/));
+
+const balanceBeforeShort59 = await bal();
+const creatineBeforeShort59 = await stockOf(prodId);
+const waterBeforeShort59 = await stockOf(waterId);
+ok('si falta stock de un producto, tampoco queda registrado el servicio',
+  await denied(checkout59(cashier, '77777777-7777-4777-8777-777777777777', 40, [
+    { product: prodId, qty: 1, unit_price: 35 },
+    { product: waterId, qty: 99, unit_price: 20 },
+  ]), /SIN_STOCK/) &&
+  (await bal()) === balanceBeforeShort59 &&
+  (await stockOf(prodId)) === creatineBeforeShort59 &&
+  (await stockOf(waterId)) === waterBeforeShort59);
+ok('si el precio cambió, el cobro combinado se rechaza sin mover dinero ni stock',
+  await denied(checkout59(cashier, '88888888-8888-4888-8888-888888888888', 0, [
+    { product: waterId, qty: 1, unit_price: 19 },
+  ], 'Venta de productos'), /PRICE_CHANGED/) &&
+  (await bal()) === balanceBeforeShort59 &&
+  (await stockOf(waterId)) === waterBeforeShort59);
+
+const productOnly59 = (await checkout59(cashier, '99999999-9999-4999-8999-999999999999', 0, [
+  { product: waterId, qty: 1, unit_price: 20 },
+], 'Venta de productos'))[0].r;
+ok('venta solo de productos no crea movimiento de servicio y sí baja stock',
+  productOnly59.serviceTransactionId === null && Number(productOnly59.total) === 20 &&
+  (await bal()) === balanceBeforeShort59 + 20 &&
+  (await stockOf(waterId)) === waterBeforeShort59 - 1);
+ok('los productos del cobro combinado solo se cobran en NIO',
+  await denied(checkout59(cashier, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 0, [
+    { product: waterId, qty: 1, unit_price: 20 },
+  ], 'Venta de productos', 'USD'), /INVALID_PAYMENT/));
+ok('entrenador no registra cobros combinados',
+  await denied(checkout59(trainer, 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 40, checkoutItems59), /AUTH/));
+ok('visitante no ejecuta el cobro combinado',
+  await denied(as(null, null, "select public.finance_record_checkout('cccccccc-cccc-4ccc-8ccc-cccccccccccc',$1,40,'Pase EJEMPLO','NIO','prueba-nio','prueba-nio',36.7244,'[]'::jsonb)", [ana]), /42501|permission denied/));
+ok('caja lee los grupos de cobro y entrenador no ve ninguno',
+  (await as(cashier, 'aal2', 'select count(*)::int as n from public.finance_checkout_groups'))[0].n >= 2 &&
+  (await as(trainer, 'aal2', 'select count(*)::int as n from public.finance_checkout_groups'))[0].n === 0);
+ok('caja no escribe directamente en los grupos de cobro',
+  await denied(as(cashier, 'aal2', "insert into public.finance_checkout_groups(request_id, client_id, payload, result) values ('dddddddd-dddd-4ddd-8ddd-dddddddddddd',$1,'{}','{}')", [ana]), /42501|permission denied/));
+
+console.log(`\n${checks} comprobaciones PASS (00042 productos, stock, ventas, categoría; 00043-00055 plan de nutrición, registro, edad, consentimiento, aprobación, edad calculada, personal, coaches, altura y menores en rutas del personal; 00059 cobro combinado con productos)`);

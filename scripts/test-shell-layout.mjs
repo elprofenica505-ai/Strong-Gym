@@ -160,11 +160,14 @@ for (const variant of ["ejemplo", "vacio", "importes-largos"]) {
   };
   const debtExample={clientName:names,protocol:'debt-v1',clientId:'11111111-1111-4111-8111-111111111111',profileId:null,source:'client',
     writesEnabled:true,canOpen:true,balances:empty?null:{credit_nio:0,credit_usd:0,debt_nio:large?9999999999.99:100,debt_usd:20},entries:[]};
+  const saleCatalogExample={products:empty?[]:[{id:'44444444-4444-4444-8444-444444444444',name:names,
+    category:large?names:'Bebidas EJEMPLO',subcategory:large?names:null,
+    attributes:{Detalle:names},price:large?9999999:25,stock:large?100000:5,low_stock:true}]};
   const load = createLoader({
     "server-only": "export {};",
     "@/lib/supabase/client": "export const getSupabaseBrowserClient=()=>null;",
     "@/lib/supabase/server": `export const getSupabaseServerClient=async()=>({rpc(){return {abortSignal:async()=>({data:globalThis.__layoutReceipt,error:null})}}});`,
-    "@/components/crm/use-crm-resource": `export const useCrmResource=(url)=>({loading:false,error:'',data:url.includes('/api/admin/debts')?${JSON.stringify(debtExample)}:url.includes('history=')?[]:${JSON.stringify(financeOptions)}});`,
+    "@/components/crm/use-crm-resource": `export const useCrmResource=(url)=>({loading:false,error:'',data:(url||'').includes('catalog=sale')?${JSON.stringify(saleCatalogExample)}:(url||'').includes('/api/admin/debts')?${JSON.stringify(debtExample)}:(url||'').includes('history=')?[]:${JSON.stringify(financeOptions)}});`,
     "@/lib/supabase/env": "export const isSupabaseConfigured=true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;",
     "@/lib/data/queries": `export const getCurrentUser=async()=>({role:'admin',mfa:'ok'});export const getCashierPermissions=async()=>({dailyClose:true,monthlyResult:true,charts:true,accountBalances:true,expenses:true,receivables:true});export const getMonthlyPnl=async()=>${JSON.stringify(variantMonthly)};export const getPaymentMethodsBreakdown=async()=>${JSON.stringify(variantMethods)};export const getCashSummary=async()=>(${JSON.stringify(variantSummary)});export const getAccounts=async()=>${JSON.stringify(variantAccounts)};export const getRecentTransactions=async()=>${JSON.stringify(variantRecent)};export const getAccountsReceivable=async()=>${JSON.stringify(debts)};export const getExpenseCategories=async()=>${JSON.stringify(categories)};export const getDailyCash=async()=>[];export const getPaymentMethods=async()=>[];`,
     "@/components/providers/dictionary-provider": `export const useDictionary=()=>({locale:'es',dict:${JSON.stringify(dict)}});`,

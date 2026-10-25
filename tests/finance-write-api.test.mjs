@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createLoader } from "./helpers/react-loader.mjs";
 const id = "11111111-1111-4111-8111-111111111111";
+const productId = "22222222-2222-4222-8222-222222222222";
+const productReceiptId = "33333333-3333-4333-8333-333333333333";
 const intent = {
   kind: "service_income",
   clientId: id,
@@ -84,6 +86,108 @@ for (const role of ["admin", "cashier"])
       },
     ]);
   });
+test("cobro con productos usa el RPC atómico y devuelve todos los comprobantes", async () => {
+  const checkoutResult = {
+    id,
+    transactionIds: [id, productReceiptId],
+    receipts: [
+      { id, label: "Servicio EJEMPLO", amount: 100 },
+      { id: productReceiptId, label: "Venta: Agua EJEMPLO x2", amount: 30 },
+    ],
+    serviceTransactionId: id,
+    serviceAmount: 100,
+    productsTotal: 30,
+    total: 130,
+    currency: "NIO",
+  };
+  setup("cashier", { data: checkoutResult, error: null });
+  const response = await POST(
+    req({
+      ...intent,
+      items: [{ product: productId, qty: 2, unitPrice: 15 }],
+    }),
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), checkoutResult);
+  assert.deepEqual(calls, [
+    {
+      name: "finance_record_checkout",
+      args: {
+        p_request: id,
+        p_client: id,
+        p_service_amount: 100,
+        p_service_concept: "Servicio EJEMPLO",
+        p_currency: "NIO",
+        p_method: "efectivo",
+        p_account: "caja-nio",
+        p_fx: 36.7244,
+        p_items: [{ product: productId, qty: 2, unit_price: 15 }],
+      },
+    },
+  ]);
+});
+
+test("venta solo de productos admite servicio en cero, pero no un cobro vacío o en USD", async () => {
+  const checkoutResult = {
+    id: productReceiptId,
+    transactionIds: [productReceiptId],
+    receipts: [
+      { id: productReceiptId, label: "Venta: Agua EJEMPLO x1", amount: 15 },
+    ],
+    serviceTransactionId: null,
+    serviceAmount: 0,
+    productsTotal: 15,
+    total: 15,
+    currency: "NIO",
+  };
+  setup("cashier", { data: checkoutResult, error: null });
+  const productOnly = {
+    ...intent,
+    amount: 0,
+    concept: "Venta de productos",
+    items: [{ product: productId, qty: 1, unitPrice: 15 }],
+  };
+  assert.equal((await POST(req(productOnly))).status, 200);
+  assert.equal(calls[0].name, "finance_record_checkout");
+
+  for (const body of [
+    { ...intent, amount: 0 },
+    { ...productOnly, currency: "USD" },
+    {
+      ...productOnly,
+      items: [
+        { product: productId, qty: 1, unitPrice: 15 },
+        { product: productId, qty: 1, unitPrice: 15 },
+      ],
+    },
+    {
+      ...productOnly,
+      items: [{ product: productId, qty: 0, unitPrice: 15 }],
+    },
+  ]) {
+    setup();
+    assert.equal((await POST(req(body))).status, 422);
+    assert.equal(calls.length, 0);
+  }
+});
+
+test("sin stock en el cobro combinado devuelve un error claro sin simular éxito", async () => {
+  setup("cashier", {
+    data: null,
+    error: { message: "SIN_STOCK", code: "P0001" },
+  });
+  const response = await POST(
+    req({
+      ...intent,
+      items: [{ product: productId, qty: 1, unitPrice: 15 }],
+    }),
+  );
+  assert.equal(response.status, 422);
+  const body = await response.json();
+  assert.match(body.error, /suficiente stock/);
+  assert.ok(!body.id);
+});
+
 test("gasto no necesita cliente, categoría sí; no acepta actor/estado manipulados", async () => {
   setup();
   const { clientId, ...body } = intent;

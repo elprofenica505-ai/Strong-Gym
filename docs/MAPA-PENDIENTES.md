@@ -6,7 +6,7 @@ Creado el 23 de octubre de 2026 para reunir en un solo lugar lo que quedó a med
 
 | Tema | Dónde está | Estado de la fuente |
 |---|---|---|
-| Ruta general y etapas 1 a 6 | `docs/PENDIENTES-ACTUALES.md` | **La más completa.** Última sección con fecha: 24 oct (foto actual al final). |
+| Ruta general y etapas 1 a 6 | `docs/PENDIENTES-ACTUALES.md` | **La más completa.** Las actualizaciones más recientes están al final. |
 | Lista corta para el dueño | `docs/LISTA-PENDIENTES-DUENO.md` | **Retirada** el 23 oct. Apunta a las dos fuentes vigentes. |
 | Inventario por código de función (B01, ACC05, CRM08, FIN04…) | `docs/INVENTARIO-FUNCIONAL.md` | Útil para estado de cada función. Revisar contra PR fusionados. |
 | Seguridad: decisiones y pendientes de información | `docs/DECISIONES-SEGURIDAD.md` | Vigente. Tiene la sección «Pendientes de información». |
@@ -25,18 +25,18 @@ Creado el 23 de octubre de 2026 para reunir en un solo lugar lo que quedó a med
 
 ## 2. SQL: fuente única
 
-- `supabase/migrations/`: **única fuente de migraciones**, de la **00001** a la **00058**. Las 00031 a 00049 estaban antes en `docs/SQL-PENDIENTE/` y se movieron aquí el 23 de octubre, sin cambiar su contenido.
+- `supabase/migrations/`: **única fuente de migraciones**, de la **00001** a la **00059**. Las 00031 a 00049 estaban antes en `docs/SQL-PENDIENTE/` y se movieron aquí el 23 de octubre, sin cambiar su contenido.
 - `supabase/*.sql` (SETUP, ACTUALIZAR, FASE2, etc.): archivos antiguos para pegar a mano. No son la fuente de verdad.
 
-Estado en Supabase (verificado tras aplicar la 00058):
-- **Aplicadas y comprobadas en la base:** 00031 y 00032 (`is_staff` exige aal2), 00033 y 00034 (`is_admin`, `admin_set_role`, `role_changes`), 00035 (`trainer_client_access`), 00036, de la 00037 a la 00048 según el historial de Supabase, y **00049** (tabla de personal, funciones de baja y reactivación). Después: 00050 y 00051 (vista pública de entrenadores), 00052 (altura en ficha), 00053 (corrección de altura solo admin), 00054 (`ficha_height_cm` en `my_progress`), 00055 (menores bloqueados en guardar/aprobar por el personal), 00056 (permisos separados de caja en `staff_permissions`, con los cinco nuevos apagados), 00057 (`plans.price_nio` para la tarifa en córdobas del pase del día, inicial C$40) y 00058 (periodo `fortnight`, Semana C$150, Quincena C$280 y Mes C$560 de pesas y máquinas, sin tocar Boxeo ni `plans.price` en USD); la última del historial remoto es `tarifas_gimnasio_nio` (00058, versión remota `20261025061632`).
-- **Pendiente:** ninguna migración está lista para aplicar; el siguiente número libre es 00059.
+Estado en Supabase (verificado tras aplicar la 00059):
+- **Aplicadas y comprobadas en la base:** 00031 y 00032 (`is_staff` exige aal2), 00033 y 00034 (`is_admin`, `admin_set_role`, `role_changes`), 00035 (`trainer_client_access`), 00036, de la 00037 a la 00048 según el historial de Supabase, y **00049** (tabla de personal, funciones de baja y reactivación). Después: 00050 y 00051 (vista pública de entrenadores), 00052 (altura en ficha), 00053 (corrección de altura solo admin), 00054 (`ficha_height_cm` en `my_progress`), 00055 (menores bloqueados en guardar/aprobar por el personal), 00056 (permisos separados de caja en `staff_permissions`, con los cinco nuevos apagados), 00057 (`plans.price_nio` para la tarifa en córdobas del pase del día, inicial C$40), 00058 (periodo `fortnight`, Semana C$150, Quincena C$280 y Mes C$560 de pesas y máquinas, sin tocar Boxeo ni `plans.price` en USD) y 00059 (`finance_record_checkout` y catálogo de venta sin costo/ganancia para cobrar servicio y productos en una sola transacción); la última del historial remoto es `cobro_con_productos` (00059, versión remota `20261025202029`).
+- **Pendiente:** ninguna migración está lista para aplicar; el siguiente número libre es 00060.
 - **Advertencia:** la 00049 aparece aplicada, pero no en el historial de migraciones de Supabase. Se registró a mano. No vuelvas a ejecutarla.
 
 ## 3. Ramas de Git
 
 Verificado con el historial completo del repositorio:
-- Antes de la tanda de tarifas completas, los PR #1 a #45 ya estaban fusionados en `main` (`3d5317d`). Esta tanda se preparó en `arena/ce8889f6-strong-gym`.
+- Antes de la venta integrada de productos, los PR #1 a #47 ya estaban fusionados en `main` (`5286f45`). Esta tanda se preparó en `arena/730a1319-strong-gym`.
 - Casi todas las ramas `arena/*` ya están contenidas en `main`. No se perdió trabajo en ellas.
 - La rama `arena/85c54d7d-strong-gym` se integró en esta rama (solo el archivo de la 00031). Su resto ya está en `main`.
 
@@ -59,7 +59,8 @@ Para el detalle, usa la fuente indicada en la sección 1.
 - Roles de caja y entrenador, fase C: sin empezar. Vista «Mis clientes» probada con cuenta real de entrenador el 23 oct 2026 (rol, MFA, asignación, pedido, aprobación, revocación y reasignación OK). Decisión: un cliente puede tener dos o más entrenadores (ver `docs/ROLES-MIGRACION-PLAN.md`).
 
 **Operación diaria**
-- Tarifas de pesas y máquinas: NIO administrables por Día C$40, Semana C$150, Quincena C$280 y Mes C$560 (00057–00058), públicas en la web y con cobro rápido en la ficha; la entrada opcional solo se registra tras confirmar el pago. Boxeo queda aparte en US$20. Cobrar Semana, Quincena o Mes todavía no activa vigencia. El usuario ya vio el flujo en el celular y pidió botones con aspecto uniforme; falta confirmar ese ajuste tras publicarlo y completar la prueba guiada, sin cobros ficticios en producción.
+- Tarifas de pesas y máquinas: NIO administrables por Día C$40, Semana C$150, Quincena C$280 y Mes C$560 (00057–00058), públicas en la web y con cobro rápido en la ficha; la entrada opcional solo se registra tras confirmar el pago. Boxeo queda aparte en US$20. Cobrar Semana, Quincena o Mes todavía no activa vigencia. El usuario confirmó el ajuste visual de botones del PR #47 («Listo todo pasó las pruebas»).
+- Venta de productos en recepción (00059): desde la ficha se puede cobrar servicio + productos o solo productos en NIO, con subtotales, total, comprobantes por línea y baja de stock en la misma transacción. No hay venta anónima: primero se busca o crea la ficha. Producción aún tiene 0 productos cargados; falta que el gimnasio cargue productos y existencias reales para la prueba guiada, sin crear ventas ficticias.
 - Planes y vigencias generales, reservas y cupos, mensajes leídos y disciplinas, QR en dispositivo real, hora de Managua en páginas abiertas, asistencia en Mi cuenta, categoría del cliente: pendientes.
 
 **Finanzas**
