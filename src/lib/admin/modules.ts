@@ -75,12 +75,13 @@ export const PANEL_MODULES: PanelModule[] = [
   {
     id: "administracion",
     label: "Administración",
-    description: "Personal y roles, importación, herramientas y guía de uso.",
+    description: "Personal y roles, tarifas, importación, herramientas y guía de uso.",
     href: "/panel/administracion",
     adminOnly: true,
     children: [
       { id: "roles", label: "Personal y roles", href: "/panel/administracion/roles", adminOnly: true },
       { id: "entrenadores", label: "Entrenadores y accesos", href: "/panel/administracion/entrenadores", adminOnly: true },
+      { id: "tarifas", label: "Tarifas", href: "/panel/administracion/tarifas", adminOnly: true },
       { id: "importar", label: "Importar clientes", href: "/panel/importar", adminOnly: true },
       { id: "herramientas", label: "Herramientas", href: "/panel/herramientas", adminOnly: true },
       { id: "ayuda", label: "Guía de uso", href: "/panel/ayuda", adminOnly: true },

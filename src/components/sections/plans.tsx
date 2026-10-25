@@ -5,6 +5,7 @@ import { getDictionary } from "@/i18n/dictionaries";
 import type { Locale } from "@/i18n/config";
 import { formatPrice, whatsappLink } from "@/config/site";
 import { getPlans } from "@/lib/data/queries";
+import { formatMoney } from "@/lib/finance/format-money";
 import { Section, SectionHeading } from "@/components/ui/section";
 import { Reveal } from "@/components/ui/reveal";
 import { ButtonLink } from "@/components/ui/button";
@@ -43,7 +44,23 @@ export async function Plans({ locale }: { locale: Locale }) {
           const features =
             locale === "es" ? plan.features_es : plan.features_en;
 
-          const price = formatPrice(plan.price);
+          // La tarifa NIO está separada del precio histórico en USD. Si un
+          // plan trae una tarifa válida en córdobas, esa es la que se publica.
+          const nioPrice =
+            plan.price_nio === null || plan.price_nio === undefined
+              ? null
+              : Number(plan.price_nio);
+          const price =
+            nioPrice !== null && Number.isFinite(nioPrice) && nioPrice > 0
+              ? formatMoney(nioPrice, "NIO")
+              : formatPrice(plan.price);
+          const visibleFeatures = price
+            ? features.filter(
+                (feature) =>
+                  feature !== "Consultá el precio por WhatsApp" &&
+                  feature !== "Ask for the price on WhatsApp",
+              )
+            : features;
           const period =
             plan.period === "session" ? dict.plans.session : dict.plans.month;
 
@@ -90,7 +107,7 @@ export async function Plans({ locale }: { locale: Locale }) {
                 </p>
 
                 <ul className="mt-6 flex flex-1 flex-col gap-3 border-t border-line pt-6">
-                  {features.map((feature) => (
+                  {visibleFeatures.map((feature) => (
                     <li key={feature} className="flex items-start gap-2.5">
                       <Check
                         className="mt-0.5 size-4 shrink-0 text-brand"

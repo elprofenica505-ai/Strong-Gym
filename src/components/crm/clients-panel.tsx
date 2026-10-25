@@ -15,6 +15,7 @@ import { crmActionSchema } from "@/lib/crm/schemas";
 import { ClientCard } from "./client-card";
 import { QrScanner } from "./qr-scanner";
 import { MovementForm } from "@/components/admin/movement-form";
+import { formatMoney } from "@/lib/finance/format-money";
 import { crmRequest } from "@/lib/crm/request";
 import { DebtForm } from "./debt-form";
 import { ClientFinanceSummary, ClientIncomeHistory } from "./client-finance";
@@ -93,6 +94,12 @@ export function ClientsPanel({
     message: string;
     failed: boolean;
   } | null>(null);
+  const [dayPassPreset, setDayPassPreset] = useState<{
+    clientId: string;
+    stamp: number;
+  } | null>(null);
+  const [registerEntryAfterDayPass, setRegisterEntryAfterDayPass] =
+    useState(true);
   const [busy, setBusy] = useState(false);
   const [detailAttempt, setDetailAttempt] = useState(0);
   const [optionsAttempt, setOptionsAttempt] = useState(0);
@@ -127,8 +134,31 @@ export function ClientsPanel({
     document.getElementById("ficha-cliente")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
   }, [detailId]);
   const detailBusy = busy || detailResource.loading || !!detailResource.error;
+  const validDayPassPrice = (plan: CrmOptions["plans"][number]) => {
+    const price = Number(plan.price_nio);
+    return Number.isFinite(price) && price > 0 ? price : null;
+  };
+  const dayPassPlan =
+    options.finance_layout === "bank_accounts_split"
+      ? (options.plans.find(
+          (plan) =>
+            plan.slug === "pase-del-dia" && validDayPassPrice(plan) !== null,
+        ) ??
+        options.plans.find(
+          (plan) =>
+            plan.period === "session" && validDayPassPrice(plan) !== null,
+        ))
+      : undefined;
+  const dayPassPrice = dayPassPlan ? validDayPassPrice(dayPassPlan) : null;
+  const dayPassArmed =
+    !!detail &&
+    !!dayPassPlan &&
+    dayPassPrice !== null &&
+    dayPassPreset?.clientId === detail.client.id;
   function select(id: string, token: string | null = null) {
     setEntryFeedback(null);
+    setDayPassPreset(null);
+    setRegisterEntryAfterDayPass(true);
     setSelected(id);
     setRevision((n) => n + 1);
     setScanToken(token);
@@ -166,6 +196,50 @@ export function ClientsPanel({
       token,
     });
     select(result.data, token);
+  }
+  async function registerEntry(clientId: string, afterPayment = false) {
+    setEntryFeedback({
+      clientId,
+      message: afterPayment
+        ? "Cobro confirmado. Registrando entrada…"
+        : "Confirmando entrada…",
+      failed: false,
+    });
+    try {
+      const r = (await action({
+        action: "check-in",
+        id: clientId,
+        source: scanToken ? "qr" : "manual",
+        ...(scanToken ? { token: scanToken } : {}),
+      })) as { already?: unknown } | null;
+      if (!r || typeof r.already !== "boolean")
+        throw new Error(
+          "El servidor no confirmó el resultado. Revisá Últimas 60 entradas antes de repetir.",
+        );
+      setEntryFeedback({
+        clientId,
+        failed: false,
+        message: r.already
+          ? afterPayment
+            ? "Cobro confirmado. Este cliente ya tenía una visita registrada hoy; no se duplicó la entrada."
+            : "Este cliente ya tiene una visita registrada hoy. No se duplicó."
+          : afterPayment
+            ? "Cobro confirmado y entrada registrada."
+            : "Entrada registrada. No se realizó ningún cobro.",
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "No se pudo confirmar la entrada. Revisá el historial antes de repetir.";
+      setEntryFeedback({
+        clientId,
+        failed: true,
+        message: afterPayment
+          ? `El cobro quedó confirmado, pero no se pudo confirmar la entrada. No repitas el cobro. ${message}`
+          : message,
+      });
+    }
   }
   return (
     <div className="container-x space-y-6 py-8">
@@ -540,48 +614,38 @@ export function ClientsPanel({
             </Link>
           </nav>
           <div className="flex flex-wrap gap-3">
+            {dayPassPlan && dayPassPrice !== null && (
+              <Button
+                disabled={detailBusy || detail.client.status !== "active"}
+                onClick={() => {
+                  if (detailBusy || detail.client.status !== "active") return;
+                  setRegisterEntryAfterDayPass(true);
+                  setDayPassPreset({
+                    clientId: detail.client.id,
+                    stamp: Date.now(),
+                  });
+                  setEntryFeedback(null);
+                  requestAnimationFrame(() =>
+                    document
+                      .getElementById("cobro")
+                      ?.scrollIntoView?.({ behavior: "smooth", block: "start" }),
+                  );
+                }}
+              >
+                Cobrar pase del día · {formatMoney(dayPassPrice, "NIO")}
+              </Button>
+            )}
             <Button
+              variant={dayPassPlan ? "outline" : "primary"}
               disabled={detailBusy || detail.client.status !== "active"}
               aria-describedby="crm-entry-feedback"
-              onClick={async () => {
+              onClick={() => {
                 if (detailBusy || detail.client.status !== "active") return;
-                const clientId = detail.client.id;
-                setEntryFeedback({
-                  clientId,
-                  message: "Confirmando entrada…",
-                  failed: false,
-                });
-                try {
-                  const r = (await action({
-                    action: "check-in",
-                    id: clientId,
-                    source: scanToken ? "qr" : "manual",
-                    ...(scanToken ? { token: scanToken } : {}),
-                  })) as { already?: unknown } | null;
-                  if (!r || typeof r.already !== "boolean")
-                    throw new Error(
-                      "El servidor no confirmó el resultado. Revisá Últimas 60 entradas antes de repetir.",
-                    );
-                  setEntryFeedback({
-                    clientId,
-                    failed: false,
-                    message: r.already
-                      ? "Este cliente ya tiene una visita registrada hoy. No se duplicó."
-                      : "Entrada registrada. No se realizó ningún cobro.",
-                  });
-                } catch (error) {
-                  setEntryFeedback({
-                    clientId,
-                    failed: true,
-                    message:
-                      error instanceof Error
-                        ? error.message
-                        : "No se pudo confirmar la entrada. Revisá el historial antes de repetir.",
-                  });
-                }
+                void registerEntry(detail.client.id);
               }}
             >
-              Confirmar entrada {scanToken ? "por QR" : "manual"}
+              {dayPassPlan ? "Solo confirmar entrada" : "Confirmar entrada"}{" "}
+              {scanToken ? "por QR" : "manual"}
             </Button>
             <span className="self-center text-xs text-fog">
               Una visita por día · hora de Nicaragua
@@ -603,6 +667,78 @@ export function ClientsPanel({
               asistencia.
             </p>
           )}
+          <div id="cobro" className="scroll-mt-24 space-y-3">
+            {dayPassArmed && dayPassPlan && dayPassPrice !== null && (
+              <div className="space-y-3 rounded-xl border border-brand/50 bg-brand/10 p-4 text-sm">
+                <p>
+                  <strong>{dayPassPlan.name_es} listo para cobrar.</strong> El
+                  monto de {formatMoney(dayPassPrice, "NIO")} y el concepto ya
+                  están cargados; elegí método, cuenta y tasa como siempre.
+                </p>
+                <label className="flex items-start gap-2 text-ink">
+                  <input
+                    type="checkbox"
+                    checked={registerEntryAfterDayPass}
+                    disabled={detailBusy}
+                    onChange={(event) =>
+                      setRegisterEntryAfterDayPass(event.target.checked)
+                    }
+                    className="mt-0.5 size-4 shrink-0 accent-brand"
+                  />
+                  <span>Registrar entrada ahora al confirmarse el cobro</span>
+                </label>
+                <p className="text-fog">
+                  Desmarcala solo si la persona pagó para entrar más tarde.
+                </p>
+              </div>
+            )}
+            {options.finance_layout === "bank_accounts_split" ? (
+              <MovementForm
+                key={detail.client.id}
+                kind="service_income"
+                clientId={detail.client.id}
+                locale={locale}
+                disabled={detailBusy}
+                onBusy={setBusy}
+                onRefresh={() => setRevision((n) => n + 1)}
+                defaultAmount={
+                  dayPassArmed && dayPassPrice !== null
+                    ? dayPassPrice
+                    : undefined
+                }
+                defaultConcept={
+                  dayPassArmed && dayPassPlan ? dayPassPlan.name_es : undefined
+                }
+                presetKey={
+                  dayPassArmed && dayPassPreset
+                    ? `day-pass:${dayPassPreset.stamp}`
+                    : "standard"
+                }
+                onSuccess={async () => {
+                  if (!dayPassArmed) return;
+                  const clientId = detail.client.id;
+                  const shouldRegisterEntry = registerEntryAfterDayPass;
+                  setDayPassPreset(null);
+                  if (shouldRegisterEntry)
+                    await registerEntry(clientId, true);
+                }}
+              />
+            ) : (
+              <PaymentForm
+                key={detail.client.id}
+                clientId={detail.client.id}
+                options={options}
+                blocked={
+                  detailBusy ||
+                  optionsResource.loading ||
+                  !!optionsResource.error ||
+                  options.payments_enabled !== true
+                }
+                onBusy={setBusy}
+                onRefresh={() => setRevision((n) => n + 1)}
+              />
+            )}
+          </div>
           <ClientFinanceSummary
             detail={detail}
             pending={detailResource.loading}
@@ -627,7 +763,7 @@ export function ClientsPanel({
             }}
           />
           </div>
-          <div className="grid gap-8 xl:grid-cols-2">
+          <div>
             <div className="space-y-3">
               <h3 className="text-lg font-bold">Carnet digital o impreso</h3>
               {!detailResource.loading && !detailResource.error ? (
@@ -665,33 +801,6 @@ export function ClientsPanel({
               >
                 Reemplazar QR perdido
               </Button>
-            </div>
-            <div id="cobro" className="scroll-mt-24">
-            {options.finance_layout === "bank_accounts_split" ? (
-              <MovementForm
-                key={detail.client.id}
-                kind="service_income"
-                clientId={detail.client.id}
-                locale={locale}
-                disabled={detailBusy}
-                onBusy={setBusy}
-                onRefresh={() => setRevision((n) => n + 1)}
-              />
-            ) : (
-              <PaymentForm
-                key={detail.client.id}
-                clientId={detail.client.id}
-                options={options}
-                blocked={
-                  detailBusy ||
-                  optionsResource.loading ||
-                  !!optionsResource.error ||
-                  options.payments_enabled !== true
-                }
-                onBusy={setBusy}
-                onRefresh={() => setRevision((n) => n + 1)}
-              />
-            )}
             </div>
           </div>
           <div id="historial" className="scroll-mt-24 grid gap-6 lg:grid-cols-2">

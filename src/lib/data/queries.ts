@@ -97,6 +97,76 @@ export async function getPlans(): Promise<Plan[]> {
   );
 }
 
+export interface DayPassTariffAdmin {
+  id: string;
+  slug: string;
+  nameEs: string;
+  /** Tarifa de recepción en córdobas. Nunca se mezcla con `priceUsd`. */
+  priceNio: number | null;
+  /** Precio histórico de la tabla (`plans.price`), solo informativo. */
+  priceUsd: number | null;
+  isActive: boolean;
+}
+
+/**
+ * Tarifa del pase del día para Administración. Lee también el plan si está
+ * inactivo, así la pantalla puede avisar que el cobro rápido no aparecerá.
+ * `select("*")` permite que, antes de aplicar 00057, la pantalla responda sin
+ * inventar un precio: `price_nio` simplemente vendrá ausente y se lee `null`.
+ */
+export async function getDayPassTariffAdmin(): Promise<DayPassTariffAdmin | null> {
+  return checkedRead("DAY_PASS_TARIFF", async () => {
+    const toPrice = (value: unknown): number | null => {
+      if (value === null || value === undefined) return null;
+      const amount = Number(value);
+      if (!Number.isFinite(amount) || amount < 0)
+        throw new DataReadError("DAY_PASS_TARIFF", "INVALID");
+      return amount;
+    };
+
+    const supabase = await getSupabaseServerClient();
+    if (!supabase) {
+      const demo = demoPlans.find((plan) => plan.slug === "pase-del-dia");
+      return demo
+        ? {
+            id: demo.id,
+            slug: demo.slug,
+            nameEs: demo.name_es,
+            priceNio: toPrice(demo.price_nio),
+            priceUsd: toPrice(demo.price),
+            isActive: demo.is_active,
+          }
+        : null;
+    }
+
+    const { data, error } = await supabase
+      .from("plans")
+      .select("*")
+      .eq("slug", "pase-del-dia")
+      .abortSignal(AbortSignal.timeout(15000))
+      .maybeSingle();
+    if (error) throw new DataReadError("DAY_PASS_TARIFF", error.code);
+    if (!data) return null;
+
+    const row = data as unknown as Record<string, unknown>;
+    if (
+      typeof row.id !== "string" ||
+      row.slug !== "pase-del-dia" ||
+      row.period !== "session"
+    )
+      throw new DataReadError("DAY_PASS_TARIFF", "INVALID");
+
+    return {
+      id: row.id,
+      slug: row.slug,
+      nameEs: typeof row.name_es === "string" && row.name_es ? row.name_es : "Pase del día",
+      priceNio: toPrice(row.price_nio),
+      priceUsd: toPrice(row.price),
+      isActive: row.is_active === true,
+    };
+  });
+}
+
 /** Fuente canónica: ficha vinculada a auth.uid(), no profiles.plan_id legado. */
 export async function getMyAssignedPlan(): Promise<AccountPlan> {
   return checkedRead("ACCOUNT_PLAN", async () => {

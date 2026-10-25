@@ -47,6 +47,10 @@ export function MovementForm({
   disabled = false,
   onRefresh,
   onBusy,
+  defaultAmount,
+  defaultConcept,
+  presetKey,
+  onSuccess,
 }: {
   kind: "service_income" | "expense";
   clientId?: string;
@@ -54,6 +58,13 @@ export function MovementForm({
   disabled?: boolean;
   onRefresh?: () => void;
   onBusy?: (busy: boolean) => void;
+  /** Valores iniciales opcionales; un intento pendiente siempre manda. */
+  defaultAmount?: number;
+  defaultConcept?: string;
+  /** Cambiarlo remonta solo los campos para aplicar un preset nuevo. */
+  presetKey?: string;
+  /** Solo se llama después de que el servidor confirma el movimiento. */
+  onSuccess?: (receiptId: string) => void | Promise<void>;
 }) {
   const key = `strong-gym:finance-v1:${kind}:${clientId ?? "general"}`;
   const read = useCallback(() => {
@@ -125,6 +136,7 @@ export function MovementForm({
     setMessage("");
     // Un resultado anterior no es el comprobante del intento que ahora se envía.
     setReceipt(null);
+    let confirmedReceiptId: string | null = null;
     try {
       try {
         sessionStorage.setItem(key, JSON.stringify(body));
@@ -143,6 +155,7 @@ export function MovementForm({
           "El servidor no devolvió un comprobante válido; no se pudo confirmar el resultado.",
         );
       const result = parsedResult.data;
+      confirmedReceiptId = result.id;
       setReceipt(result.id);
       setMessage(
         "Movimiento confirmado. Abrí el comprobante interno para revisar los datos guardados.",
@@ -165,6 +178,19 @@ export function MovementForm({
       onBusy?.(false);
       setRevision((n) => n + 1);
       onRefresh?.();
+    }
+
+    // Recién aquí el padre puede encadenar otra acción (por ejemplo, la
+    // entrada del pase del día). Si esa acción falla, el cobro sigue
+    // confirmado y el mensaje evita que caja lo repita por error.
+    if (confirmedReceiptId) {
+      try {
+        await onSuccess?.(confirmedReceiptId);
+      } catch {
+        setMessage(
+          "Movimiento confirmado. La acción siguiente no se pudo completar automáticamente; revisá el estado antes de repetir el cobro.",
+        );
+      }
     }
   }
   const router = useRouter();
@@ -213,7 +239,7 @@ export function MovementForm({
         Reintentar
       </button>
       <form
-        key={`${kind}:${clientId ?? "expense"}:${pending?.requestId ?? "new"}`}
+        key={`${kind}:${clientId ?? "expense"}:${presetKey ?? "standard"}:${pending?.requestId ?? "new"}`}
         onSubmit={(event) => {
           event.preventDefault();
           if (blocked || pending || lock.current) return;
@@ -262,7 +288,7 @@ export function MovementForm({
               max="99999999"
               step="0.01"
               required
-              defaultValue={pending?.amount}
+              defaultValue={pending?.amount ?? defaultAmount}
             />
           </label>
           <label className="min-w-0 text-sm text-fog">
@@ -357,7 +383,7 @@ export function MovementForm({
               minLength={2}
               maxLength={200}
               required
-              defaultValue={pending?.concept}
+              defaultValue={pending?.concept ?? defaultConcept}
             />
           </label>
         </fieldset>

@@ -571,6 +571,139 @@ test("ficha bancaria usa el nuevo protocolo de cobro sin depender del escritor l
   assert.ok(calls.some((c) => c.url === "/api/admin/finance"));
 });
 
+const dayPassReceiptId = "44444444-4444-4444-8444-444444444444";
+function setupDayPass(checkIn) {
+  window.confirm = () => true;
+  window.requestAnimationFrame = (callback) => {
+    callback(0);
+    return 1;
+  };
+  globalThis.requestAnimationFrame = window.requestAnimationFrame;
+  const bank = {
+    ...options,
+    finance_layout: "bank_accounts_split",
+    payments_enabled: false,
+    plans: [
+      {
+        id: "pln_dia",
+        name_es: "Pase del día",
+        slug: "pase-del-dia",
+        period: "session",
+        price_nio: 40,
+        sort_order: 3,
+      },
+    ],
+  };
+  return setup(
+    (url, init) => {
+      if (url.pathname === "/api/admin/finance") {
+        if (init.method === "POST") return json({ id: dayPassReceiptId });
+        return json(
+          url.searchParams.has("history")
+            ? []
+            : {
+                protocol: "service-v1",
+                writes_enabled: true,
+                finance_layout: "bank_accounts_split",
+                methods: options.methods,
+                accounts: options.accounts,
+                categories: [],
+              },
+        );
+      }
+      if (init.method === "POST") {
+        const body = JSON.parse(init.body);
+        if (body.action === "check-in") return checkIn(body);
+        return json({ error: "Acción inesperada en la prueba." }, 500);
+      }
+      return json({ ...detail(), finance_layout: "bank_accounts_split" });
+    },
+    [client()],
+    () => json(bank),
+  );
+}
+async function chargeDayPass({ registerEntry = true } = {}) {
+  await open();
+  await heading();
+  fireEvent.click(
+    await screen.findByRole("button", { name: /Cobrar pase del día/ }),
+  );
+  const checkbox = await screen.findByRole("checkbox", {
+    name: /Registrar entrada ahora/,
+  });
+  assert.equal(checkbox.checked, true);
+  if (!registerEntry) fireEvent.click(checkbox);
+  const submit = screen.getByRole("button", {
+    name: "Confirmar cobro por servicio",
+  });
+  await waitFor(() => assert.equal(submit.disabled, false));
+  assert.equal(screen.getByLabelText("Monto").value, "40");
+  assert.equal(screen.getByLabelText("Concepto").value, "Pase del día");
+  fireEvent.change(screen.getByLabelText("Método"), {
+    target: { value: "cash" },
+  });
+  fireEvent.change(screen.getByLabelText("Cuenta"), {
+    target: { value: "cash_nio" },
+  });
+  fireEvent.change(screen.getByLabelText("Tasa NIO por 1 USD"), {
+    target: { value: "36.7244" },
+  });
+  fireEvent.click(submit);
+}
+const dayPassCharges = (calls) =>
+  calls.filter(
+    (call) =>
+      call.url === "/api/admin/finance" &&
+      call.body?.kind === "service_income",
+  );
+const dayPassCheckIns = (calls) =>
+  calls.filter((call) => call.body?.action === "check-in");
+
+test("pase del día precarga C$40 y registra la entrada solo tras confirmar el cobro", async () => {
+  const calls = setupDayPass(() =>
+    json({ data: { already: false, id: token } }),
+  );
+  await chargeDayPass();
+  await screen.findByText("Cobro confirmado y entrada registrada.");
+  assert.equal(dayPassCharges(calls).length, 1);
+  assert.equal(dayPassCharges(calls)[0].body.amount, 40);
+  assert.equal(dayPassCharges(calls)[0].body.currency, "NIO");
+  assert.equal(dayPassCharges(calls)[0].body.concept, "Pase del día");
+  assert.equal(dayPassCharges(calls)[0].body.clientId, id);
+  assert.equal(dayPassCheckIns(calls).length, 1);
+  assert.equal(dayPassCheckIns(calls)[0].body.id, id);
+});
+
+test("pase del día con entrada de hoy no duplica la visita", async () => {
+  const calls = setupDayPass(() =>
+    json({ data: { already: true, id: token } }),
+  );
+  await chargeDayPass();
+  await screen.findByText(/ya tenía una visita registrada hoy.*no se duplicó/);
+  assert.equal(dayPassCharges(calls).length, 1);
+  assert.equal(dayPassCheckIns(calls).length, 1);
+});
+
+test("pase del día sin registrar entrada cobra una vez y no llama check-in", async () => {
+  const calls = setupDayPass(() =>
+    json({ data: { already: false, id: token } }),
+  );
+  await chargeDayPass({ registerEntry: false });
+  await screen.findByRole("link", { name: /Abrir comprobante interno/ });
+  assert.equal(dayPassCharges(calls).length, 1);
+  assert.equal(dayPassCheckIns(calls).length, 0);
+});
+
+test("si la entrada falla tras cobrar el pase, avisa que no se repita el cobro", async () => {
+  const calls = setupDayPass(() =>
+    json({ error: "No se pudo confirmar la entrada." }, 503),
+  );
+  await chargeDayPass();
+  await screen.findByText(/No repitas el cobro/);
+  assert.equal(dayPassCharges(calls).length, 1);
+  assert.equal(dayPassCheckIns(calls).length, 1);
+});
+
 test("saldo: SQL anterior no bloquea recepción y reintentar confirma sección sólo con GET", async () => {
   let updated=false;
   const calls=setup(()=>{

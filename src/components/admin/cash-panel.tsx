@@ -355,11 +355,11 @@ export function CashPanel({
         className="flex flex-col gap-1 rounded-2xl border border-brand/40 bg-brand/10 p-5 hover:border-brand"
       >
         <span className="font-bold text-ink">
-          Identificar cliente · escáner o búsqueda manual →
+          Cobrar o registrar entrada · buscar cliente →
         </span>
         <span className="text-sm text-fog">
-          Crear ficha, consultar historial o registrar entrada. Búsqueda por
-          nombre, sin celular obligatorio.
+          Buscás o creás la ficha, cobrás el pase del día u otro servicio y,
+          si corresponde, registrás la entrada. Sin celular obligatorio.
         </span>
       </a>
 
