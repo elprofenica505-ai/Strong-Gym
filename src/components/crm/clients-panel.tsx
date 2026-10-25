@@ -28,6 +28,54 @@ const emptyOptions: CrmOptions = {
   accounts: [],
   payments_enabled: false,
 };
+const QUICK_TARIFFS = [
+  { slug: "pase-del-dia", period: "session", buttonLabel: "pase del día" },
+  { slug: "gimnasio-semanal", period: "week", buttonLabel: "semana" },
+  { slug: "gimnasio-quincenal", period: "fortnight", buttonLabel: "quincena" },
+  { slug: "gimnasio-mensual", period: "month", buttonLabel: "mes" },
+] as const;
+type QuickTariff = {
+  plan: CrmOptions["plans"][number];
+  priceNio: number;
+  buttonLabel: (typeof QUICK_TARIFFS)[number]["buttonLabel"];
+  isDayPass: boolean;
+};
+function validQuickTariffPrice(plan: CrmOptions["plans"][number]) {
+  const price = Number(plan.price_nio);
+  return Number.isFinite(price) && price > 0 ? price : null;
+}
+function findQuickTariffs(plans: CrmOptions["plans"]): QuickTariff[] {
+  return QUICK_TARIFFS.flatMap((expected, index) => {
+    let plan = plans.find(
+      (candidate) =>
+        candidate.slug === expected.slug &&
+        candidate.period === expected.period &&
+        validQuickTariffPrice(candidate) !== null,
+    );
+
+    // Compatibilidad: si el pase todavía no tuviera el slug esperado, se
+    // acepta cualquier plan activo de una sesión con tarifa NIO válida.
+    if (!plan && index === 0) {
+      plan = plans.find(
+        (candidate) =>
+          candidate.period === expected.period &&
+          validQuickTariffPrice(candidate) !== null,
+      );
+    }
+
+    const priceNio = plan ? validQuickTariffPrice(plan) : null;
+    return plan && priceNio !== null
+      ? [
+          {
+            plan,
+            priceNio,
+            buttonLabel: expected.buttonLabel,
+            isDayPass: index === 0,
+          },
+        ]
+      : [];
+  });
+}
 function validDirectory(data: unknown) {
   const value = data as Directory | null;
   return !!value && Array.isArray(value.rows) && Number.isInteger(value.total);
@@ -94,11 +142,12 @@ export function ClientsPanel({
     message: string;
     failed: boolean;
   } | null>(null);
-  const [dayPassPreset, setDayPassPreset] = useState<{
+  const [quickTariffPreset, setQuickTariffPreset] = useState<{
     clientId: string;
+    planId: string;
     stamp: number;
   } | null>(null);
-  const [registerEntryAfterDayPass, setRegisterEntryAfterDayPass] =
+  const [registerEntryAfterQuickTariff, setRegisterEntryAfterQuickTariff] =
     useState(true);
   const [busy, setBusy] = useState(false);
   const [detailAttempt, setDetailAttempt] = useState(0);
@@ -134,31 +183,21 @@ export function ClientsPanel({
     document.getElementById("ficha-cliente")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
   }, [detailId]);
   const detailBusy = busy || detailResource.loading || !!detailResource.error;
-  const validDayPassPrice = (plan: CrmOptions["plans"][number]) => {
-    const price = Number(plan.price_nio);
-    return Number.isFinite(price) && price > 0 ? price : null;
-  };
-  const dayPassPlan =
+  const quickTariffs =
     options.finance_layout === "bank_accounts_split"
-      ? (options.plans.find(
-          (plan) =>
-            plan.slug === "pase-del-dia" && validDayPassPrice(plan) !== null,
-        ) ??
-        options.plans.find(
-          (plan) =>
-            plan.period === "session" && validDayPassPrice(plan) !== null,
-        ))
+      ? findQuickTariffs(options.plans)
+      : [];
+  const selectedQuickTariff =
+    detail && quickTariffPreset?.clientId === detail.client.id
+      ? quickTariffs.find(
+          (tariff) => tariff.plan.id === quickTariffPreset.planId,
+        )
       : undefined;
-  const dayPassPrice = dayPassPlan ? validDayPassPrice(dayPassPlan) : null;
-  const dayPassArmed =
-    !!detail &&
-    !!dayPassPlan &&
-    dayPassPrice !== null &&
-    dayPassPreset?.clientId === detail.client.id;
+  const quickTariffArmed = !!selectedQuickTariff;
   function select(id: string, token: string | null = null) {
     setEntryFeedback(null);
-    setDayPassPreset(null);
-    setRegisterEntryAfterDayPass(true);
+    setQuickTariffPreset(null);
+    setRegisterEntryAfterQuickTariff(true);
     setSelected(id);
     setRevision((n) => n + 1);
     setScanToken(token);
@@ -614,14 +653,17 @@ export function ClientsPanel({
             </Link>
           </nav>
           <div className="flex flex-wrap gap-3">
-            {dayPassPlan && dayPassPrice !== null && (
+            {quickTariffs.map((tariff) => (
               <Button
+                key={tariff.plan.id}
+                variant={tariff.isDayPass ? "primary" : "outline"}
                 disabled={detailBusy || detail.client.status !== "active"}
                 onClick={() => {
                   if (detailBusy || detail.client.status !== "active") return;
-                  setRegisterEntryAfterDayPass(true);
-                  setDayPassPreset({
+                  setRegisterEntryAfterQuickTariff(true);
+                  setQuickTariffPreset({
                     clientId: detail.client.id,
+                    planId: tariff.plan.id,
                     stamp: Date.now(),
                   });
                   setEntryFeedback(null);
@@ -632,11 +674,12 @@ export function ClientsPanel({
                   );
                 }}
               >
-                Cobrar pase del día · {formatMoney(dayPassPrice, "NIO")}
+                Cobrar {tariff.buttonLabel} ·{" "}
+                {formatMoney(tariff.priceNio, "NIO")}
               </Button>
-            )}
+            ))}
             <Button
-              variant={dayPassPlan ? "outline" : "primary"}
+              variant={quickTariffs.length > 0 ? "outline" : "primary"}
               disabled={detailBusy || detail.client.status !== "active"}
               aria-describedby="crm-entry-feedback"
               onClick={() => {
@@ -644,7 +687,9 @@ export function ClientsPanel({
                 void registerEntry(detail.client.id);
               }}
             >
-              {dayPassPlan ? "Solo confirmar entrada" : "Confirmar entrada"}{" "}
+              {quickTariffs.length > 0
+                ? "Solo confirmar entrada"
+                : "Confirmar entrada"}{" "}
               {scanToken ? "por QR" : "manual"}
             </Button>
             <span className="self-center text-xs text-fog">
@@ -668,27 +713,38 @@ export function ClientsPanel({
             </p>
           )}
           <div id="cobro" className="scroll-mt-24 space-y-3">
-            {dayPassArmed && dayPassPlan && dayPassPrice !== null && (
+            {quickTariffArmed && selectedQuickTariff && (
               <div className="space-y-3 rounded-xl border border-brand/50 bg-brand/10 p-4 text-sm">
                 <p>
-                  <strong>{dayPassPlan.name_es} listo para cobrar.</strong> El
-                  monto de {formatMoney(dayPassPrice, "NIO")} y el concepto ya
-                  están cargados; elegí método, cuenta y tasa como siempre.
+                  <strong>
+                    {selectedQuickTariff.plan.name_es} listo para cobrar.
+                  </strong>{" "}
+                  El monto de {formatMoney(selectedQuickTariff.priceNio, "NIO")}{" "}
+                  y el concepto ya están cargados; elegí método, cuenta y tasa
+                  como siempre.
                 </p>
+                {!selectedQuickTariff.isDayPass && (
+                  <p className="text-fog">
+                    Este cobro rápido solo registra el pago: todavía no activa
+                    ni renueva la vigencia.
+                  </p>
+                )}
                 <label className="flex items-start gap-2 text-ink">
                   <input
                     type="checkbox"
-                    checked={registerEntryAfterDayPass}
+                    checked={registerEntryAfterQuickTariff}
                     disabled={detailBusy}
                     onChange={(event) =>
-                      setRegisterEntryAfterDayPass(event.target.checked)
+                      setRegisterEntryAfterQuickTariff(event.target.checked)
                     }
                     className="mt-0.5 size-4 shrink-0 accent-brand"
                   />
                   <span>Registrar entrada ahora al confirmarse el cobro</span>
                 </label>
                 <p className="text-fog">
-                  Desmarcala solo si la persona pagó para entrar más tarde.
+                  {selectedQuickTariff.isDayPass
+                    ? "Desmarcala solo si la persona pagó para entrar más tarde."
+                    : "Desmarcala si hoy la persona solo viene a pagar y no va a entrenar."}
                 </p>
               </div>
             )}
@@ -702,23 +758,26 @@ export function ClientsPanel({
                 onBusy={setBusy}
                 onRefresh={() => setRevision((n) => n + 1)}
                 defaultAmount={
-                  dayPassArmed && dayPassPrice !== null
-                    ? dayPassPrice
+                  quickTariffArmed && selectedQuickTariff
+                    ? selectedQuickTariff.priceNio
                     : undefined
                 }
                 defaultConcept={
-                  dayPassArmed && dayPassPlan ? dayPassPlan.name_es : undefined
+                  quickTariffArmed && selectedQuickTariff
+                    ? selectedQuickTariff.plan.name_es
+                    : undefined
                 }
                 presetKey={
-                  dayPassArmed && dayPassPreset
-                    ? `day-pass:${dayPassPreset.stamp}`
+                  quickTariffArmed && selectedQuickTariff && quickTariffPreset
+                    ? `quick-tariff:${selectedQuickTariff.plan.slug ?? selectedQuickTariff.plan.id}:${quickTariffPreset.stamp}`
                     : "standard"
                 }
                 onSuccess={async () => {
-                  if (!dayPassArmed) return;
+                  if (!quickTariffArmed) return;
                   const clientId = detail.client.id;
-                  const shouldRegisterEntry = registerEntryAfterDayPass;
-                  setDayPassPreset(null);
+                  const shouldRegisterEntry =
+                    registerEntryAfterQuickTariff;
+                  setQuickTariffPreset(null);
                   if (shouldRegisterEntry)
                     await registerEntry(clientId, true);
                 }}

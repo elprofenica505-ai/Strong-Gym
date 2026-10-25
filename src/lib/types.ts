@@ -51,12 +51,13 @@ export interface Plan {
   price: number | null;
   /**
    * Tarifa opcional en córdobas (NIO), separada del precio histórico en USD.
-   * Hoy solo la usa el pase del día para recepción y para mostrar C$ en la web.
-   * Puede venir como texto desde la base; quien la muestre debe convertirla.
+   * La usan las tarifas de pesas y máquinas para recepción y para mostrar C$
+   * en la web. Puede venir como texto desde la base; quien la muestre debe
+   * convertirla.
    */
   price_nio?: number | string | null;
-  /** Cada cuánto se paga: "month" | "week" | "session" */
-  period: "month" | "week" | "session";
+  /** Cada cuánto se paga: "month" | "week" | "fortnight" | "session" */
+  period: "month" | "week" | "fortnight" | "session";
   features_es: string[];
   features_en: string[];
   is_popular: boolean;

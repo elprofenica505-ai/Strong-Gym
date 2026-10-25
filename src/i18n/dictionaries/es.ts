@@ -246,6 +246,8 @@ const es = {
     subtitle:
       "Revisá cada tarjeta para ver su precio vigente o si debés consultarlo por WhatsApp.",
     month: "por mes",
+    week: "por semana",
+    fortnight: "por quincena",
     session: "por visita",
     popular: "Más elegido",
     choose: "Lo quiero",
@@ -331,7 +333,7 @@ const es = {
       },
       {
         q: "¿Cuánto cuesta la mensualidad del gimnasio?",
-        a: "La tarjeta de Precios muestra la tarifa vigente del pase del día en córdobas cuando está publicada; si dice «Consultar», escribinos por WhatsApp. El precio de la mensualidad de pesas y máquinas lo damos por WhatsApp, porque puede cambiar con las promociones.",
+        a: "Las tarjetas de Precios muestran las tarifas vigentes de pesas y máquinas por día, semana, quincena y mes en córdobas cuando están publicadas. Si alguna dice «Consultar», escribinos por WhatsApp y te pasamos el precio vigente.",
       },
       {
         q: "¿Hay clases de zumba o bailoterapia?",

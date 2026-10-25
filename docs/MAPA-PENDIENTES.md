@@ -25,18 +25,18 @@ Creado el 23 de octubre de 2026 para reunir en un solo lugar lo que quedó a med
 
 ## 2. SQL: fuente única
 
-- `supabase/migrations/`: **única fuente de migraciones**, de la **00001** a la **00057**. Las 00031 a 00049 estaban antes en `docs/SQL-PENDIENTE/` y se movieron aquí el 23 de octubre, sin cambiar su contenido.
+- `supabase/migrations/`: **única fuente de migraciones**, de la **00001** a la **00058**. Las 00031 a 00049 estaban antes en `docs/SQL-PENDIENTE/` y se movieron aquí el 23 de octubre, sin cambiar su contenido.
 - `supabase/*.sql` (SETUP, ACTUALIZAR, FASE2, etc.): archivos antiguos para pegar a mano. No son la fuente de verdad.
 
-Estado en Supabase (verificado en solo lectura el 24 de octubre):
-- **Aplicadas y comprobadas en la base:** 00031 y 00032 (`is_staff` exige aal2), 00033 y 00034 (`is_admin`, `admin_set_role`, `role_changes`), 00035 (`trainer_client_access`), 00036, de la 00037 a la 00048 según el historial de Supabase, y **00049** (tabla de personal, funciones de baja y reactivación). Después: 00050 y 00051 (vista pública de entrenadores), 00052 (altura en ficha), 00053 (corrección de altura solo admin), 00054 (`ficha_height_cm` en `my_progress`), 00055 (menores bloqueados en guardar/aprobar por el personal), 00056 (permisos separados de caja en `staff_permissions`, con los cinco nuevos apagados) y 00057 (`plans.price_nio` para la tarifa en córdobas del pase del día, inicial C$40, sin tocar `plans.price` en USD); la última del historial remoto es `pase_del_dia_tarifa` (00057, versión remota `20261025044906`).
-- **Pendiente:** ninguna migración está lista para aplicar; el siguiente número libre es 00058.
+Estado en Supabase (verificado tras aplicar la 00058):
+- **Aplicadas y comprobadas en la base:** 00031 y 00032 (`is_staff` exige aal2), 00033 y 00034 (`is_admin`, `admin_set_role`, `role_changes`), 00035 (`trainer_client_access`), 00036, de la 00037 a la 00048 según el historial de Supabase, y **00049** (tabla de personal, funciones de baja y reactivación). Después: 00050 y 00051 (vista pública de entrenadores), 00052 (altura en ficha), 00053 (corrección de altura solo admin), 00054 (`ficha_height_cm` en `my_progress`), 00055 (menores bloqueados en guardar/aprobar por el personal), 00056 (permisos separados de caja en `staff_permissions`, con los cinco nuevos apagados), 00057 (`plans.price_nio` para la tarifa en córdobas del pase del día, inicial C$40) y 00058 (periodo `fortnight`, Semana C$150, Quincena C$280 y Mes C$560 de pesas y máquinas, sin tocar Boxeo ni `plans.price` en USD); la última del historial remoto es `tarifas_gimnasio_nio` (00058, versión remota `20261025061632`).
+- **Pendiente:** ninguna migración está lista para aplicar; el siguiente número libre es 00059.
 - **Advertencia:** la 00049 aparece aplicada, pero no en el historial de migraciones de Supabase. Se registró a mano. No vuelvas a ejecutarla.
 
 ## 3. Ramas de Git
 
 Verificado con el historial completo del repositorio:
-- Antes de la tanda del pase del día, los PR #1 a #43 ya estaban fusionados en `main` (`bbb30f0`). Esta tanda se preparó en `arena/0aee7c98-strong-gym`.
+- Antes de la tanda de tarifas completas, los PR #1 a #45 ya estaban fusionados en `main` (`3d5317d`). Esta tanda se preparó en `arena/ce8889f6-strong-gym`.
 - Casi todas las ramas `arena/*` ya están contenidas en `main`. No se perdió trabajo en ellas.
 - La rama `arena/85c54d7d-strong-gym` se integró en esta rama (solo el archivo de la 00031). Su resto ya está en `main`.
 
@@ -59,7 +59,7 @@ Para el detalle, usa la fuente indicada en la sección 1.
 - Roles de caja y entrenador, fase C: sin empezar. Vista «Mis clientes» probada con cuenta real de entrenador el 23 oct 2026 (rol, MFA, asignación, pedido, aprobación, revocación y reasignación OK). Decisión: un cliente puede tener dos o más entrenadores (ver `docs/ROLES-MIGRACION-PLAN.md`).
 
 **Operación diaria**
-- Pase del día: tarifa NIO administrable (00057, inicial C$40), cobro al inicio de la ficha y entrada posterior solo tras confirmar el pago. Falta la prueba guiada del usuario tras publicar.
+- Tarifas de pesas y máquinas: NIO administrables por Día C$40, Semana C$150, Quincena C$280 y Mes C$560 (00057–00058), públicas en la web y con cobro rápido en la ficha; la entrada opcional solo se registra tras confirmar el pago. Boxeo queda aparte en US$20. Cobrar Semana, Quincena o Mes todavía no activa vigencia. Falta la prueba guiada del usuario tras publicar, sin cobros ficticios en producción.
 - Planes y vigencias generales, reservas y cupos, mensajes leídos y disciplinas, QR en dispositivo real, hora de Managua en páginas abiertas, asistencia en Mi cuenta, categoría del cliente: pendientes.
 
 **Finanzas**

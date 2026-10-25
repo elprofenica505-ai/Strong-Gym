@@ -8,32 +8,65 @@ export const dynamic = "force-dynamic";
 
 const headers = { "Cache-Control": "private, no-store" };
 
-const bodySchema = z
-  .object({
-    action: z.literal("set_day_pass_price"),
-    priceNio: z.number().positive().max(99999999).multipleOf(0.01).nullable(),
-  })
-  .strict();
+const tariffSlugSchema = z.enum([
+  "pase-del-dia",
+  "gimnasio-semanal",
+  "gimnasio-quincenal",
+  "gimnasio-mensual",
+]);
+const priceNioSchema = z
+  .number()
+  .positive()
+  .max(99999999)
+  .multipleOf(0.01)
+  .nullable();
+const bodySchema = z.discriminatedUnion("action", [
+  z
+    .object({
+      action: z.literal("set_day_pass_price"),
+      priceNio: priceNioSchema,
+    })
+    .strict(),
+  z
+    .object({
+      action: z.literal("set_plan_price"),
+      slug: tariffSlugSchema,
+      priceNio: priceNioSchema,
+    })
+    .strict(),
+]);
+
+const fallbackNames: Record<z.infer<typeof tariffSlugSchema>, string> = {
+  "pase-del-dia": "Pase del día",
+  "gimnasio-semanal": "Gimnasio semanal",
+  "gimnasio-quincenal": "Gimnasio quincenal",
+  "gimnasio-mensual": "Gimnasio mensual",
+};
 
 const messages: Record<string, [string, number]> = {
   AUTH: [
-    "Sólo un administrador con verificación en dos pasos puede cambiar la tarifa del pase del día.",
+    "Sólo un administrador con verificación en dos pasos puede cambiar estas tarifas.",
     403,
+  ],
+  INVALID_PLAN: [
+    "Esa tarifa no se puede editar desde esta pantalla. No se cambió ningún precio.",
+    422,
   ],
   INVALID_PRICE: [
     "Escribí un precio válido en córdobas o dejá el campo vacío para quitar la tarifa rápida.",
     422,
   ],
   NOT_FOUND: [
-    "No encontramos el plan Pase del día. No se cambió ningún precio.",
+    "No encontramos esa tarifa de pesas y máquinas. No se cambió ningún precio.",
     404,
   ],
 };
 
 /**
- * Cambia solo `plans.price_nio` del plan `pase-del-dia`. La API vuelve a
- * exigir administrador con MFA y la función SQL hace la comprobación final.
- * Nunca toca `plans.price`, que sigue siendo el precio histórico en USD.
+ * Cambia solo `plans.price_nio` de las tarifas de pesas y máquinas. La API
+ * vuelve a exigir administrador con MFA y la función SQL hace la comprobación
+ * final con una lista cerrada de slugs. Nunca toca `plans.price`, que sigue
+ * siendo el precio histórico en USD, ni permite editar Boxeo desde acá.
  */
 export async function POST(request: Request) {
   const user = await getCurrentUser();
@@ -60,13 +93,24 @@ export async function POST(request: Request) {
     );
   }
 
-  const { data, error } = await supabase.rpc("admin_set_day_pass_price_nio", {
-    p_price: parsed.data.priceNio,
-  });
-  if (error) return failure(error, "admin/tariffs set_day_pass_price");
+  const slug =
+    parsed.data.action === "set_plan_price"
+      ? parsed.data.slug
+      : "pase-del-dia";
+  const { data, error } =
+    parsed.data.action === "set_plan_price"
+      ? await supabase.rpc("admin_set_plan_price_nio", {
+          p_slug: slug,
+          p_price: parsed.data.priceNio,
+        })
+      : await supabase.rpc("admin_set_day_pass_price_nio", {
+          p_price: parsed.data.priceNio,
+        });
+  if (error) return failure(error, `admin/tariffs ${parsed.data.action}`);
 
   const row = data as {
     slug?: unknown;
+    period?: unknown;
     name_es?: unknown;
     price_nio?: unknown;
     is_active?: unknown;
@@ -78,10 +122,10 @@ export async function POST(request: Request) {
 
   if (
     !row ||
-    row.slug !== "pase-del-dia" ||
+    row.slug !== slug ||
     (savedPrice !== null && !Number.isFinite(savedPrice))
   ) {
-    console.error("[admin/tariffs set_day_pass_price] respuesta inválida");
+    console.error(`[admin/tariffs ${parsed.data.action}] respuesta inválida`);
     return NextResponse.json(
       {
         error: "UNKNOWN",
@@ -94,9 +138,11 @@ export async function POST(request: Request) {
   return NextResponse.json(
     {
       ok: true,
+      slug,
+      period: typeof row.period === "string" ? row.period : null,
       priceNio: savedPrice,
       isActive: row.is_active === true,
-      nameEs: typeof row.name_es === "string" ? row.name_es : "Pase del día",
+      nameEs: typeof row.name_es === "string" ? row.name_es : fallbackNames[slug],
     },
     { headers },
   );

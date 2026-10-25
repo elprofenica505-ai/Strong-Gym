@@ -571,8 +571,50 @@ test("ficha bancaria usa el nuevo protocolo de cobro sin depender del escritor l
   assert.ok(calls.some((c) => c.url === "/api/admin/finance"));
 });
 
-const dayPassReceiptId = "44444444-4444-4444-8444-444444444444";
-function setupDayPass(checkIn) {
+const quickTariffReceiptId = "44444444-4444-4444-8444-444444444444";
+const quickTariffPlans = [
+  {
+    id: "pln_boxeo",
+    name_es: "Boxeo mensual",
+    slug: "\u0062oxeo",
+    period: "month",
+    price_nio: 750,
+    sort_order: 1,
+  },
+  {
+    id: "pln_dia",
+    name_es: "Pase del día",
+    slug: "pase-del-dia",
+    period: "session",
+    price_nio: 40,
+    sort_order: 2,
+  },
+  {
+    id: "pln_semana",
+    name_es: "Gimnasio semanal",
+    slug: "gimnasio-semanal",
+    period: "week",
+    price_nio: 150,
+    sort_order: 3,
+  },
+  {
+    id: "pln_quincena",
+    name_es: "Gimnasio quincenal",
+    slug: "gimnasio-quincenal",
+    period: "fortnight",
+    price_nio: 280,
+    sort_order: 4,
+  },
+  {
+    id: "pln_mes",
+    name_es: "Gimnasio mensual",
+    slug: "gimnasio-mensual",
+    period: "month",
+    price_nio: 560,
+    sort_order: 5,
+  },
+];
+function setupQuickTariffs(checkIn, plans = quickTariffPlans) {
   window.confirm = () => true;
   window.requestAnimationFrame = (callback) => {
     callback(0);
@@ -583,21 +625,12 @@ function setupDayPass(checkIn) {
     ...options,
     finance_layout: "bank_accounts_split",
     payments_enabled: false,
-    plans: [
-      {
-        id: "pln_dia",
-        name_es: "Pase del día",
-        slug: "pase-del-dia",
-        period: "session",
-        price_nio: 40,
-        sort_order: 3,
-      },
-    ],
+    plans,
   };
   return setup(
     (url, init) => {
       if (url.pathname === "/api/admin/finance") {
-        if (init.method === "POST") return json({ id: dayPassReceiptId });
+        if (init.method === "POST") return json({ id: quickTariffReceiptId });
         return json(
           url.searchParams.has("history")
             ? []
@@ -622,12 +655,22 @@ function setupDayPass(checkIn) {
     () => json(bank),
   );
 }
-async function chargeDayPass({ registerEntry = true } = {}) {
+const setupDayPass = (checkIn) =>
+  setupQuickTariffs(
+    checkIn,
+    quickTariffPlans.filter((plan) => plan.slug === "pase-del-dia"),
+  );
+async function chargeQuickTariff({
+  buttonName = /Cobrar pase del día/,
+  amount = "40",
+  concept = "Pase del día",
+  registerEntry = true,
+  expectedNotice = null,
+} = {}) {
   await open();
   await heading();
-  fireEvent.click(
-    await screen.findByRole("button", { name: /Cobrar pase del día/ }),
-  );
+  fireEvent.click(await screen.findByRole("button", { name: buttonName }));
+  if (expectedNotice) assert.ok(await screen.findByText(expectedNotice));
   const checkbox = await screen.findByRole("checkbox", {
     name: /Registrar entrada ahora/,
   });
@@ -637,8 +680,8 @@ async function chargeDayPass({ registerEntry = true } = {}) {
     name: "Confirmar cobro por servicio",
   });
   await waitFor(() => assert.equal(submit.disabled, false));
-  assert.equal(screen.getByLabelText("Monto").value, "40");
-  assert.equal(screen.getByLabelText("Concepto").value, "Pase del día");
+  assert.equal(screen.getByLabelText("Monto").value, amount);
+  assert.equal(screen.getByLabelText("Concepto").value, concept);
   fireEvent.change(screen.getByLabelText("Método"), {
     target: { value: "cash" },
   });
@@ -650,14 +693,17 @@ async function chargeDayPass({ registerEntry = true } = {}) {
   });
   fireEvent.click(submit);
 }
-const dayPassCharges = (calls) =>
+const chargeDayPass = (options) => chargeQuickTariff(options);
+const quickTariffCharges = (calls) =>
   calls.filter(
     (call) =>
       call.url === "/api/admin/finance" &&
       call.body?.kind === "service_income",
   );
-const dayPassCheckIns = (calls) =>
+const quickTariffCheckIns = (calls) =>
   calls.filter((call) => call.body?.action === "check-in");
+const dayPassCharges = quickTariffCharges;
+const dayPassCheckIns = quickTariffCheckIns;
 
 test("pase del día precarga C$40 y registra la entrada solo tras confirmar el cobro", async () => {
   const calls = setupDayPass(() =>
@@ -702,6 +748,86 @@ test("si la entrada falla tras cobrar el pase, avisa que no se repita el cobro",
   await screen.findByText(/No repitas el cobro/);
   assert.equal(dayPassCharges(calls).length, 1);
   assert.equal(dayPassCheckIns(calls).length, 1);
+});
+
+test("tarifas rápidas muestran Día, Semana, Quincena y Mes, pero nunca Boxeo", async () => {
+  const calls = setupQuickTariffs(() =>
+    json({ data: { already: false, id: token } }),
+  );
+  await open();
+  await heading();
+  assert.ok(
+    await screen.findByRole("button", { name: /Cobrar pase del día.*C\$40/ }),
+  );
+  assert.ok(screen.getByRole("button", { name: /Cobrar semana.*C\$150/ }));
+  assert.ok(screen.getByRole("button", { name: /Cobrar quincena.*C\$280/ }));
+  assert.ok(screen.getByRole("button", { name: /Cobrar mes.*C\$560/ }));
+  assert.equal(screen.queryByRole("button", { name: /Boxeo/ }), null);
+  assert.equal(calls.filter((call) => call.body).length, 0);
+});
+
+test("tarifa sin precio NIO válido no aparece como cobro rápido", async () => {
+  const plans = quickTariffPlans.map((plan) => {
+    if (plan.slug === "gimnasio-semanal") return { ...plan, price_nio: null };
+    if (plan.slug === "gimnasio-quincenal") return { ...plan, price_nio: 0 };
+    return plan;
+  });
+  setupQuickTariffs(() => json({ data: { already: false, id: token } }), plans);
+  await open();
+  await heading();
+  assert.ok(
+    await screen.findByRole("button", { name: /Cobrar pase del día/ }),
+  );
+  assert.equal(screen.queryByRole("button", { name: /Cobrar semana/ }), null);
+  assert.equal(screen.queryByRole("button", { name: /Cobrar quincena/ }), null);
+  assert.ok(screen.getByRole("button", { name: /Cobrar mes/ }));
+});
+
+test("quincena precarga C$280, avisa que no activa vigencia y registra la entrada tras el cobro", async () => {
+  const calls = setupQuickTariffs(() =>
+    json({ data: { already: false, id: token } }),
+  );
+  await chargeQuickTariff({
+    buttonName: /Cobrar quincena/,
+    amount: "280",
+    concept: "Gimnasio quincenal",
+    expectedNotice: /todavía no activa ni renueva la vigencia/,
+  });
+  await screen.findByText("Cobro confirmado y entrada registrada.");
+  assert.equal(quickTariffCharges(calls).length, 1);
+  assert.equal(quickTariffCharges(calls)[0].body.amount, 280);
+  assert.equal(quickTariffCharges(calls)[0].body.currency, "NIO");
+  assert.equal(
+    quickTariffCharges(calls)[0].body.concept,
+    "Gimnasio quincenal",
+  );
+  assert.equal(quickTariffCharges(calls)[0].body.clientId, id);
+  assert.equal(quickTariffCheckIns(calls).length, 1);
+  assert.equal(
+    calls.filter((call) => call.body?.action && call.body.action !== "check-in")
+      .length,
+    0,
+  );
+});
+
+test("mes sin registrar entrada cobra C$560 una vez y no llama check-in", async () => {
+  const calls = setupQuickTariffs(() =>
+    json({ data: { already: false, id: token } }),
+  );
+  await chargeQuickTariff({
+    buttonName: /Cobrar mes/,
+    amount: "560",
+    concept: "Gimnasio mensual",
+    registerEntry: false,
+    expectedNotice: /todavía no activa ni renueva la vigencia/,
+  });
+  await screen.findByRole("link", { name: /Abrir comprobante interno/ });
+  assert.equal(quickTariffCharges(calls).length, 1);
+  assert.equal(quickTariffCharges(calls)[0].body.amount, 560);
+  assert.equal(quickTariffCharges(calls)[0].body.currency, "NIO");
+  assert.equal(quickTariffCharges(calls)[0].body.concept, "Gimnasio mensual");
+  assert.equal(quickTariffCheckIns(calls).length, 0);
+  assert.equal(calls.filter((call) => call.body?.action).length, 0);
 });
 
 test("saldo: SQL anterior no bloquea recepción y reintentar confirma sección sólo con GET", async () => {

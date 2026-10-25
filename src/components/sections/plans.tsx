@@ -62,7 +62,13 @@ export async function Plans({ locale }: { locale: Locale }) {
               )
             : features;
           const period =
-            plan.period === "session" ? dict.plans.session : dict.plans.month;
+            plan.period === "session"
+              ? dict.plans.session
+              : plan.period === "week"
+                ? dict.plans.week
+                : plan.period === "fortnight"
+                  ? dict.plans.fortnight
+                  : dict.plans.month;
 
           return (
             <Reveal key={plan.id} delay={index * 70} className="h-full">
