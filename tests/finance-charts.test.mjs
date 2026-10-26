@@ -1,4 +1,4 @@
-import test from "node:test";
+import test, { afterEach } from "node:test";
 import assert from "node:assert/strict";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -13,6 +13,20 @@ const { FinanceKpis } = await createLoader()(
 const { normalizeCashierPermissions } = await createLoader()(
   "lib/finance/cashier-permissions.ts",
 );
+const dom = new JSDOM("<!doctype html><html><body></body></html>", {
+  url: "https://strong.test/es/panel/caja",
+});
+for (const key of ["window", "document", "navigator", "HTMLElement", "Node"])
+  Object.defineProperty(globalThis, key, {
+    value: dom.window[key],
+    configurable: true,
+    writable: true,
+  });
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+globalThis.self = dom.window;
+const { render: renderPanel, screen, fireEvent, cleanup } =
+  await import("@testing-library/react");
+afterEach(() => cleanup());
 const render = (data) =>
   renderToStaticMarkup(
     React.createElement(MiniBar, { data, label: "Resultado informado" }),
@@ -73,7 +87,7 @@ test("valor no finito no se convierte en una barra cero ni una altura inválida"
 });
 
 test("contenedores de gráficos permiten encoger el grid sin trasladar el ancho mínimo a la página", () => {
-  const html = renderToStaticMarkup(
+  const { container } = renderPanel(
     React.createElement(CashPanel, {
       summary: {
         incomeToday: 0,
@@ -107,15 +121,16 @@ test("contenedores de gráficos permiten encoger el grid sin trasladar el ancho 
       isDemo: false,
     }),
   );
-  const dom = new JSDOM(html);
-  const clientChargeLink = [...dom.window.document.querySelectorAll("a")].find(
-    (link) => link.textContent.includes("Cobrar o registrar entrada"),
+  const clientChargeLink = [...container.querySelectorAll("a")].find((link) =>
+    link.textContent.includes("Cobrar o registrar entrada"),
   );
   assert.ok(clientChargeLink.classList.contains("bg-brand"));
   assert.ok(clientChargeLink.querySelector("svg"));
-  const charts = [
-    ...dom.window.document.querySelectorAll("section[aria-label]"),
-  ];
+  fireEvent.click(screen.getByRole("button", { name: /^Gráficos/ }));
+  const charts = [...container.querySelectorAll("section[aria-label]")].filter(
+    (section) =>
+      /^(Ingresos|Resultado) NIO/.test(section.getAttribute("aria-label") ?? ""),
+  );
   assert.equal(charts.length, 2);
   for (const chart of charts) {
     assert.ok(chart.classList.contains("min-w-0"));
@@ -134,7 +149,6 @@ test("contenedores de gráficos permiten encoger el grid sin trasladar el ancho 
   assert.match(scroll.getAttribute("aria-label"), /Desplazar gráfico/);
   assert.equal(scroll.firstElementChild.style.minWidth, "476px");
   assert.equal(scroll.style.minWidth, "");
-  dom.window.close();
 });
 
 const permissionSummary = {
@@ -153,6 +167,76 @@ const permissionSummary = {
   openRegisterCount: 0,
   openRegister: null,
 };
+
+test("Caja por módulos: movimientos paginados, búsqueda y saldos por cuenta", () => {
+  const recent = Array.from({ length: 27 }, (_, index) => ({
+    id: `movimiento-${index + 1}`,
+    occurredAt: "2026-10-26T18:00:00.000Z",
+    direction: "income",
+    amount: 10,
+    currency: "NIO",
+    concept:
+      index === 26
+        ? "Movimiento especial"
+        : `Movimiento EJEMPLO ${index + 1}`,
+    paymentMethodId: "metodo-1",
+    status: "completed",
+  }));
+  renderPanel(
+    React.createElement(CashPanel, {
+      summary: permissionSummary,
+      recent,
+      daily: [],
+      monthly: [],
+      methods: [],
+      paymentMethodNames: { "metodo-1": "Efectivo" },
+      paymentMethodIcons: {},
+      accounts: [
+        {
+          id: "cuenta-1",
+          name: "Caja principal",
+          currency: "NIO",
+          kind: "caja_fuerte",
+          balance: 12345,
+        },
+        {
+          id: "cuenta-2",
+          name: "Banco Dólares",
+          currency: "USD",
+          kind: "bank",
+          balance: 50,
+        },
+      ],
+      isDemo: false,
+    }),
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: /^Movimientos/ }));
+  assert.equal(document.body.style.overflow, "hidden");
+  assert.match(document.body.textContent, /Página 1 de 2/);
+  assert.ok(screen.getByText("Movimiento EJEMPLO 25"));
+  assert.equal(screen.queryByText("Movimiento EJEMPLO 26"), null);
+  fireEvent.click(screen.getByRole("button", { name: "Siguiente" }));
+  assert.ok(screen.getByText("Movimiento EJEMPLO 26"));
+  assert.ok(screen.getByText("Movimiento especial"));
+  fireEvent.change(screen.getByLabelText("Buscar movimiento"), {
+    target: { value: "especial" },
+  });
+  assert.ok(screen.getByText("Movimiento especial"));
+  assert.equal(screen.queryByText("Movimiento EJEMPLO 26"), null);
+  fireEvent.click(screen.getByRole("button", { name: /Volver a Caja/ }));
+  assert.equal(document.body.style.overflow, "");
+
+  fireEvent.click(screen.getByRole("button", { name: /^Cuentas y saldos/ }));
+  assert.ok(screen.getByText("Caja principal"));
+  assert.ok(screen.getAllByText("Saldo informado").length > 0);
+  assert.match(document.body.textContent, /12[,.]345/);
+  fireEvent.click(screen.getByRole("button", { name: "Filtros" }));
+  fireEvent.click(screen.getByRole("button", { name: "USD" }));
+  fireEvent.click(screen.getByRole("button", { name: "Ver cuentas" }));
+  assert.ok(screen.getByText("Banco Dólares"));
+  assert.equal(screen.queryByText("Caja principal"), null);
+});
 
 test("permisos de caja apagados: Caja conserva el día y oculta informes, saldos y accesos delegados", () => {
   const html = renderToStaticMarkup(

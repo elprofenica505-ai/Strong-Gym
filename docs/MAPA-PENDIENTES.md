@@ -39,6 +39,7 @@ Verificado con el historial completo del repositorio:
 - Antes de la venta integrada de productos, los PR #1 a #47 ya estaban fusionados en `main` (`5286f45`). Esta tanda se preparó en `arena/730a1319-strong-gym`.
 - Casi todas las ramas `arena/*` ya están contenidas en `main`. No se perdió trabajo en ellas.
 - La rama `arena/85c54d7d-strong-gym` se integró en esta rama (solo el archivo de la 00031). Su resto ya está en `main`.
+- La reorganización visual de Caja está solo en `arena/d4ecf945-strong-gym`; producción sigue en `main@989d71d` hasta que el usuario apruebe la vista previa del PR. Si no le gusta, el PR se cierra sin fusionar.
 
 ## 4. Pendientes reales por área (resumen)
 
@@ -62,6 +63,7 @@ Para el detalle, usa la fuente indicada en la sección 1.
 - Tarifas de pesas y máquinas: NIO administrables por Día C$40, Semana C$150, Quincena C$280 y Mes C$560 (00057–00058), públicas en la web y con cobro rápido en la ficha; la entrada opcional solo se registra tras confirmar el pago. Boxeo queda aparte en US$20. Cobrar Semana, Quincena o Mes todavía no activa vigencia. El usuario confirmó el ajuste visual de botones del PR #47 («Listo todo pasó las pruebas»).
 - Venta de productos en recepción (00059): desde la ficha se puede cobrar servicio + productos o solo productos en NIO, con subtotales, total, comprobantes por línea y baja de stock en la misma transacción. No hay venta anónima: primero se busca o crea la ficha. Probada en producción con el producto real «Agua fuente pura 600 ml» (compra de 12, venta de 1, stock 11); el usuario confirmó «Si funciona».
 - Orden visual (26 oct 2026, migración 00060): Productos y stock y el catálogo de venta usan tarjetas alineadas con foto completa sin recorte, precio, stock/disponibles, botones Ver productos y Categorías, buscador y 25 por página; en inventario la ficha completa se abre al tocar; ficha del cliente enfocada con un menú de tarjetas donde cada una abre una pantalla propia a pantalla completa (entrada, cobrar, productos, deudas, saldo e historial, datos y carnet), un intento pendiente abre solo su pantalla y nunca queda escondido; el enlace de Asistencia abre una vista solo de visitas (`?vista=asistencia`), separada de Progreso y medidas. El catálogo de recepción ahora incluye la foto, sin costo ni ganancia. Falta la prueba guiada desde el celular de esta presentación.
+- Caja por módulos (26 oct 2026, solo vista previa): la portada conserva cobro principal y KPI y abre Movimientos, Cuentas y saldos, Métodos de pago, Gráficos y ayuda en pantallas propias; Movimientos pagina los últimos 30 ya cargados de 25 en 25. No hay migración ni cambios de dinero, monedas, cálculos o permisos. Debe esperar la aprobación visual del usuario antes de fusionarse.
 - Planes y vigencias generales, reservas y cupos, mensajes leídos y disciplinas, QR en dispositivo real, hora de Managua en páginas abiertas, asistencia en Mi cuenta, categoría del cliente: pendientes.
 
 **Finanzas**
