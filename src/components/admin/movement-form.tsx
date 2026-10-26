@@ -436,7 +436,7 @@ export function MovementForm({
                   Sin productos que coincidan con esa búsqueda.
                 </p>
               ) : (
-                <ul className="max-h-96 space-y-2 overflow-y-auto pr-1">
+                <ul className="max-h-96 space-y-2 overflow-y-auto overscroll-contain pr-1">
                   {filteredProducts.map((product) => {
                     const item = selectedItems.find(
                       (selected) => selected.product === product.id,

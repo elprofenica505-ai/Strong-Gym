@@ -249,6 +249,7 @@ export function ClientsPanel({
   const [optionsAttempt, setOptionsAttempt] = useState(0);
   const [showScanner, setShowScanner] = useState(false);
   const searchInput = useRef<HTMLInputElement>(null);
+  const moduleScreenRef = useRef<HTMLElement>(null);
   const directoryResource = useCrmResource<Directory>(
     `/api/admin/clients?${new URLSearchParams({ search: query, category, offset: String(offset) })}`,
     revision,
@@ -297,6 +298,32 @@ export function ClientsPanel({
     setOpenModule(null);
     scrollToFichaTop();
   };
+  // Al abrir una tarjeta, el módulo funciona como una pantalla aparte:
+  // empieza arriba, recibe el foco y la página de atrás no se mueve.
+  useEffect(() => {
+    if (!openModule) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const screen = moduleScreenRef.current;
+    if (screen) {
+      screen.scrollTop = 0;
+      screen.focus({ preventScroll: true });
+    }
+    // Al imprimir un comprobante o el carnet, la página debe paginar normal.
+    const unlockForPrint = () => {
+      document.body.style.overflow = previousOverflow;
+    };
+    const relockAfterPrint = () => {
+      document.body.style.overflow = "hidden";
+    };
+    window.addEventListener("beforeprint", unlockForPrint);
+    window.addEventListener("afterprint", relockAfterPrint);
+    return () => {
+      window.removeEventListener("beforeprint", unlockForPrint);
+      window.removeEventListener("afterprint", relockAfterPrint);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [openModule]);
   const managuaDay = (value: Date) =>
     new Intl.DateTimeFormat("en-CA", { timeZone: "America/Managua" }).format(
       value,
@@ -910,9 +937,21 @@ export function ClientsPanel({
       )}
       {detail && (
         <section
+          ref={moduleScreenRef}
           id="ficha-cliente"
           aria-busy={detailResource.loading}
-          className="scroll-mt-24 rounded-2xl border border-brand/30 bg-card p-5 space-y-6"
+          aria-label={
+            openModule
+              ? `${MODULE_INFO[openModule].title} de ${detail.client.full_name}`
+              : undefined
+          }
+          data-module-screen={openModule ?? undefined}
+          tabIndex={openModule ? -1 : undefined}
+          className={
+            openModule
+              ? "fixed inset-0 z-[80] space-y-6 overflow-y-auto overscroll-contain bg-paper px-4 pt-4 pb-[max(2.5rem,env(safe-area-inset-bottom))] text-ink shadow-2xl outline-none print:static print:overflow-visible sm:px-6 lg:px-[max(2rem,calc((100vw_-_72rem)/2))]"
+              : "scroll-mt-24 rounded-2xl border border-brand/30 bg-card p-5 space-y-6"
+          }
         >
           {openModule === null ? (
             <>
@@ -991,11 +1030,13 @@ export function ClientsPanel({
             )}
             </>
           ) : (
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2">
+            <>
+              <div className="sticky top-0 z-20 flex items-center gap-2 rounded-2xl border border-line bg-card/95 p-3 shadow-xl backdrop-blur">
                 <Button
                   type="button"
                   variant="outline"
+                  size="sm"
+                  className="min-w-0 flex-1 sm:flex-none"
                   disabled={busy}
                   onClick={backToFicha}
                 >
@@ -1004,20 +1045,24 @@ export function ClientsPanel({
                 <Button
                   type="button"
                   variant="outline"
+                  size="sm"
+                  className="min-w-0 flex-1 sm:flex-none"
                   disabled={detailBusy}
                   onClick={() => setRevision((n) => n + 1)}
                 >
                   Actualizar ficha
                 </Button>
               </div>
-              <h2 className="text-lg font-bold text-ink">
-                #{detail.client.client_number} · {detail.client.full_name}
-              </h2>
-              {pendingBanner}
-              <h3 className="text-base font-semibold text-brand-300">
-                {openModule ? MODULE_INFO[openModule].title : ""}
-              </h3>
-            </div>
+              <div className="space-y-3">
+                <h2 className="text-lg font-bold text-ink">
+                  #{detail.client.client_number} · {detail.client.full_name}
+                </h2>
+                {pendingBanner}
+                <h3 className="text-base font-semibold text-brand-300">
+                  {openModule ? MODULE_INFO[openModule].title : ""}
+                </h3>
+              </div>
+            </>
           )}
           {openModule === "entrada" && (
             <div className="space-y-4">
@@ -1282,7 +1327,7 @@ export function ClientsPanel({
                   </span>
                 </Link>
                 <Link
-                  href={`/${locale}/panel/progreso/${detail.client.id}#asistencia`}
+                  href={`/${locale}/panel/progreso/${detail.client.id}?vista=asistencia`}
                   className="flex w-full items-center justify-between gap-3 rounded-xl border border-line bg-paper/60 px-4 py-3 text-left transition hover:border-brand/60 hover:bg-brand/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   <span>

@@ -1060,10 +1060,16 @@ test("cada tarjeta de la ficha abre su propia vista y Volver regresa al menú", 
   const asistencia = screen.getByRole("link", {
     name: /^Asistencia \(día, semana, mes\)/,
   });
-  assert.match(asistencia.getAttribute("href"), /#asistencia$/);
+  assert.match(asistencia.getAttribute("href"), /\?vista=asistencia$/);
   await openModule("Saldo e historial");
   assert.ok(await screen.findByText("Saldo y cobros del cliente"));
-  // La vista reemplaza al menú: no empuja las demás tarjetas hacia abajo.
+  // La tarjeta abre una pantalla propia: cubre la ficha, se desplaza por
+  // dentro y la página de atrás queda quieta.
+  const moduleScreen = document.getElementById("ficha-cliente");
+  assert.equal(moduleScreen.dataset.moduleScreen, "historial");
+  assert.match(moduleScreen.className, /fixed inset-0/);
+  assert.match(moduleScreen.className, /overflow-y-auto/);
+  assert.equal(document.body.style.overflow, "hidden");
   assert.equal(
     screen.queryByRole("button", { name: /^Cobrar un servicio/ }),
     null,
@@ -1077,4 +1083,6 @@ test("cada tarjeta de la ficha abre su propia vista y Volver regresa al menú", 
     await screen.findByRole("button", { name: /^Cobrar un servicio/ }),
   );
   assert.equal(screen.queryByText("Saldo y cobros del cliente"), null);
+  assert.equal(moduleScreen.dataset.moduleScreen, undefined);
+  assert.equal(document.body.style.overflow, "");
 });
