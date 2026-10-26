@@ -64,10 +64,13 @@ export function MovementForm({
   defaultConcept,
   presetKey,
   onSuccess,
+  heading,
 }: {
   kind: "service_income" | "expense";
   clientId?: string;
   locale: string;
+  /** Título visible opcional (ej. «Venta de productos» en su módulo). */
+  heading?: string;
   disabled?: boolean;
   onRefresh?: () => void;
   onBusy?: (busy: boolean) => void;
@@ -335,7 +338,7 @@ export function MovementForm({
   return (
     <section className="min-w-0 space-y-4 rounded-2xl border border-line bg-card p-4">
       <h2 className="text-lg font-bold text-ink">
-        {kind === "expense" ? "Registrar gasto" : "Cobro por servicio"}
+        {heading ?? (kind === "expense" ? "Registrar gasto" : "Cobro por servicio")}
       </h2>
       <p className="text-sm text-fog">
         {kind === "expense"
@@ -448,6 +451,18 @@ export function MovementForm({
                         key={product.id}
                         className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-card p-3"
                       >
+                        {product.image_data ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={product.image_data}
+                            alt=""
+                            className="size-14 shrink-0 rounded-lg object-cover"
+                          />
+                        ) : (
+                          <span className="grid size-14 shrink-0 place-items-center rounded-lg bg-line/40 text-[0.65rem] text-fog">
+                            sin foto
+                          </span>
+                        )}
                         <div className="min-w-0 flex-1">
                           <p className="break-words font-semibold text-ink">
                             {product.name}

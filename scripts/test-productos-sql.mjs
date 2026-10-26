@@ -525,4 +525,15 @@ ok('caja lee los grupos de cobro y entrenador no ve ninguno',
 ok('caja no escribe directamente en los grupos de cobro',
   await denied(as(cashier, 'aal2', "insert into public.finance_checkout_groups(request_id, client_id, payload, result) values ('dddddddd-dddd-4ddd-8ddd-dddddddddddd',$1,'{}','{}')", [ana]), /42501|permission denied/));
 
-console.log(`\n${checks} comprobaciones PASS (00042 productos, stock, ventas, categoría; 00043-00055 plan de nutrición, registro, edad, consentimiento, aprobación, edad calculada, personal, coaches, altura y menores en rutas del personal; 00059 cobro combinado con productos)`);
+// ===== 00060: el catálogo de venta incluye la foto, nunca costo ni ganancia =====
+await db.exec(sql('supabase/migrations/00060_catalogo_venta_con_imagen.sql'));
+ok('00060 se aplica sobre 00059 sin error', true);
+const saleCatalog60 = (await as(cashier, 'aal2', 'select public.product_sale_catalog() as c'))[0].c;
+const catalogWater60 = saleCatalog60.products.find((p) => p.id === waterId);
+ok('el catálogo de venta trae la clave image_data y sigue sin costo ni ganancia',
+  !!catalogWater60 && 'image_data' in catalogWater60 &&
+  !('cost' in catalogWater60) && !('profit' in catalogWater60));
+ok('entrenador sigue sin ver el catálogo de venta tras la 00060',
+  await denied(as(trainer, 'aal2', 'select public.product_sale_catalog()'), /AUTH/));
+
+console.log(`\n${checks} comprobaciones PASS (00042 productos, stock, ventas, categoría; 00043-00055 plan de nutrición, registro, edad, consentimiento, aprobación, edad calculada, personal, coaches, altura y menores en rutas del personal; 00059 cobro combinado con productos; 00060 imagen en el catálogo de venta)`);
