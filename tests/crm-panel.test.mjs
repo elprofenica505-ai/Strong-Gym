@@ -106,6 +106,19 @@ async function open(name = "Hellen Reyes") {
 }
 const heading = (name = "Hellen Reyes") =>
   screen.findByRole("heading", { name: new RegExp(name) });
+// La ficha se organiza en módulos desplegables (uno abierto a la vez).
+async function openModule(title) {
+  const button = await screen.findByRole("button", {
+    name: new RegExp(`^${title}`),
+  });
+  if (button.getAttribute("aria-expanded") !== "true")
+    fireEvent.click(button);
+  return button;
+}
+const backToClients = () =>
+  fireEvent.click(
+    screen.getByRole("button", { name: "← Volver a clientes" }),
+  );
 
 test("nombre primero, QR opcional; búsqueda envía nombre sin exigir carnet", async () => {
   const calls = setup(() => json(detail()));
@@ -123,13 +136,18 @@ test("nombre primero, QR opcional; búsqueda envía nombre sin exigir carnet", a
     0,
     "abrir no registra ni cobra",
   );
+  assert.equal(screen.queryByLabelText("Lector USB o código copiado"), null);
+  backToClients();
+  const searchAgain = await screen.findByLabelText(
+    "Nombre, teléfono o número de cliente",
+  );
   fireEvent.click(
     screen.getByRole("button", { name: "Usar QR o lector (opcional)" }),
   );
   fireEvent.click(
     screen.getByRole("button", { name: "Buscar por nombre", exact: true }),
   );
-  assert.equal(document.activeElement, search);
+  assert.equal(document.activeElement, searchAgain);
 });
 
 test("error de ficha termina carga, sobrevive al éxito del listado y reintenta sólo GET", async () => {
@@ -232,6 +250,7 @@ test("fallo de opciones no borra listado ni ficha y bloquea cobros", async () =>
   await open();
   await heading();
   assert.ok(screen.getByText(/CRM_OPTIONS_42P01/));
+  await openModule("Cobrar un servicio");
   assert.ok(screen.getByRole("button", { name: "Confirmar cobro" }).disabled);
   assert.equal(screen.queryByText("No pudimos abrir esta ficha"), null);
 });
@@ -263,19 +282,25 @@ test("refresh conserva referencia de cobro y oculta carnet obsoleto hasta confir
   );
   await open();
   await heading();
+  // El intento pendiente abre solo su módulo: nunca queda escondido.
   assert.ok(screen.getByText(`Referencia de intento: ${other}`));
-  fireEvent.click(screen.getByRole("button", { name: "Buscar", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: "Actualizar ficha" }));
   await waitFor(() => assert.ok(resolveRefresh));
   assert.ok(screen.getByText(`Referencia de intento: ${other}`));
+  assert.ok(
+    screen.getByRole("button", { name: "Reintentar el mismo cobro" }).disabled,
+  );
+  await openModule("Datos del cliente y carnet");
   assert.equal(
     screen.queryByRole("button", { name: "Imprimir / guardar PDF" }),
     null,
   );
-  assert.ok(
-    screen.getByRole("button", { name: "Reintentar el mismo cobro" }).disabled,
-  );
+  assert.ok(screen.getByText(/Carnet oculto hasta confirmar/));
   await act(async () => resolveRefresh(json(detail())));
-  assert.ok(screen.getByRole("button", { name: "Imprimir / guardar PDF" }));
+  assert.ok(
+    await screen.findByRole("button", { name: "Imprimir / guardar PDF" }),
+  );
+  await openModule("Cobrar un servicio");
   assert.ok(screen.getByText(`Referencia de intento: ${other}`));
 });
 
@@ -347,9 +372,14 @@ test("cobro con respuesta perdida conserva referencia; reintento usa exactamente
   );
   await screen.findByText(`Cobro confirmado. Referencia: ${tx}`);
   await waitFor(() =>
-    assert.ok(screen.getByRole("button", { name: "Imprimir / guardar PDF" })),
+    assert.equal(
+      screen.getByRole("button", { name: "Actualizar ficha" }).disabled,
+      false,
+    ),
   );
   assert.ok(screen.getByText(`Cobro confirmado. Referencia: ${tx}`));
+  await openModule("Datos del cliente y carnet");
+  assert.ok(screen.getByRole("button", { name: "Imprimir / guardar PDF" }));
   assert.equal(sessionStorage.getItem(`strong-gym:crm-payment:${id}`), null);
   const bodies = calls.filter((c) => c.body).map((c) => c.body);
   assert.equal(bodies.length, 2);
@@ -377,13 +407,16 @@ test("estructura bank_accounts abre ficha y muestra monedas separadas, sin habil
   );
   await open();
   await heading();
+  await openModule("Saldo e historial");
   assert.ok(screen.getByText("Crédito NIO: C$ 100.00"));
   assert.ok(screen.getByText("Deuda NIO: C$ 20.00"));
   assert.ok(screen.getByText("Crédito USD: US$ 7.00"));
   assert.ok(screen.getByText("Deuda USD: US$ 3.00"));
   assert.equal(screen.queryByText(/Saldo de cuenta vinculada:/), null);
+  await openModule("Cobrar un servicio");
   assert.ok(screen.getByRole("button", { name: "Confirmar cobro" }).disabled);
   assert.ok(screen.getByText("Caja pendiente de compatibilidad"));
+  await openModule("Registrar entrada");
   assert.equal(
     screen.getByRole("button", { name: /Confirmar entrada/ }).disabled,
     false,
@@ -442,6 +475,7 @@ test("primera entrada y reintento muestran confirmación junto al botón, no só
   });
   await open();
   await heading();
+  await openModule("Registrar entrada");
   const entry = screen.getByRole("button", {
     name: "Confirmar entrada manual",
   });
@@ -458,6 +492,7 @@ test("primera entrada y reintento muestran confirmación junto al botón, no só
   );
   assert.equal(repeated.parentElement.id, "crm-entry-feedback");
   await waitFor(() => assert.equal(entry.disabled, false));
+  await openModule("Saldo e historial");
   assert.ok(screen.getByText(/10:01 p/));
   assert.equal(calls.filter((c) => c.body?.action === "check-in").length, 2);
   assert.equal(calls.filter((c) => c.body?.action === "payment").length, 0);
@@ -471,6 +506,7 @@ test("error de entrada es visible en su botón y no se confunde con registro con
   );
   await open();
   await heading();
+  await openModule("Registrar entrada");
   fireEvent.click(
     screen.getByRole("button", { name: "Confirmar entrada manual" }),
   );
@@ -497,6 +533,7 @@ test("respuesta de entrada incompleta no muestra éxito ni provoca repetición a
   );
   await open();
   await heading();
+  await openModule("Registrar entrada");
   fireEvent.click(
     screen.getByRole("button", { name: "Confirmar entrada manual" }),
   );
@@ -523,6 +560,7 @@ test("cambiar de cliente limpia el aviso de entrada anterior", async () => {
   );
   await open();
   await heading();
+  await openModule("Registrar entrada");
   fireEvent.click(
     screen.getByRole("button", { name: "Confirmar entrada manual" }),
   );
@@ -533,6 +571,7 @@ test("cambiar de cliente limpia el aviso de entrada anterior", async () => {
       false,
     ),
   );
+  backToClients();
   await open("Carlos Prueba");
   await heading("Carlos Prueba");
   assert.equal(screen.queryByText(/ya tiene una visita registrada hoy/), null);
@@ -564,6 +603,8 @@ test("ficha bancaria usa el nuevo protocolo de cobro sin depender del escritor l
     () => json(bank),
   );
   await open();
+  await heading();
+  await openModule("Cobrar un servicio");
   await screen.findByRole("heading", { name: "Cobro por servicio" });
   const submit = screen.getByRole("button", {
     name: "Confirmar cobro por servicio",
@@ -707,6 +748,7 @@ async function chargeQuickTariff({
 } = {}) {
   await open();
   await heading();
+  await openModule("Registrar entrada");
   fireEvent.click(await screen.findByRole("button", { name: buttonName }));
   if (expectedNotice) assert.ok(await screen.findByText(expectedNotice));
   const checkbox = await screen.findByRole("checkbox", {
@@ -778,6 +820,7 @@ test("pase del día y productos se cobran en un solo intento antes de registrar 
   );
   await open();
   await heading();
+  await openModule("Registrar entrada");
   fireEvent.click(
     await screen.findByRole("button", { name: /Cobrar pase del día/ }),
   );
@@ -842,6 +885,7 @@ test("tarifas rápidas muestran Día, Semana, Quincena y Mes, pero nunca Boxeo",
   );
   await open();
   await heading();
+  await openModule("Registrar entrada");
   const tariffButtons = [
     await screen.findByRole("button", { name: /Cobrar pase del día.*C\$40/ }),
     screen.getByRole("button", { name: /Cobrar semana.*C\$150/ }),
@@ -870,6 +914,7 @@ test("tarifa sin precio NIO válido no aparece como cobro rápido", async () => 
   setupQuickTariffs(() => json({ data: { already: false, id: token } }), plans);
   await open();
   await heading();
+  await openModule("Registrar entrada");
   assert.ok(
     await screen.findByRole("button", { name: /Cobrar pase del día/ }),
   );
@@ -933,9 +978,12 @@ test("saldo: SQL anterior no bloquea recepción y reintentar confirma sección s
     return json(value);
   });
   await open(); await heading();
+  await openModule("Saldo e historial");
   await screen.findByText('CRM_FINANCE_READ_UNCONFIRMED');
-  assert.equal(screen.getByRole('button',{name:/Confirmar entrada/}).disabled,false);
   assert.equal(screen.queryByText(/Córdobas: C\$ 0.00/),null);
+  await openModule("Registrar entrada");
+  assert.equal(screen.getByRole('button',{name:/Confirmar entrada/}).disabled,false);
+  await openModule("Saldo e historial");
   updated=true;
   fireEvent.click(screen.getByRole('button',{name:'Reintentar saldo y cobros'}));
   await screen.findByText('Córdobas: C$ 0.00 · 0 cobros');
@@ -948,9 +996,11 @@ test("saldo: un refresh fallido oculta cifras antiguas sin anunciar cero", async
   const value=detail();
   value.finance.collections={count_nio:1,amount_nio:125,count_usd:0,amount_usd:0};
   const calls=setup(()=> fail ? json({error:'Lectura no confirmada'},503) : json(value));
-  await open(); await screen.findByText('Córdobas: C$ 125.00 · 1 cobro');
+  await open(); await heading();
+  await openModule("Saldo e historial");
+  await screen.findByText('Córdobas: C$ 125.00 · 1 cobro');
   fail=true;
-  fireEvent.click(screen.getByRole('button',{name:'Buscar',exact:true}));
+  fireEvent.click(screen.getByRole('button',{name:'Actualizar ficha'}));
   await screen.findByText('CRM_FINANCE_READ_UNCONFIRMED');
   assert.equal(screen.queryByText('Córdobas: C$ 125.00 · 1 cobro'),null);
   assert.equal(screen.queryByText(/Córdobas: C\$ 0.00/),null);
@@ -968,8 +1018,10 @@ test("saldo: respuesta financiera de otra ficha no se muestra aunque la ficha pr
   value.finance.collections={count_nio:1,amount_nio:777,count_usd:0,amount_usd:0};
   setup(()=>json(value));
   await open(); await heading();
+  await openModule("Saldo e historial");
   await screen.findByText('CRM_FINANCE_READ_UNCONFIRMED');
   assert.equal(screen.queryByText(/Córdobas: C\$ 777.00/),null);
+  await openModule("Registrar entrada");
   assert.equal(screen.getByRole('button',{name:/Confirmar entrada/}).disabled,false);
 });
 
@@ -980,7 +1032,9 @@ test("saldo: datos financieros inválidos se aíslan de recepción, no bloquean 
   value.finance.balance_nio=null;
   setup(()=>json(value));
   await open(); await heading();
+  await openModule("Saldo e historial");
   await screen.findByText('CRM_FINANCE_READ_UNCONFIRMED');
+  await openModule("Registrar entrada");
   assert.equal(screen.getByRole('button',{name:/Confirmar entrada/}).disabled,false);
   assert.equal(screen.queryByText('No pudimos abrir esta ficha'),null);
 });

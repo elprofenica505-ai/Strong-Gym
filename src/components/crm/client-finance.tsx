@@ -49,16 +49,25 @@ export function ClientIncomeHistory({ detail, pending, stale }: {
 }) {
   const finance = readClientFinance(detail.finance, detail.client.id, detail.client.profile_id);
   const payments = readClientPayments(detail.payments);
+  const renderPayment = (payment: NonNullable<typeof payments>[number]) => (
+    <li key={payment.id} className="rounded-lg border border-line p-3">
+      <p>{payment.currency} {payment.amount.toFixed(2)} · {payment.concept}</p>
+      <p className="text-xs text-fog">{new Intl.DateTimeFormat("es-NI", {dateStyle:"medium",timeStyle:"short",timeZone:"America/Managua"}).format(new Date(payment.occurred_at))} · {{completed:"Completado",pending:"Pendiente",cancelled:"Cancelado",reversed:"Revertido"}[payment.status]}</p>
+      <p className="break-all text-xs text-fog">Referencia: {payment.id}</p>
+    </li>
+  );
   return <div>
     <h3 className="mb-3 text-lg font-bold">Últimos 40 ingresos registrados</h3>
     <p className="mb-3 text-xs text-fog">Incluye estados no completados. Esta lista no es un saldo ni el total de cobros completados.</p>
     {pending ? <p role="status">Confirmando ingresos…</p>
       : stale || !finance || finance.layout === "unsupported" || !payments ? <p role="alert">Historial de ingresos no confirmado. Reintentá la ficha; no repitás cobros.</p>
       : payments.length === 0 ? <p className="text-fog">Sin ingresos registrados para esta ficha.</p>
-      : <ul className="space-y-2 text-sm">{payments.map(payment => <li key={payment.id} className="rounded-lg border border-line p-3">
-        <p>{payment.currency} {payment.amount.toFixed(2)} · {payment.concept}</p>
-        <p className="text-xs text-fog">{new Intl.DateTimeFormat("es-NI", {dateStyle:"medium",timeStyle:"short",timeZone:"America/Managua"}).format(new Date(payment.occurred_at))} · {{completed:"Completado",pending:"Pendiente",cancelled:"Cancelado",reversed:"Revertido"}[payment.status]}</p>
-        <p className="break-all text-xs text-fog">Referencia: {payment.id}</p>
-      </li>)}</ul>}
+      : <>
+        <ul className="space-y-2 text-sm">{payments.slice(0, 5).map(renderPayment)}</ul>
+        {payments.length > 5 && <details className="mt-3">
+          <summary className="cursor-pointer text-sm text-brand-300">Ver los demás ingresos ({payments.length - 5})</summary>
+          <ul className="mt-3 space-y-2 text-sm">{payments.slice(5).map(renderPayment)}</ul>
+        </details>}
+      </>}
   </div>;
 }
