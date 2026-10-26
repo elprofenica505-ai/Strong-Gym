@@ -21,20 +21,39 @@ import {
   addMonths, BMI_LABEL, bmi, bmiCategory, goalProgress, goalStartWeight, healthyWeightRange, managuaToday, GOAL_TYPES,
 } from "@/lib/progress/rules";
 
-export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+type ProgressSearchParams = { vista?: string | string[] };
+
+function isAttendanceView(query: ProgressSearchParams) {
+  return (Array.isArray(query.vista) ? query.vista[0] : query.vista) === "asistencia";
+}
+
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams?: Promise<ProgressSearchParams>;
+}): Promise<Metadata> {
   const { locale } = await params;
   if (!isLocale(locale)) return {};
-  return { title: "Progreso del cliente", robots: { index: false, follow: false } };
+  const attendanceOnly = isAttendanceView(searchParams ? await searchParams : {});
+  return {
+    title: attendanceOnly ? "Asistencia del cliente" : "Progreso del cliente",
+    robots: { index: false, follow: false },
+  };
 }
 
 const fmt1 = (n: number) => n.toLocaleString("es-NI", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 export default async function ProgresoClientePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; id: string }>;
+  searchParams?: Promise<ProgressSearchParams>;
 }) {
   const { locale: rawLocale, id } = await params;
+  const attendanceOnly = isAttendanceView(searchParams ? await searchParams : {});
   const locale: Locale = isLocale(rawLocale) ? rawLocale : "es";
   const user = await getCurrentUser();
 
@@ -51,7 +70,7 @@ export default async function ProgresoClientePage({
   const today = managuaToday();
   // Categoría calculada en la base (00042). Si falla, no se muestra una categoría falsa.
   let category: string | null = null;
-  if (!DEMO_MODE && data) {
+  if (!DEMO_MODE && data && !attendanceOnly) {
     const db = await getSupabaseServerClient();
     const { data: cat } = db ? await db.rpc("client_category", { p_client: id }) : { data: null };
     const key = (cat as { category?: string } | null)?.category;
@@ -64,15 +83,32 @@ export default async function ProgresoClientePage({
       <section className="relative overflow-hidden border-b border-brand/25 bg-cloud pt-10 pb-8 sm:pt-12 sm:pb-10">
         <div className="container-x relative">
           <SectionHeading
-            eyebrow="Módulo · Progreso"
-            title={data ? data.clientName : "Progreso del cliente"}
-            subtitle="Medidas, meta y rutina. Las mediciones se guardan para siempre; una corrección es una medición nueva."
+            eyebrow={attendanceOnly ? "Módulo · Asistencia" : "Módulo · Progreso"}
+            title={
+              data
+                ? data.clientName
+                : attendanceOnly
+                  ? "Asistencia del cliente"
+                  : "Progreso del cliente"
+            }
+            subtitle={
+              attendanceOnly
+                ? "Visitas por día, semana y mes. Esta vista es solo de asistencia."
+                : "Medidas, meta y rutina. Las mediciones se guardan para siempre; una corrección es una medición nueva."
+            }
           />
         </div>
       </section>
       <section className="py-8 sm:py-10">
         <div className="container-x grid gap-6">
-          <a href={`/${locale}/panel/clientes`} className="text-sm text-brand-300 underline">← Volver a clientes</a>
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            <a href={`/${locale}/panel/clientes`} className="text-sm text-brand-300 underline">← Volver a clientes</a>
+            {attendanceOnly && data && (
+              <a href={`/${locale}/panel/progreso/${id}`} className="text-sm text-brand-300 underline">
+                Ver progreso y medidas
+              </a>
+            )}
+          </div>
           {DEMO_MODE ? (
             <p className="rounded-xl border border-brand/30 bg-brand/[0.06] px-4 py-3 text-[0.8125rem] text-mist">
               Modo demo: el progreso requiere Supabase conectado. No se muestran datos.
@@ -86,11 +122,21 @@ export default async function ProgresoClientePage({
               No encontramos este cliente o no tenés acceso. Si es un cliente nuevo, pedile al administrador que te lo asigne.
             </p>
           ) : (
-            <>
-              {category && <p className="rounded-xl border border-line bg-card px-4 py-3 text-[0.9rem] text-ink">Categoría: <strong>{category}</strong></p>}
-              <ProgressView data={data} today={today} canRecord={canRecord} canManage={canManage} isAdmin={user?.role === "admin"} attendance={attendance} attendanceFailed={!!(attResult && !attResult.ok)} />
-              {canRecord && (<section className="grid gap-3"><h2 className="text-xl font-bold text-ink">Calculadora, plan nutricional y rutina</h2><NutritionCalculator mode="staff" clientId={data.clientId} isAdmin={user?.role === "admin"} /></section>)}
-            </>
+            attendanceOnly ? (
+              attResult && !attResult.ok ? (
+                <section id="asistencia" className="rounded-2xl border border-line bg-card p-4 scroll-mt-24">
+                  <p className="text-[0.875rem] text-mist">La asistencia no se pudo cargar en este momento. Intentá de nuevo más tarde.</p>
+                </section>
+              ) : (
+                <AttendanceTable data={attendance} />
+              )
+            ) : (
+              <>
+                {category && <p className="rounded-xl border border-line bg-card px-4 py-3 text-[0.9rem] text-ink">Categoría: <strong>{category}</strong></p>}
+                <ProgressView data={data} today={today} canRecord={canRecord} canManage={canManage} isAdmin={user?.role === "admin"} attendance={attendance} attendanceFailed={!!(attResult && !attResult.ok)} />
+                {canRecord && (<section className="grid gap-3"><h2 className="text-xl font-bold text-ink">Calculadora, plan nutricional y rutina</h2><NutritionCalculator mode="staff" clientId={data.clientId} isAdmin={user?.role === "admin"} /></section>)}
+              </>
+            )
           )}
         </div>
       </section>
