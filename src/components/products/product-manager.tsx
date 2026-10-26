@@ -6,6 +6,13 @@ import {
   profitOf,
   productFailureMessage,
 } from "@/lib/products/rules";
+import {
+  ProductCatalogImage,
+  ProductCatalogTabs,
+  ProductCategoryChoices,
+  productCategoryOptions,
+  type ProductCatalogView,
+} from "./product-catalog-ui";
 
 type Product = {
   id: string;
@@ -67,6 +74,10 @@ export function ProductManager() {
   // Vista de tarjetas: página actual (25 por página) y producto abierto.
   const [page, setPage] = useState(0);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [catalogView, setCatalogView] =
+    useState<ProductCatalogView>("productos");
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState<string | null>(null);
   // Referencia de la operación en curso: se conserva si la respuesta se pierde.
   const requestRef = useRef<string | null>(null);
 
@@ -194,7 +205,15 @@ export function ProductManager() {
       },
       form.id ? "Producto actualizado." : "Producto creado.",
     );
-    if (ok) close();
+    if (ok) {
+      // Al guardar se vuelve al catálogo completo para que el producto
+      // recién creado o editado no quede escondido por un filtro anterior.
+      setSearch("");
+      setCategory(null);
+      setCatalogView("productos");
+      setPage(0);
+      close();
+    }
   };
 
   const pickImage = async (file: File | undefined) => {
@@ -281,12 +300,46 @@ export function ProductManager() {
     ? data.products.find((p) => p.id === detailId) ?? null
     : null;
   const PAGE_SIZE = 25;
-  const pageCount = Math.max(1, Math.ceil(data.products.length / PAGE_SIZE));
+  const categoryOptions = productCategoryOptions(data.products);
+  const activeCategory =
+    category && categoryOptions.some((option) => option.name === category)
+      ? category
+      : null;
+  const searchText = search.trim().toLocaleLowerCase("es-NI");
+  const visibleProducts = data.products.filter((product) => {
+    if (activeCategory && product.category !== activeCategory) return false;
+    if (!searchText) return true;
+    return [
+      product.name,
+      product.category,
+      product.subcategory ?? "",
+      ...Object.entries(product.attributes).flatMap(([name, value]) => [
+        name,
+        value,
+      ]),
+    ]
+      .join(" ")
+      .toLocaleLowerCase("es-NI")
+      .includes(searchText);
+  });
+  const pageCount = Math.max(1, Math.ceil(visibleProducts.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount - 1);
-  const pageProducts = data.products.slice(
+  const pageProducts = visibleProducts.slice(
     safePage * PAGE_SIZE,
     safePage * PAGE_SIZE + PAGE_SIZE,
   );
+  const chooseCategory = (nextCategory: string | null) => {
+    setCategory(nextCategory);
+    setSearch("");
+    setPage(0);
+    setCatalogView("productos");
+  };
+  const clearCatalogFilters = () => {
+    setSearch("");
+    setCategory(null);
+    setPage(0);
+    setCatalogView("productos");
+  };
 
   return (
     <div className="space-y-6">
@@ -354,7 +407,7 @@ export function ProductManager() {
             {imageNote && <span className="text-fog">{imageNote}</span>}
             {form.image && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={form.image} alt="Vista previa del producto" className="size-28 rounded-lg object-cover" />
+              <img src={form.image} alt="Vista previa del producto" className="size-28 rounded-lg bg-white object-contain" />
             )}
           </div>
           <div className="flex gap-3 sm:col-span-2">
@@ -436,68 +489,140 @@ export function ProductManager() {
             </button>
             {data.products.length > 0 && (
               <p className="text-sm text-fog">
-                {data.products.length} {data.products.length === 1 ? "producto" : "productos"} · tocá uno para ver su ficha completa.
+                {visibleProducts.length === data.products.length
+                  ? `${data.products.length} ${data.products.length === 1 ? "producto" : "productos"}`
+                  : `${visibleProducts.length} de ${data.products.length} productos`}{" "}
+                · tocá uno para ver su ficha completa.
               </p>
             )}
           </div>
           {data.products.length === 0 ? (
             <p className="text-fog">Todavía no hay productos. Creá el primero con &quot;Nuevo producto&quot;.</p>
           ) : (
-            <>
-              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                {pageProducts.map((p) => (
-                  <li key={p.id}>
-                    <button
-                      type="button"
+            <div className="space-y-4">
+              <ProductCatalogTabs
+                view={catalogView}
+                disabled={busy}
+                onChange={setCatalogView}
+              />
+              {catalogView === "categorias" ? (
+                <ProductCategoryChoices
+                  categories={categoryOptions}
+                  total={data.products.length}
+                  selected={activeCategory}
+                  disabled={busy}
+                  onSelect={chooseCategory}
+                />
+              ) : (
+                <>
+                  <label className="grid gap-1 text-[0.85rem] text-fog">
+                    Buscar producto
+                    <input
+                      className={input}
+                      type="search"
+                      value={search}
                       disabled={busy}
-                      onClick={() => {
-                        setDetailId(p.id);
-                        setMessage(null);
+                      onChange={(e) => {
+                        setSearch(e.target.value);
+                        setPage(0);
                       }}
-                      className="flex h-full w-full flex-col gap-2 rounded-xl border border-line bg-paper p-3 text-left transition-colors hover:border-brand disabled:opacity-50"
-                    >
-                      <span className="break-words font-semibold text-ink">{p.name}</span>
-                      {p.image_data ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={p.image_data} alt="" className="aspect-[4/3] w-full rounded-lg object-cover" />
-                      ) : (
-                        <span className="grid aspect-[4/3] w-full place-items-center rounded-lg bg-line/40 text-[0.7rem] text-fog">sin foto</span>
+                      placeholder="Ej.: agua, proteína, camiseta"
+                    />
+                  </label>
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-fog">
+                    <p>
+                      {activeCategory
+                        ? `Categoría: ${activeCategory}`
+                        : "Todas las categorías"}
+                    </p>
+                    {visibleProducts.length > 0 && (
+                      <p>
+                        Mostrando {safePage * PAGE_SIZE + 1}–
+                        {safePage * PAGE_SIZE + pageProducts.length} de{" "}
+                        {visibleProducts.length}
+                      </p>
+                    )}
+                  </div>
+                  {visibleProducts.length === 0 ? (
+                    <div className="space-y-3 rounded-xl border border-line p-4">
+                      <p className="text-fog">
+                        Sin productos que coincidan con esa búsqueda o categoría.
+                      </p>
+                      <button
+                        type="button"
+                        className={button}
+                        disabled={busy}
+                        onClick={clearCatalogFilters}
+                      >
+                        Limpiar búsqueda
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                        {pageProducts.map((p) => (
+                          <li key={p.id} className="min-w-0">
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => {
+                                setDetailId(p.id);
+                                setMessage(null);
+                              }}
+                              className="flex h-full w-full flex-col gap-2 rounded-xl border border-line bg-paper p-3 text-left transition-colors hover:border-brand disabled:opacity-50"
+                            >
+                              <span
+                                title={p.name}
+                                className="line-clamp-3 min-h-[3.75rem] break-words text-sm leading-snug font-semibold text-ink sm:line-clamp-2 sm:min-h-10"
+                              >
+                                {p.name}
+                              </span>
+                              <span
+                                title={p.category}
+                                className="truncate text-[0.68rem] font-semibold tracking-wide text-brand-300 uppercase"
+                              >
+                                {p.category}
+                              </span>
+                              <ProductCatalogImage imageData={p.image_data} />
+                              <span className="mt-auto text-[0.9rem]">
+                                <span className="block font-semibold text-ink">{nio(p.price)}</span>
+                                <span className={`block ${p.low_stock ? "font-semibold text-red-300" : "text-fog"}`}>
+                                  Stock: {p.stock} unidades{p.low_stock ? " · Stock bajo" : ""}
+                                </span>
+                                {p.status === "inactivo" && <span className="block text-fog">Inactivo</span>}
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                      {pageCount > 1 && (
+                        <div className="flex items-center justify-between gap-3">
+                          <button
+                            type="button"
+                            className={button}
+                            disabled={busy || safePage === 0}
+                            onClick={() => setPage(safePage - 1)}
+                          >
+                            Anterior
+                          </button>
+                          <p className="text-center text-sm text-fog">
+                            Página {safePage + 1} de {pageCount}
+                          </p>
+                          <button
+                            type="button"
+                            className={button}
+                            disabled={busy || safePage >= pageCount - 1}
+                            onClick={() => setPage(safePage + 1)}
+                          >
+                            Siguiente
+                          </button>
+                        </div>
                       )}
-                      <span className="text-[0.9rem]">
-                        <span className="block font-semibold text-ink">{nio(p.price)}</span>
-                        <span className={`block ${p.low_stock ? "text-red-300" : "text-fog"}`}>
-                          Stock: {p.stock} unidades{p.low_stock ? " · Stock bajo" : ""}
-                        </span>
-                        {p.status === "inactivo" && <span className="block text-fog">Inactivo</span>}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              {pageCount > 1 && (
-                <div className="flex items-center justify-between gap-3">
-                  <button
-                    type="button"
-                    className={button}
-                    disabled={busy || safePage === 0}
-                    onClick={() => setPage(safePage - 1)}
-                  >
-                    Anterior
-                  </button>
-                  <p className="text-sm text-fog">
-                    Página {safePage + 1} de {pageCount}
-                  </p>
-                  <button
-                    type="button"
-                    className={button}
-                    disabled={busy || safePage >= pageCount - 1}
-                    onClick={() => setPage(safePage + 1)}
-                  >
-                    Siguiente
-                  </button>
-                </div>
+                    </>
+                  )}
+                </>
               )}
-            </>
+            </div>
           )}
         </div>
       )}

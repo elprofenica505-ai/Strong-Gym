@@ -28,6 +28,13 @@ import {
   type SaleCatalog,
   type SaleCatalogProduct,
 } from "@/lib/products/rules";
+import {
+  ProductCatalogImage,
+  ProductCatalogTabs,
+  ProductCategoryChoices,
+  productCategoryOptions,
+  type ProductCatalogView,
+} from "@/components/products/product-catalog-ui";
 
 const validateHistory = (value: unknown) =>
   z.array(receiptSchema).safeParse(value).success;
@@ -40,6 +47,7 @@ const itemsTotal = (items: CheckoutItem[]) =>
   items.reduce((sum, item) => sum + toCents(item.unitPrice) * item.qty, 0) / 100;
 const input =
   "w-full min-w-0 rounded-lg border border-line bg-paper px-3 py-2.5 text-ink disabled:opacity-60";
+const CATALOG_PAGE_SIZE = 25;
 const eventName = "strong-gym:finance-pending";
 const subscribe = (fn: () => void) => {
   window.addEventListener("storage", fn);
@@ -141,21 +149,41 @@ export function MovementForm({
   const selectedItems =
     pending?.kind === "service_income" ? pending.items : cartItems;
   const [productSearch, setProductSearch] = useState("");
+  const [catalogView, setCatalogView] =
+    useState<ProductCatalogView>("productos");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(
+    null,
+  );
+  const [catalogPage, setCatalogPage] = useState(0);
+  const catalogProducts = useMemo(
+    () => saleCatalog.data?.products ?? [],
+    [saleCatalog.data],
+  );
   const catalogById = useMemo(
     () =>
       new Map(
-        (saleCatalog.data?.products ?? []).map((product) => [
-          product.id,
-          product,
-        ]),
+        catalogProducts.map((product) => [product.id, product] as const),
       ),
-    [saleCatalog.data],
+    [catalogProducts],
   );
+  const categoryOptions = useMemo(
+    () => productCategoryOptions(catalogProducts),
+    [catalogProducts],
+  );
+  const activeCategory =
+    selectedCategory &&
+    categoryOptions.some((category) => category.name === selectedCategory)
+      ? selectedCategory
+      : null;
   const filteredProducts = useMemo(() => {
     const query = productSearch.trim().toLocaleLowerCase("es-NI");
-    const products = saleCatalog.data?.products ?? [];
-    if (!query) return products;
-    return products.filter((product) =>
+    const byCategory = activeCategory
+      ? catalogProducts.filter(
+          (product) => product.category === activeCategory,
+        )
+      : catalogProducts;
+    if (!query) return byCategory;
+    return byCategory.filter((product) =>
       [
         product.name,
         product.category,
@@ -169,7 +197,22 @@ export function MovementForm({
         .toLocaleLowerCase("es-NI")
         .includes(query),
     );
-  }, [productSearch, saleCatalog.data]);
+  }, [activeCategory, catalogProducts, productSearch]);
+  const catalogPageCount = Math.max(
+    1,
+    Math.ceil(filteredProducts.length / CATALOG_PAGE_SIZE),
+  );
+  const safeCatalogPage = Math.min(catalogPage, catalogPageCount - 1);
+  const visibleProducts = filteredProducts.slice(
+    safeCatalogPage * CATALOG_PAGE_SIZE,
+    safeCatalogPage * CATALOG_PAGE_SIZE + CATALOG_PAGE_SIZE,
+  );
+  const chooseCategory = (category: string | null) => {
+    setSelectedCategory(category);
+    setProductSearch("");
+    setCatalogPage(0);
+    setCatalogView("productos");
+  };
   const amountDraftKey = `${kind}:${clientId ?? "expense"}:${presetKey ?? "standard"}`;
   const [amountDraft, setAmountDraft] = useState<{
     key: string;
@@ -295,6 +338,9 @@ export function MovementForm({
       if (body.kind === "service_income" && body.items.length > 0) {
         setCartItems([]);
         setProductSearch("");
+        setSelectedCategory(null);
+        setCatalogPage(0);
+        setCatalogView("productos");
       }
       setMessage(
         result.receipts && result.receipts.length > 1
@@ -382,18 +428,23 @@ export function MovementForm({
       {productsEnabled && (
         <section
           aria-label="Productos para agregar al cobro"
-          className="space-y-3 rounded-xl border border-line bg-paper/40 p-3"
+          className="space-y-4 rounded-xl border border-line bg-paper/40 p-3 sm:p-4"
         >
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div>
-              <h3 className="font-semibold text-ink">Productos</h3>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[0.65rem] font-bold tracking-[0.18em] text-brand-300 uppercase">
+                Catálogo disponible
+              </p>
+              <h3 className="mt-1 font-semibold text-ink">
+                Seleccioná productos
+              </h3>
               <p className="text-sm text-fog">
-                Agregá productos con stock a este mismo cobro, o dejalos como
-                una venta sola con el monto del servicio en cero.
+                25 por página. Buscá por nombre o detalle, o filtrá por
+                categoría.
               </p>
             </div>
             <Link
-              className="text-sm text-brand-300 underline"
+              className="rounded-full border border-line px-3 py-2 text-sm font-semibold text-ink transition-colors hover:border-brand"
               href={`/${locale}/panel/productos`}
             >
               Productos y stock
@@ -420,114 +471,217 @@ export function MovementForm({
             )}
           {saleCatalog.data && saleCatalog.data.products.length > 0 && (
             <>
-              <label className="block text-sm text-fog">
-                Buscar producto
-                <input
-                  className={input}
-                  type="search"
-                  value={productSearch}
+              <ProductCatalogTabs
+                view={catalogView}
+                disabled={blocked || !!pending}
+                onChange={setCatalogView}
+              />
+              {catalogView === "categorias" ? (
+                <ProductCategoryChoices
+                  categories={categoryOptions}
+                  total={catalogProducts.length}
+                  selected={activeCategory}
                   disabled={blocked || !!pending}
-                  onChange={(event) => setProductSearch(event.target.value)}
-                  placeholder="Ej.: agua, proteína, camiseta"
+                  onSelect={chooseCategory}
                 />
-              </label>
-              {filteredProducts.length === 0 ? (
-                <p className="text-sm text-fog">
-                  Sin productos que coincidan con esa búsqueda.
-                </p>
               ) : (
-                <ul className="max-h-96 space-y-2 overflow-y-auto overscroll-contain pr-1">
-                  {filteredProducts.map((product) => {
-                    const item = selectedItems.find(
-                      (selected) => selected.product === product.id,
-                    );
-                    const qty = item?.qty ?? 0;
-                    const qtyId = `${key}:qty:${product.id}`;
-                    const attributes = Object.entries(product.attributes)
-                      .map(([name, value]) => `${name}: ${value}`)
-                      .join(" · ");
-                    return (
-                      <li
-                        key={product.id}
-                        className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-card p-3"
-                      >
-                        {product.image_data ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={product.image_data}
-                            alt=""
-                            className="size-14 shrink-0 rounded-lg object-cover"
-                          />
-                        ) : (
-                          <span className="grid size-14 shrink-0 place-items-center rounded-lg bg-line/40 text-[0.65rem] text-fog">
-                            sin foto
-                          </span>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <p className="break-words font-semibold text-ink">
-                            {product.name}
-                          </p>
-                          <p className="break-words text-xs text-fog">
-                            {product.category}
-                            {product.subcategory
-                              ? ` · ${product.subcategory}`
-                              : ""}
-                            {attributes ? ` · ${attributes}` : ""}
-                          </p>
-                          <p className="text-sm text-fog">
-                            {formatMoney(product.price, "NIO")} · Stock:{" "}
-                            {product.stock}
-                            {product.low_stock ? " · Stock bajo" : ""}
-                          </p>
-                          {qty > 0 && (
-                            <p className="text-sm font-semibold text-brand-300">
-                              Subtotal:{" "}
-                              {formatMoney(product.price * qty, "NIO")}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1">
+                <>
+                  <label className="block text-sm text-fog">
+                    Buscar producto
+                    <input
+                      className={input}
+                      type="search"
+                      value={productSearch}
+                      disabled={blocked || !!pending}
+                      onChange={(event) => {
+                        setProductSearch(event.target.value);
+                        setCatalogPage(0);
+                      }}
+                      placeholder="Ej.: agua, proteína, camiseta"
+                    />
+                  </label>
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-fog">
+                    <p>
+                      {activeCategory
+                        ? `Categoría: ${activeCategory}`
+                        : "Todas las categorías"}
+                      {" · "}
+                      {filteredProducts.length}{" "}
+                      {filteredProducts.length === 1
+                        ? "producto"
+                        : "productos"}
+                    </p>
+                    {filteredProducts.length > 0 && (
+                      <p>
+                        Mostrando {safeCatalogPage * CATALOG_PAGE_SIZE + 1}–
+                        {safeCatalogPage * CATALOG_PAGE_SIZE +
+                          visibleProducts.length}{" "}
+                        de {filteredProducts.length}
+                      </p>
+                    )}
+                  </div>
+                  {filteredProducts.length === 0 ? (
+                    <p className="text-sm text-fog">
+                      Sin productos que coincidan con esa búsqueda o categoría.
+                    </p>
+                  ) : (
+                    <>
+                      <ul className="grid max-h-[38rem] grid-cols-2 gap-3 overflow-y-auto pr-1 min-[560px]:grid-cols-3 lg:grid-cols-4">
+                        {visibleProducts.map((product) => {
+                          const item = selectedItems.find(
+                            (selected) => selected.product === product.id,
+                          );
+                          const qty = item?.qty ?? 0;
+                          const qtyId = `${key}:qty:${product.id}`;
+                          const attributes = Object.entries(
+                            product.attributes,
+                          )
+                            .map(([name, value]) => `${name}: ${value}`)
+                            .join(" · ");
+                          const details = [product.subcategory, attributes]
+                            .filter(Boolean)
+                            .join(" · ");
+                          return (
+                            <li
+                              key={product.id}
+                              className={`flex h-full min-w-0 flex-col gap-2 rounded-xl border p-3 ${
+                                qty > 0
+                                  ? "border-brand bg-brand/10"
+                                  : "border-line bg-card"
+                              }`}
+                            >
+                              <div className="min-w-0">
+                                <h4
+                                  title={product.name}
+                                  className="line-clamp-3 min-h-[3.75rem] break-words text-sm leading-snug font-semibold text-ink sm:line-clamp-2 sm:min-h-10"
+                                >
+                                  {product.name}
+                                </h4>
+                                <p
+                                  title={product.category}
+                                  className="mt-1 truncate text-[0.68rem] font-semibold tracking-wide text-brand-300 uppercase"
+                                >
+                                  {product.category}
+                                </p>
+                              </div>
+                              <ProductCatalogImage
+                                imageData={product.image_data}
+                              />
+                              {details && (
+                                <p
+                                  title={details}
+                                  className="line-clamp-2 min-h-8 break-words text-[0.7rem] leading-snug text-fog"
+                                >
+                                  {details}
+                                </p>
+                              )}
+                              <div className="mt-auto space-y-1">
+                                <p className="text-base font-bold text-ink">
+                                  {formatMoney(product.price, "NIO")}
+                                </p>
+                                <p
+                                  className={`text-xs ${
+                                    product.low_stock
+                                      ? "font-semibold text-alert"
+                                      : "text-fog"
+                                  }`}
+                                >
+                                  {product.stock} disponibles
+                                  {product.low_stock ? " · Stock bajo" : ""}
+                                </p>
+                                {qty > 0 && (
+                                  <p className="text-sm font-semibold text-brand-300">
+                                    {qty} × ·{" "}
+                                    {formatMoney(product.price * qty, "NIO")}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  aria-label={`Quitar una unidad de ${product.name}`}
+                                  className="grid size-9 shrink-0 place-items-center rounded-full border border-line bg-paper text-lg text-ink disabled:opacity-40"
+                                  disabled={blocked || !!pending || qty === 0}
+                                  onClick={() =>
+                                    setProductQty(product, qty - 1)
+                                  }
+                                >
+                                  −
+                                </button>
+                                <label className="sr-only" htmlFor={qtyId}>
+                                  Cantidad de {product.name}
+                                </label>
+                                <input
+                                  id={qtyId}
+                                  className="min-w-0 flex-1 rounded-lg border border-line bg-paper px-1 py-2 text-center text-ink disabled:opacity-60"
+                                  type="number"
+                                  inputMode="numeric"
+                                  min="0"
+                                  max={product.stock}
+                                  step="1"
+                                  value={qty}
+                                  disabled={blocked || !!pending}
+                                  onChange={(event) =>
+                                    setProductQty(
+                                      product,
+                                      Number(event.target.value),
+                                    )
+                                  }
+                                />
+                                <button
+                                  type="button"
+                                  aria-label={`Agregar una unidad de ${product.name}`}
+                                  className="grid size-8 shrink-0 place-items-center rounded-full border border-line bg-paper text-lg text-ink disabled:opacity-40 sm:size-9"
+                                  disabled={
+                                    blocked || !!pending || qty >= product.stock
+                                  }
+                                  onClick={() =>
+                                    setProductQty(product, qty + 1)
+                                  }
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                      {catalogPageCount > 1 && (
+                        <div className="flex items-center justify-between gap-2">
                           <button
                             type="button"
-                            aria-label={`Quitar una unidad de ${product.name}`}
-                            className="grid size-9 place-items-center rounded-full border border-line text-lg text-ink disabled:opacity-40"
-                            disabled={blocked || !!pending || qty === 0}
-                            onClick={() => setProductQty(product, qty - 1)}
-                          >
-                            −
-                          </button>
-                          <label className="sr-only" htmlFor={qtyId}>
-                            Cantidad de {product.name}
-                          </label>
-                          <input
-                            id={qtyId}
-                            className="w-16 rounded-lg border border-line bg-paper px-2 py-2 text-center text-ink disabled:opacity-60"
-                            type="number"
-                            min="0"
-                            max={product.stock}
-                            step="1"
-                            value={qty}
-                            disabled={blocked || !!pending}
-                            onChange={(event) =>
-                              setProductQty(product, Number(event.target.value))
-                            }
-                          />
-                          <button
-                            type="button"
-                            aria-label={`Agregar una unidad de ${product.name}`}
-                            className="grid size-9 place-items-center rounded-full border border-line text-lg text-ink disabled:opacity-40"
+                            className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink disabled:opacity-40"
                             disabled={
-                              blocked || !!pending || qty >= product.stock
+                              blocked || !!pending || safeCatalogPage === 0
                             }
-                            onClick={() => setProductQty(product, qty + 1)}
+                            onClick={() =>
+                              setCatalogPage(safeCatalogPage - 1)
+                            }
                           >
-                            +
+                            Anterior
+                          </button>
+                          <p className="text-center text-sm text-fog">
+                            Página {safeCatalogPage + 1} de {catalogPageCount}
+                          </p>
+                          <button
+                            type="button"
+                            className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink disabled:opacity-40"
+                            disabled={
+                              blocked ||
+                              !!pending ||
+                              safeCatalogPage >= catalogPageCount - 1
+                            }
+                            onClick={() =>
+                              setCatalogPage(safeCatalogPage + 1)
+                            }
+                          >
+                            Siguiente
                           </button>
                         </div>
-                      </li>
-                    );
-                  })}
-                </ul>
+                      )}
+                    </>
+                  )}
+                </>
               )}
             </>
           )}

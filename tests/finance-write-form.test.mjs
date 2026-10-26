@@ -331,6 +331,60 @@ test("solo productos: monto y concepto de servicio pueden quedar vacíos", async
   ]);
 });
 
+test("catálogo de venta: tarjetas paginadas de 25 y filtro por categoría", async () => {
+  const catalogProduct = (n, overrides = {}) => ({
+    id: `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
+    name: `Producto EJEMPLO ${n}`,
+    category: "Bebidas",
+    subcategory: null,
+    attributes: {},
+    price: 10,
+    stock: 5,
+    low_stock: false,
+    ...overrides,
+  });
+  const catalog = {
+    products: [
+      ...Array.from({ length: 26 }, (_, i) => catalogProduct(i + 1)),
+      catalogProduct(27, {
+        name: "Proteína EJEMPLO",
+        category: "Suplementos",
+        price: 100,
+      }),
+    ],
+  };
+  mount(
+    undefined,
+    options,
+    { kind: "service_income", clientId: id },
+    catalog,
+  );
+  assert.ok(await screen.findByText("Seleccioná productos"));
+  assert.ok(screen.getByText("Producto EJEMPLO 1"));
+  assert.ok(screen.getByText("Producto EJEMPLO 25"));
+  assert.equal(screen.queryByText("Producto EJEMPLO 26"), null);
+  assert.ok(screen.getByText("Página 1 de 2"));
+  assert.ok(screen.getByText(/Mostrando 1–25 de 27/));
+
+  fireEvent.click(screen.getByRole("button", { name: "Siguiente" }));
+  assert.ok(await screen.findByText("Producto EJEMPLO 26"));
+  assert.ok(screen.getByText("Proteína EJEMPLO"));
+  assert.ok(screen.getByText("Página 2 de 2"));
+
+  fireEvent.click(screen.getByRole("button", { name: "Categorías" }));
+  assert.equal(screen.queryByText("Producto EJEMPLO 26"), null);
+  fireEvent.click(screen.getByRole("button", { name: /^Suplementos/ }));
+  assert.ok(
+    await screen.findByLabelText("Cantidad de Proteína EJEMPLO"),
+  );
+  assert.equal(screen.queryByText("Producto EJEMPLO 26"), null);
+  assert.ok(screen.getByText(/Categoría: Suplementos/));
+  fireEvent.change(screen.getByLabelText("Cantidad de Proteína EJEMPLO"), {
+    target: { value: "2" },
+  });
+  assert.ok(await screen.findByText(/Total a cobrar:.*C\$200/));
+});
+
 test("si el catálogo falla, el cobro solo por servicio sigue disponible", async () => {
   mount(
     undefined,
