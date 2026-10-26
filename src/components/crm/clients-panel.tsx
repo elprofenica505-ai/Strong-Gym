@@ -46,39 +46,65 @@ function pendingModuleFor(clientId: string): DetailModule | null {
   } catch {}
   return null;
 }
-function DetailModuleSection({
-  title,
-  hint,
-  open,
-  onToggle,
-  children,
+/** Títulos y explicaciones de cada vista de la ficha. */
+const MODULE_INFO: Record<DetailModule, { title: string; hint: string }> = {
+  entrada: {
+    title: "Registrar entrada",
+    hint: "Cobrá una tarifa rápida o confirmá solo la visita.",
+  },
+  cobrar: {
+    title: "Cobrar un servicio",
+    hint: "Monto y concepto manuales; podés sumar productos.",
+  },
+  productos: {
+    title: "Vender productos",
+    hint: "Solo productos con stock, sin cobrar un servicio.",
+  },
+  deudas: {
+    title: "Deudas y abonos",
+    hint: "Deuda actual, abonos y vuelto en efectivo.",
+  },
+  historial: {
+    title: "Saldo e historial",
+    hint: "Saldos, cobros, entradas y cambios de la ficha.",
+  },
+  datos: {
+    title: "Datos del cliente y carnet",
+    hint: "Editar la ficha, ver el carnet o reemplazar el QR.",
+  },
+};
+/** Tarjeta del menú de la ficha: al tocarla se abre su propia vista. */
+function ModuleCard({
+  module,
+  pending,
+  onOpen,
 }: {
-  title: string;
-  hint: string;
-  open: boolean;
-  onToggle: () => void;
-  children: ReactNode;
+  module: DetailModule;
+  pending: boolean;
+  onOpen: (module: DetailModule) => void;
 }) {
+  const info = MODULE_INFO[module];
   return (
-    <div className="rounded-xl border border-line bg-paper/60">
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={onToggle}
-        className="flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3 text-left transition hover:bg-brand/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-      >
-        <span>
-          <span className="block font-semibold text-ink">{title}</span>
-          <span className="block text-xs text-fog">{hint}</span>
+    <button
+      type="button"
+      onClick={() => onOpen(module)}
+      className="flex w-full items-center justify-between gap-3 rounded-xl border border-line bg-paper/60 px-4 py-3 text-left transition hover:border-brand/60 hover:bg-brand/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+    >
+      <span>
+        <span className="block font-semibold text-ink">
+          {info.title}
+          {pending && (
+            <span className="ml-2 rounded-full border border-alert/50 px-2 py-0.5 text-[0.65rem] font-semibold text-alert">
+              Sin confirmar
+            </span>
+          )}
         </span>
-        <span aria-hidden="true" className="shrink-0 text-fog">
-          {open ? "▾" : "▸"}
-        </span>
-      </button>
-      {open && (
-        <div className="space-y-4 border-t border-line p-4">{children}</div>
-      )}
-    </div>
+        <span className="block text-xs text-fog">{info.hint}</span>
+      </span>
+      <span aria-hidden="true" className="shrink-0 text-lg text-fog">
+        ›
+      </span>
+    </button>
   );
 }
 const emptyOptions: CrmOptions = {
@@ -253,8 +279,24 @@ export function ClientsPanel({
   }, [detailId]);
   const focusDetail = !!detail;
   const pendingModule = detail ? pendingModuleFor(detail.client.id) : null;
-  const toggleModule = (module: DetailModule) =>
-    setOpenModule((current) => (current === module ? null : module));
+  const scrollToFichaTop = () => {
+    const go = () =>
+      document
+        .getElementById("ficha-cliente")
+        ?.scrollIntoView?.({ block: "start" });
+    if (typeof requestAnimationFrame === "function")
+      requestAnimationFrame(go);
+    else go();
+  };
+  /** Cada módulo se abre como su propia vista dentro de la ficha. */
+  const openModuleView = (module: DetailModule) => {
+    setOpenModule(module);
+    scrollToFichaTop();
+  };
+  const backToFicha = () => {
+    setOpenModule(null);
+    scrollToFichaTop();
+  };
   const managuaDay = (value: Date) =>
     new Intl.DateTimeFormat("en-CA", { timeZone: "America/Managua" }).format(
       value,
@@ -492,6 +534,28 @@ export function ClientsPanel({
             onRefresh={() => setRevision((n) => n + 1)}
           />
         )}
+      </div>
+    ) : null;
+  /** Aviso de intento sin confirmar: visible en el menú y en cualquier vista. */
+  const pendingBanner =
+    detail && pendingModule && openModule !== pendingModule ? (
+      <div
+        role="alert"
+        className="space-y-2 rounded-xl border border-alert/50 p-4 text-sm text-alert"
+      >
+        <p>
+          {pendingModule === "deudas"
+            ? "Hay una operación de deuda sin confirmar. Revisala antes de registrar otra."
+            : "Hay un cobro sin confirmar. Revisalo antes de registrar otro."}
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={busy}
+          onClick={() => openModuleView(pendingModule)}
+        >
+          Revisar intento pendiente
+        </Button>
       </div>
     ) : null;
   return (
@@ -850,6 +914,8 @@ export function ClientsPanel({
           aria-busy={detailResource.loading}
           className="scroll-mt-24 rounded-2xl border border-brand/30 bg-card p-5 space-y-6"
         >
+          {openModule === null ? (
+            <>
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
@@ -913,26 +979,7 @@ export function ClientsPanel({
               asistencia.
             </p>
           )}
-          {pendingModule && openModule !== pendingModule && (
-            <div
-              role="alert"
-              className="space-y-2 rounded-xl border border-alert/50 p-4 text-sm text-alert"
-            >
-              <p>
-                {pendingModule === "deudas"
-                  ? "Hay una operación de deuda sin confirmar. Revisala antes de registrar otra."
-                  : "Hay un cobro sin confirmar. Revisalo antes de registrar otro."}
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busy}
-                onClick={() => setOpenModule(pendingModule)}
-              >
-                Revisar intento pendiente
-              </Button>
-            </div>
-          )}
+          {pendingBanner}
           {openModule !== "entrada" &&
             entryFeedback?.clientId === detail.client.id && (
               <p
@@ -942,13 +989,38 @@ export function ClientsPanel({
                 {entryFeedback.message}
               </p>
             )}
-          <div className="space-y-3">
-          <DetailModuleSection
-            title="Registrar entrada"
-            hint="Cobrá una tarifa rápida o confirmá solo la visita."
-            open={openModule === "entrada"}
-            onToggle={() => toggleModule("entrada")}
-          >
+            </>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={backToFicha}
+                >
+                  ← Volver a la ficha
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={detailBusy}
+                  onClick={() => setRevision((n) => n + 1)}
+                >
+                  Actualizar ficha
+                </Button>
+              </div>
+              <h2 className="text-lg font-bold text-ink">
+                #{detail.client.client_number} · {detail.client.full_name}
+              </h2>
+              {pendingBanner}
+              <h3 className="text-base font-semibold text-brand-300">
+                {openModule ? MODULE_INFO[openModule].title : ""}
+              </h3>
+            </div>
+          )}
+          {openModule === "entrada" && (
+            <div className="space-y-4">
           <div className="grid gap-2 sm:grid-cols-2">
             {quickTariffs.map((tariff) => (
               <Button
@@ -1008,34 +1080,24 @@ export function ClientsPanel({
             )}
           </div>
             {entryChargeClientId === detail.client.id && paymentBlock()}
-          </DetailModuleSection>
-          <DetailModuleSection
-            title="Cobrar un servicio"
-            hint="Monto y concepto manuales; podés sumar productos."
-            open={openModule === "cobrar"}
-            onToggle={() => toggleModule("cobrar")}
-          >
+            </div>
+          )}
+          {openModule === "cobrar" && (
+            <div className="space-y-4">
             {paymentBlock()}
-          </DetailModuleSection>
-          {options.finance_layout === "bank_accounts_split" && (
-            <DetailModuleSection
-              title="Vender productos"
-              hint="Solo productos con stock, sin cobrar un servicio."
-              open={openModule === "productos"}
-              onToggle={() => toggleModule("productos")}
-            >
+            </div>
+          )}
+          {options.finance_layout === "bank_accounts_split" &&
+            openModule === "productos" && (
+              <div className="space-y-4">
               {paymentBlock(
                 quickTariffArmed ? undefined : "Venta de productos",
               )}
-            </DetailModuleSection>
+              </div>
           )}
-          {detail.finance_layout === "bank_accounts_split" && (
-            <DetailModuleSection
-              title="Deudas y abonos"
-              hint="Deuda actual, abonos y vuelto en efectivo."
-              open={openModule === "deudas"}
-              onToggle={() => toggleModule("deudas")}
-            >
+          {detail.finance_layout === "bank_accounts_split" &&
+            openModule === "deudas" && (
+              <div className="space-y-4">
               <DebtForm
                 key={`debt:${detail.client.id}`}
                 clientId={detail.client.id}
@@ -1044,14 +1106,10 @@ export function ClientsPanel({
                 onBusy={setBusy}
                 onRefresh={() => setRevision((n) => n + 1)}
               />
-            </DetailModuleSection>
+              </div>
           )}
-          <DetailModuleSection
-            title="Saldo e historial"
-            hint="Saldos, cobros, entradas y cambios de la ficha."
-            open={openModule === "historial"}
-            onToggle={() => toggleModule("historial")}
-          >
+          {openModule === "historial" && (
+            <div className="space-y-4">
           <ClientFinanceSummary
             detail={detail}
             pending={detailResource.loading}
@@ -1111,13 +1169,10 @@ export function ClientsPanel({
               ))}
             </ul>
           </details>
-          </DetailModuleSection>
-          <DetailModuleSection
-            title="Datos del cliente y carnet"
-            hint="Editar la ficha, ver el carnet o reemplazar el QR."
-            open={openModule === "datos"}
-            onToggle={() => toggleModule("datos")}
-          >
+            </div>
+          )}
+          {openModule === "datos" && (
+            <div className="space-y-4">
           <EditClient
             key={`${detail.client.id}:${detail.client.updated_at ?? detail.client.created_at}`}
             client={detail.client}
@@ -1169,22 +1224,82 @@ export function ClientsPanel({
               </Button>
             </div>
           </div>
-          </DetailModuleSection>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Link
-              href={`/${locale}/panel/progreso/${detail.client.id}`}
-              className="inline-flex items-center justify-center rounded-xl bg-brand px-4 py-3 text-center font-semibold text-onbrand transition hover:bg-brand-600 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
-            >
-              Progreso y medidas (peso, altura, rutina)
-            </Link>
-            <Link
-              href={`/${locale}/panel/progreso/${detail.client.id}#asistencia`}
-              className="inline-flex items-center justify-center rounded-xl border border-line bg-night-3 px-4 py-3 text-center font-medium text-ink transition hover:border-brand/70 hover:bg-brand/15 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
-            >
-              Asistencia (día, semana, mes)
-            </Link>
-          </div>
+            </div>
+          )}
+          {openModule === null && (
+            <>
+              <div className="space-y-3">
+                <ModuleCard
+                  module="entrada"
+                  pending={pendingModule === "entrada"}
+                  onOpen={openModuleView}
+                />
+                <ModuleCard
+                  module="cobrar"
+                  pending={pendingModule === "cobrar"}
+                  onOpen={openModuleView}
+                />
+                {options.finance_layout === "bank_accounts_split" && (
+                  <ModuleCard
+                    module="productos"
+                    pending={pendingModule === "productos"}
+                    onOpen={openModuleView}
+                  />
+                )}
+                {detail.finance_layout === "bank_accounts_split" && (
+                  <ModuleCard
+                    module="deudas"
+                    pending={pendingModule === "deudas"}
+                    onOpen={openModuleView}
+                  />
+                )}
+                <ModuleCard
+                  module="historial"
+                  pending={pendingModule === "historial"}
+                  onOpen={openModuleView}
+                />
+                <ModuleCard
+                  module="datos"
+                  pending={pendingModule === "datos"}
+                  onOpen={openModuleView}
+                />
+              </div>
+              <div className="space-y-3">
+                <Link
+                  href={`/${locale}/panel/progreso/${detail.client.id}`}
+                  className="flex w-full items-center justify-between gap-3 rounded-xl bg-brand px-4 py-3 text-left text-onbrand transition hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+                >
+                  <span>
+                    <span className="block font-semibold">
+                      Progreso y medidas (peso, altura, rutina)
+                    </span>
+                    <span className="block text-xs text-white/80">
+                      Mediciones, meta, rutina y plan nutricional.
+                    </span>
+                  </span>
+                  <span aria-hidden="true" className="shrink-0 text-lg">
+                    ›
+                  </span>
+                </Link>
+                <Link
+                  href={`/${locale}/panel/progreso/${detail.client.id}#asistencia`}
+                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-line bg-paper/60 px-4 py-3 text-left transition hover:border-brand/60 hover:bg-brand/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  <span>
+                    <span className="block font-semibold text-ink">
+                      Asistencia (día, semana, mes)
+                    </span>
+                    <span className="block text-xs text-fog">
+                      Visitas por semana y por mes, y su última visita.
+                    </span>
+                  </span>
+                  <span aria-hidden="true" className="shrink-0 text-lg text-fog">
+                    ›
+                  </span>
+                </Link>
+              </div>
+            </>
+          )}
         </section>
       )}
       {!focusDetail && staffDirectory}
