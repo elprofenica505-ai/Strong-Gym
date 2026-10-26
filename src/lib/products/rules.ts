@@ -94,6 +94,9 @@ export const saleCatalogProductSchema = z.object({
   price: money.refine((value) => value > 0, "El precio debe ser mayor que cero."),
   stock: z.number().int().positive().max(100000),
   low_stock: z.boolean(),
+  // Foto ya reducida (≤ 600 KB) para reconocer el producto al vender.
+  // .default(null) mantiene válido un catálogo anterior a la migración 00060.
+  image_data: z.string().max(900000).nullable().default(null),
 });
 export type SaleCatalogProduct = z.infer<typeof saleCatalogProductSchema>;
 export const saleCatalogSchema = z.object({

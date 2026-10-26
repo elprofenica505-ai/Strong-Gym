@@ -27,15 +27,15 @@ export default async function ClientsPage({
   const staff = DEMO_MODE ? { ok: true as const, data: [] } : await readData(() => getStaffProfiles());
   const staffRows = staff.ok ? staff.data : [];
   return (
-    <>
-      <ClientsPanel
-        isAdmin={user?.role === "admin"}
-        isDemo={DEMO_MODE}
-        staffIds={staffRows.map((p) => p.id)}
-      />
-      <div className="container-x pb-12">
-        <StaffDirectory staff={staffRows} />
-      </div>
-    </>
+    <ClientsPanel
+      isAdmin={user?.role === "admin"}
+      isDemo={DEMO_MODE}
+      staffIds={staffRows.map((p) => p.id)}
+      staffDirectory={
+        <div className="pb-4">
+          <StaffDirectory staff={staffRows} />
+        </div>
+      }
+    />
   );
 }

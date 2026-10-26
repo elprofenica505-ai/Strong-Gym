@@ -64,6 +64,9 @@ export function ProductManager() {
   const [imageNote, setImageNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  // Vista de tarjetas: página actual (25 por página) y producto abierto.
+  const [page, setPage] = useState(0);
+  const [detailId, setDetailId] = useState<string | null>(null);
   // Referencia de la operación en curso: se conserva si la respuesta se pierde.
   const requestRef = useRef<string | null>(null);
 
@@ -273,6 +276,17 @@ export function ProductManager() {
   const accountOptions = data.options.accounts;
   const methodOptions = data.options.methods;
   const writesOff = !data.options.writes_enabled;
+  // La ficha abierta siempre se lee de los datos recién cargados.
+  const detailProduct = detailId
+    ? data.products.find((p) => p.id === detailId) ?? null
+    : null;
+  const PAGE_SIZE = 25;
+  const pageCount = Math.max(1, Math.ceil(data.products.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const pageProducts = data.products.slice(
+    safePage * PAGE_SIZE,
+    safePage * PAGE_SIZE + PAGE_SIZE,
+  );
 
   return (
     <div className="space-y-6">
@@ -282,18 +296,13 @@ export function ProductManager() {
           configuración financiera. Los productos y el stock siguen disponibles para editar.
         </p>
       )}
-      <div className="flex flex-wrap items-center gap-3">
-        <button type="button" className={primary} onClick={() => open("form")} disabled={busy}>
-          Nuevo producto
-        </button>
-        {message && (
-          <p role="status" className={message.ok ? "text-brand-300" : "text-red-300"}>
-            {message.text}
-          </p>
-        )}
-      </div>
+      {message && (
+        <p role="status" className={message.ok ? "text-brand-300" : "text-red-300"}>
+          {message.text}
+        </p>
+      )}
 
-      {mode === "form" && (
+      {mode === "form" ? (
         <form onSubmit={saveProduct} className="grid gap-3 rounded-xl border border-line p-5 sm:grid-cols-2">
           <h2 className="text-[1.1rem] font-semibold sm:col-span-2">
             {form.id ? "Editar producto" : "Nuevo producto"}
@@ -353,63 +362,143 @@ export function ProductManager() {
             <button type="button" className={button} onClick={close}>Cancelar</button>
           </div>
         </form>
-      )}
-
-      {data.products.length === 0 ? (
-        <p className="text-fog">Todavía no hay productos. Creá el primero con &quot;Nuevo producto&quot;.</p>
+      ) : detailProduct ? (
+        <section aria-label={`Ficha de ${detailProduct.name}`} className="space-y-4 rounded-xl border border-line p-5">
+          <button
+            type="button"
+            className={button}
+            disabled={busy}
+            onClick={() => {
+              close();
+              setDetailId(null);
+            }}
+          >
+            ← Volver a productos
+          </button>
+          <h2 className="text-xl font-bold text-ink">{detailProduct.name}</h2>
+          {detailProduct.image_data ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={detailProduct.image_data} alt={`Foto de ${detailProduct.name}`} className="max-h-72 w-full rounded-xl object-cover" />
+          ) : (
+            <p className="grid h-32 place-items-center rounded-xl bg-line/40 text-sm text-fog">Sin foto</p>
+          )}
+          <dl className="grid gap-2 text-[0.9rem] sm:grid-cols-2">
+            <div>
+              <dt className="text-fog">Precio de venta</dt>
+              <dd className="font-semibold text-ink">{nio(detailProduct.price)}</dd>
+            </div>
+            <div>
+              <dt className="text-fog">Stock actual</dt>
+              <dd className={`font-semibold ${detailProduct.low_stock ? "text-red-300" : "text-ink"}`}>
+                {detailProduct.stock} unidades
+                {detailProduct.low_stock ? " · Stock bajo" : ""}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-fog">Categoría</dt>
+              <dd>{detailProduct.category}{detailProduct.subcategory ? ` / ${detailProduct.subcategory}` : ""}</dd>
+            </div>
+            <div>
+              <dt className="text-fog">Estado</dt>
+              <dd>{detailProduct.status === "activo" ? "Activo" : "Inactivo"}</dd>
+            </div>
+            <div>
+              <dt className="text-fog">Costo</dt>
+              <dd>{nio(detailProduct.cost)}</dd>
+            </div>
+            <div>
+              <dt className="text-fog">Ganancia por unidad</dt>
+              <dd>{nio(detailProduct.profit)}</dd>
+            </div>
+            <div>
+              <dt className="text-fog">Alerta de stock bajo</dt>
+              <dd>{detailProduct.stock_min} unidades</dd>
+            </div>
+            {Object.entries(detailProduct.attributes).length > 0 && (
+              <div className="sm:col-span-2">
+                <dt className="text-fog">Detalles</dt>
+                <dd>{Object.entries(detailProduct.attributes).map(([k, v]) => `${k}: ${v}`).join(" · ")}</dd>
+              </div>
+            )}
+          </dl>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className={button} onClick={() => open("form", detailProduct)} disabled={busy}>Editar</button>
+            <button type="button" className={button} onClick={() => open("purchase", detailProduct)} disabled={busy || writesOff || detailProduct.status !== "activo"}>Comprar</button>
+            <button type="button" className={button} onClick={() => open("sale", detailProduct)} disabled={busy || writesOff || detailProduct.status !== "activo" || detailProduct.stock <= 0}>Vender</button>
+            <button type="button" className={button} onClick={() => open("adjust", detailProduct)} disabled={busy}>Ajustar stock</button>
+          </div>
+        </section>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-line">
-          <table className="w-full min-w-[720px] text-left text-[0.875rem]">
-            <thead className="border-b border-line text-fog">
-              <tr>
-                <th className="p-3">Producto</th>
-                <th className="p-3">Categoría</th>
-                <th className="p-3 text-right">Costo</th>
-                <th className="p-3 text-right">Precio</th>
-                <th className="p-3 text-right">Ganancia</th>
-                <th className="p-3 text-right">Stock</th>
-                <th className="p-3">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.products.map((p) => (
-                <tr key={p.id} className="border-b border-line/60 align-top">
-                  <td className="p-3">
-                    <div className="flex items-center gap-3">
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <button type="button" className={primary} onClick={() => open("form")} disabled={busy}>
+              Nuevo producto
+            </button>
+            {data.products.length > 0 && (
+              <p className="text-sm text-fog">
+                {data.products.length} {data.products.length === 1 ? "producto" : "productos"} · tocá uno para ver su ficha completa.
+              </p>
+            )}
+          </div>
+          {data.products.length === 0 ? (
+            <p className="text-fog">Todavía no hay productos. Creá el primero con &quot;Nuevo producto&quot;.</p>
+          ) : (
+            <>
+              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {pageProducts.map((p) => (
+                  <li key={p.id}>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => {
+                        setDetailId(p.id);
+                        setMessage(null);
+                      }}
+                      className="flex h-full w-full flex-col gap-2 rounded-xl border border-line bg-paper p-3 text-left transition-colors hover:border-brand disabled:opacity-50"
+                    >
+                      <span className="break-words font-semibold text-ink">{p.name}</span>
                       {p.image_data ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={p.image_data} alt="" className="size-10 rounded object-cover" />
+                        <img src={p.image_data} alt="" className="aspect-[4/3] w-full rounded-lg object-cover" />
                       ) : (
-                        <span className="grid size-10 place-items-center rounded bg-line/40 text-[0.7rem] text-fog">sin foto</span>
+                        <span className="grid aspect-[4/3] w-full place-items-center rounded-lg bg-line/40 text-[0.7rem] text-fog">sin foto</span>
                       )}
-                      <div>
-                        <div className="font-semibold text-ink">{p.name}</div>
-                        {p.status === "inactivo" && <div className="text-fog">Inactivo</div>}
-                        {Object.entries(p.attributes).length > 0 && (
-                          <div className="text-fog">{Object.entries(p.attributes).map(([k, v]) => `${k}: ${v}`).join(" · ")}</div>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-3 text-fog">{p.category}{p.subcategory ? ` / ${p.subcategory}` : ""}</td>
-                  <td className="p-3 text-right">{nio(p.cost)}</td>
-                  <td className="p-3 text-right">{nio(p.price)}</td>
-                  <td className="p-3 text-right">{nio(p.profit)}</td>
-                  <td className={`p-3 text-right font-semibold ${p.low_stock ? "text-red-300" : ""}`}>
-                    {p.stock}{p.low_stock && <div className="text-[0.75rem] font-normal">Stock bajo</div>}
-                  </td>
-                  <td className="p-3">
-                    <div className="flex flex-wrap gap-2">
-                      <button type="button" className={button} onClick={() => open("form", p)} disabled={busy}>Editar</button>
-                      <button type="button" className={button} onClick={() => open("purchase", p)} disabled={busy || writesOff || p.status !== "activo"}>Comprar</button>
-                      <button type="button" className={button} onClick={() => open("sale", p)} disabled={busy || writesOff || p.status !== "activo" || p.stock <= 0}>Vender</button>
-                      <button type="button" className={button} onClick={() => open("adjust", p)} disabled={busy}>Ajustar stock</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                      <span className="text-[0.9rem]">
+                        <span className="block font-semibold text-ink">{nio(p.price)}</span>
+                        <span className={`block ${p.low_stock ? "text-red-300" : "text-fog"}`}>
+                          Stock: {p.stock} unidades{p.low_stock ? " · Stock bajo" : ""}
+                        </span>
+                        {p.status === "inactivo" && <span className="block text-fog">Inactivo</span>}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {pageCount > 1 && (
+                <div className="flex items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    className={button}
+                    disabled={busy || safePage === 0}
+                    onClick={() => setPage(safePage - 1)}
+                  >
+                    Anterior
+                  </button>
+                  <p className="text-sm text-fog">
+                    Página {safePage + 1} de {pageCount}
+                  </p>
+                  <button
+                    type="button"
+                    className={button}
+                    disabled={busy || safePage >= pageCount - 1}
+                    onClick={() => setPage(safePage + 1)}
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 

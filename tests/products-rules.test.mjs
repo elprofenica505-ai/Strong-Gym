@@ -51,13 +51,18 @@ test('catálogo de venta: solo precio y stock vendibles, sin costo ni ganancia',
       price: 25,
       stock: 4,
       low_stock: false,
+      image_data: null,
       cost: 10,
       profit: 15,
     }],
   });
   assert.deepEqual(Object.keys(parsed.products[0]).sort(), [
-    'attributes', 'category', 'id', 'low_stock', 'name', 'price', 'stock', 'subcategory',
+    'attributes', 'category', 'id', 'image_data', 'low_stock', 'name', 'price', 'stock', 'subcategory',
   ]);
+  // Un catálogo anterior a la 00060 (sin la clave) sigue siendo válido.
+  const legacy = { ...parsed.products[0] };
+  delete legacy.image_data;
+  assert.equal(saleCatalogSchema.safeParse({ products: [legacy] }).success, true);
   assert.equal(saleCatalogSchema.safeParse({ products: [{ ...parsed.products[0], price: 0 }] }).success, false);
   assert.equal(saleCatalogSchema.safeParse({ products: [{ ...parsed.products[0], stock: 0 }] }).success, false);
 });

@@ -19,11 +19,68 @@ import { formatMoney } from "@/lib/finance/format-money";
 import { crmRequest } from "@/lib/crm/request";
 import { DebtForm } from "./debt-form";
 import { ClientFinanceSummary, ClientIncomeHistory } from "./client-finance";
+import { readClientFinance } from "@/lib/crm/client-finance";
 import { useCrmResource } from "./use-crm-resource";
 const input =
   "w-full rounded-lg border border-line bg-paper px-3 py-2.5 text-ink disabled:opacity-60";
-const detailNavLink =
-  "inline-flex items-center rounded-full border border-line bg-night-3 px-3 py-1.5 font-medium text-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition hover:border-brand/70 hover:bg-brand/15 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-paper";
+/** Módulos desplegables de la ficha: solo uno abierto a la vez. */
+type DetailModule =
+  | "entrada"
+  | "cobrar"
+  | "productos"
+  | "deudas"
+  | "historial"
+  | "datos";
+/** Si quedó un intento sin confirmar, su módulo se abre solo: nunca escondido. */
+function pendingModuleFor(clientId: string): DetailModule | null {
+  try {
+    if (
+      sessionStorage.getItem(
+        `strong-gym:finance-v1:service_income:${clientId}`,
+      ) ||
+      sessionStorage.getItem(`strong-gym:crm-payment:${clientId}`)
+    )
+      return "cobrar";
+    if (sessionStorage.getItem(`strong-gym:debt-v1:${clientId}`))
+      return "deudas";
+  } catch {}
+  return null;
+}
+function DetailModuleSection({
+  title,
+  hint,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string;
+  hint: string;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-line bg-paper/60">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={onToggle}
+        className="flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3 text-left transition hover:bg-brand/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+      >
+        <span>
+          <span className="block font-semibold text-ink">{title}</span>
+          <span className="block text-xs text-fog">{hint}</span>
+        </span>
+        <span aria-hidden="true" className="shrink-0 text-fog">
+          {open ? "▾" : "▸"}
+        </span>
+      </button>
+      {open && (
+        <div className="space-y-4 border-t border-line p-4">{children}</div>
+      )}
+    </div>
+  );
+}
 const emptyOptions: CrmOptions = {
   plans: [],
   methods: [],
@@ -121,11 +178,14 @@ export function ClientsPanel({
   isAdmin,
   isDemo,
   staffIds = [],
+  staffDirectory,
 }: {
   isAdmin: boolean;
   isDemo: boolean;
   /** Cuentas de personal: nunca se muestran como clientes ni en la búsqueda. */
   staffIds?: string[];
+  /** Directorio del personal: se oculta mientras una ficha está abierta. */
+  staffDirectory?: ReactNode;
 }) {
   const staffSet = new Set(staffIds);
   const { locale } = useDictionary();
@@ -152,6 +212,13 @@ export function ClientsPanel({
   const [registerEntryAfterQuickTariff, setRegisterEntryAfterQuickTariff] =
     useState(true);
   const [busy, setBusy] = useState(false);
+  const [openModule, setOpenModule] = useState<DetailModule | null>(null);
+  const [showAllVisits, setShowAllVisits] = useState(false);
+  // Cliente con cobro iniciado desde "Registrar entrada": mantiene el
+  // formulario montado tras confirmar, para no perder el comprobante.
+  const [entryChargeClientId, setEntryChargeClientId] = useState<
+    string | null
+  >(null);
   const [detailAttempt, setDetailAttempt] = useState(0);
   const [optionsAttempt, setOptionsAttempt] = useState(0);
   const [showScanner, setShowScanner] = useState(false);
@@ -178,12 +245,41 @@ export function ClientsPanel({
   const options = optionsResource.data ?? emptyOptions;
   const detail = detailResource.data;
   const loading = directoryResource.loading;
-  // La ficha aparece debajo de la lista: al abrir un cliente, bajamos hasta ella.
+  // Al abrir un cliente, bajamos hasta su ficha.
   const detailId = detail?.client.id;
   useEffect(() => {
     if (!detailId) return;
     document.getElementById("ficha-cliente")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
   }, [detailId]);
+  const focusDetail = !!detail;
+  const pendingModule = detail ? pendingModuleFor(detail.client.id) : null;
+  const toggleModule = (module: DetailModule) =>
+    setOpenModule((current) => (current === module ? null : module));
+  const managuaDay = (value: Date) =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: "America/Managua" }).format(
+      value,
+    );
+  const enteredToday = detail
+    ? detail.visits.some(
+        (v) => managuaDay(new Date(v.visited_at)) === managuaDay(new Date()),
+      )
+    : false;
+  const headerFinance = detail
+    ? readClientFinance(
+        detail.finance,
+        detail.client.id,
+        detail.client.profile_id,
+      )
+    : null;
+  const headerDebt =
+    headerFinance?.balance_status === "ready" && headerFinance.balances
+      ? headerFinance.balances
+      : null;
+  const visibleVisits = detail
+    ? showAllVisits
+      ? detail.visits
+      : detail.visits.slice(0, 5)
+    : [];
   const detailBusy = busy || detailResource.loading || !!detailResource.error;
   const quickTariffs =
     options.finance_layout === "bank_accounts_split"
@@ -200,12 +296,24 @@ export function ClientsPanel({
     setEntryFeedback(null);
     setQuickTariffPreset(null);
     setRegisterEntryAfterQuickTariff(true);
+    // Si quedó un intento sin confirmar, su módulo se abre solo al entrar.
+    setOpenModule(pendingModuleFor(id));
+    setEntryChargeClientId(null);
+    setShowAllVisits(false);
     setSelected(id);
     setRevision((n) => n + 1);
     setScanToken(token);
     setCreating(false);
     setNotice("");
     setError("");
+  }
+  function backToDirectory() {
+    setSelected(null);
+    setScanToken(null);
+    setOpenModule(null);
+    setEntryChargeClientId(null);
+    setShowAllVisits(false);
+    searchInput.current?.focus();
   }
   async function action(body: unknown): Promise<unknown> {
     if (busy) return;
@@ -282,6 +390,110 @@ export function ClientsPanel({
       });
     }
   }
+  /** El mismo formulario seguro de siempre, presentado en el módulo abierto:
+   * entrada con tarifa, cobro manual o venta de productos. Solo se monta
+   * una vez (un módulo abierto a la vez); el intento pendiente se recupera
+   * de sessionStorage igual que antes. */
+  const paymentBlock = (heading?: string) =>
+    detail ? (
+      <div id="cobro" className="scroll-mt-24 space-y-3">
+        {quickTariffArmed && selectedQuickTariff && (
+          <div className="space-y-3 rounded-xl border border-brand/50 bg-brand/10 p-4 text-sm">
+            <p>
+              <strong>
+                {selectedQuickTariff.plan.name_es} listo para cobrar.
+              </strong>{" "}
+              El monto de {formatMoney(selectedQuickTariff.priceNio, "NIO")} y
+              el concepto ya están cargados; elegí método, cuenta y tasa como
+              siempre. También podés agregar productos con stock al mismo
+              total antes de confirmar.
+            </p>
+            {!selectedQuickTariff.isDayPass && (
+              <p className="text-fog">
+                Este cobro rápido solo registra el pago: todavía no activa ni
+                renueva la vigencia.
+              </p>
+            )}
+            <label className="flex items-start gap-2 text-ink">
+              <input
+                type="checkbox"
+                checked={registerEntryAfterQuickTariff}
+                disabled={detailBusy}
+                onChange={(event) =>
+                  setRegisterEntryAfterQuickTariff(event.target.checked)
+                }
+                className="mt-0.5 size-4 shrink-0 accent-brand"
+              />
+              <span>Registrar entrada ahora al confirmarse el cobro</span>
+            </label>
+            <p className="text-fog">
+              {selectedQuickTariff.isDayPass
+                ? "Desmarcala solo si la persona pagó para entrar más tarde."
+                : "Desmarcala si hoy la persona solo viene a pagar y no va a entrenar."}
+            </p>
+          </div>
+        )}
+        {options.finance_layout === "bank_accounts_split" ? (
+          <MovementForm
+            key={detail.client.id}
+            kind="service_income"
+            clientId={detail.client.id}
+            locale={locale}
+            heading={heading}
+            disabled={detailBusy}
+            onBusy={setBusy}
+            onRefresh={() => setRevision((n) => n + 1)}
+            defaultAmount={
+              quickTariffArmed && selectedQuickTariff
+                ? selectedQuickTariff.priceNio
+                : undefined
+            }
+            defaultConcept={
+              quickTariffArmed && selectedQuickTariff
+                ? selectedQuickTariff.plan.name_es
+                : undefined
+            }
+            presetKey={
+              quickTariffArmed && selectedQuickTariff && quickTariffPreset
+                ? `quick-tariff:${selectedQuickTariff.plan.slug ?? selectedQuickTariff.plan.id}:${quickTariffPreset.stamp}`
+                : "standard"
+            }
+            onSuccess={async (_receiptId, result) => {
+              if (!quickTariffArmed) return;
+              const clientId = detail.client.id;
+              const includedService = result.serviceAmount !== 0;
+              const shouldRegisterEntry =
+                registerEntryAfterQuickTariff && includedService;
+              setQuickTariffPreset(null);
+              if (shouldRegisterEntry) {
+                await registerEntry(clientId, true);
+              } else if (registerEntryAfterQuickTariff && !includedService) {
+                setEntryFeedback({
+                  clientId,
+                  failed: true,
+                  message:
+                    "Venta de productos confirmada. No se registró la entrada porque este cobro no incluyó el servicio; no repitas la venta.",
+                });
+              }
+            }}
+          />
+        ) : (
+          <PaymentForm
+            key={detail.client.id}
+            clientId={detail.client.id}
+            options={options}
+            blocked={
+              detailBusy ||
+              optionsResource.loading ||
+              !!optionsResource.error ||
+              options.payments_enabled !== true
+            }
+            onBusy={setBusy}
+            onRefresh={() => setRevision((n) => n + 1)}
+          />
+        )}
+      </div>
+    ) : null;
   return (
     <div className="container-x space-y-6 py-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -348,6 +560,8 @@ export function ClientsPanel({
           {notice}
         </p>
       )}
+      {!focusDetail && (
+        <>
       <section className="rounded-2xl border border-line bg-card p-5 space-y-4">
         <h2 className="text-xl font-bold">Buscar por nombre · sin QR</h2>
         <p className="text-sm text-fog">
@@ -516,6 +730,8 @@ export function ClientsPanel({
           Actualizar
         </Button>
       </div>
+        </>
+      )}
       {creating && (
         <form
           onSubmit={async (e) => {
@@ -634,40 +850,116 @@ export function ClientsPanel({
           aria-busy={detailResource.loading}
           className="scroll-mt-24 rounded-2xl border border-brand/30 bg-card p-5 space-y-6"
         >
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy}
+              onClick={backToDirectory}
+            >
+              ← Volver a clientes
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={detailBusy}
+              onClick={() => setRevision((n) => n + 1)}
+            >
+              Actualizar ficha
+            </Button>
+          </div>
           <h2 className="display-xl text-2xl">
             #{detail.client.client_number} · {detail.client.full_name}
           </h2>
-          <nav aria-label="Ir a una sección de la ficha" className="flex flex-wrap items-center gap-2 text-sm">
-            <a href="#cobro" className={detailNavLink}>Cobrar</a>
-            <a href="#datos" className={detailNavLink}>Datos del cliente</a>
-            <a href="#historial" className={detailNavLink}>Historial de pagos</a>
-            <Link
-              href={`/${locale}/panel/progreso/${detail.client.id}#asistencia`}
-              className={detailNavLink}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="rounded-full border border-line bg-paper px-2.5 py-1 text-fog">
+              {categories[detail.client.category]}
+            </span>
+            <span className="rounded-full border border-line bg-paper px-2.5 py-1 text-fog">
+              {detail.client.status === "active"
+                ? "Activo"
+                : detail.client.status === "frozen"
+                  ? "Congelado"
+                  : "Cancelado"}
+            </span>
+            <span
+              className={`rounded-full border px-2.5 py-1 ${enteredToday ? "border-brand/50 text-brand-300" : "border-line bg-paper text-fog"}`}
             >
-              Asistencia (día, semana, mes)
-            </Link>
-            <Link
-              href={`/${locale}/panel/progreso/${detail.client.id}`}
-              className="ml-auto inline-flex items-center rounded-full bg-brand px-4 py-1.5 font-semibold text-onbrand shadow-[0_10px_30px_-12px_rgba(216,26,34,0.65)] transition hover:bg-brand-600 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+              {enteredToday ? "Ya entró hoy" : "Sin entrada hoy"}
+            </span>
+            {headerDebt &&
+              (headerDebt.debt_nio > 0 || headerDebt.debt_usd > 0) && (
+                <span className="rounded-full border border-alert/50 px-2.5 py-1 text-alert">
+                  Debe
+                  {headerDebt.debt_nio > 0
+                    ? ` C$ ${headerDebt.debt_nio.toFixed(2)}`
+                    : ""}
+                  {headerDebt.debt_usd > 0
+                    ? ` · US$ ${headerDebt.debt_usd.toFixed(2)}`
+                    : ""}
+                </span>
+              )}
+          </div>
+          <p className="text-sm text-fog">
+            {detail.client.phone || "Sin teléfono"} ·{" "}
+            {detail.client.plan_id
+              ? (options.plans.find((p) => p.id === detail.client.plan_id)
+                  ?.name_es ?? "Plan asignado")
+              : "Sin plan"}
+          </p>
+          {detail.client.status !== "active" && (
+            <p className="text-alert">
+              Ficha congelada/cancelada: revisá el estado antes de registrar
+              asistencia.
+            </p>
+          )}
+          {pendingModule && openModule !== pendingModule && (
+            <div
+              role="alert"
+              className="space-y-2 rounded-xl border border-alert/50 p-4 text-sm text-alert"
             >
-              Progreso y medidas (peso, altura, rutina)
-            </Link>
-          </nav>
-          <div className="flex flex-wrap gap-3">
+              <p>
+                {pendingModule === "deudas"
+                  ? "Hay una operación de deuda sin confirmar. Revisala antes de registrar otra."
+                  : "Hay un cobro sin confirmar. Revisalo antes de registrar otro."}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={() => setOpenModule(pendingModule)}
+              >
+                Revisar intento pendiente
+              </Button>
+            </div>
+          )}
+          {openModule !== "entrada" &&
+            entryFeedback?.clientId === detail.client.id && (
+              <p
+                role={entryFeedback.failed ? "alert" : "status"}
+                className={`rounded-xl border p-4 text-sm ${entryFeedback.failed ? "border-alert/50 text-alert" : "border-brand/40 text-brand-300"}`}
+              >
+                {entryFeedback.message}
+              </p>
+            )}
+          <div className="space-y-3">
+          <DetailModuleSection
+            title="Registrar entrada"
+            hint="Cobrá una tarifa rápida o confirmá solo la visita."
+            open={openModule === "entrada"}
+            onToggle={() => toggleModule("entrada")}
+          >
+          <div className="grid gap-2 sm:grid-cols-2">
             {quickTariffs.map((tariff) => (
               <Button
                 key={tariff.plan.id}
                 variant="primary"
                 aria-pressed={selectedQuickTariff?.plan.id === tariff.plan.id}
-                className={
-                  selectedQuickTariff?.plan.id === tariff.plan.id
-                    ? "ring-2 ring-white/90 ring-offset-2 ring-offset-paper"
-                    : undefined
-                }
+                className={`w-full justify-center ${selectedQuickTariff?.plan.id === tariff.plan.id ? "ring-2 ring-white/90 ring-offset-2 ring-offset-paper" : ""}`}
                 disabled={detailBusy || detail.client.status !== "active"}
                 onClick={() => {
                   if (detailBusy || detail.client.status !== "active") return;
+                  setEntryChargeClientId(detail.client.id);
                   setRegisterEntryAfterQuickTariff(true);
                   setQuickTariffPreset({
                     clientId: detail.client.id,
@@ -688,6 +980,7 @@ export function ClientsPanel({
             ))}
             <Button
               variant={quickTariffs.length > 0 ? "dark" : "primary"}
+              className="w-full justify-center"
               disabled={detailBusy || detail.client.status !== "active"}
               aria-describedby="crm-entry-feedback"
               onClick={() => {
@@ -700,10 +993,10 @@ export function ClientsPanel({
                 : "Confirmar entrada"}{" "}
               {scanToken ? "por QR" : "manual"}
             </Button>
-            <span className="self-center text-xs text-fog">
-              Una visita por día · hora de Nicaragua
-            </span>
           </div>
+          <p className="text-xs text-fog">
+            Una visita por día · hora de Nicaragua
+          </p>
           <div id="crm-entry-feedback" aria-live="polite" aria-atomic="true">
             {entryFeedback?.clientId === detail.client.id && (
               <p
@@ -714,108 +1007,51 @@ export function ClientsPanel({
               </p>
             )}
           </div>
-          {detail.client.status !== "active" && (
-            <p className="text-alert">
-              Ficha congelada/cancelada: revisá el estado antes de registrar
-              asistencia.
-            </p>
+            {entryChargeClientId === detail.client.id && paymentBlock()}
+          </DetailModuleSection>
+          <DetailModuleSection
+            title="Cobrar un servicio"
+            hint="Monto y concepto manuales; podés sumar productos."
+            open={openModule === "cobrar"}
+            onToggle={() => toggleModule("cobrar")}
+          >
+            {paymentBlock()}
+          </DetailModuleSection>
+          {options.finance_layout === "bank_accounts_split" && (
+            <DetailModuleSection
+              title="Vender productos"
+              hint="Solo productos con stock, sin cobrar un servicio."
+              open={openModule === "productos"}
+              onToggle={() => toggleModule("productos")}
+            >
+              {paymentBlock(
+                quickTariffArmed ? undefined : "Venta de productos",
+              )}
+            </DetailModuleSection>
           )}
-          <div id="cobro" className="scroll-mt-24 space-y-3">
-            {quickTariffArmed && selectedQuickTariff && (
-              <div className="space-y-3 rounded-xl border border-brand/50 bg-brand/10 p-4 text-sm">
-                <p>
-                  <strong>
-                    {selectedQuickTariff.plan.name_es} listo para cobrar.
-                  </strong>{" "}
-                  El monto de {formatMoney(selectedQuickTariff.priceNio, "NIO")}{" "}
-                  y el concepto ya están cargados; elegí método, cuenta y tasa
-                  como siempre. También podés agregar productos con stock al
-                  mismo total antes de confirmar.
-                </p>
-                {!selectedQuickTariff.isDayPass && (
-                  <p className="text-fog">
-                    Este cobro rápido solo registra el pago: todavía no activa
-                    ni renueva la vigencia.
-                  </p>
-                )}
-                <label className="flex items-start gap-2 text-ink">
-                  <input
-                    type="checkbox"
-                    checked={registerEntryAfterQuickTariff}
-                    disabled={detailBusy}
-                    onChange={(event) =>
-                      setRegisterEntryAfterQuickTariff(event.target.checked)
-                    }
-                    className="mt-0.5 size-4 shrink-0 accent-brand"
-                  />
-                  <span>Registrar entrada ahora al confirmarse el cobro</span>
-                </label>
-                <p className="text-fog">
-                  {selectedQuickTariff.isDayPass
-                    ? "Desmarcala solo si la persona pagó para entrar más tarde."
-                    : "Desmarcala si hoy la persona solo viene a pagar y no va a entrenar."}
-                </p>
-              </div>
-            )}
-            {options.finance_layout === "bank_accounts_split" ? (
-              <MovementForm
-                key={detail.client.id}
-                kind="service_income"
+          {detail.finance_layout === "bank_accounts_split" && (
+            <DetailModuleSection
+              title="Deudas y abonos"
+              hint="Deuda actual, abonos y vuelto en efectivo."
+              open={openModule === "deudas"}
+              onToggle={() => toggleModule("deudas")}
+            >
+              <DebtForm
+                key={`debt:${detail.client.id}`}
                 clientId={detail.client.id}
                 locale={locale}
                 disabled={detailBusy}
                 onBusy={setBusy}
                 onRefresh={() => setRevision((n) => n + 1)}
-                defaultAmount={
-                  quickTariffArmed && selectedQuickTariff
-                    ? selectedQuickTariff.priceNio
-                    : undefined
-                }
-                defaultConcept={
-                  quickTariffArmed && selectedQuickTariff
-                    ? selectedQuickTariff.plan.name_es
-                    : undefined
-                }
-                presetKey={
-                  quickTariffArmed && selectedQuickTariff && quickTariffPreset
-                    ? `quick-tariff:${selectedQuickTariff.plan.slug ?? selectedQuickTariff.plan.id}:${quickTariffPreset.stamp}`
-                    : "standard"
-                }
-                onSuccess={async (_receiptId, result) => {
-                  if (!quickTariffArmed) return;
-                  const clientId = detail.client.id;
-                  const includedService = result.serviceAmount !== 0;
-                  const shouldRegisterEntry =
-                    registerEntryAfterQuickTariff && includedService;
-                  setQuickTariffPreset(null);
-                  if (shouldRegisterEntry) {
-                    await registerEntry(clientId, true);
-                  } else if (registerEntryAfterQuickTariff && !includedService) {
-                    setEntryFeedback({
-                      clientId,
-                      failed: true,
-                      message:
-                        "Venta de productos confirmada. No se registró la entrada porque este cobro no incluyó el servicio; no repitas la venta.",
-                    });
-                  }
-                }}
               />
-            ) : (
-              <PaymentForm
-                key={detail.client.id}
-                clientId={detail.client.id}
-                options={options}
-                blocked={
-                  detailBusy ||
-                  optionsResource.loading ||
-                  !!optionsResource.error ||
-                  options.payments_enabled !== true
-                }
-                onBusy={setBusy}
-                onRefresh={() => setRevision((n) => n + 1)}
-              />
-            )}
-          </div>
+            </DetailModuleSection>
+          )}
+          <DetailModuleSection
+            title="Saldo e historial"
+            hint="Saldos, cobros, entradas y cambios de la ficha."
+            open={openModule === "historial"}
+            onToggle={() => toggleModule("historial")}
+          >
           <ClientFinanceSummary
             detail={detail}
             pending={detailResource.loading}
@@ -823,11 +1059,65 @@ export function ClientsPanel({
             disabled={busy || detailResource.loading}
             retry={() => setDetailAttempt((n) => n + 1)}
           />
-          {detail.finance_layout === "bank_accounts_split" && <DebtForm
-            key={`debt:${detail.client.id}`} clientId={detail.client.id} locale={locale}
-            disabled={detailBusy} onBusy={setBusy} onRefresh={() => setRevision(n => n + 1)}
-          />}
-          <div id="datos" className="scroll-mt-24">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div>
+              <h3 className="mb-3 text-lg font-bold">Últimas 60 entradas</h3>
+              <ul className="space-y-2 text-sm">
+                {visibleVisits.map((v) => (
+                  <li key={v.id} className="rounded-lg border border-line p-3">
+                    {fmt(v.visited_at)} · {v.source === "qr" ? "QR" : "Manual"}
+                  </li>
+                ))}
+              </ul>
+              {!detail.visits.length && (
+                <p className="text-fog">Sin entradas registradas.</p>
+              )}
+              {detail.visits.length > 5 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-3"
+                  onClick={() => setShowAllVisits((value) => !value)}
+                >
+                  {showAllVisits
+                    ? "Ver menos"
+                    : `Ver las ${detail.visits.length} entradas`}
+                </Button>
+              )}
+            </div>
+            <ClientIncomeHistory detail={detail} pending={detailResource.loading} stale={!!detailResource.error} />
+          </div>
+          <details>
+            <summary className="cursor-pointer text-sm text-brand-300">
+              Historial de cambios (últimos 40)
+            </summary>
+            <ul className="mt-3 space-y-2 text-xs text-fog">
+              {detail.events.map((e) => (
+                <li key={e.id}>
+                  {fmt(e.created_at)} ·{" "}
+                  {(
+                    {
+                      created: "Alta",
+                      updated: "Ficha actualizada",
+                      card_reset: "QR reemplazado",
+                      payment: "Cobro registrado",
+                      debt_charge: "Deuda registrada",
+                      debt_opening: "Saldo inicial registrado",
+                    } as Record<string, string>
+                  )[e.action] || e.action}
+                  {e.details.category_after &&
+                    ` · ${categories[e.details.category_before as keyof typeof categories]} → ${categories[e.details.category_after as keyof typeof categories]}`}
+                </li>
+              ))}
+            </ul>
+          </details>
+          </DetailModuleSection>
+          <DetailModuleSection
+            title="Datos del cliente y carnet"
+            hint="Editar la ficha, ver el carnet o reemplazar el QR."
+            open={openModule === "datos"}
+            onToggle={() => toggleModule("datos")}
+          >
           <EditClient
             key={`${detail.client.id}:${detail.client.updated_at ?? detail.client.created_at}`}
             client={detail.client}
@@ -839,7 +1129,6 @@ export function ClientsPanel({
               setNotice("Ficha guardada. Las etiquetas no cambian precios.");
             }}
           />
-          </div>
           <div>
             <div className="space-y-3">
               <h3 className="text-lg font-bold">Carnet digital o impreso</h3>
@@ -880,48 +1169,25 @@ export function ClientsPanel({
               </Button>
             </div>
           </div>
-          <div id="historial" className="scroll-mt-24 grid gap-6 lg:grid-cols-2">
-            <div>
-              <h3 className="mb-3 text-lg font-bold">Últimas 60 entradas</h3>
-              <ul className="space-y-2 text-sm">
-                {detail.visits.map((v) => (
-                  <li key={v.id} className="rounded-lg border border-line p-3">
-                    {fmt(v.visited_at)} · {v.source === "qr" ? "QR" : "Manual"}
-                  </li>
-                ))}
-              </ul>
-              {!detail.visits.length && (
-                <p className="text-fog">Sin entradas registradas.</p>
-              )}
-            </div>
-            <ClientIncomeHistory detail={detail} pending={detailResource.loading} stale={!!detailResource.error} />
+          </DetailModuleSection>
           </div>
-          <details>
-            <summary className="cursor-pointer text-sm text-brand-300">
-              Historial de cambios (últimos 40)
-            </summary>
-            <ul className="mt-3 space-y-2 text-xs text-fog">
-              {detail.events.map((e) => (
-                <li key={e.id}>
-                  {fmt(e.created_at)} ·{" "}
-                  {(
-                    {
-                      created: "Alta",
-                      updated: "Ficha actualizada",
-                      card_reset: "QR reemplazado",
-                      payment: "Cobro registrado",
-                      debt_charge: "Deuda registrada",
-                      debt_opening: "Saldo inicial registrado",
-                    } as Record<string, string>
-                  )[e.action] || e.action}
-                  {e.details.category_after &&
-                    ` · ${categories[e.details.category_before as keyof typeof categories]} → ${categories[e.details.category_after as keyof typeof categories]}`}
-                </li>
-              ))}
-            </ul>
-          </details>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Link
+              href={`/${locale}/panel/progreso/${detail.client.id}`}
+              className="inline-flex items-center justify-center rounded-xl bg-brand px-4 py-3 text-center font-semibold text-onbrand transition hover:bg-brand-600 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+            >
+              Progreso y medidas (peso, altura, rutina)
+            </Link>
+            <Link
+              href={`/${locale}/panel/progreso/${detail.client.id}#asistencia`}
+              className="inline-flex items-center justify-center rounded-xl border border-line bg-night-3 px-4 py-3 text-center font-medium text-ink transition hover:border-brand/70 hover:bg-brand/15 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+            >
+              Asistencia (día, semana, mes)
+            </Link>
+          </div>
         </section>
       )}
+      {!focusDetail && staffDirectory}
     </div>
   );
 }
