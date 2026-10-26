@@ -279,12 +279,15 @@ export function ClientsPanel({
   }, [detailId]);
   const focusDetail = !!detail;
   const pendingModule = detail ? pendingModuleFor(detail.client.id) : null;
-  const scrollToFichaTop = () =>
-    requestAnimationFrame(() =>
+  const scrollToFichaTop = () => {
+    const go = () =>
       document
         .getElementById("ficha-cliente")
-        ?.scrollIntoView?.({ block: "start" }),
-    );
+        ?.scrollIntoView?.({ block: "start" });
+    if (typeof requestAnimationFrame === "function")
+      requestAnimationFrame(go);
+    else go();
+  };
   /** Cada módulo se abre como su propia vista dentro de la ficha. */
   const openModuleView = (module: DetailModule) => {
     setOpenModule(module);
