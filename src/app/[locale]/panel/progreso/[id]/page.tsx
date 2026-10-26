@@ -8,6 +8,7 @@ import { getCurrentUser } from "@/lib/data/queries";
 import { getClientProgress, type ClientProgress } from "@/lib/data/progress-queries";
 import { getClientAttendance } from "@/lib/data/attendance-queries";
 import { AttendanceTable } from "@/components/attendance/attendance-table";
+import { HashScroll } from "@/components/progress/hash-scroll";
 import { NutritionCalculator } from "@/components/nutrition/nutrition-calculator";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { CLIENT_CATEGORY_LABEL } from "@/lib/clients/category";
@@ -59,6 +60,7 @@ export default async function ProgresoClientePage({
 
   return (
     <>
+      <HashScroll />
       <section className="relative overflow-hidden border-b border-brand/25 bg-cloud pt-10 pb-8 sm:pt-12 sm:pb-10">
         <div className="container-x relative">
           <SectionHeading

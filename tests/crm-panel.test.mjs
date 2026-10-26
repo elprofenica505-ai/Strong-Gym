@@ -106,19 +106,30 @@ async function open(name = "Hellen Reyes") {
 }
 const heading = (name = "Hellen Reyes") =>
   screen.findByRole("heading", { name: new RegExp(name) });
-// La ficha se organiza en módulos desplegables (uno abierto a la vez).
+// La ficha es un menú de tarjetas; cada una abre su propia vista y desde
+// ahí se vuelve con "← Volver a la ficha".
 async function openModule(title) {
+  if (!screen.queryByRole("button", { name: new RegExp(`^${title}`) })) {
+    const back = screen.queryByRole("button", {
+      name: "← Volver a la ficha",
+    });
+    if (back) fireEvent.click(back);
+  }
   const button = await screen.findByRole("button", {
     name: new RegExp(`^${title}`),
   });
-  if (button.getAttribute("aria-expanded") !== "true")
-    fireEvent.click(button);
+  fireEvent.click(button);
   return button;
 }
-const backToClients = () =>
+const backToClients = () => {
+  const backFicha = screen.queryByRole("button", {
+    name: "← Volver a la ficha",
+  });
+  if (backFicha) fireEvent.click(backFicha);
   fireEvent.click(
     screen.getByRole("button", { name: "← Volver a clientes" }),
   );
+};
 
 test("nombre primero, QR opcional; búsqueda envía nombre sin exigir carnet", async () => {
   const calls = setup(() => json(detail()));
@@ -1037,4 +1048,33 @@ test("saldo: datos financieros inválidos se aíslan de recepción, no bloquean 
   await openModule("Registrar entrada");
   assert.equal(screen.getByRole('button',{name:/Confirmar entrada/}).disabled,false);
   assert.equal(screen.queryByText('No pudimos abrir esta ficha'),null);
+});
+
+test("cada tarjeta de la ficha abre su propia vista y Volver regresa al menú", async () => {
+  setup(() => json(detail()));
+  await open();
+  await heading();
+  // Menú de tarjetas visible; el contenido de cada vista todavía no.
+  assert.ok(screen.getByRole("button", { name: /^Saldo e historial/ }));
+  assert.equal(screen.queryByText("Saldo y cobros del cliente"), null);
+  const asistencia = screen.getByRole("link", {
+    name: /^Asistencia \(día, semana, mes\)/,
+  });
+  assert.match(asistencia.getAttribute("href"), /#asistencia$/);
+  await openModule("Saldo e historial");
+  assert.ok(await screen.findByText("Saldo y cobros del cliente"));
+  // La vista reemplaza al menú: no empuja las demás tarjetas hacia abajo.
+  assert.equal(
+    screen.queryByRole("button", { name: /^Cobrar un servicio/ }),
+    null,
+  );
+  assert.equal(
+    screen.queryByRole("button", { name: "← Volver a clientes" }),
+    null,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "← Volver a la ficha" }));
+  assert.ok(
+    await screen.findByRole("button", { name: /^Cobrar un servicio/ }),
+  );
+  assert.equal(screen.queryByText("Saldo y cobros del cliente"), null);
 });
