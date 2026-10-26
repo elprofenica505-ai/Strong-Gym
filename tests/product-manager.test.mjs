@@ -31,7 +31,7 @@ const { ProductManager } = await createLoader()(
 const product = (n) => ({
   id: `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
   name: `Producto EJEMPLO ${n}`,
-  category: "Bebidas",
+  category: n % 2 === 0 ? "Suplementos" : "Bebidas",
   subcategory: null,
   attributes: {},
   status: "activo",
@@ -92,6 +92,27 @@ test("tarjetas: nombre, precio y stock visibles; paginación de 25 por página",
   fireEvent.click(screen.getByRole("button", { name: "Anterior" }));
   assert.ok(await screen.findByText("Página 1 de 2"));
   assert.ok(screen.getByText("Producto EJEMPLO 1"));
+});
+
+test("categorías y búsqueda filtran las tarjetas y la ficha sigue abriendo", async () => {
+  mount(4);
+  assert.ok(await screen.findByText("Producto EJEMPLO 1"));
+  fireEvent.click(screen.getByRole("button", { name: "Categorías" }));
+  assert.equal(screen.queryByText("Producto EJEMPLO 1"), null);
+  fireEvent.click(screen.getByRole("button", { name: /^Suplementos/ }));
+  assert.ok(await screen.findByText("Producto EJEMPLO 2"));
+  assert.equal(screen.queryByText("Producto EJEMPLO 1"), null);
+  fireEvent.change(screen.getByLabelText("Buscar producto"), {
+    target: { value: "4" },
+  });
+  assert.ok(await screen.findByText("Producto EJEMPLO 4"));
+  assert.equal(screen.queryByText("Producto EJEMPLO 2"), null);
+  fireEvent.click(
+    screen.getByRole("button", { name: /Producto EJEMPLO 4/ }),
+  );
+  assert.ok(
+    await screen.findByLabelText("Ficha de Producto EJEMPLO 4"),
+  );
 });
 
 test("tocar una tarjeta abre la ficha completa y Volver regresa a las tarjetas", async () => {
