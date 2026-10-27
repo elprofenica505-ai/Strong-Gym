@@ -16,6 +16,10 @@ import { Section, SectionHeading } from "@/components/ui/section";
 import { Reveal } from "@/components/ui/reveal";
 import { ButtonLink } from "@/components/ui/button";
 import { accentOnDark, textOnAccent } from "@/lib/utils";
+import {
+  publicDisciplineVisibility,
+  selectPublicDisciplineText,
+} from "@/lib/public-disciplines";
 
 const intensityBars: Record<string, number> = { low: 1, medium: 2, high: 3 };
 
@@ -36,6 +40,15 @@ export async function ClassesGrid({ locale }: { locale: Locale }) {
       </Section>
     );
   const classes = result.data;
+  const subtitle = selectPublicDisciplineText(
+    publicDisciplineVisibility(classes.map((gymClass) => gymClass.slug)),
+    {
+      both: dict.classes.subtitle,
+      boxingOnly: dict.classes.subtitleBoxingOnly,
+      danceOnly: dict.classes.subtitleDanceOnly,
+      weightsOnly: dict.classes.subtitleWeightsOnly,
+    },
+  );
 
   return (
     <Section id="clases" className="border-b border-line bg-cloud">
@@ -43,7 +56,7 @@ export async function ClassesGrid({ locale }: { locale: Locale }) {
         <SectionHeading
           eyebrow={dict.nav.classes}
           title={dict.classes.title}
-          subtitle={dict.classes.subtitle}
+          subtitle={subtitle}
         />
 
         <Reveal delay={120} className="shrink-0">

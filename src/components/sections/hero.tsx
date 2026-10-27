@@ -6,6 +6,10 @@ import { useDictionary } from "@/components/providers/dictionary-provider";
 import { ButtonLink } from "@/components/ui/button";
 import { Reveal } from "@/components/ui/reveal";
 import { whatsappLink } from "@/config/site";
+import {
+  selectPublicDisciplineText,
+  type PublicDisciplineVisibility,
+} from "@/lib/public-disciplines";
 
 /**
  * Portada: la foto real de la fachada de noche, con la banderola roja
@@ -15,8 +19,23 @@ import { whatsappLink } from "@/config/site";
  * Si la foto todavía no está subida, el degradado rojo/negro de abajo
  * sostiene el diseño solo: nunca se ve un hueco blanco.
  */
-export function Hero({ fachada = false }: { fachada?: boolean }) {
+export function Hero({
+  fachada = false,
+  showBoxing = true,
+  showZumba = true,
+}: { fachada?: boolean } & Partial<PublicDisciplineVisibility>) {
   const { dict, locale } = useDictionary();
+  const visibility = { showBoxing, showZumba };
+  const subtitle = selectPublicDisciplineText(visibility, {
+    both: dict.hero.subtitle,
+    boxingOnly: dict.hero.subtitleBoxingOnly,
+    danceOnly: dict.hero.subtitleDanceOnly,
+    weightsOnly: dict.hero.subtitleWeightsOnly,
+  });
+  // El orden del diccionario es: días, clases de boxeo, apertura y boxeo/mes.
+  const stats = dict.hero.stats.filter(
+    (_, index) => showBoxing || (index !== 1 && index !== 3),
+  );
 
   return (
     <section className="relative isolate overflow-hidden bg-night">
@@ -65,7 +84,7 @@ export function Hero({ fachada = false }: { fachada?: boolean }) {
             {/* Bajada */}
             <Reveal delay={160}>
               <p className="mt-6 max-w-xl text-[0.9375rem] leading-relaxed text-white/75 sm:mt-8 sm:text-base">
-                {dict.hero.subtitle}
+                {subtitle}
               </p>
             </Reveal>
 
@@ -100,8 +119,10 @@ export function Hero({ fachada = false }: { fachada?: boolean }) {
 
             {/* Datos reales del gimnasio */}
             <Reveal delay={320}>
-              <dl className="mt-12 grid max-w-2xl grid-cols-2 gap-x-6 gap-y-7 border-t border-white/15 pt-8 sm:grid-cols-4 sm:gap-x-4">
-                {dict.hero.stats.map((stat) => (
+              <dl
+                className={`mt-12 grid max-w-2xl grid-cols-2 gap-x-6 gap-y-7 border-t border-white/15 pt-8 sm:gap-x-4 ${showBoxing ? "sm:grid-cols-4" : "sm:grid-cols-2"}`}
+              >
+                {stats.map((stat) => (
                   <div key={stat.label}>
                     <dt className="sr-only">{stat.label}</dt>
                     <dd>

@@ -19,6 +19,8 @@ import { getDictionary } from "@/i18n/dictionaries";
 import { isLocale } from "@/i18n/config";
 import { homeJsonLd, serializeJsonLd } from "@/lib/structured-data";
 import { fotoDisponible } from "@/components/ui/gym-photo";
+import { getPublicDisciplineState } from "@/lib/data/public-discipline-state";
+import { selectPublicDisciplineText } from "@/lib/public-disciplines";
 
 export async function generateMetadata({
   params,
@@ -28,10 +30,16 @@ export async function generateMetadata({
   const { locale } = await params;
   if (!isLocale(locale)) return {};
   const dict = getDictionary(locale);
+  const { visibility } = await getPublicDisciplineState();
 
   return {
     title: { absolute: dict.meta.title },
-    description: dict.meta.description,
+    description: selectPublicDisciplineText(visibility, {
+      both: dict.meta.description,
+      boxingOnly: dict.meta.descriptionBoxingOnly,
+      danceOnly: dict.meta.descriptionDanceOnly,
+      weightsOnly: dict.meta.descriptionWeightsOnly,
+    }),
   };
 }
 
@@ -39,30 +47,52 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const { locale } = await params;
   const safeLocale = isLocale(locale) ? locale : "es";
   const dict = getDictionary(safeLocale);
-
+  const { activeClassSlugs, visibility } = await getPublicDisciplineState();
 
   return (
     <>
       <script
         type="application/ld+json"
         // Datos estructurados para Google (negocio local)
-        dangerouslySetInnerHTML={{ __html: serializeJsonLd(homeJsonLd(safeLocale, dict)) }}
+        dangerouslySetInnerHTML={{
+          __html: serializeJsonLd(homeJsonLd(safeLocale, dict, visibility)),
+        }}
       />
 
-      <Hero fachada={fotoDisponible("/images/fachada.jpg")} />
-      <Marquee locale={safeLocale} />
-      <Features locale={safeLocale} />
+      <Hero
+        fachada={fotoDisponible("/images/fachada.jpg")}
+        showBoxing={visibility.showBoxing}
+        showZumba={visibility.showZumba}
+      />
+      <Marquee
+        locale={safeLocale}
+        showBoxing={visibility.showBoxing}
+        showZumba={visibility.showZumba}
+      />
+      <Features
+        locale={safeLocale}
+        showBoxing={visibility.showBoxing}
+        showZumba={visibility.showZumba}
+      />
       <ClassesGrid locale={safeLocale} />
-      <Boxing locale={safeLocale} />
-      <Plans locale={safeLocale} />
+      {visibility.showBoxing ? <Boxing locale={safeLocale} /> : null}
+      <Plans locale={safeLocale} activeClassSlugs={activeClassSlugs} />
       <Supplements locale={safeLocale} />
       <Gallery locale={safeLocale} />
       <Community locale={safeLocale} />
       <Testimonials locale={safeLocale} />
-      <Coaches locale={safeLocale} />
+      <Coaches locale={safeLocale} showBoxing={visibility.showBoxing} />
       <Rules locale={safeLocale} />
-      <Faq locale={safeLocale} />
-      <Contact locale={safeLocale} />
+      <Faq
+        locale={safeLocale}
+        showBoxing={visibility.showBoxing}
+        showZumba={visibility.showZumba}
+      />
+      <Contact
+        locale={safeLocale}
+        showBoxing={visibility.showBoxing}
+        showZumba={visibility.showZumba}
+      />
       <CtaBand locale={safeLocale} />
     </>
   );

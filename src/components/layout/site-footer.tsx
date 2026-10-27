@@ -11,16 +11,39 @@ import { formatDateNumeric, gymNow } from "@/lib/schedule";
 import { openingHoursSummary, siteConfig, whatsappLink } from "@/config/site";
 import { Logo } from "./logo";
 import { NewsletterForm } from "./newsletter-form";
+import {
+  selectPublicDisciplineText,
+  type PublicDisciplineVisibility,
+} from "@/lib/public-disciplines";
 
-export function SiteFooter({ locale }: { locale: Locale }) {
+export function SiteFooter({
+  locale,
+  showBoxing = true,
+  showZumba = true,
+}: { locale: Locale } & Partial<PublicDisciplineVisibility>) {
   const dict = getDictionary(locale);
   const year = gymNow().getFullYear();
   const hours = openingHoursSummary(locale);
+  const visibility = { showBoxing, showZumba };
+  const about = selectPublicDisciplineText(visibility, {
+    both: dict.footer.about,
+    boxingOnly: dict.footer.aboutBoxingOnly,
+    danceOnly: dict.footer.aboutDanceOnly,
+    weightsOnly: dict.footer.aboutWeightsOnly,
+  });
+  // Orden fijo del diccionario: pesas, boxeo, zumba y suplementos.
+  const services = dict.footer.services.filter((_, index) => {
+    if (index === 1) return showBoxing;
+    if (index === 2) return showZumba;
+    return true;
+  });
 
   const navLinks = [
     { href: `/${locale}`, label: dict.nav.home },
     { href: `/${locale}/horarios`, label: dict.nav.schedule },
-    { href: `/${locale}#boxeo`, label: dict.nav.boxing },
+    ...(showBoxing
+      ? [{ href: `/${locale}#boxeo`, label: dict.nav.boxing }]
+      : []),
     { href: `/${locale}#planes`, label: dict.nav.plans },
     { href: `/${locale}#suplementos`, label: dict.nav.supplements },
     { href: `/${locale}#contacto`, label: dict.nav.contact },
@@ -44,7 +67,7 @@ export function SiteFooter({ locale }: { locale: Locale }) {
             <Logo locale={locale} name={siteConfig.name} tone="dark" />
 
             <p className="mt-5 max-w-sm text-[0.875rem] leading-relaxed text-white/60">
-              {dict.footer.about}
+              {about}
             </p>
 
             {socials.length > 0 ? (
@@ -95,7 +118,7 @@ export function SiteFooter({ locale }: { locale: Locale }) {
               {dict.footer.servicesTitle}
             </h2>
             <ul className="flex flex-col gap-2.5">
-              {dict.footer.services.map((service) => (
+              {services.map((service) => (
                 <li key={service} className="text-[0.875rem] text-white/60">
                   {service}
                 </li>

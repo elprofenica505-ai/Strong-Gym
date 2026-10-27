@@ -1,6 +1,11 @@
 import { SCHEMA_DAYS, fullAddress, getSiteUrl, mapsLink, siteConfig } from "@/config/site";
 import type { Dictionary } from "@/i18n/dictionaries";
 import type { Locale } from "@/i18n/config";
+import {
+  ALL_PUBLIC_DISCIPLINES_VISIBLE,
+  selectPublicDisciplineText,
+  type PublicDisciplineVisibility,
+} from "@/lib/public-disciplines";
 
 /**
  * Serializa JSON-LD sin permitir que un texto cierre la etiqueta script.
@@ -17,8 +22,18 @@ export function serializeJsonLd(value: unknown): string {
 }
 
 /** JSON-LD del gimnasio, para que Google muestre horarios, dirección y teléfono. */
-export function homeJsonLd(locale: Locale, dict: Dictionary) {
+export function homeJsonLd(
+  locale: Locale,
+  dict: Dictionary,
+  visibility: PublicDisciplineVisibility = ALL_PUBLIC_DISCIPLINES_VISIBLE,
+) {
   const siteUrl = getSiteUrl();
+  const description = selectPublicDisciplineText(visibility, {
+    both: dict.meta.description,
+    boxingOnly: dict.meta.descriptionBoxingOnly,
+    danceOnly: dict.meta.descriptionDanceOnly,
+    weightsOnly: dict.meta.descriptionWeightsOnly,
+  });
 
   return {
     "@context": "https://schema.org",
@@ -26,7 +41,7 @@ export function homeJsonLd(locale: Locale, dict: Dictionary) {
     "@id": `${siteUrl}/#gym`,
     name: siteConfig.name,
     legalName: siteConfig.legalName,
-    description: dict.meta.description,
+    description,
     url: `${siteUrl}/${locale}`,
     telephone: siteConfig.phoneIntl,
     // Sólo publicamos los datos que el gimnasio confirmó.
@@ -70,19 +85,23 @@ export function homeJsonLd(locale: Locale, dict: Dictionary) {
       })),
     ),
     inLanguage: locale,
-    potentialAction: {
-      "@type": "ReserveAction",
-      name: dict.cta.book,
-      target: {
-        "@type": "EntryPoint",
-        urlTemplate: `${siteUrl}/${locale}/horarios`,
-        inLanguage: locale,
-        actionPlatform: [
-          "http://schema.org/DesktopWebPlatform",
-          "http://schema.org/MobileWebPlatform",
-        ],
-      },
-    },
+    ...(visibility.showBoxing
+      ? {
+          potentialAction: {
+            "@type": "ReserveAction",
+            name: dict.cta.book,
+            target: {
+              "@type": "EntryPoint",
+              urlTemplate: `${siteUrl}/${locale}/horarios`,
+              inLanguage: locale,
+              actionPlatform: [
+                "http://schema.org/DesktopWebPlatform",
+                "http://schema.org/MobileWebPlatform",
+              ],
+            },
+          },
+        }
+      : {}),
   };
 }
 

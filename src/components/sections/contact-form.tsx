@@ -10,7 +10,11 @@ type FormState = "idle" | "sending" | "sent" | "error";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-export function ContactForm() {
+export function ContactForm({
+  showClassSubject = true,
+}: {
+  showClassSubject?: boolean;
+}) {
   const { dict, locale } = useDictionary();
   const [state, setState] = useState<FormState>("idle");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -118,7 +122,9 @@ export function ContactForm() {
         />
 
         <Select name="subject" label={dict.contact.subject} defaultValue="info">
-          {Object.entries(dict.contact.subjectOptions).map(([value, label]) => (
+          {Object.entries(dict.contact.subjectOptions)
+            .filter(([value]) => showClassSubject || value !== "corporate")
+            .map(([value, label]) => (
             <option key={value} value={value}>
               {label}
             </option>

@@ -15,6 +15,8 @@ import { getSiteUrl, siteConfig } from "@/config/site";
 import { getDictionary } from "@/i18n/dictionaries";
 import { isLocale, locales, type Locale } from "@/i18n/config";
 import { getCurrentUser } from "@/lib/data/queries";
+import { getPublicDisciplineState } from "@/lib/data/public-discipline-state";
+import { selectPublicDisciplineText } from "@/lib/public-disciplines";
 import { DEMO_MODE, CONFIGURATION_UNAVAILABLE } from "@/lib/supabase/env";
 
 export function generateStaticParams() {
@@ -32,6 +34,13 @@ export async function generateMetadata({
   if (!isLocale(locale)) return { metadataBase };
 
   const dict = getDictionary(locale);
+  const { visibility } = await getPublicDisciplineState();
+  const description = selectPublicDisciplineText(visibility, {
+    both: dict.meta.description,
+    boxingOnly: dict.meta.descriptionBoxingOnly,
+    danceOnly: dict.meta.descriptionDanceOnly,
+    weightsOnly: dict.meta.descriptionWeightsOnly,
+  });
 
   return {
     metadataBase,
@@ -39,7 +48,7 @@ export async function generateMetadata({
       default: dict.meta.title,
       template: `%s | ${siteConfig.name}`,
     },
-    description: dict.meta.description,
+    description,
     keywords: dict.meta.keywords,
     applicationName: siteConfig.name,
     alternates: {
@@ -54,14 +63,14 @@ export async function generateMetadata({
       type: "website",
       siteName: siteConfig.name,
       title: dict.meta.title,
-      description: dict.meta.description,
+      description,
       url: `${siteUrl}/${locale}`,
       locale: locale === "es" ? "es_NI" : "en_US",
     },
     twitter: {
       card: "summary_large_image",
       title: dict.meta.title,
-      description: dict.meta.description,
+      description,
     },
     robots: { index: !CONFIGURATION_UNAVAILABLE, follow: !CONFIGURATION_UNAVAILABLE },
     // El manifest se declara en `manifest.ts`; acá referenciamos los
@@ -125,6 +134,7 @@ export default async function LocaleLayout({
     </main></body></html>;
   }
   const user = await getCurrentUser();
+  const { visibility } = await getPublicDisciplineState();
 
   return (
     <html lang={locale} suppressHydrationWarning>
@@ -164,7 +174,14 @@ export default async function LocaleLayout({
 
             <SiteShell
               banner={DEMO_MODE ? <DemoBanner /> : null}
-              footer={<SiteFooter locale={locale as Locale} />}
+              bookCtaEnabled={visibility.showBoxing}
+              footer={
+                <SiteFooter
+                  locale={locale as Locale}
+                  showBoxing={visibility.showBoxing}
+                  showZumba={visibility.showZumba}
+                />
+              }
             >
               {children}
             </SiteShell>
