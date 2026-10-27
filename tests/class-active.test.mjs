@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { createLoader } from "./helpers/react-loader.mjs";
 import {
   adminClassActiveRequestSchema,
@@ -256,6 +257,24 @@ test("API: un cambio cuyo estado anterior no era el esperado no es éxito", asyn
   const response = await POST(request());
   assert.equal(response.status, 500);
   assert.equal((await response.json()).error, "UNKNOWN");
+});
+
+test("Operación: la pestaña Clases queda visible en móvil sin desplazamiento lateral", () => {
+  const source = readFileSync(
+    new URL("../src/components/admin/admin-panel.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.ok(source.includes('id: "classes", label: dict.admin.tabs.classes'));
+  const tablist = source.match(
+    /className="([^"]*)"\s+role="tablist"/,
+  )?.[1];
+  assert.ok(tablist, "la barra de pestañas debe existir");
+  // En móvil es cuadrícula 2×2: las cuatro pestañas se ven sin desplazar.
+  assert.ok(tablist.includes("grid grid-cols-2"));
+  assert.ok(!tablist.replace("sm:overflow-x-auto", "").includes("overflow-x-auto"));
+  // Los botones no fuerzan ancho fijo en móvil (eso empujaba Clases fuera).
+  assert.ok(source.includes("justify-center gap-2 rounded-xl px-3 py-2.5"));
+  assert.ok(!source.includes('"flex shrink-0 items-center gap-2 rounded-xl px-4'));
 });
 
 test("API: una respuesta de otra disciplina o con otro estado no es éxito", async () => {

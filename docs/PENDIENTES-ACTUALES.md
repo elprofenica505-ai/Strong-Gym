@@ -103,7 +103,10 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   La escritura directa sobre `classes` quedó cerrada y se conserva su lectura
   pública. Evidencia: 40 comprobaciones SQL por rol, 18 pruebas focalizadas de
   contrato/API/reserva y verificación remota sin cambios en 9 disciplinas, 52
-  sesiones y 2 reservas; la aceptación integral sigue en CAL-03.
+  sesiones y 2 reservas; la aceptación integral sigue en CAL-03. Ajuste del
+  27 de octubre: en la prueba desde el celular la pestaña Clases quedaba fuera
+  de pantalla por el desplazamiento lateral; ahora las pestañas de Operación
+  se ven en cuadrícula 2×2 en móvil, sin desplazar.
 - [ ] **OP-04 · Alta · Código/operación — Generar sesiones futuras sin depender
   de SQL manual.** En la auditoría quedaban 18 sesiones futuras, del 27 de
   octubre al **5 de noviembre de 2026**. Existe `generate_week_sessions()`,
