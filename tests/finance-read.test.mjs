@@ -478,7 +478,7 @@ test("límites solicitados se pasan a RPC de días, meses e historial", async ()
     [20, 12, 8],
   );
 });
-test("Caja guía a formularios verificados y muestra saldos por moneda", async () => {
+test("Caja organiza accesos verificados y conserva moneda y estado en recientes", async () => {
   const { CashPanel } = await load("components/admin/cash-panel.tsx");
   legacyDb();
   const tx = (await queries.getRecentTransactions())[0];
@@ -495,10 +495,11 @@ test("Caja guía a formularios verificados y muestra saldos por moneda", async (
       isDemo: false,
     }),
   );
-  assert.match(html, /verifica la actualización y los permisos/);
   assert.doesNotMatch(html, /bloqueados por decisión del administrador/);
-  assert.match(html, /Saldo informado/);
-  assert.match(html, /Registrar gasto y ver comprobantes/);
+  assert.match(html, /Cuentas y saldos/);
+  assert.doesNotMatch(html, /Saldo informado/);
+  assert.match(html, /Registrar gasto/);
+  assert.match(html, /Gasto y comprobantes/);
   assert.match(html, /requiere actualización financiera/);
   assert.match(html, /Deudas informadas por moneda/);
   assert.doesNotMatch(
