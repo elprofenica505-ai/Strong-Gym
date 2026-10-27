@@ -121,9 +121,12 @@ test("Panel: cliente, sesión, disciplina y entrenador resueltos sin joins", asy
   assert.equal(row.memberName, "Cliente EJEMPLO");
   assert.equal(row.session.coach.name, "Entrenador EJEMPLO");
 });
-test("Horarios: misma composición con ocupación confirmada", async () => {
+test("Horarios público oculta una disciplina inactiva; la vista interna la conserva", async () => {
   setup();
-  const [row] = (await q.getSessionsForWeek()).sessions;
+  assert.deepEqual((await q.getSessionsForWeek()).sessions, []);
+  const [row] = (
+    await q.getSessionsForWeek(null, { includeInactiveClasses: true })
+  ).sessions;
   assert.equal(row.spotsLeft, 7);
   assert.equal(row.bookedCount, 3);
 });
