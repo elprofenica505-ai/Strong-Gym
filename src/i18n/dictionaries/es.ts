@@ -230,6 +230,8 @@ const es = {
       "Ya tenés el máximo de 3 reservas activas. Cancelá una para poder reservar otra clase.",
     sessionFull: "Se llenó la clase, probá con otro horario.",
     pastSession: "Esa clase ya pasó.",
+    inactiveClass:
+      "Esa disciplina está desactivada por el gimnasio y no acepta reservas nuevas.",
     cancelledByGym: "La clase fue cancelada por el gimnasio.",
     bookingUnconfirmed: "No pudimos confirmar la reserva o su cancelación en tu cuenta. Revisá Mi cuenta antes de repetir; no vuelvas a reservar todavía.",
     bookingError: "No pudimos completar la reserva. Intentá de nuevo.",
@@ -547,6 +549,23 @@ const es = {
         "No se pudo guardar el estado de la consulta. Quedó como estaba.",
       offline:
         "Sin conexión. No confirmamos ningún cambio; revisá el estado antes de reintentar.",
+    },
+    classActive: {
+      active: "Activa",
+      inactive: "Desactivada",
+      saving: "Guardando el estado de la disciplina…",
+      savedActive:
+        "Disciplina activada. Ya se muestra en la web y acepta reservas nuevas.",
+      savedInactive:
+        "Disciplina desactivada. Ya no se muestra en la web ni acepta reservas nuevas.",
+      failed:
+        "No se pudo guardar el estado de la disciplina. Quedó como estaba.",
+      offline:
+        "Sin conexión. No confirmamos ningún cambio; revisá el estado antes de reintentar.",
+      adminOnly:
+        "Solo la administración puede activar o desactivar disciplinas.",
+      effect:
+        "Al desactivar una disciplina, deja de verse en la web y no acepta reservas nuevas. Las sesiones y reservas ya hechas no se cancelan.",
     },
     empty: {
       bookings: "Todavía no hay reservas registradas.",

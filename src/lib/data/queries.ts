@@ -82,6 +82,20 @@ export async function getClasses(): Promise<GymClass[]> {
     demoClasses.filter((c) => c.is_active),
   );
 }
+
+/** Solo Operación: administración necesita ver y reactivar las inactivas. */
+export async function getAdminClasses(): Promise<GymClass[]> {
+  return checkedRead("ADMIN_CLASSES", async () => {
+    const db = await operationalClient();
+    if (!db) return demoClasses;
+    const result = await db
+      .from("classes")
+      .select("*")
+      .order("sort_order", { ascending: true })
+      .abortSignal(AbortSignal.timeout(15000));
+    return requireRows("ADMIN_CLASSES", result) as GymClass[];
+  });
+}
 export async function getCoaches(): Promise<Coach[]> {
   return activeRows(
     "coaches_public",
@@ -266,15 +280,22 @@ export async function getMyAssignedPlan(): Promise<AccountPlan> {
    Clases de la semana
    ------------------------------------------------------------ */
 
-export async function getSessionsForWeek(weekKey?: string | null): Promise<{
+export async function getSessionsForWeek(
+  weekKey?: string | null,
+  options?: { includeInactiveClasses?: boolean },
+): Promise<{
   week: WeekRange;
   sessions: SessionDetail[];
 }> {
+  const includeInactiveClasses = options?.includeInactiveClasses === true;
   const week = weekRangeFromKey(weekKey);
   const supabase = await operationalClient();
 
   if (!supabase) {
-    return { week, sessions: generateWeekSessions(week) };
+    return {
+      week,
+      sessions: generateWeekSessions(week, { includeInactiveClasses }),
+    };
   }
 
   try {

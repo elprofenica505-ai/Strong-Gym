@@ -2,7 +2,11 @@ import { readData } from "@/lib/data/read-result";
 import { DataUnavailable } from "@/components/ui/data-unavailable";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { canAccessPanel, isFinanceRole } from "@/lib/auth/current-user";
+import {
+  canAccessPanel,
+  isAdminRole,
+  isFinanceRole,
+} from "@/lib/auth/current-user";
 import { ShieldAlert } from "lucide-react";
 import {
   AdminPanel,
@@ -14,6 +18,7 @@ import { getDictionary } from "@/i18n/dictionaries";
 import { isLocale, type Locale } from "@/i18n/config";
 import {
   countMembers,
+  getAdminClasses,
   getAllBookings,
   getClasses,
   getContactMessages,
@@ -70,6 +75,8 @@ export default async function OperacionPage({
   if (!demo && (!canAccessPanel(user) || !isFinanceRole(user?.role))) {
     redirect(`/${locale}/panel`);
   }
+  const canManageClasses =
+    !demo && canAccessPanel(user) && isAdminRole(user?.role);
 
   let bookings: AdminBookingRow[];
   let classes: AdminClassRow[];
@@ -85,10 +92,12 @@ export default async function OperacionPage({
     const result = await readData(() =>
       Promise.all([
         getAllBookings(),
-        getClasses(),
+        canManageClasses ? getAdminClasses() : getClasses(),
         getContactMessages(),
         countMembers(),
-        getSessionsForWeek(),
+        getSessionsForWeek(null, {
+          includeInactiveClasses: canManageClasses,
+        }),
       ]),
     );
     if (!result.ok)
@@ -160,6 +169,7 @@ export default async function OperacionPage({
             classes={classes}
             memberCount={memberCount}
             isDemo={demo}
+            canManageClasses={canManageClasses}
           />
         </div>
       </section>

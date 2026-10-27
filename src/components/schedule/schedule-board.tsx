@@ -39,6 +39,7 @@ const errorMessages = {
   ALREADY_BOOKED: "alreadyBooked",
   LIMIT: "tooManyBookings",
   PAST: "pastSession",
+  CLASS_INACTIVE: "inactiveClass",
   CANCELLED: "cancelledByGym",
   TOO_LATE: "bookingError",
   NOT_FOUND: "bookingError",

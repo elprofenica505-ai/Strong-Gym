@@ -14,6 +14,7 @@ type ErrorCode =
   | "ALREADY_BOOKED"
   | "LIMIT"
   | "PAST"
+  | "CLASS_INACTIVE"
   | "CANCELLED"
   | "NOT_FOUND"
   | "TOO_LATE"
@@ -80,6 +81,7 @@ export async function POST(request: Request) {
     if (message.includes("ALREADY")) return fail("ALREADY_BOOKED", 409);
     if (message.includes("LIMIT")) return fail("LIMIT", 409);
     if (message.includes("PAST")) return fail("PAST", 409);
+    if (message.includes("CLASS_INACTIVE")) return fail("CLASS_INACTIVE", 409);
     if (message.includes("CANCELLED")) return fail("CANCELLED", 409);
     if (message.includes("NOT_FOUND")) return fail("NOT_FOUND", 404);
     return fail("UNKNOWN", 500);

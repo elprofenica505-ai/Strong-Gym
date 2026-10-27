@@ -68,12 +68,14 @@ interface Props {
   classes: AdminClassRow[];
   memberCount: number;
   isDemo: boolean;
+  canManageClasses: boolean;
 }
 
 type Tab = "overview" | "bookings" | "messages" | "classes";
 type Notice = { tone: "ok" | "error"; text: string } | null;
 type BookingSaving = { id: string; status: StaffBookingTargetStatus } | null;
 type MessageSaving = { id: string; isRead: boolean } | null;
+type ClassSaving = { id: string; isActive: boolean } | null;
 
 export function AdminPanel({
   bookings,
@@ -81,6 +83,7 @@ export function AdminPanel({
   classes,
   memberCount,
   isDemo,
+  canManageClasses,
 }: Props) {
   const { dict, locale } = useDictionary();
   const router = useRouter();
@@ -99,9 +102,12 @@ export function AdminPanel({
   >({});
   const [messageSaving, setMessageSaving] = useState<MessageSaving>(null);
   const [messageNotice, setMessageNotice] = useState<Notice>(null);
-  const [classActive, setClassActive] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(classes.map((c) => [c.id, c.isActive])),
-  );
+  // Igual que en reservas y consultas: solo se conserva lo confirmado.
+  const [classActiveOverrides, setClassActiveOverrides] = useState<
+    Partial<Record<string, boolean>>
+  >({});
+  const [classSaving, setClassSaving] = useState<ClassSaving>(null);
+  const [classNotice, setClassNotice] = useState<Notice>(null);
 
   async function updateBookingStatus(
     booking: AdminBookingRow,
@@ -235,6 +241,81 @@ export function AdminPanel({
       router.refresh();
     } finally {
       setMessageSaving(null);
+    }
+  }
+
+  async function updateClassActive(gymClass: AdminClassRow, target: boolean) {
+    const expectedIsActive =
+      classActiveOverrides[gymClass.id] ?? gymClass.isActive;
+    if (
+      isDemo ||
+      !canManageClasses ||
+      classSaving ||
+      expectedIsActive === target
+    ) {
+      return;
+    }
+
+    setClassSaving({ id: gymClass.id, isActive: target });
+    setClassNotice(null);
+
+    try {
+      const response = await fetch("/api/admin/classes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          classId: gymClass.id,
+          isActive: target,
+          expectedIsActive,
+        }),
+      });
+      const body = (await response.json().catch(() => null)) as {
+        ok?: unknown;
+        classId?: unknown;
+        isActive?: unknown;
+        previousIsActive?: unknown;
+        changed?: unknown;
+        error?: unknown;
+        message?: unknown;
+      } | null;
+
+      if (
+        !response.ok ||
+        body?.ok !== true ||
+        body.classId !== gymClass.id ||
+        body.isActive !== target ||
+        typeof body.previousIsActive !== "boolean" ||
+        typeof body.changed !== "boolean"
+      ) {
+        setClassNotice({
+          tone: "error",
+          text:
+            typeof body?.message === "string"
+              ? body.message
+              : dict.admin.classActive.failed,
+        });
+        if (body?.error === "STALE_ACTIVE_STATE") router.refresh();
+        return;
+      }
+
+      setClassActiveOverrides((prev) => ({ ...prev, [gymClass.id]: target }));
+      setClassNotice({
+        tone: "ok",
+        text: `${gymClass.name}: ${
+          target
+            ? dict.admin.classActive.savedActive
+            : dict.admin.classActive.savedInactive
+        }`,
+      });
+      router.refresh();
+    } catch {
+      setClassNotice({
+        tone: "error",
+        text: dict.admin.classActive.offline,
+      });
+      router.refresh();
+    } finally {
+      setClassSaving(null);
     }
   }
 
@@ -426,7 +507,13 @@ export function AdminPanel({
               </h2>
 
               <ul className="flex flex-col gap-3">
-                {classes.slice(0, 6).map((gymClass) => {
+                {classes
+                  .filter(
+                    (gymClass) =>
+                      classActiveOverrides[gymClass.id] ?? gymClass.isActive,
+                  )
+                  .slice(0, 6)
+                  .map((gymClass) => {
                   const total = Math.max(1, gymClass.sessionsThisWeek);
                   const load = Math.min(100, Math.round((total / 8) * 100));
 
@@ -779,8 +866,40 @@ export function AdminPanel({
       {/* --- Clases --- */}
       {tab === "classes" ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <p className="rounded-xl border border-line bg-card px-4 py-3 text-[0.8125rem] leading-relaxed text-mist sm:col-span-2 lg:col-span-3">
+            {dict.admin.classActive.effect}
+          </p>
+
+          {!isDemo && !canManageClasses ? (
+            <p className="rounded-xl border border-alert/30 bg-alert/[0.06] px-4 py-3 text-[0.8125rem] text-alert sm:col-span-2 lg:col-span-3">
+              <ShieldAlert
+                className="mr-2 inline size-4 align-[-0.125rem]"
+                aria-hidden="true"
+              />
+              {dict.admin.classActive.adminOnly}
+            </p>
+          ) : null}
+
+          {classNotice ? (
+            <p
+              role="status"
+              className={cn(
+                "rounded-xl border px-4 py-3 text-[0.8125rem] sm:col-span-2 lg:col-span-3",
+                classNotice.tone === "ok"
+                  ? "border-brand/30 bg-brand/[0.06] text-mist"
+                  : "border-alert/40 bg-alert/[0.08] text-alert",
+              )}
+            >
+              {classNotice.text}
+            </p>
+          ) : null}
+
           {classes.map((gymClass) => {
-            const active = classActive[gymClass.id] ?? gymClass.isActive;
+            const active =
+              classActiveOverrides[gymClass.id] ?? gymClass.isActive;
+            const savingThis = classSaving?.id === gymClass.id;
+            const toggleDisabled =
+              isDemo || !canManageClasses || classSaving !== null;
 
             return (
               <div
@@ -800,21 +919,22 @@ export function AdminPanel({
 
                   <button
                     type="button"
-                    disabled={isDemo}
-                    onClick={() =>
-                      setClassActive((prev) => ({
-                        ...prev,
-                        [gymClass.id]: !active,
-                      }))
-                    }
+                    disabled={toggleDisabled}
+                    onClick={() => void updateClassActive(gymClass, !active)}
+                    aria-busy={savingThis}
                     aria-pressed={active}
+                    title={
+                      !isDemo && !canManageClasses
+                        ? dict.admin.classActive.adminOnly
+                        : undefined
+                    }
                     className={cn(
-                      "relative h-6 w-11 shrink-0 rounded-full border transition-colors",
+                      "relative h-6 w-11 shrink-0 rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-60",
                       active
                         ? "border-brand/60 bg-brand/25"
                         : "border-line bg-paper",
                     )}
-                    aria-label={dict.admin.actions.toggleClass}
+                    aria-label={`${dict.admin.actions.toggleClass}: ${gymClass.name}`}
                   >
                     <span
                       className={cn(
@@ -824,6 +944,26 @@ export function AdminPanel({
                     />
                   </button>
                 </div>
+
+                <p
+                  className={cn(
+                    "mt-2 flex items-center gap-1.5 text-[0.6875rem] font-semibold tracking-wide uppercase",
+                    active ? "text-brand-300" : "text-alert",
+                  )}
+                  aria-live="polite"
+                >
+                  {savingThis ? (
+                    <Loader2
+                      className="size-3.5 animate-spin"
+                      aria-hidden="true"
+                    />
+                  ) : null}
+                  {savingThis
+                    ? dict.admin.classActive.saving
+                    : active
+                      ? dict.admin.classActive.active
+                      : dict.admin.classActive.inactive}
+                </p>
 
                 <dl className="mt-4 grid grid-cols-3 gap-3 border-t border-line pt-4">
                   <div>
