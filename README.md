@@ -23,16 +23,11 @@ El objetivo es completar el producto conectado y probarlo con datos inventados;
 no limitarlo al modo local de demostración. La limpieza final se realizará sólo
 tras aprobar la demostración, sin eliminar estructura ni funcionalidades.
 
-- [Plan de producto y criterios de entrega](./docs/PLAN-PRODUCTO.md).
-- [Inventario funcional y bloqueantes reales](./docs/INVENTARIO-FUNCIONAL.md).
-- [Resultados de la validación del inventario](./docs/VALIDACION-INVENTARIO.md).
-- [B.1: lecturas conectadas sin datos ficticios ni vacíos falsos](./docs/B1-LECTURAS.md).
-- [Reparación de reservas/móvil, pruebas y siguiente paso financiero](./docs/REPARACION-RESERVAS-MOVIL.md).
-- [C.1: cobros por servicio, gastos, comprobantes e instalación](./docs/COBROS-GASTOS.md).
-
-Estas referencias distinguen las funciones implementadas de las parciales o
-pendientes. La descripción histórica que sigue no certifica que cada acción del
-panel persista ni que el reset legado prepare por sí solo la entrega al dueño.
+**Única lista viva de tareas:** [Pendientes actuales](./docs/PENDIENTES-ACTUALES.md).
+Ahí están las etapas, fases, prioridades, pruebas y decisiones con un solo ID
+por tarea. El resto de `docs/` son guías, decisiones o notas técnicas e
+históricas de implementación; no son listas paralelas y esta lista manda si un
+texto viejo dice «pendiente».
 
 ---
 
