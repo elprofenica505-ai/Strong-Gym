@@ -1,9 +1,12 @@
 # Verificación en dos pasos (MFA) para el personal
 
-**Estado:** implementado en la app (rama `arena/85c54d7d-strong-gym`). Pendiente: activarlo en la cuenta del administrador y revisar la protección a nivel de base de datos (ver "Pendiente").
+**Estado:** implementado y publicado. La protección también está en la base:
+las funciones y políticas del personal exigen el nivel AAL2 cuando corresponde.
+Esta es una guía de uso, **no una lista de tareas**; el seguimiento vivo está
+solo en `docs/PENDIENTES-ACTUALES.md`.
 
 ## Qué hace
-- Las cuentas **admin** y **staff** sólo abren el panel con un código de 6 dígitos de una app de autenticación, además de la contraseña.
+- Las cuentas del personal sólo abren el panel con un código de 6 dígitos de una app de autenticación, además de la contraseña.
 - Las cuentas de clientes no cambian.
 - Si el estado no se puede leer, el panel queda bloqueado (no se muestra información).
 
@@ -27,7 +30,12 @@
 - El factor y el desafío también deben ser IDs escalares. Si Supabase devolviera un ID, QR o secreto con un tipo inesperado, el flujo se detiene como no disponible.
 - Esto no elimina la fuerza bruta con peticiones separadas si alguien roba primero la contraseña/sesión AAL1; esa capa depende de los límites de Supabase y de cuidar la sesión.
 
-## Pendiente
-1. **Base de datos:** hoy el bloqueo está en la app. Una consulta directa a la API de Supabase con una sesión sin MFA todavía podría leer datos protegidos por las políticas actuales. Para cerrarlo hace falta un cambio SQL, que requiere autorización expresa.
-2. **Segundo administrador (dueño):** cambio de permisos remoto, sólo con autorización indicando su correo.
-3. **Correo de recuperación:** depende del correo del gimnasio (ver `docs/REVISION-CORREO-AUTH.md`).
+## Límites y seguimiento
+
+- No hay códigos de respaldo dentro de la app. Por eso el segundo
+  administrador del dueño y el procedimiento de recuperación se siguen como
+  **SEG-03** en la lista única.
+- El correo propio para recuperación de contraseñas se sigue como **SEG-02**
+  en la lista única.
+- Un bloqueo adicional por usuario/factor con Auth Hook es opcional y se sigue
+  como **FUT-03**; no forma parte de esta guía.

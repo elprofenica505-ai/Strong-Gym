@@ -1,9 +1,13 @@
 # Decisiones de seguridad y plan acordado
 
-Registro de lo que el dueño/usuario confirmó y de lo que **todavía no está autorizado**.
-Actualizar este archivo cada vez que se tome una decisión nueva.
+Registro de decisiones de seguridad confirmadas y de su motivo. **No es una
+lista de tareas:** el seguimiento vivo está solo en
+`docs/PENDIENTES-ACTUALES.md`. Actualizar este archivo cuando se tome una
+decisión nueva; las notas de autorización del 18 de octubre son históricas y
+no sustituyen decisiones posteriores del usuario.
 
-Fecha de esta versión: 2026-10-18 · Rama: `arena/85c54d7d-strong-gym` · PR abierto: #14 (sin merge).
+Base de esta versión: 2026-10-26 · producción `main@3bede94` (PR #56). El PR
+#14 y las migraciones 00031/00032 mencionados abajo ya se fusionaron/aplicaron.
 
 ## Decisiones confirmadas
 
@@ -23,9 +27,10 @@ Fecha de esta versión: 2026-10-18 · Rama: `arena/85c54d7d-strong-gym` · PR ab
 - Paso 1: PR #14 mergeado a `main` (commit `3cc754c`).
 - Paso 2: SQL `00031_personal_requiere_mfa.sql` aplicado en Supabase (`crm_is_staff()` exige `aal2`). Verificado: definición actualizada; `anon` sin permiso de ejecución.
 - Verificación previa: único personal (administrador de prueba del desarrollador; correo exacto fuera de Git) con factor TOTP verificado.
-- Pendiente de prueba manual: entrar al panel y confirmar que Clientes y Caja cargan con datos.
+- La prueba manual de ingreso y pantallas se hizo en tandas posteriores; las
+  confirmaciones que aún falten se siguen solo en la lista única.
 
-**Orden original:**
+**Orden original (histórico):**
 
 1. **Mergear PR #14** (MFA con código de app para admin/staff) — requiere autorización expresa.
 2. **Cerrar el hueco en la base de datos:** exigir MFA (`aal2`) en las políticas de personal de Supabase, para que no se pueda consultar datos directamente por la API sin el segundo factor. — Requiere SQL preparado y autorización expresa.
@@ -33,25 +38,28 @@ Fecha de esta versión: 2026-10-18 · Rama: `arena/85c54d7d-strong-gym` · PR ab
 4. **Llave de acceso (huella/rostro) como método adicional** — fase separada, sólo tras verificar estado de la función en Supabase, con pruebas y autorización.
 5. **Otros administradores** (esposa u otra persona de confianza) — sólo a pedido del dueño.
 
-## Lo que NO está autorizado (no hacer sin orden nueva)
+## Guardas que siguen vigentes
 
-- Mergear PR #14.
-- Cualquier cambio SQL o de políticas en la base remota.
-- Cambios de configuración en Supabase (sesiones, MFA, passkeys).
-- Cambios de roles o nuevos administradores.
-- Activar llave de acceso.
-- Enviar correos reales.
+Estas no son tareas; son límites de seguridad para cualquier tanda:
 
-## Pendientes de información
+- Ningún alta de administrador se hace sin correo y autorización del dueño, y
+  cada persona activa su propio MFA.
+- No activar passkeys, captcha ni otro proveedor solo desde un panel sin
+  construir y probar su flujo en la app.
+- No pedir ni guardar contraseñas, semillas QR ni códigos MFA por chat o en Git.
+- Todo cambio remoto de Auth, roles o políticas debe quedar identificado en la
+  lista única con su verificación posterior.
 
-- Correo del gimnasio (para recuperación de cuentas).
-- Correo del dueño (para su alta como administrador).
-- Confirmación de si el dueño usa celular Android o iPhone (afecta la llave de acceso).
+Los datos que debe aportar el dueño —correo del gimnasio, su correo de
+administrador y tipo de celular si se evalúa passkey— se siguen en
+`docs/PENDIENTES-ACTUALES.md` (SEG-02, SEG-03 y FUT-01).
 
 ## Referencias
 
-- `docs/MFA-PERSONAL.md` — guía de activación y pendientes.
-- `docs/REVISION-CORREO-AUTH.md` — estado del correo y restricciones del servicio integrado.
+- `docs/PENDIENTES-ACTUALES.md` — única lista viva de tareas.
+- `docs/MFA-PERSONAL.md` — guía de activación de MFA.
+- `docs/REVISION-CORREO-AUTH.md` — nota histórica del estado del correo y de
+  las restricciones del servicio integrado.
 
 ## 2026-10-23 · `braces` (GHSA-vfj7-8cjw-p6xm): parche propio y prueba de regresión
 

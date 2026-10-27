@@ -1,330 +1,434 @@
-# Strong Gym — Ruta única y pendientes actuales
-
-Actualizada: 24 de octubre de 2026. PR #1 a #40 fusionados en `main`
-(base vigente `1e493a9`, merge del PR #40); CI en verde y producción en Vercel
-con ese mismo commit. Las secciones con fecha al final («Actualización …»)
-reemplazan las marcas anteriores donde haya diferencia: si dos casillas se
-contradicen, vale la de fecha más nueva. Esta lista separa construir de
-verificar: no asigna un porcentaje inventado ni certifica toda la plataforma.
-
-## 1. Base funcional conservada: no volver a empezar
-
-Comprobado con las capturas previas del usuario: ficha de prueba Carlicheta,
-recepción manual, rechazo de segunda entrada del día, reserva/cancelación propias,
-cobro NIO10, gasto NIO4, cobro USD1 y recorrido de deuda NIO100 → abonos40+20+40 →0.
-Últimos dos abonos con recibido100/vueltos80 y60; Caja final NIO106, cuentas por
-cobrar0 y créditos intactos. No repetir esos cargos/abonos ni reinstalar00028/29.
-Esto acredita esos recorridos, no cada módulo, moneda, rol o fallo de red posible.
-
-## 1B. En espera: no hacer hasta hablar con el dueño y confirmar pago
-
-Estos pendientes dependen de una decisión del dueño, de un dato que sólo él puede dar
-o de un servicio de pago. No se ejecutan mientras tanto. Se retoman cuando el usuario lo indique.
-
-- [ ] Correo propio del gimnasio: remitente, dominio y proveedor SMTP reales. Requiere datos del dueño y autorización expresa.
-- [ ] Prueba de recuperación de contraseña con correo real desde la dirección principal (hay que esperar la hora de límite del proyecto).
-- [ ] Sesiones con tiempo límite e inactividad en Supabase: requiere plan Pro (pago).
-- [ ] Verificador antispam externo (tipo Turnstile): requiere cuenta externa y decisión.
-- [ ] Política de contenido (CSP): probarla en modo informativo antes de activarla.
-- [ ] Dueño como segundo administrador: requiere su correo y autorización escrita, y que la app esté lista.
-- [x] Cierre por inactividad (18 oct, rama arena/985edb39): sólo administrador cierra sesión tras 2 horas sin actividad (personal confirmado sin cierre automático); clientes no se cierran solos (sólo cierre manual). Pruebas en tests/session-policy.test.mjs. Pendiente: verificar en navegador real.
-- [~] Roles de caja y entrenador. Fase A aplicada (00033). Fase B lista en código y SQL 00034 probada localmente (58/58), pendiente de autorización para aplicar en Supabase. Pendiente de UI: panel de asignación de roles y vista del entrenador (requieren aprobar dónde van en el menú). Fase C (anulación) sin empezar. Ver docs/ROLES-MIGRACION-PLAN.md.
-- [ ] Llave de acceso (huella o rostro): cuando Supabase la saque de versión experimental.
-- [ ] Cuenta de prueba de cliente del desarrollador (correo exacto fuera de Git): sólo recibe correos si se agrega como miembro del equipo o si hay correo propio; no se creó.
-
-Ya quedó hecho en esta misma etapa (sin pendientes de pago): MFA del personal, verificación en dos pasos de la cuenta Supabase, 00031 y 00032, antispam básico, cabeceras HSTS y Permissions-Policy, revisión de bundle y secretos, alcance de la app instalada.
-
-## 2. Una sola secuencia de trabajo
-
-### Etapa 1 — Proteger lo construido (ACTUAL)
-
-- [x] Consultar estructura y permisos reales de Supabase, sin leer filas comerciales.
-- [x] Preparar corrección de perfiles, vistas financieras y cuentas/RPC;147 pruebas
-  locales adicionales en dos estructuras, sin reconstruir la aplicación.
-- [x] Aplicar y verificar incremental00030 en Supabase con autorización específica.
-- [x] Usuario reportó pantallas normales tras00030. Es prueba de humo visual,
-  no auditoría completa ni nueva prueba de pagos.
-  [Detalle y evidencia de Seguridad 1A](SEGURIDAD-ACCESOS.md).
-- [x] Construir y probar aislamiento demo/producción y eliminación de contraseñas
-  demo guardadas: [Seguridad1B](DEMO-PRODUCCION.md). PR12 mergeado con autorización.
-- [x] Usuario confirmó ingreso/Clientes/Caja/Reportes tras publicar1B. Sólo prueba de humo, no todos los permisos.
-- [x] Construir recuperación PKCE/redirects/validación de contraseñas/logout explícito:
-  [Seguridad1C](AUTH-RECUPERACION.md). Pendiente de merge autorizado y correo real.
-- [x] Revisar allowlist/templates/SMTP real en sólo lectura: destinos/templates compatibles;
-  [SMTP propio no configurado](REVISION-CORREO-AUTH.md), límite integrado2/h. Sin cambios remotos.
-- [ ] Confirmar remitente/dominio/proveedor con el usuario, configurar envío con autorización
-  y aceptar recuperación por correo real después de publicar. No listo aún para entrega general.
-- [ ] Revisar secretos, historial/bundles/variables y exclusiones de archivos env.
-- [ ] Auth: contraseñas, recuperación, confirmación/redirects, sesiones y MFA admin
-  sin bloquear al administrador; no sustituir Auth editando profiles.
-- [ ] Revisar restante de RLS/RPC, políticas de Storage/Realtime si se usan, abuso,
-  límites, CSRF y cabeceras. Seguridad se prueba en cada entrega, no sólo al final.
-
-### Etapa 2 — Ordenar navegación
-
-- [ ] Inicio, Clientes, Agenda, Finanzas (Caja/gastos/cuentas), Personal, Reportes,
-  Configuración; accesos directos y menú móvil. Mantener oscuro/rojo.
-- [ ] Cada sección localizable y adecuada al rol; no duplicar/reconstruir operaciones.
-  Todavía no se implementó el rediseño ni se considera aprobado por capturas antiguas.
-
-### Etapa 3 — Completar operación diaria
-
-- [ ] Ficha sin cuenta/correo/teléfono/QR con recorrido financiero conectado propio.
-- [ ] Planes/vigencias/servicios y reglas comerciales pendientes explícitas; no inventar
-  descuentos por etiquetas, bloqueos por deuda ni renovaciones por cualquier cobro.
-- [ ] Reservas/cupos/horarios; cerrar asistencia, inasistencia y cancelación administrativa.
-- [ ] Hacer persistentes mensajes leídos/no leídos y activación/reactivación de disciplinas.
-- [ ] QR opcional/cámara/reemplazo en dispositivo real; búsqueda manual siempre.
-- [ ] Revisar actualización de «Hoy»/horarios con Managua en páginas abiertas.
-
-### Etapa 4 — Gestión y finanzas completas
-
-- [ ] Personal: alta/edición/desactivación/asignación, responsabilidades, auditoría y roles.
-- [ ] Extender recibido/vuelto a cobros por servicio: hoy está comprobado en abonos.
-- [ ] Verificar deuda/abonos/vuelto USD sin alterar NIO; no repetir simple cobro USD1.
-- [ ] Cierres/conciliación, cuentas/transferencias y reglas de reversión/devolución/crédito
-  por definir y construir cuando corresponda, nunca simular con DELETE.
-- [ ] Reportes coherentes, filtros y exportación completa/autorizada, no sólo últimos40/50.
-- [ ] Importación validada: archivo pequeño, duplicados, errores y reintentos. Excel
-  requiere importación propia; no considerar que CSV admite cualquier .xlsx o saldos.
-- [ ] Comprobantes PDF en celular; recibos internos no fiscales, monedas separadas,
-  FX manual y comisiones separadas, sin conversión/neteo automático.
-
-### Etapa 5 — Aceptación integral
-
-- [ ] Recorrido conectado con ficticios identificados: alta → plan/vigencia → reserva/
-  entrada → cobro/abono → gasto → reporte/exportación.
-- [ ] Admin/personal/cliente/anónimo y clientes A/B por API/base; revocación de rol,
-  doble clic, respuesta perdida, red/sesión expirada y concurrencia sin duplicar cobros.
-- [ ] Navegación/errores/recarga en celular y escritorio, textos públicos ES/EN, enlaces
-  y formularios antispam; confirmar precios/contacto/horarios con el dueño.
-- [ ] Cerrar vulnerabilidades importantes conocidas, dependencias, cabeceras/cookies,
-  certificado TLS válido/renovación/HTTP→HTTPS/sin contenido mixto del dominio final.
-- [ ] Respaldo y restauración ensayados, recuperación de acceso y guía de incidentes.
-- [ ] Demostración y aprobación del dueño, con resultados y límites documentados.
-
-### Etapa 6 — Entrega al dueño (NO ejecutar ahora)
-
-- [ ] Inventario/preview de ficticios y relaciones, respaldo y aprobación de limpieza.
-- [ ] Eliminar sólo ficticios autorizados; conservar tablas/módulos/funciones/políticas.
-- [ ] Carga real manual/importación y cuatro saldos explícitos conciliados por cliente;
-  no reconstruir deuda de cobros históricos ni asumir ausencia de fila como cero.
-- [ ] Crear/verificar acceso del dueño ANTES de retirar administrador temporal.
-- [ ] Verificar operación con datos reales, entregar manual y mantenimiento.
-
-## 3. Forma de avanzar
-
-Cada entrega explica qué cambió, prueba real, qué queda y siguiente paso. Conservar
-pruebas/operaciones ya aprobadas como regresión; no pedir repetirlas sin motivo.
-No hacer nuevos merges sin autorización. Merge no ejecuta SQL ni equivale a entrega.
-El agente resuelve detalles técnicos; al usuario se piden sólo pruebas guiadas,
-reglas comerciales o autorizaciones necesarias. Nunca claves/contraseñas por chat.
-
-Inventario/ventas, mantenimiento, campañas, nómina y facturación fiscal son ampliaciones
-con alcance/reglas propios; no abrirlas antes de cerrar lo comprometido salvo decisión
-explícita. No afirmar seguridad absoluta ni certificación externa por tener HTTPS.
-
-## Actualización 18 oct 2026 (rama arena/764b16e9-strong-gym)
-
-- [x] MFA obligatorio para personal: PR #14 mergeado (`3cc754c`) y SQL 00031 aplicado en Supabase.
-- [x] Prueba manual: ingreso con código de app y datos sin cambios.
-- [x] Activar verificación en dos pasos en la cuenta de Supabase (panel). Verificado en sólo lectura: mfa_enabled = true.
-- [ ] Correo del gimnasio (remitente real y dominio). En espera del dato del usuario; bloquea los pasos de recuperación con correo real.
-- [ ] Recuperación con correo real: sólo después de tener remitente. Cuenta de prueba de cliente del desarrollador (correo exacto fuera de Git), que no es miembro del equipo de Supabase; no recibe correos del servicio integrado.
-- [ ] Dueño como segundo administrador: sólo con correo del dueño y autorización escrita, cuando la aplicación esté lista.
-- [x] Revisión de secretos en código e historial (sólo lectura): sin claves reales; `.env` ignorado; sólo ejemplos y nombres en documentación/pruebas. Falta revisar el bundle compilado en el build de producción.
-- [x] HALLAZGO 18 oct: 22 políticas usan is_staff() sin aal2. Corregido con 00032 (aplicado y verificado: is_staff exige aal2; anon no ejecuta is_staff).
-- [x] HALLAZGO 18 oct: anon y authenticated tenían TRUNCATE/REFERENCES/TRIGGER en 12 tablas. Quitado con 00032 (verificado: 0 tablas con permiso sobrante).
-- [x] Revisión del bundle de producción (18 oct, `next build` local): sin claves secretas; sólo variables públicas esperadas (URL, clave pública, URL del sitio, interruptor demo); sin mapas de código fuente publicados. El único coincidencia es una regla de validación, no un valor.
-- [x] Revisado: profiles sólo permite actualizar full_name y phone (no el rol). Políticas públicas de clases, planes, horarios, mensajes y suscripciones son de intención pública; falta antispam (paso 16).
-- [x] Antispam básico en contacto y suscripción (18 oct): límite de 5 envíos por IP cada 10 min (en memoria por instancia) y campo trampa en ambos formularios; el campo trampa responde OK sin guardar. Pruebas en tests/antispam.test.mjs.
-- [ ] Antispam fuerte (opcional, requiere decisión y cuenta externa): verificador tipo Turnstile. Límite actual es parcial.
-- [x] Prueba en navegador tras 00032 (landing sin cuenta y panel con código): confirmada por el usuario.
-- [ ] Recuperación por correo: el enlace abre la app instalada (alcance del manifiesto era "/"). Corrección en rama: alcance "/es" (commit de manifest.ts). Requiere merge y despliegue con autorización; después, reinstalar o abrir la app para que tome el nuevo alcance.
-- [x] Cabeceras (18 oct, rama arena/45b6501d): añadidas Strict-Transport-Security (1 año) y Permissions-Policy (cámara sólo para el sitio, para el lector de QR). Verificadas en build de producción local.
-- [ ] Política de contenido (CSP): pendiente; requiere probarla en modo informativo antes de activarla, para no romper páginas.
-- [ ] Llave de acceso (huella/rostro): cuando Supabase la saque de versión experimental.
-
-## Organización del panel de gestión (18 oct 2026)
-- [x] Módulos: Inicio (resumen y gráficos), Clientes, Finanzas (caja, cuentas, gastos, reportes), Operación (reservas, mensajes, clases) y Administración (personal y roles, importar, herramientas, guía).
-- [x] Menú de módulos por rol: administrador ve todo; caja ve finanzas, clientes y operación; entrenador sin módulos por ahora.
-- [x] Gráficos de barras con datos reales; si una lectura falla se muestra "no disponible", nunca cero.
-- [x] Pantalla de personal y roles (sólo administrador con MFA), conectada a admin_set_role.
-- [x] Revisión visual en navegador real de las páginas nuevas (hecha el 23 oct en demo local con Chromium, ver «Actualización 23 oct 2026»; quedan fuera solo las vistas que exigen sesión real de cliente).
-- [x] Asignación entrenador-cliente en base de datos: SQL 00035 probado (59/59), con interruptor del administrador para búsqueda y pedidos del entrenador (desactivado por defecto). Aprobación sólo del administrador; caja registra pedidos.
-- [x] Pantalla de administración: interruptor y pedidos de acceso (Administración > Entrenadores y accesos).
-- [x] Vista del entrenador "Mis clientes" (clientes asignados con asistencia y pedido de acceso). Probada con cuenta real de entrenador el 23 oct 2026.
-- [x] Aplicar 00034 y 00035 en Supabase (aplicadas con autorización del dueño; 00034 incluye quitar la política antigua de escritura de entrenadores para caja).
-- [x] Aplicar 00034 en Supabase antes de desplegar este código (hecho: es la misma aplicación marcada en la línea anterior; esta casilla quedó duplicada).
-
-
-- [x] Aplicar 00036 (personal no es cliente) en Supabase: aplicada (ver «Actualización 19 oct 2026»: 0 fichas de personal activas). Esta casilla era el paso previo a esa aplicación.
-- [x] Cierre del día para caja (SQL 00037 aplicada en Supabase el 2026-10-19, interruptor apagado): interruptor en Accesos del administrador (apagado por defecto); caja ve sólo el cierre del día si está encendido. Prueba local 10/10. Limitación: RLS ya deja leer `transactions` a caja; un control fuerte requiere cambiar políticas (decisión aparte).
-
-## Actualización 19 oct 2026 (rama arena/903ffcdc-strong-gym)
-
-Estado al cierre de hoy. Reemplaza las marcas anteriores donde haya diferencia.
-
-**Hecho y en `main`**
-- [x] PR #17 (panel por módulos, asignación de entrenadores, personal separado de clientes), fusionado `8ea8762`.
-- [x] PR #18 (reportes financieros y Excel maestro), fusionado `ea788ab`. Producción Vercel READY.
-- [x] 00036 (personal no es cliente) aplicada en Supabase: 0 fichas de personal activas.
-
-**Hecho en la rama (pendiente de llevar a `main` con autorización)**
-- [x] 00037 aplicada en Supabase: interruptor "Cierre del día para caja" en Accesos, apagado por defecto. Verificado en base.
-- [x] 00038 aplicada en Supabase: `finance_debt_report` acepta caja con aal2 (`crm_is_staff`). Corrige el error de la página de Caja (`FIN_DEBT_REPORT_P0001`) causado por 00034. Verificado en base: anon sin permiso.
-- [x] Caja ve sólo el cierre del día en Reportes cuando el interruptor está encendido. Pruebas locales: página 8/8, 00037 10/10, Fase B 59/59.
-- [x] Gráfico de finanzas: pestaña activa y etiqueta flotante legibles en modo oscuro (`--color-ink` es blanco en el tema oscuro). `test:auth` 573/573.
-
-**Pendiente de prueba en navegador real**
-- [ ] Caja: Reportes > Cierre del día con el interruptor encendido.
-- [x] Vista "Mis clientes" con una cuenta de entrenador real (23 oct 2026).
-- [ ] Cierre por inactividad de 2 horas (sólo administrador).
-- [ ] Recuperación de contraseña en la app instalada.
-- [ ] Gráfico de finanzas en celular tras el arreglo de contraste.
-
-**Esperando al dueño (no ejecutar sin decisión o dato)**
-- [ ] Correo propio del gimnasio (remitente, dominio y proveedor SMTP) y prueba de recuperación con correo real.
-- [ ] Sesiones con tiempo límite en Supabase: requiere plan Pro.
-- [ ] Verificador antispam externo tipo Turnstile.
-- [ ] Política de contenido (CSP): probar en modo informativo antes de activar.
-- [ ] Dueño como segundo administrador: requiere su correo y autorización escrita.
-- [ ] Llave de acceso (huella o rostro) cuando Supabase la saque de versión experimental.
-- [ ] Cuenta de prueba de cliente: requiere correo propio o ser miembro del equipo.
-- [ ] Limpieza de datos de prueba: NO hacer todavía, por instrucción del dueño.
-
-**Trabajo técnico pendiente**
-- [ ] Roles: UI de asignación de roles, vista de entrenador completa y anulación controlada (Fase C).
-- [ ] Revisión restante de RLS, Storage, abuso, CSRF y cabeceras.
-- [ ] Rediseño de navegación por etapas (Inicio, Clientes, Agenda, Finanzas, Personal, Reportes, Configuración).
-- [ ] Operación diaria: planes y vigencias, reservas y cupos, asistencia e inasistencia, mensajes leídos o no leídos, QR en dispositivo real, horarios en hora de Managua.
-- [ ] Gestión: personal con auditoría, recibido y vuelto en todos los cobros, cierres y conciliación, reglas de reversión, importación validada, comprobantes PDF.
-- [ ] Aceptación integral: recorrido completo con datos ficticios, pruebas por rol, doble clic y concurrencia, TLS, respaldo y restauración, guía de incidentes.
-
-**Entrega al dueño (no ejecutar todavía)**
-- [ ] Inventario y aprobación de limpieza de datos de prueba.
-- [ ] Carga de datos reales y conciliación de los cuatro saldos por cliente.
-- [ ] Cuenta del dueño verificada antes de retirar el administrador temporal.
-- [ ] Demostración final y manual de uso.
-
-## Actualización 23 oct 2026 (rama arena/27bc8286-strong-gym)
-
-- [x] Lint: las 10 advertencias de `react-hooks/set-state-in-effect` se corrigieron de raíz (sin silenciarlas) y la regla quedó como error. Detalle: `docs/TAREA-LINT-REACT-HOOKS.md`.
-- [x] `braces` (desarrollo): parche propio en `patches/braces+3.0.3.patch`, con `postinstall` y prueba de regresión en `tests/braces-depth.test.mjs`. Detalle: `docs/DECISIONES-SEGURIDAD.md`.
-- [ ] Siguen pendientes, hasta hablar con el dueño: revisión legal de las descargas con datos personales y copia de seguridad semanal.
-- [ ] Apariencia de demo y limpieza para la entrega: **aplazado por el dueño** el 23 oct («todavía lejos de la entrega»). Plan en tres fases en `docs/PENDIENTE-DEMO-Y-ENTREGA.md`. Faltan dos datos: si los entrenadores de la portada son reales y si se marca «PRUEBA» a los registros ficticios.
-- [x] Cuenta real de entrenador («Entrenador 2»): rol asignado con bitácora, MFA verificado y recorrido completo asignación → pedido → aprobación → revocación → reasignación probado por el usuario y verificado en la base. Decisión del usuario: un cliente puede tener dos o más entrenadores; se mantiene así.
-- [x] Revisión visual en navegador de las pantallas reescritas al corregir el lint (23 oct, modo demo local con Chromium): inicio con animaciones (59/59 visibles al recorrer), aviso de demo, horarios con cambio de semana y filtro por día, Mi cuenta sin sesión, puerta de Productos en demo y menú de celular OK; sin desborde horizontal. Se encontró y corrigió que el cierre del aviso de demo no persistía tras recargar (la limpieza de claves legadas `strong-gym:demo-*` también borraba la clave del aviso). **Siguen sin poder probarse en demo** la calculadora y el resumen del socio con sesión real: requieren una cuenta de cliente conectada.
-- [x] Altura en la vista del propio cliente (24 oct): la migración 00054 agrega `ficha_height_cm` a la función `my_progress` (aplicada en producción y verificada: `authenticated` ejecuta, `anon` no), `getMyProgress` la mapea a `fichaHeightCm` y «Mi progreso» prefiere la altura de la ficha igual que el panel, con la última medición solo como respaldo. Así, una corrección del administrador se refleja al cliente sin esperar la próxima medición. Pruebas: unidad (`tests/my-progress.test.mjs`) y PGlite (sección 9 de `scripts/test-progress-sql.mjs`). De paso se reparó una fecha fija vencida en esa suite y se conectaron al CI las suites `test:roles`, `test:medidas` y `test:productos`, que existían pero no corrían.
-
-## Actualización 24 oct 2026 — foto actual (reemplaza marcas anteriores en conflicto)
-
-**Estado comprobado hoy (no de memoria):**
-
-- Código: PR #1 a #40 fusionados en `main` (`1e493a9`); sin PR abiertos al iniciar esta actualización.
-- CI de `main` en verde (corrida `40064327502`): tipos/build, base de datos (ya incluye `test:roles`, `test:medidas` y `test:productos`) y concurrencia PostgreSQL.
-- Producción: Vercel `strong-gym` en READY con el commit `1e493a9` (alias `strong-gym-gamma.vercel.app`); Supabase `hcnuepdxmbsmlzdmvwhx` ACTIVE_HEALTHY.
-- Base de datos: migraciones del repositorio 00001 a 00056; la última en el historial remoto es `permisos_caja_separados` (00056, versión remota `20261024205844`). La 00049 sigue aplicada pero registrada a mano (no volver a ejecutarla).
-
-**Realizado y cerrado (resumen por área):**
-
-- Seguridad/accesos: endurecimiento RLS/RPC, `crm_is_staff` con aal2, MFA de personal, token de sesión a 20 min, vista pública de entrenadores sin datos sensibles, lint en 0 con la regla de hooks como error y parche de `braces`.
-- Roles: personal y roles (admin con MFA, bitácora), entrenadores y accesos (asignación directa, pedidos con aprobación, revocación), «Mis clientes» probado con cuenta real; regla aceptada: un cliente puede tener dos o más entrenadores.
-- Cliente/progreso: altura única en ficha (00052), corrección solo admin con bitácora (00053), «Mi progreso» usando la altura de la ficha (00054), menores también bloqueados en guardar/aprobar por el personal (00055), personal sin botón «Reservar», voseo unificado en las vistas tocadas (quedan los textos legales en «usted» hasta la revisión legal).
-- Calidad: CI reparado y suites SQL olvidadas conectadas; revisión visual en navegador de las pantallas reescritas (23 oct), con la corrección del aviso de demo que no persistía.
-- Detalles de texto (esta actualización): «Intentá de nuevo» en los errores de Mi cuenta y del panel de progreso, tarjeta de Horarios que ya no repite el subtítulo, y guía en el estado vacío de entrenadores («Asigná el rol… desde Personal y roles»).
-
-**Qué falta, en orden (sin mezclar con lo hecho):**
-
-1. *Depende de una cuenta real de cliente (la crea el usuario):* probar con sesión real la calculadora de nutrición y el resumen del socio en Mi cuenta; no se pueden validar en modo demo.
-2. *Depende de decisiones/datos del dueño (no ejecutar sin su palabra):* revisión legal (incluye textos legales y descargas con datos personales), copia de seguridad semanal automática, correo propio del gimnasio (remitente/dominio/SMTP) y prueba de recuperación, pagos/plan, segundo administrador, y la decisión Sheets A/B/C.
-3. *Aplazado a propósito cerca de la entrega:* quitar apariencia demo, retirar código demo y limpiar datos ficticios (`docs/PENDIENTE-DEMO-Y-ENTREGA.md`); faltan dos datos: si los entrenadores de portada son reales y si se marca «PRUEBA» a los registros ficticios.
-4. *Sigue en la ruta por etapas (secciones 2 a 6 de este documento):* lo no marcado de operación diaria, finanzas completas y aceptación integral se trabaja etapa por etapa, con inventario previo; no está «a medias» en una rama: no hay PR abiertos ni trabajo sin fusionar.
-
-## Actualización 24 oct 2026 — Etapa 3, tanda 1 cerrada
-
-- [x] Menores en rutas del personal: migración **00055** aplicada en producción (`menores_rutas_personal`, versión remota `20261024190943`). `nutrition_save` y `nutrition_approve` ahora devuelven `MINOR` si el cliente es menor y `NO_BIRTHDATE` si falta la fecha de nacimiento. `nutrition_get` sigue permitiendo al personal leer la ficha y la edad. Verificado con 170 comprobaciones en `npm run test:productos` y por consulta de solo lectura en producción.
-- [x] Siguiente tanda de la Etapa 3: interruptores separados de caja (arrancan apagados), sobre la tabla existente `staff_permissions`, con aplicación también en servidor/base de datos. Cerrada en la tanda 2 de abajo.
-- [ ] Después: cierre automático del personal a los 15 minutos de inactividad, sobre la base existente de `session-policy.ts`.
-
-## Actualización 24 oct 2026 — Etapa 3, tanda 2 cerrada
-
-- [x] Permisos separados de caja: migración **00056** aplicada en producción (`permisos_caja_separados`, versión remota `20261024205844`). Reutiliza `staff_permissions`; el cierre del día quedó como estaba (**encendido**) y los cinco permisos nuevos quedaron **apagados**: resultado mensual, gráficos financieros, saldos de cuentas del gimnasio, gastos (ver/registrar) y cuentas por cobrar.
-- [x] Administración > Entrenadores y accesos muestra los seis interruptores por separado. Sirven para delegar solo lo necesario cuando caja reemplaza temporalmente al administrador; **no vencen solos**, hay que apagarlos al volver.
-- [x] La regla se aplica en páginas/componentes, en las RPC financieras y en RLS directa de `bank_accounts`, `member_balances`, `client_debt_balances` y `client_debt_entries`. Caja conserva cobrar servicios, emitir comprobantes y registrar abonos desde la ficha; el permiso de cuentas por cobrar controla la lista consolidada y sus totales.
-- [x] Verificación: 98 comprobaciones de Fase B con 00056, 685/685 en `npm run test:auth`, suites SQL/RSC/medidas/productos/metadata, tipos, lint y build; en producción se comprobaron las claves, `finance_debt_ready() = true` y las cuatro políticas restrictivas nuevas.
-- [ ] Siguiente tanda de la Etapa 3: cierre automático del personal a los 15 minutos de inactividad.
-
-## Actualización 24 oct 2026 — Recepción ordenada: pase del día
-
-- [x] Migración **00057** aplicada en producción (`pase_del_dia_tarifa`, versión remota `20261025044906`). Agrega `plans.price_nio` como tarifa en córdobas, separada de `plans.price` (USD histórico): el pase del día quedó en **C$40** con `price = null` y Boxeo conserva **US$20** con `price_nio = null`. `crm_options()` ahora entrega `slug`, `period` y `price_nio`; el editor `admin_set_day_pass_price_nio(numeric)` solo lo puede usar un administrador con MFA. Verificado en producción: restricción de precio presente, `anon` sin ejecución y `authenticated` con ejecución sujeta a la comprobación interna de rol/MFA.
-- [x] Flujo corto en Clientes y recepción: botón **«Cobrar pase del día»** al inicio de la ficha, cobro visible antes del resumen financiero y sin el formulario duplicado de abajo. Reutiliza el alta rápida, `MovementForm`, su intento idempotente y el registro manual/QR ya existentes. Precarga monto y concepto, mantiene la elección explícita de método, cuenta y tasa, y trae marcada la casilla **«Registrar entrada ahora al confirmarse el cobro»**. La entrada solo se intenta después de un cobro confirmado; si ya había visita hoy no se duplica, y si la entrada no se confirma tras pagar, el aviso dice que **no se repita el cobro**.
-- [x] Administración > **Tarifas** permite cambiar el precio en C$ o quitar la tarifa rápida. La web muestra la tarifa NIO cuando existe y conserva el precio USD histórico cuando no hay tarifa NIO válida. Desde Caja, el acceso principal ahora dice «Cobrar o registrar entrada · buscar cliente».
-- [x] Verificación local de esta tanda: pruebas SQL por rol con 00057 (admin con MFA sí; caja, admin sin MFA y visitante no; importes inválidos rechazados; `NULL` quita la tarifa), cuatro casos de recepción en `tests/crm-panel.test.mjs`, preset/`onSuccess` en `tests/finance-write-form.test.mjs`, 691/691 en `npm run test:auth`, además de tipos, lint, build, metadata, RSC financiero, SQL, medidas y productos. La prueba local de concurrencia financiera no arrancó por faltar `TEST_POSTGRES_URL` en este entorno; debe verse en CI.
-- [ ] Al publicar esta tanda queda la **prueba guiada del usuario desde el celular**: administrador ve/cambia la tarifa, caja cobra un pase y ve la entrada, desmarcar la casilla cobra sin registrar entrada y un cliente que ya entró hoy no genera otra visita. No crear cobros de prueba en producción sin coordinarlo.
-- [ ] La inactividad automática de 15 minutos sigue aprobada y queda para la siguiente tanda.
-
-## Actualización oct 2026 — Tarifas completas de pesas y máquinas
-
-- [x] Migración **00058** aplicada en producción (`tarifas_gimnasio_nio`, versión remota `20261025061632`). Reutiliza `plans.price_nio` y permite el periodo `fortnight`: **Día C$40, Semana C$150, Quincena C$280 y Mes C$560**. Semana y Quincena se crearon solo si faltaban; Mes solo se completó si su tarifa NIO estaba vacía. El orden público es Boxeo, Día, Semana, Quincena y Mes. Boxeo sigue aparte con **US$20** en `plans.price` y `price_nio = null`.
-- [x] Administración > **Tarifas** muestra los cuatro editores de pesas y máquinas. La API y `admin_set_plan_price_nio(text, numeric)` solo aceptan esos cuatro `slug` con su periodo correcto y exigen administrador con MFA; `NULL` quita solo la tarifa rápida elegida, sin borrar el plan ni cobros anteriores. En producción se verificó que `anon` no puede ejecutar la función.
-- [x] La web publica las tarifas NIO por visita, semana, quincena y mes. En Clientes y recepción hay botones rápidos para las cuatro tarifas válidas; reutilizan `MovementForm`, su idempotencia y el comprobante existente. Caja sigue eligiendo método, cuenta y tasa, y la entrada opcional solo se intenta tras confirmarse el cobro, sin duplicar una visita del día.
-- [x] Alcance cerrado por decisión del dueño: cobrar Semana, Quincena o Mes **solo registra el pago; no activa, renueva ni calcula vigencia**. La pantalla lo avisa antes de confirmar el cobro. La vigencia automática requerirá otra tanda con reglas propias.
-- [x] Verificación local: 29/29 en `tests/crm-panel.test.mjs`, 123 comprobaciones de Fase B dentro de `npm run test:roles`, 695/695 en `npm run test:auth`, además de tipos, lint, build, metadata, RSC financiero, SQL, medidas y productos. `npm run test:layout` no arrancó localmente por no estar instalado Chromium; queda cubierto por CI. La concurrencia financiera sigue siendo validación de CI con PostgreSQL desechable.
-- [x] El usuario revisó la ficha y Caja desde el celular: le gustó el flujo y pidió que los controles principales no se vieran como texto plano. Las cuatro tarifas rápidas usan ahora el mismo botón rojo, «Solo confirmar entrada» usa un fondo sólido secundario, los accesos de la ficha tienen fondo táctil y el acceso de Caja es un botón grande rojo con ícono y flecha.
-- [x] El ajuste visual de botones (PR #47) quedó publicado y el usuario confirmó desde el celular: «Listo todo pasó las pruebas».
-- [ ] La prueba guiada con cobros reales se completa junto con la venta integrada de productos de la sección siguiente; no se confirman cobros ficticios en producción.
-- [ ] Después de cerrar la venta integrada sigue la tanda aprobada de cierre automático del personal a los 15 minutos de inactividad.
-
-## Actualización oct 2026 — Venta de productos desde la ficha
-
-- [x] Flujo decidido con autorización del usuario: no hay venta anónima ni cliente genérico. Primero se busca o se crea la ficha con el alta rápida; desde esa ficha caja puede cobrar **servicio + productos** o **solo productos**. Con productos, todo el cobro es en **NIO**, con un solo método y una sola cuenta.
-- [x] Migración **00059** aplicada en producción (`cobro_con_productos`, versión remota `20261025202029`). Agrega `finance_checkout_groups`, `product_sale_catalog()` y `finance_record_checkout(...)`. El catálogo de recepción solo devuelve productos activos con precio y stock, sin costo ni ganancia. Verificado tras aplicarla: `finance_writes_ready() = true`, `anon` no puede ejecutar las funciones nuevas, `authenticated` queda sujeto a la comprobación interna de rol/MFA y no cambió el conteo de movimientos existentes.
-- [x] El cobro combinado es atómico e idempotente: la base bloquea los productos en orden, vuelve a comprobar estado, precio y stock, y registra un comprobante interno por el servicio y por cada producto. Si falta stock o cambió un precio, no queda registrado ni el servicio. Reintentar el mismo intento no duplica dinero ni existencias; usar la misma referencia con otro contenido devuelve conflicto.
-- [x] `MovementForm` muestra buscador, precio, stock, cantidades, subtotales y total antes de confirmar. Permite dejar el servicio en cero solo cuando hay productos, conserva las líneas en un intento pendiente, limpia el carrito tras confirmar y enlaza todos los comprobantes. Si el catálogo no carga, el cobro solo por servicio sigue disponible, pero no se envía una venta con productos sin catálogo confirmado.
-- [x] Las tarifas rápidas pueden sumar productos antes de confirmar; el total visible une tarifa y productos. La entrada automática solo se intenta después de un cobro confirmado que incluyó un servicio mayor que cero. Una venta solo de productos no registra entrada. Caja también enlaza a **Productos y stock** para crear productos, registrar compras y revisar existencias; ese módulo sigue siendo el lugar de mantenimiento del inventario.
-- [x] Verificación local de esta tanda: 96/96 en formulario, API, CRM y reglas de productos; 703/703 en `npm run test:auth`; 188 comprobaciones en `npm run test:productos`; además pasaron roles, SQL financiero, RSC, tipos, lint, build y metadata.
-- [x] Prueba real en producción confirmada por el usuario («Si funciona»): se creó el producto real **Agua fuente pura 600 ml** (costo C$18, precio C$24) con compra de 12 unidades y se vendió 1 desde la ficha; el stock bajó a 11. No se crearon productos ni ventas ficticias.
-
-## Actualización 26 oct 2026 — Orden visual de Productos y de la ficha (migración 00060)
-
-- [x] **Productos y stock en tarjetas:** la tabla ancha se reemplazó por tarjetas visuales alineadas: nombre arriba, categoría breve, foto completa sin recorte debajo y, al pie, precio de venta y unidades en stock (con aviso de stock bajo e inactivo). Hay botones **Ver productos** y **Categorías**, buscador y categorías con su cantidad; se muestran **25 por página** del resultado filtrado, con botones Anterior/Siguiente. Al tocar una tarjeta se abre la ficha completa del producto (categoría, costo, ganancia, alerta de stock y detalles) con las mismas acciones de siempre: Editar, Comprar, Vender y Ajustar stock. No cambió ninguna regla de inventario ni de dinero; pruebas en `tests/product-manager.test.mjs`.
-- [x] **Ficha del cliente enfocada:** al abrir un cliente se ocultan el buscador, la lista y el personal; la ficha queda con «← Volver a clientes», «Actualizar ficha» y un encabezado compacto (número, nombre, categoría, estado, si ya entró hoy solo lectura desde las visitas y deuda si existe, teléfono y plan). Debajo va un menú de tarjetas y **cada tarjeta abre una pantalla propia a pantalla completa**, con desplazamiento interno y un encabezado fijo con «← Volver a la ficha», en este orden: Registrar entrada (tarifas rápidas y entrada manual), Cobrar un servicio, Vender productos, Deudas y abonos, Saldo e historial y Datos del cliente y carnet; al final quedan los enlaces a Progreso y medidas y a Asistencia. «Nuevo cliente» sigue junto al buscador. Ajuste posterior del mismo 26 oct, tras la revisión del usuario: las tarjetas ya no se despliegan en el mismo lugar empujando todo hacia abajo, y el enlace de Asistencia abre su **vista propia** (`?vista=asistencia`) con solo las visitas por día, semana y mes, sin cargar Medidas; los enlaces antiguos con `#asistencia` conservan el salto de apoyo (`HashScroll`).
-- [x] Es el **mismo formulario seguro de siempre** el que se muestra según el módulo (`MovementForm`/`PaymentForm` con sus mismas claves de intento): si quedó un cobro o una operación de deuda sin confirmar, su módulo se abre solo al entrar a la ficha y, si la persona cambia de módulo, queda un aviso visible arriba con botón «Revisar intento pendiente». No cambió ninguna regla de cobro, stock, deuda, asistencia ni permisos.
-- [x] Historiales resumidos: entradas e ingresos muestran las primeras 5 y el resto se despliega a pedido («Ver las N entradas» / «Ver los demás ingresos»). El catálogo para cobrar usa tarjetas compactas y adaptables —nombre, categoría, foto completa sin recorte, precio, disponibles y cantidad al pie— con botones **Ver productos** y **Categorías**, buscador y **25 tarjetas por página**; cambiar de página o de categoría no pierde los productos ya elegidos ni su resumen.
-- [x] Migración **00060** aplicada en producción (`catalogo_venta_con_imagen`, versión remota `20261026034707`): el catálogo de recepción además devuelve la foto del producto; sigue sin exponer costo ni ganancia y `anon` no puede ejecutarlo. El esquema del cliente acepta respuestas anteriores sin la clave (`.default(null)`), así que el orden de despliegue no rompe nada.
-- [x] Verificación local de esta tanda: 30/30 en `tests/crm-panel.test.mjs` (adaptadas a abrir módulos y volver al listado), 3/3 en `tests/product-manager.test.mjs`, 706/706 en `npm run test:auth`, 191 comprobaciones en `npm run test:productos`, además de roles, SQL, RSC financiero, tipos, lint, build y metadata. `npm run test:layout` no arrancó localmente por falta de Chromium; queda cubierto por CI. Con el ajuste a vistas por tarjeta: 31/31 en `tests/crm-panel.test.mjs` (incluye la navegación tarjeta → vista → volver y el destino de Asistencia) y 707/707 en `npm run test:auth`. Con el rediseño de los catálogos: 23/23 entre `tests/finance-write-form.test.mjs` y `tests/product-manager.test.mjs` (paginación de 25 y filtros por categoría/búsqueda), 709/709 en `npm run test:auth`, 191 comprobaciones en `npm run test:productos`, y tipos, lint, build y metadata en verde.
-- [ ] Prueba guiada desde el celular de la nueva presentación: abrir Productos y stock (tarjetas, paginación, entrar y volver de una ficha de producto) y una ficha de cliente (volver al listado, abrir cada módulo, cobrar una tarifa, vender solo un producto, revisar saldo e historial). Entrenador y cliente no deben ver el catálogo de venta ni registrar estos cobros.
-- [ ] Siguiente tanda aprobada: cierre automático del personal a los 15 minutos de inactividad.
-
-## Actualización 26 oct 2026 — Caja por módulos publicada
-
-- [x] El usuario revisó la vista previa, la calificó perfecta y autorizó publicar primero esta tanda. El PR #53 se fusionó en `main@36cfb56`; Vercel `dpl_3sje75iELW9eB3HXBNP5fC96MGUo` quedó READY/PROMOTED y la producción pública respondió con las tarifas vigentes.
-- [x] La portada conserva el cobro principal y los KPI permitidos, pero deja de ser una página larga: las tarjetas abren **Movimientos**, **Cuentas y saldos**, **Métodos de pago**, **Gráficos** y **Cómo leer Caja** en pantallas propias con «Volver a Caja». **Registrar gasto**, **Cuentas por cobrar**, **Productos y stock** y **Reportes/cierre** reutilizan sus rutas existentes.
-- [x] No cambió ninguna regla de dinero, moneda, cálculo, permiso ni base de datos, y no se duplicó `MovementForm`. Los seis permisos separados de caja siguen decidiendo qué tarjetas y datos aparecen; sin permiso de saldos no se muestra el saldo.
-- [x] Movimientos reutiliza los últimos 30 que ya entrega el servidor, con búsqueda y filtros por tipo, método, moneda y estado, y muestra 25 por página. No debe presentarse como historial completo: paginar todo el historial requeriría otra tanda en el servidor.
-- [x] Verificación de la tanda: `npm run test:auth` 710/710, `npm run typecheck`, `npm run lint`, `npm run build` y `npm run test:metadata` en verde; el CI del PR #53 también quedó en verde antes de fusionar.
-- [ ] La tanda de cierre automático por 15 minutos sigue pausada y no se mezcla con esta reorganización.
-
-## Actualización 26 oct 2026 — Respuesta del campo MFA (INP)
-
-- [ ] El usuario mostró un aviso **INP Issue** de **207,1 ms** cuyo selector corresponde al único campo con `w-40 tracking-[0.3em]`: el código de 6 dígitos de la verificación en dos pasos. No es un campo de Caja ni cambia ninguna regla MFA.
-- [x] Optimización aplicada en código: el código ahora vive en el DOM como campo no controlado; escribir los dígitos 1 a 5 no cambia estado de React y solo se actualiza el pequeño formulario al llegar a 6 o bajar de 6. Las instrucciones y el QR de registro quedaron memorizados para no repintarlos por la escritura. Al confirmar se lee el valor con `FormData`, se conserva la validación exacta de 6 dígitos y tras verificar se limpian el campo y el botón.
-- [ ] Falta la confirmación del usuario en el mismo celular: entrar otra vez con MFA y comprobar que escribir/pegar el código responde sin traba y que el aviso INP no vuelve a aparecer. La medición automática no sustituye esa confirmación en el dispositivo real.
-
-## Actualización 26 oct 2026 — MFA: rechazo de listas y valores no escalares
-
-- [x] Auditoría del ataque visto por el usuario (muchos códigos en una sola petición): no hay un endpoint propio de verificación MFA; la app llama a Supabase Auth. En el servidor de Supabase el código se decodifica como un único `string` y el desafío como UUID, y la documentación oficial limita crear/verificar desafíos MFA por IP. Por esa vía no se pueden probar 10.000 códigos dentro de un array en una sola llamada.
-- [x] Sí existía un defecto local de confusión de tipos: `RegExp.test()` convertía a texto valores no string, así que un array de un elemento, un número o un objeto con `toString()` podían pasar `isTotpCode` y llegar al SDK. Un array de 10.000 ya se rechazaba antes del SDK, pero el hueco de tipos quedó cerrado en tiempo de ejecución: código, factor y desafío deben ser strings primitivos únicos y acotados; las respuestas de registro/lista con IDs, QR o secreto no escalares se descartan.
-- [x] El formulario MFA ahora exige exactamente un campo `code`. El callback PKCE ya exigía un único `code`; además ahora rechaza `flow` duplicado y `locale` repetido antes de consultar el SDK.
-- [x] La configuración remota revisada mantiene TOTP de registro/verificación activo y `mfa_allow_low_aal = false`. No se cambió configuración de Supabase ni se hizo migración.
-- [ ] Riesgo residual normal de cualquier TOTP de 6 dígitos: intentos separados contra una sesión AAL1 robada siguen dependiendo del límite de Supabase y de proteger la contraseña/sesión. Un bloqueo adicional por usuario/factor con Auth Hook sería otra tanda con política de recuperación propia; no se mezcla con esta corrección.
-
-## Actualización 26 oct 2026 — CSP obligatoria, JSON-LD seguro y correos fuera del árbol actual
-
-- [x] El usuario autorizó las propuestas y decidió seguir usando sus propias cuentas/correos de prueba hasta mostrar la app al dueño. En esta tanda **no se cambiaron cuentas, correos de ingreso, contraseñas, roles ni MFA**.
-- [x] Se retiraron las direcciones completas del árbol actual de documentación y del SQL de diagnóstico; el diagnóstico usa `correo-de-prueba@test.invalid` para reemplazarlo sólo en una copia local. Esto no borra commits históricos que ya contenían esos textos.
-- [x] JSON-LD ahora pasa por `serializeJsonLd`, que escapa `<`, `>`, `&` y separadores Unicode para que un nombre de clase o sala no pueda cerrar la etiqueta `script`. Hay una prueba específica con un texto malicioso.
-- [x] La CSP dejó de ser `Report-Only`: ahora es obligatoria y sólo permite el propio origen, Supabase HTTPS/WSS, imágenes de Supabase/Unsplash y el marco de Google Maps. Se conservan `unsafe-inline`/`unsafe-eval` por compatibilidad actual de Next; endurecerla con nonce queda como mejora posterior opcional.
-- [x] Verificación local: `npm run test:auth` 717/717, tipos, lint, build y `test:metadata` en verde. La prueba HTTP exige la CSP obligatoria y la ausencia de la cabecera Report-Only.
-- [ ] Supabase Auth remoto todavía muestra `password_min_length = 6`: la herramienta de actualización disponible no expone ese campo y no se fingió el cambio. Queda como paso manual en Supabase Dashboard ponerlo en 12. Mientras tanto, la app ya exige 12–128 caracteres al registrarse y al recuperar contraseña.
+# Strong Fitness Gym — Lista única de pendientes
+
+**Esta es la única lista viva de tareas del proyecto.**
+
+Si otro documento dice «pendiente», «fase siguiente» o «sin implementar», se
+interpreta como una nota histórica y **manda esta lista**. Los demás documentos
+pueden explicar decisiones, guías de uso o cómo se construyó una parte, pero no
+crean tareas nuevas.
+
+Última auditoría completa: **26 de octubre de 2026**, sobre producción
+`main@3bede94525cbfb0b958ebb7275189a4affa97f6e` (PR #56) y Supabase
+`hcnuepdxmbsmlzdmvwhx`.
+
+## Cómo mantener esta lista
+
+1. **Una tarea, un solo ID.** No se crea otra lista por fase, módulo o PR.
+2. Al terminar una tarea, se marca aquí en el mismo PR que la cierra y se deja
+   una línea breve en «Cerrado y comprobado», con fecha, PR o evidencia.
+3. Si hace falta un documento técnico nuevo, explica el diseño o la operación;
+   el seguimiento sigue viviendo aquí y se enlaza por ID.
+4. No se repite la misma tarea en una etapa, una fase y un módulo. El mapa de
+   fases solo remite a los ID.
+5. Ninguna tarea de esta lista autoriza por sí sola borrar datos, cambiar
+   cuentas, cambiar roles o ejecutar SQL remoto. Eso requiere la orden y las
+   comprobaciones propias de cada tanda.
+
+### Qué significa «terminado»
+
+Una tarea no se cierra solo porque compila o porque una pantalla se abre.
+Según el caso, debe cumplir:
+
+- Guardar en servidor/base y seguir viéndose tras recargar y en otra sesión.
+- Aplicar permisos por rol en UI, servidor y RLS/RPC, con casos denegados.
+- No convertir errores en éxito, cero o lista vacía.
+- Evitar duplicados ante doble clic, reintento o respuesta perdida.
+- En dinero, no mezclar monedas ni borrar movimientos para corregirlos.
+- Tener pruebas automatizadas proporcionales y, cuando haga falta, prueba
+  guiada en celular o con cuentas reales de prueba.
+- Dejar claro qué datos de prueba se crearon, sin limpiarlos sin orden.
+
+## Foto actual comprobada
+
+- Producción: PR #56 fusionado; Vercel `dpl_HHuLnBJAnvhEzqxSPpahdxkXPtbj`
+  READY/PROMOTED.
+- GitHub al auditar: sin PR ni issues abiertos. No se encontró trabajo de una
+  fase esperando en un PR sin fusionar.
+- Supabase: proyecto ACTIVE_HEALTHY. La última migración del repositorio y del
+  historial remoto es la **00060** (`catalogo_venta_con_imagen`). El siguiente
+  número libre es **00061**.
+- Nota permanente de la 00049: sus tablas y funciones principales existen en
+  producción, pero su nombre no aparece en el historial remoto de migraciones.
+  **No volver a ejecutarla sin investigar.**
+- Las cuentas y correos de prueba del usuario siguen intactos por decisión
+  suya, para seguir probando antes de mostrar la app al dueño.
+- Supabase Auth verificado en esta auditoría: JWT de 1200 segundos, TOTP
+  activo, SMTP propio sin configurar y `password_min_length = 6`.
+
+## Orden recomendado de trabajo
+
+| Orden | Trabajo | Motivo |
+|---:|---|---|
+| 1 | **OP-01 a OP-04** | Hay botones que no guardan y las sesiones futuras terminan el 5 de noviembre de 2026. |
+| 2 | **SEG-01 y QA-01/QA-02** | Cierre corto de Auth y confirmación real de la CSP/MFA ya publicadas. |
+| 3 | **PER-01** | Cierre automático de 15 minutos; primero se confirma a qué roles aplica. |
+| 4 | **CLI-01** | Las vigencias ordenan planes, categorías y operación diaria. |
+| 5 | **FIN-01 y FIN-02** | Anulaciones y vuelto son los huecos financieros más visibles. |
+| 6 | **CAL-01, CAL-03, LEG-01 y NEG-01** | Preparan una entrega segura cuando el dueño entregue datos y decisiones. |
+
+---
+
+## 1. Operación diaria y horarios
+
+La evidencia principal está en `src/components/admin/admin-panel.tsx`,
+`src/app/[locale]/panel/operacion/page.tsx` y `src/lib/data/queries.ts`.
+
+- [ ] **OP-01 · Alta · Código — Guardar asistencia, inasistencia y cancelación
+  administrativa de reservas.** Hoy los botones de Operación solo cambian
+  `bookingStatuses` en React. Cierre: API/RPC con rol y MFA correctos,
+  transiciones válidas, error visible sin cambiar el estado anterior,
+  persistencia tras recargar y en otra sesión, y efecto correcto sobre el cupo.
+- [ ] **OP-02 · Alta · Código — Guardar mensajes leídos/no leídos.** Hoy solo
+  cambia `readMessages` en React. Cierre: persistir `messages.is_read` con
+  permiso de personal, manejar error y conservar el estado tras recargar.
+- [ ] **OP-03 · Alta · Código — Guardar activación/desactivación de
+  disciplinas.** Hoy solo cambia `classActive` en React y la lectura trae solo
+  disciplinas activas. Cierre: listar activas e inactivas para administración,
+  guardar con autorización y definir antes el efecto sobre sesiones futuras y
+  reservas existentes; no cancelar en cascada por una regla inventada.
+- [ ] **OP-04 · Alta · Código/operación — Generar sesiones futuras sin depender
+  de SQL manual.** En la auditoría quedaban 18 sesiones futuras, del 27 de
+  octubre al **5 de noviembre de 2026**. Existe `generate_week_sessions()`,
+  pero no hay pantalla ni tarea automática y `pg_cron` no está instalado.
+  Cierre: generación idempotente de las próximas semanas, sin duplicar, con un
+  mecanismo sostenible y verificación en Horarios.
+- [ ] **OP-05 · Media · Código — Administrar clases, sesiones y catálogos
+  operativos.** Falta una gestión completa de disciplina, sesión, horario,
+  cupo, sala y entrenador, además de planes/entrenadores más allá de las cuatro
+  tarifas NIO ya editables. Cierre: CRUD autorizado, sin sobreventa al bajar un
+  cupo y con efectos documentados sobre reservas futuras.
+- [ ] **OP-06 · Media · Decisión y código — Cierre de reservas pasadas.**
+  Existe `close_past_sessions()`, pero no se ejecuta automáticamente. Primero
+  hay que decidir cuándo una reserva confirmada pasa a asistida o ausente; no
+  convertir automáticamente en ausente a alguien que sí llegó pero no fue
+  marcado. Cierre: regla aprobada, ejecución segura y prueba por rol.
+- [ ] **OP-07 · Baja · Código — Cambio de día en páginas abiertas.** Horarios,
+  Panel y Mi cuenta calculan «hoy» al montar; no hay un refresco general al
+  cruzar medianoche en America/Managua. Cierre: la fecha/semana se actualiza
+  sin recargar y sin perder el trabajo en curso.
+- [ ] **OP-08 · Media · Código — Vincular después una ficha de recepción con
+  una cuenta web.** La ficha sin cuenta ya puede operar, cobrar y tener deuda
+  propia. Falta el flujo seguro para vincularla cuando la persona crea su
+  cuenta. Cierre: verificación manual/segura, nunca unir solo por nombre o
+  correo, y conciliar historial, visitas, progreso y saldos sin mezclarlos.
+- [ ] **OP-09 · Baja · Decisión — Cerrar formalmente la navegación.** El panel
+  ya está organizado en Inicio, Clientes, Finanzas, Operación, Administración
+  y Mis clientes. Falta decidir si eso cierra la antigua Etapa 2 o si se quieren
+  los nombres literales Agenda, Personal, Reportes y Configuración como módulos
+  principales.
+
+## 2. Clientes, planes, categorías y progreso
+
+- [ ] **CLI-01 · Alta · Decisión y código — Vigencias de planes.** Cobrar Día,
+  Semana, Quincena, Mes o Boxeo hoy solo registra el pago. Hay que definir y
+  construir inicio, vencimiento, renovación antes de vencer, pago atrasado,
+  congelamiento, gracia, cambios de plan y efecto de deuda. Cierre: una sola
+  fuente de vigencia, avisos claros antes de cobrar y pruebas de fechas en
+  America/Managua. Ningún cobro anterior debe inventar una vigencia retroactiva.
+- [ ] **CLI-02 · Media · Código — Completar la categoría automática.** Ya se
+  calcula Común/Amigo/Familia/Strong Gym al leer, usando visitas, plan asignado
+  y compras de 90 días. Falta usar la vigencia real de CLI-01, guardar historial
+  de cambios y permitir una fijación manual del administrador con motivo. Hay
+  que confirmar los umbrales y la prioridad cuando una regla se cruza con otra.
+- [ ] **CLI-03 · Media · Revisión profesional — Calculadora, dieta y rutinas.**
+  La herramienta, el consentimiento, la aprobación del personal y el bloqueo de
+  menores ya existen. Falta que un profesional revise fórmulas, mínimos de
+  calorías, guía de comidas, rutinas y avisos. Si se quieren alimentos con
+  porciones, deben salir de una fuente verificable y contemplar alergias,
+  condiciones médicas, medicamentos y embarazo; hoy son textos genéricos y
+  macros, no una tabla USDA validada.
+- [ ] **CLI-04 · Baja · Decisión — Rangos de medidas y tolerancia de meta.**
+  Confirmar con el dueño/entrenador los rangos que disparan aviso y si la
+  tolerancia de mantenimiento de 2 kg es la regla definitiva.
+- [ ] **CLI-05 · Baja · Decisión — Permisos finos por entrenador.** El modelo
+  actual usa rol, asignación aprobada e interruptor de herramientas por cliente.
+  Solo si el dueño lo pide, separar permisos de medir, meta, rutina y nutrición.
+
+## 3. Finanzas, productos e inventario
+
+- [ ] **FIN-01 · Alta · Código — Fase C: anulación controlada.** Crear la
+  reversa de un movimiento sin borrarlo, con motivo, actor, fecha y bitácora.
+  Regla ya conversada: si `cashier_can_void` está apagado, el administrador
+  autoriza y aplica; si está encendido, caja solo anula sus cobros del día.
+  Falta definir y probar ventas con productos/stock, abonos, gastos,
+  devoluciones/crédito y qué ocurre con un día ya cerrado.
+- [ ] **FIN-02 · Alta · Código — Efectivo recibido y vuelto en cobros por
+  servicio y productos.** Ya existe en abonos de deuda. Falta llevarlo al cobro
+  general y al checkout con productos, en la misma moneda y cuenta habilitada,
+  con comprobante e intento idempotente que conserve el dato ante un reintento.
+- [ ] **FIN-03 · Media · Código — Cuentas, catálogos y transferencias.** Falta
+  administrar cuentas de caja/banco, métodos y categorías desde la app, y
+  registrar transferencias entre cuentas sin contarlas como ingreso o gasto.
+  Cierre: reglas por moneda/FX, permisos, saldos antes/después y auditoría.
+- [ ] **FIN-04 · Media · Código — Apertura, cierre y arqueo de caja.** Hoy hay
+  reportes de cierre del día y tablas legadas `cash_sessions`/`cash_registers`,
+  pero no un flujo único de abrir, contar efectivo, cerrar, registrar
+  diferencias y conciliar por cuenta/responsable. Cierre: un solo modelo, sin
+  duplicar tablas, y bloqueo o aviso claro para movimientos de un día cerrado.
+- [ ] **FIN-05 · Media · Código — Historial completo de Movimientos en Caja.**
+  La pantalla reutiliza los últimos 30 y los pagina de 25 en 25. Falta buscar y
+  paginar todo el historial desde el servidor, respetando los permisos de caja.
+  Reportes y exportaciones ya leen por páginas; no hay que duplicar esa lógica.
+- [ ] **FIN-06 · Media · Decisión y código — Importación de saldos e
+  históricos.** El importador actual crea fichas de clientes desde CSV con
+  mapeo, vista previa y avisos. No importa saldos, deudas, personal ni reservas,
+  y un Excel debe guardarse antes como CSV. Cierre si el dueño lo necesita:
+  procedencia, fecha y moneda por fila, validación, duplicados, informe de
+  resultados y reintento seguro. Los cuatro saldos iniciales también pueden
+  cargarse manualmente por ficha con el flujo ya existente.
+- [ ] **FIN-07 · Baja · Código — Auditoría integral.** Ya hay eventos de
+  clientes, cambios de rol, personal y comprobantes financieros. Falta decidir
+  y completar una cobertura uniforme para dinero, reservas, configuración y
+  anulaciones, con lectura solo autorizada y sin guardar valores sensibles
+  innecesarios.
+
+## 4. Personal, roles y sesiones
+
+- [ ] **PER-01 · Alta · Decisión y código — Cierre automático a los 15
+  minutos.** Hoy solo el administrador cierra a las 2 horas; caja, entrenador y
+  clientes no tienen cierre automático en el navegador. Primero hay que
+  confirmar si los 15 minutos aplican solo al administrador, a admin/caja o a
+  todo el personal. Cierre: reutilizar `session-policy.ts` y el proveedor
+  actual, sin un segundo guardia, con prueba en navegador por rol.
+
+## 5. Seguridad, Auth y correo
+
+- [ ] **SEG-01 · Alta · Configuración manual — Mínimo de contraseña remoto en
+  12.** La app exige 12–128, pero Supabase Auth sigue en 6. El conector no
+  expone `password_min_length`; hay que cambiarlo en Supabase Dashboard
+  (Authentication → Sign In / Providers → Email) y leerlo de vuelta como 12.
+- [ ] **SEG-02 · Alta · Dato del dueño y configuración — Correo propio y
+  recuperación real.** Faltan remitente, dominio y proveedor SMTP autorizados.
+  Después hay que revisar plantillas, límites y entregabilidad, y aceptar el
+  recorrido completo con un correo controlado, incluida la app instalada.
+  Mientras tanto no se promete recuperación general por correo.
+- [ ] **SEG-03 · Alta · Dato del dueño — Segundo administrador y recuperación
+  MFA.** La app no tiene códigos de respaldo MFA. Antes de retirar el acceso
+  temporal, el dueño debe quedar como administrador con su propio MFA y acceso
+  comprobado, usando su correo y autorización. Nunca se piden contraseñas,
+  semillas ni códigos por chat.
+- [ ] **SEG-04 · Media · Revisión de código — CSRF y abuso de forma uniforme.**
+  Finanzas, clientes y deudas ya revisan origen/`sec-fetch-site`; falta una
+  pasada sistemática por todas las rutas que escriben y una política común de
+  límites. El antispam actual de formularios públicos es por IP y en memoria.
+  No se usa Supabase Storage hoy; si se introduce, sus políticas entran en esta
+  revisión antes de publicar archivos.
+- [ ] **SEG-05 · Media · Código/operación — Registro de errores y alertas.**
+  Hoy hay mensajes seguros en consola/logs de plataforma, sin un servicio de
+  monitoreo con alertas. Cierre: errores de servidor/cliente agrupados, sin
+  datos sensibles, con aviso al responsable y una forma de relacionarlos con la
+  versión desplegada.
+- [ ] **SEG-06 · Baja · Higiene de base — Reducir grants directos amplios.**
+  La auditoría encontró RLS activo y sin exposición anónima fuera de las vistas
+  públicas previstas, pero quedan grants directos más amplios que lo mínimo en
+  algunas tablas/funciones. Cierre: inventario por objeto y reducción probada
+  por rol, sin romper RLS/RPC ni reaplicar migraciones viejas.
+
+## 6. Respaldo, calidad y operación técnica
+
+- [ ] **CAL-01 · Alta · Decisión y operación — Respaldo automático y
+  restauración ensayada.** No hay un flujo semanal propio en el repositorio.
+  Hay que elegir entre plan de Supabase con copias o respaldo externo cifrado,
+  definir retención, dueño del acceso y periodicidad, y ensayar la restauración
+  en un proyecto separado o base desechable. Registrar la fecha del ensayo.
+- [ ] **CAL-02 · Media · Operación — Completar la guía de incidentes.**
+  `docs/GUIA-INCIDENTES.md` sigue con contactos y fecha de restauración entre
+  corchetes. Completar responsable del gimnasio, administrador técnico, canal
+  de aviso y criterio legal para comunicar incidentes con datos personales.
+- [ ] **CAL-03 · Alta · Pruebas — Aceptación integral conectada.** CI ya corre
+  tipos, lint, 717 pruebas de aplicación al cierre del PR #56, SQL por rol,
+  layout con Chromium y concurrencia PostgreSQL desechable. Falta un recorrido
+  formal en un entorno de ensayo: alta → vigencia cuando exista → reserva o
+  entrada → cobro/producto → gasto/deuda → reporte/exportación, con admin,
+  caja, entrenador, cliente y anónimo; clientes A/B; doble clic; respuesta
+  perdida; red/sesión expirada; y revocación de rol.
+- [ ] **CAL-04 · Baja · Decisión — Dominio final.** Hoy manda el subdominio de
+  Vercel. Si el dueño compra un dominio, hay que configurar DNS/TLS, URL del
+  sitio, redirecciones de Supabase Auth, canonical/SEO y verificar que no haya
+  contenido mixto ni enlaces al dominio anterior.
+- [ ] **CAL-05 · Baja · Mantenimiento condicional — Retirar el parche de
+  `braces`.** Solo cuando exista una versión corregida aguas arriba o
+  `micromatch` deje de depender de `braces`: actualizar, retirar
+  `patches/braces+3.0.3.patch` si ya no hace falta y repetir pruebas.
+
+## 7. Datos del negocio, contenido y legal
+
+- [ ] **NEG-01 · Alta · Datos del dueño — Información final del gimnasio.**
+  Confirmar razón social si difiere del nombre comercial, correo de contacto,
+  dominio, código postal/coordenadas si se publican, Instagram/TikTok/YouTube,
+  clase de prueba gratuita, precios/horarios definitivos y si Douglas García,
+  José Luis Pérez y María Rodríguez son entrenadores reales o nombres de
+  ejemplo que deben cambiarse antes de mostrar la app.
+- [ ] **NEG-02 · Baja · Decisión — Google Sheets.** Ya existen exportaciones
+  manuales en Excel/CSV. Falta decidir si eso basta o si se quiere una
+  sincronización viva app → hoja. No construir la sincronización sin revisar
+  permisos, datos personales y qué sistema manda ante una diferencia.
+- [ ] **LEG-01 · Alta · Revisión legal — Textos y reglas publicadas.** Un
+  abogado en Nicaragua debe revisar privacidad, términos, cookies,
+  consentimiento de salud, descargo de ejercicio, menores/tutor, descargas con
+  datos personales, plazos de retención/respuesta y la redacción final. También
+  hay que alinear las reglas comerciales y de monedas con las tarifas reales
+  NIO/USD. Mientras tanto, los textos siguen siendo borrador.
+
+## 8. Pruebas guiadas pendientes
+
+Estas no son funciones nuevas: son cierres de aceptación. No repetir cobros ni
+crear operaciones ficticias en producción sin coordinarlo.
+
+- [ ] **QA-01 · Alta · Celular — CSP obligatoria.** Abrir portada con fotos y
+  mapa, Horarios, ingreso/MFA, Panel y Caja; confirmar que nada queda en blanco
+  por un recurso bloqueado.
+- [ ] **QA-02 · Media · Celular — INP del código MFA.** En el mismo celular del
+  aviso de 207,1 ms, escribir y pegar el código y confirmar por separado que
+  responde sin traba y que el aviso INP no vuelve. El ingreso normal ya fue
+  confirmado; falta solo esta confirmación específica.
+- [ ] **QA-03 · Media · Celular — Cierre formal de Productos y ficha.** La venta
+  real ya funcionó y Caja fue aprobada. Falta cerrar la lista guiada de tarjetas,
+  paginación de 25, entrar/salir de producto, abrir cada módulo de la ficha y
+  verificar que entrenador/cliente no ven el catálogo de venta.
+- [ ] **QA-04 · Media · Cuenta real — Calculadora y resumen del socio.** Probar
+  con una sesión real de cliente lo que no se puede validar en demo: resumen,
+  calculadora, consentimiento, aprobación y «Mi progreso».
+- [ ] **QA-05 · Media · Cuenta real — Ciclo de personal.** Con una cuenta de
+  prueba, dar de alta, editar, desactivar y reactivar; verificar bitácora y que
+  la baja bloquea el acceso según lo diseñado.
+- [ ] **QA-06 · Media · Dispositivo real — QR.** Escanear con la cámara del
+  celular, detener la cámara, usar búsqueda manual, imprimir/guardar el carnet
+  y comprobar que un QR reemplazado ya no abre la ficha.
+- [ ] **QA-07 · Media · Prueba coordinada — Deuda en USD.** Recorrer cargo,
+  abono parcial, efectivo/vuelto y saldo en USD sin alterar NIO, en un entorno
+  o con datos de prueba coordinados. No repetir el simple cobro USD1 ya probado.
+
+## 9. Entrega al dueño — no ejecutar todavía
+
+El usuario indicó que todavía está lejos el día de entrega. **No quitar la
+apariencia demo, no limpiar ficticios y no retirar cuentas de prueba hasta una
+orden nueva.**
+
+- [ ] **ENT-01 · Entrega — Fase 1, antes de que el dueño pruebe.** Cambiar los
+  textos visibles de «Modo demo» por un aviso de falta de conexión, limpiar las
+  frases de demo de la guía interna, renombrar `demoGallery` y decidir si los
+  registros de prueba se marcan «PRUEBA» o se explican en persona. Depende de
+  NEG-01 para los entrenadores de portada.
+- [ ] **ENT-02 · Entrega — Inventario de ficticios y aprobación.** Mapear
+  dependencias y clasificar con el usuario clientes, ventas, reservas,
+  mediciones, personal y usuarios de Auth de prueba. Mostrar conteos y alcance
+  antes de borrar; abortar ante relaciones no clasificadas. Requiere CAL-01.
+- [ ] **ENT-03 · Entrega — Limpieza, carga real y conciliación.** Con respaldo
+  verificado y autorización expresa, retirar solo lo aprobado —incluida la
+  parte de Auth por su procedimiento separado— y cargar datos reales. Conciliar
+  saldos de cuentas y los cuatro saldos por cliente sin deducirlos de cobros
+  históricos. Después, humo completo sin ficticios.
+- [ ] **ENT-04 · Entrega — Acceso, demostración y manual.** Verificar al dueño
+  como administrador antes de retirar el acceso temporal (SEG-03), hacer la
+  demostración con límites documentados y entregar manual/mantenimiento.
+- [ ] **ENT-05 · Entrega — Retirar el modo demo del código.** Solo después de
+  entregar: quitar `demo-*`, `DemoBanner`, `DEMO_MODE` y ramas `isDemo`, y
+  actualizar las guías. No hacerlo antes porque hoy sirve para abrir una copia
+  local sin credenciales.
+
+## 10. Futuro u opcional — no bloquea la operación actual
+
+- [ ] **FUT-01 · Passkey/huella/rostro como método adicional.** Solo tras
+  verificar que la función de Supabase ya no es experimental, saber si el dueño
+  usa Android o iPhone y mantener TOTP como respaldo.
+- [ ] **FUT-02 · Captcha/Turnstile.** Requiere cuenta externa, claves y la
+  interacción en los formularios. No activarlo solo en Supabase.
+- [ ] **FUT-03 · Endurecimientos Auth opcionales.** Valorar HIBP, exigir
+  contraseña actual o reautenticación para cambiar la contraseña y un Auth Hook
+  de bloqueo MFA por usuario/factor. Hoy mandan la política de la app, AAL2 y
+  los límites de Supabase por IP.
+- [ ] **FUT-04 · CSP con nonce.** Retirar `unsafe-inline`/`unsafe-eval` cuando
+  se haga una tanda específica compatible con Next y probada en navegador.
+- [ ] **FUT-05 · Límites nativos de sesión en Supabase.** Timebox/inactividad
+  del proveedor siguen en 0 y pueden requerir plan pago. Es distinto del cierre
+  en navegador de PER-01.
+- [ ] **FUT-06 · Boletín completo.** El formulario guarda suscriptores, pero no
+  hay administración, baja ni campañas. Decidir si se construye eso o se retira
+  la promesa de novedades.
+- [ ] **FUT-07 · Cambio de correo dentro de la app.** Hoy la cuenta puede
+  recuperar/cambiar contraseña por el flujo de correo, pero no cambiar su
+  correo desde Mi cuenta. Construirlo solo si el dueño lo necesita.
+- [ ] **FUT-08 · Ampliaciones no prometidas.** Mantenimiento de equipos,
+  nómina, facturación fiscal, campañas y automatizaciones requieren alcance y
+  reglas propios; no se consideran parte faltante del producto actual.
+
+---
+
+## Mapa de fases contra esta lista
+
+| Fase o etapa | Estado al 26 oct 2026 | Lo abierto vive en |
+|---|---|---|
+| Etapa 1 — Proteger lo construido | Muy avanzada | SEG-01 a SEG-06, CAL-03, QA-01, QA-02 |
+| Etapa 2 — Ordenar navegación | Hecha con módulos actuales | OP-09 |
+| Etapa 3 — Operación diaria | Parcial | OP-01 a OP-08, CLI-01, PER-01, QA-03, QA-06 |
+| Etapa 4 — Gestión y finanzas | Parcial | FIN-01 a FIN-07, CLI-02 |
+| Etapa 5 — Aceptación integral | Sin cerrar | CAL-01 a CAL-04, QA-01 a QA-07, LEG-01, NEG-01 |
+| Etapa 6 — Entrega | No empezada, a propósito | ENT-01 a ENT-05, SEG-03 |
+| Roles A/B | Cerradas y aplicadas | — |
+| Roles C — Anulación | Sin empezar | FIN-01 |
+| Calculadora A — Asistencia | Cerrada | — |
+| Calculadora B — Categoría | Parcial | CLI-02 |
+| Calculadora C — Plan/rutina | Construida | CLI-03, QA-04 |
+| Calculadora D — Interruptor | Construida para entrenador | CLI-05 solo si se piden permisos más finos |
+| Calculadora E — Productos | Cerrada | — |
+| Seguridad 1A/1B/1C | Código cerrado | SEG-02 para la aceptación con correo real |
+| B.1 lecturas / B04/B05/B07 | Cerrada | — |
+| B.2 acciones persistentes | Abierta | OP-01 a OP-03 |
+| Demo/entrega 1 | Aplazada | ENT-01 |
+| Demo/entrega 2 | Aplazada | ENT-02 a ENT-04 |
+| Demo/entrega 3 | Aplazada | ENT-05 |
+
+## Cerrado y comprobado — no volver a abrir por documentos viejos
+
+Esta sección es un resumen, no otra lista de tareas.
+
+- Seguridad de accesos: RLS/RPC endurecidos, `crm_is_staff`/`is_staff` con
+  AAL2, MFA TOTP del personal, rechazo de valores no escalares en MFA/PKCE,
+  demo imposible en producción, recuperación PKCE y contraseñas de la app de
+  12–128 caracteres.
+- CSP obligatoria y JSON-LD serializado de forma segura en el PR #56; solo
+  queda la confirmación de QA-01.
+- Lecturas B.1: sin datos ficticios ante errores conectados y sin convertir
+  fallos en cero/vacío. El endpoint antiguo de reset quedó retirado con 410;
+  la limpieza final segura es ENT-02/ENT-03.
+- Roles: fases A y B, asignación de roles con bitácora, entrenadores con
+  accesos aprobados, «Mis clientes» y seis permisos separados de caja. Un
+  cliente puede tener dos o más entrenadores.
+- Operación ya construida: clientes con o sin cuenta, recepción manual/QR,
+  tarifas Día C$40, Semana C$150, Quincena C$280 y Mes C$560, Boxeo US$20,
+  venta de productos con stock, ficha por módulos y Caja por módulos.
+- Finanzas ya construidas: cobros, gastos, deudas/abonos NIO y USD, vuelto en
+  abonos, comprobantes internos, reportes y exportaciones con filtros.
+- Progreso: medidas, altura única corregible solo por admin, asistencia por
+  día/semana/mes, calculadora con consentimiento/aprobación, menores bloqueados
+  en herramientas de salud y personal sin botón de reservar.
+- Personal: alta, edición, baja, reactivación y auditoría construidas en la
+  00049; solo falta QA-05.
+- Calidad: lint en cero con `react-hooks/set-state-in-effect` como error,
+  parche probado de `braces`, CI con SQL por rol, layout y concurrencia.
+- Auditoría de secretos del árbol actual: sin contraseñas reales, claves
+  privadas, JWT/tokens externos ni `service_role` real en el alcance revisado.
+  Las direcciones completas de prueba se quitaron de los archivos actuales; las
+  cuentas siguen intactas y el historial antiguo de Git no se reescribió.
+
+## Documentos eliminados al consolidar
+
+El 26 de octubre de 2026 se eliminaron las listas y planes que duplicaban esta
+fuente. Todo lo que seguía abierto quedó incorporado arriba. Si alguna vez hace
+falta consultar el texto histórico, está en Git hasta el commit `3bede94`:
+
+- `docs/MAPA-PENDIENTES.md`
+- `docs/LISTA-PENDIENTES-DUENO.md`
+- `docs/PENDIENTE-DEMO-Y-ENTREGA.md`
+- `docs/TAREA-LINT-REACT-HOOKS.md`
+- `docs/PLAN-PRODUCTO.md`
+- `docs/INVENTARIO-FUNCIONAL.md`
+- `docs/VALIDACION-INVENTARIO.md`
+- `docs/ROLES-MIGRACION-PLAN.md`
+- `docs/ROLES-CAJA-ENTRENADOR.md`
+- `docs/ANALISIS-CALCULADORA-Y-CATEGORIAS.md`
+- `docs/SPEC-CATEGORIAS-PRODUCTOS-ASISTENCIA.md`
+
+Los documentos que quedan en `docs/` son guías, decisiones o notas técnicas e
+históricas de implementación. **Ninguno es una segunda lista de pendientes.**
