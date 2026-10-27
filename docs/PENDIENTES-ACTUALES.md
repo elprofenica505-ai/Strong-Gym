@@ -45,8 +45,8 @@ Según el caso, debe cumplir:
 - GitHub al auditar: sin PR ni issues abiertos. No se encontró trabajo de una
   fase esperando en un PR sin fusionar.
 - Supabase: proyecto ACTIVE_HEALTHY. La última migración del repositorio y del
-  historial remoto es la **00060** (`catalogo_venta_con_imagen`). El siguiente
-  número libre es **00061**.
+  historial remoto es la **00061** (`estado_reservas_personal`). El siguiente
+  número libre es **00062**.
 - Nota permanente de la 00049: sus tablas y funciones principales existen en
   producción, pero su nombre no aparece en el historial remoto de migraciones.
   **No volver a ejecutarla sin investigar.**
@@ -59,7 +59,7 @@ Según el caso, debe cumplir:
 
 | Orden | Trabajo | Motivo |
 |---:|---|---|
-| 1 | **OP-01 a OP-04** | Hay botones que no guardan y las sesiones futuras terminan el 5 de noviembre de 2026. |
+| 1 | **OP-02 a OP-04** | Quedan botones que no guardan y las sesiones futuras terminan el 5 de noviembre de 2026. |
 | 2 | **SEG-01 y QA-01/QA-02** | Cierre corto de Auth y confirmación real de la CSP/MFA ya publicadas. |
 | 3 | **PER-01** | Cierre automático de 15 minutos; primero se confirma a qué roles aplica. |
 | 4 | **CLI-01** | Las vigencias ordenan planes, categorías y operación diaria. |
@@ -73,11 +73,14 @@ Según el caso, debe cumplir:
 La evidencia principal está en `src/components/admin/admin-panel.tsx`,
 `src/app/[locale]/panel/operacion/page.tsx` y `src/lib/data/queries.ts`.
 
-- [ ] **OP-01 · Alta · Código — Guardar asistencia, inasistencia y cancelación
-  administrativa de reservas.** Hoy los botones de Operación solo cambian
-  `bookingStatuses` en React. Cierre: API/RPC con rol y MFA correctos,
-  transiciones válidas, error visible sin cambiar el estado anterior,
-  persistencia tras recargar y en otra sesión, y efecto correcto sobre el cupo.
+- [x] **OP-01 · Alta · Código — Guardar asistencia, inasistencia y cancelación
+  administrativa de reservas.** Cerrado el 26 de octubre de 2026 con la
+  migración 00061 (`estado_reservas_personal`, versión remota
+  `20261027040552`), la RPC `staff_set_booking_status()` y
+  `POST /api/admin/bookings`. Solo administración/caja con MFA; la pantalla
+  cambia tras la confirmación del servidor y la RPC valida estado esperado,
+  transiciones, sesión y cupo. Evidencia: 40 comprobaciones SQL por rol y 11
+  pruebas de reglas/API; la aceptación integral sigue en CAL-03.
 - [ ] **OP-02 · Alta · Código — Guardar mensajes leídos/no leídos.** Hoy solo
   cambia `readMessages` en React. Cierre: persistir `messages.is_read` con
   permiso de personal, manejar error y conservar el estado tras recargar.
@@ -361,7 +364,7 @@ orden nueva.**
 |---|---|---|
 | Etapa 1 — Proteger lo construido | Muy avanzada | SEG-01 a SEG-06, CAL-03, QA-01, QA-02 |
 | Etapa 2 — Ordenar navegación | Hecha con módulos actuales | OP-09 |
-| Etapa 3 — Operación diaria | Parcial | OP-01 a OP-08, CLI-01, PER-01, QA-03, QA-06 |
+| Etapa 3 — Operación diaria | Parcial | OP-02 a OP-08, CLI-01, PER-01, QA-03, QA-06 |
 | Etapa 4 — Gestión y finanzas | Parcial | FIN-01 a FIN-07, CLI-02 |
 | Etapa 5 — Aceptación integral | Sin cerrar | CAL-01 a CAL-04, QA-01 a QA-07, LEG-01, NEG-01 |
 | Etapa 6 — Entrega | No empezada, a propósito | ENT-01 a ENT-05, SEG-03 |
@@ -374,7 +377,7 @@ orden nueva.**
 | Calculadora E — Productos | Cerrada | — |
 | Seguridad 1A/1B/1C | Código cerrado | SEG-02 para la aceptación con correo real |
 | B.1 lecturas / B04/B05/B07 | Cerrada | — |
-| B.2 acciones persistentes | Abierta | OP-01 a OP-03 |
+| B.2 acciones persistentes | Parcial | OP-02 a OP-03 |
 | Demo/entrega 1 | Aplazada | ENT-01 |
 | Demo/entrega 2 | Aplazada | ENT-02 a ENT-04 |
 | Demo/entrega 3 | Aplazada | ENT-05 |
@@ -398,6 +401,9 @@ Esta sección es un resumen, no otra lista de tareas.
 - Operación ya construida: clientes con o sin cuenta, recepción manual/QR,
   tarifas Día C$40, Semana C$150, Quincena C$280 y Mes C$560, Boxeo US$20,
   venta de productos con stock, ficha por módulos y Caja por módulos.
+- Reservas OP-01: asistencia, inasistencia y cancelación administrativa se
+  guardan con `staff_set_booking_status()` (00061), con estado esperado,
+  idempotencia, control de cupo y sin escritura directa a `bookings`.
 - Finanzas ya construidas: cobros, gastos, deudas/abonos NIO y USD, vuelto en
   abonos, comprobantes internos, reportes y exportaciones con filtros.
 - Progreso: medidas, altura única corregible solo por admin, asistencia por

@@ -527,6 +527,13 @@ const en = {
       markRead: "Mark read",
       toggleClass: "Enable / disable",
     },
+    bookingStatus: {
+      saving: "Saving the booking status…",
+      saved: "Booking status saved.",
+      failed: "The booking status could not be saved. It remains unchanged.",
+      offline:
+        "No connection. No change was confirmed; check the status before retrying.",
+    },
     empty: {
       bookings: "No bookings recorded yet.",
       messages: "No new enquiries.",

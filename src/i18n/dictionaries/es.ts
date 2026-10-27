@@ -530,6 +530,14 @@ const es = {
       markRead: "Marcar leído",
       toggleClass: "Activar / desactivar",
     },
+    bookingStatus: {
+      saving: "Guardando el estado de la reserva…",
+      saved: "Estado de la reserva guardado.",
+      failed:
+        "No se pudo guardar el estado de la reserva. Quedó como estaba.",
+      offline:
+        "Sin conexión. No confirmamos ningún cambio; revisá el estado antes de reintentar.",
+    },
     empty: {
       bookings: "Todavía no hay reservas registradas.",
       messages: "No hay consultas nuevas.",
