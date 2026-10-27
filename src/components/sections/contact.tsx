@@ -13,8 +13,13 @@ import { Section, SectionHeading } from "@/components/ui/section";
 import { Reveal } from "@/components/ui/reveal";
 import { ButtonLink } from "@/components/ui/button";
 import { ContactForm } from "./contact-form";
+import type { PublicDisciplineVisibility } from "@/lib/public-disciplines";
 
-export function Contact({ locale }: { locale: Locale }) {
+export function Contact({
+  locale,
+  showBoxing = true,
+  showZumba = true,
+}: { locale: Locale } & Partial<PublicDisciplineVisibility>) {
   const dict = getDictionary(locale);
   const hours = openingHoursSummary(locale);
 
@@ -141,7 +146,7 @@ export function Contact({ locale }: { locale: Locale }) {
 
         {/* Formulario */}
         <Reveal delay={60} className="lg:col-span-7">
-          <ContactForm />
+          <ContactForm showClassSubject={showBoxing || showZumba} />
         </Reveal>
       </div>
     </Section>

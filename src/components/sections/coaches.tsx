@@ -8,6 +8,7 @@ import { getCoaches } from "@/lib/data/queries";
 import { siteConfig } from "@/config/site";
 import { Section, SectionHeading } from "@/components/ui/section";
 import { Reveal } from "@/components/ui/reveal";
+import type { PublicDisciplineVisibility } from "@/lib/public-disciplines";
 
 const factIcons = [Users, Dumbbell, Hand];
 
@@ -20,7 +21,12 @@ const factIcons = [Users, Dumbbell, Hand];
  * usar las máquinas). Cuando haya entrenadores cargados en la base,
  * aparecen sus tarjetas automáticamente, como antes.
  */
-export async function Coaches({ locale }: { locale: Locale }) {
+export async function Coaches({
+  locale,
+  showBoxing = true,
+}: { locale: Locale } & Partial<
+  Pick<PublicDisciplineVisibility, "showBoxing">
+>) {
   const dict = getDictionary(locale);
   const result = await readData(() => getCoaches());
   if (!result.ok)
@@ -30,18 +36,24 @@ export async function Coaches({ locale }: { locale: Locale }) {
       </Section>
     );
   const coaches = result.data;
+  // Orden fijo del diccionario: el primer dato confirmado es el de boxeo.
+  const facts = dict.coaches.facts
+    .map((fact, index) => ({ fact, index }))
+    .filter(({ index }) => showBoxing || index !== 0);
 
   return (
     <Section id="equipo" className="border-b border-line">
       <SectionHeading
         eyebrow={dict.nav.coaches}
         title={dict.coaches.title}
-        subtitle={dict.coaches.subtitle}
+        subtitle={
+          showBoxing ? dict.coaches.subtitle : dict.coaches.subtitleGeneral
+        }
       />
 
       {coaches.length === 0 ? (
         <div className="mt-10 grid gap-4 sm:mt-14 sm:grid-cols-3">
-          {dict.coaches.facts.map((fact, index) => {
+          {facts.map(({ fact, index }) => {
             const Icon = factIcons[index % factIcons.length];
             return (
               <Reveal key={fact.title} delay={index * 60} className="h-full">

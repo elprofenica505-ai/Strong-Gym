@@ -3,6 +3,12 @@ const es = {
     title: "Strong Fitness Gym | Los Cedros, Villa El Carmen",
     description:
       "Gimnasio en Los Cedros, km 28½ Carretera Vieja a León. Máquinas modernas, pesas libres, boxeo para todas las edades, zumba y venta de suplementos. Lunes a sábado.",
+    descriptionBoxingOnly:
+      "Gimnasio en Los Cedros, km 28½ Carretera Vieja a León. Máquinas modernas, pesas libres, boxeo para todas las edades y venta de suplementos. Lunes a sábado.",
+    descriptionDanceOnly:
+      "Gimnasio en Los Cedros, km 28½ Carretera Vieja a León. Máquinas modernas, pesas libres, zumba y venta de suplementos. Lunes a sábado.",
+    descriptionWeightsOnly:
+      "Gimnasio en Los Cedros, km 28½ Carretera Vieja a León. Máquinas modernas, pesas libres y venta de suplementos. Lunes a sábado.",
     keywords:
       "gimnasio Villa El Carmen, gimnasio Los Cedros, boxeo Managua, zumba, suplementos, pesas, Carretera Vieja a León",
   },
@@ -49,6 +55,12 @@ const es = {
     titleBottom: "cerca de casa",
     subtitle:
       "Máquinas modernas, pesas libres, boxeo para todas las edades y bailoterapia. Además vendemos suplementos y ropa deportiva. Estamos en el km 28½ de la Carretera Vieja a León.",
+    subtitleBoxingOnly:
+      "Máquinas modernas, pesas libres y boxeo para todas las edades. Además vendemos suplementos y ropa deportiva. Estamos en el km 28½ de la Carretera Vieja a León.",
+    subtitleDanceOnly:
+      "Máquinas modernas, pesas libres y bailoterapia. Además vendemos suplementos y ropa deportiva. Estamos en el km 28½ de la Carretera Vieja a León.",
+    subtitleWeightsOnly:
+      "Máquinas modernas y pesas libres. Además vendemos suplementos y ropa deportiva. Estamos en el km 28½ de la Carretera Vieja a León.",
     primary: "Escribinos por WhatsApp",
     secondary: "Ver el gimnasio",
     scroll: "Deslizá para ver más",
@@ -77,6 +89,12 @@ const es = {
     title: "Todo en un solo lugar",
     subtitle:
       "Entrená, bailá, boxeá y conseguí tus suplementos sin salir de Los Cedros.",
+    subtitleBoxingOnly:
+      "Entrená, boxeá y conseguí tus suplementos sin salir de Los Cedros.",
+    subtitleDanceOnly:
+      "Entrená, bailá y conseguí tus suplementos sin salir de Los Cedros.",
+    subtitleWeightsOnly:
+      "Entrená y conseguí tus suplementos sin salir de Los Cedros.",
     items: [
       {
         title: "Máquinas modernas",
@@ -178,6 +196,11 @@ const es = {
     title: "Qué hacemos",
     subtitle:
       "Sala de pesas y máquinas de acceso libre, más clases dirigidas de boxeo y bailoterapia.",
+    subtitleBoxingOnly:
+      "Sala de pesas y máquinas de acceso libre, más clases dirigidas de boxeo.",
+    subtitleDanceOnly:
+      "Sala de pesas y máquinas de acceso libre, más clases dirigidas de bailoterapia.",
+    subtitleWeightsOnly: "Sala de pesas y máquinas de acceso libre.",
     duration: "min",
     capacity: "Capacidad: {count} personas",
     sessionCapacity: "Capacidad: {count} personas por sesión",
@@ -201,6 +224,7 @@ const es = {
     title: "Horarios y reservas",
     subtitle:
       "Las clases de boxeo son martes, miércoles y jueves, con tres horarios al día. Elegí el tuyo y reservá tu lugar.",
+    subtitleGeneral: "Elegí una clase dirigida publicada y reservá tu lugar.",
     week: "Semana",
     today: "Hoy",
     prevWeek: "Semana anterior",
@@ -256,6 +280,7 @@ const es = {
     ask: "Consultar por WhatsApp",
     consult: "Consultar",
     allIncluded: "Todos los planes incluyen",
+    changingRoom: "Vestuario",
     included: [
       "Máquinas modernas y pesas libres",
       "Orientación del personal para usar los equipos",
@@ -269,6 +294,7 @@ const es = {
   coaches: {
     title: "Nuestro equipo",
     subtitle: "Las clases de boxeo siempre tienen un entrenador a cargo.",
+    subtitleGeneral: "El personal te acompaña para entrenar con seguridad.",
     seeClasses: "Ver sus clases",
     // Sin nombres todavía: sólo lo ya confirmado en el gimnasio.
     facts: [
@@ -351,7 +377,7 @@ const es = {
       },
       {
         q: "¿Puedo ir a conocer antes de inscribirme?",
-        a: "Claro. Pasá en el horario de atención y te mostramos la sala, las máquinas y el área de boxeo.",
+        a: "Claro. Pasá en el horario de atención y te mostramos la sala y las máquinas.",
       },
     ],
   },
@@ -380,7 +406,7 @@ const es = {
       info: "Quiero información general",
       trial: "Quiero conocer el gimnasio",
       plans: "Consulta sobre precios",
-      corporate: "Boxeo y clases dirigidas",
+      corporate: "Clases dirigidas",
       other: "Otro motivo",
     },
     message: "Mensaje",
@@ -565,7 +591,7 @@ const es = {
       adminOnly:
         "Solo la administración puede activar o desactivar disciplinas.",
       effect:
-        "Al desactivar una disciplina, deja de verse en la web y no acepta reservas nuevas. Las sesiones y reservas ya hechas no se cancelan.",
+        "Al desactivar una disciplina, deja de verse en la web —incluida la página principal y su tarjeta de precio asociada— y no acepta reservas nuevas. Las sesiones y reservas ya hechas no se cancelan.",
     },
     empty: {
       bookings: "Todavía no hay reservas registradas.",
@@ -580,6 +606,12 @@ const es = {
     tagline: "Entrená fuerte.",
     about:
       "Gimnasio en Los Cedros, Villa El Carmen. Máquinas modernas, pesas libres, boxeo para todas las edades, bailoterapia y venta de suplementos.",
+    aboutBoxingOnly:
+      "Gimnasio en Los Cedros, Villa El Carmen. Máquinas modernas, pesas libres, boxeo para todas las edades y venta de suplementos.",
+    aboutDanceOnly:
+      "Gimnasio en Los Cedros, Villa El Carmen. Máquinas modernas, pesas libres, bailoterapia y venta de suplementos.",
+    aboutWeightsOnly:
+      "Gimnasio en Los Cedros, Villa El Carmen. Máquinas modernas, pesas libres y venta de suplementos.",
     quickLinks: "Navegación",
     servicesTitle: "Servicios",
     services: [

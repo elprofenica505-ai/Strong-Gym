@@ -10,8 +10,17 @@ import { getDictionary } from "@/i18n/dictionaries";
 import { isLocale, type Locale } from "@/i18n/config";
 import { siteConfig } from "@/config/site";
 import { getSessionsForWeek } from "@/lib/data/queries";
+import { getPublicDisciplineState } from "@/lib/data/public-discipline-state";
 import { scheduleJsonLd, serializeJsonLd } from "@/lib/structured-data";
 import { formatTime } from "@/lib/schedule";
+
+async function scheduleSubtitle(locale: Locale) {
+  const dict = getDictionary(locale);
+  const { visibility } = await getPublicDisciplineState();
+  return visibility.showBoxing
+    ? dict.schedule.subtitle
+    : dict.schedule.subtitleGeneral;
+}
 
 export async function generateMetadata({
   params,
@@ -24,7 +33,7 @@ export async function generateMetadata({
 
   return {
     title: dict.schedule.title,
-    description: dict.schedule.subtitle,
+    description: await scheduleSubtitle(locale),
     alternates: {
       canonical: `/${locale}/horarios`,
       languages: { es: "/es/horarios", en: "/en/horarios" },
@@ -56,6 +65,7 @@ export default async function SchedulePage({
       </section>
     );
   const { sessions } = result.data;
+  const subtitle = await scheduleSubtitle(locale);
   const jsonLdItems = sessions.slice(0, 50).map((session) => ({
     name: locale === "es" ? session.gymClass.name_es : session.gymClass.name_en,
     start: session.starts_at,
@@ -112,7 +122,7 @@ export default async function SchedulePage({
           <SectionHeading
             eyebrow={dict.nav.schedule}
             title={dict.schedule.title}
-            subtitle={dict.schedule.subtitle}
+            subtitle={subtitle}
           />
 
           <Reveal delay={140} className="mt-8 grid gap-3 sm:grid-cols-3">

@@ -1,14 +1,24 @@
 
 import { getDictionary } from "@/i18n/dictionaries";
 import type { Locale } from "@/i18n/config";
+import type { PublicDisciplineVisibility } from "@/lib/public-disciplines";
 
 /**
  * Cinta infinita con las disciplinas. Decorativa: se oculta a lectores
  * de pantalla porque el listado real está en la sección de clases.
  */
-export function Marquee({ locale }: { locale: Locale }) {
+export function Marquee({
+  locale,
+  showBoxing = true,
+  showZumba = true,
+}: { locale: Locale } & Partial<PublicDisciplineVisibility>) {
   const dict = getDictionary(locale);
-  const items = dict.marquee;
+  // Orden fijo del diccionario: Boxeo va tercero; Zumba y bailoterapia después.
+  const items = dict.marquee.filter((_, index) => {
+    if (index === 2) return showBoxing;
+    if (index === 3 || index === 4) return showZumba;
+    return true;
+  });
 
   const row = (
     <div className="flex shrink-0 items-center">

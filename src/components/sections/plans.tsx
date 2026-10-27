@@ -10,8 +10,18 @@ import { Section, SectionHeading } from "@/components/ui/section";
 import { Reveal } from "@/components/ui/reveal";
 import { ButtonLink } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  isPlanVisibleForDisciplines,
+  publicDisciplineVisibility,
+} from "@/lib/public-disciplines";
 
-export async function Plans({ locale }: { locale: Locale }) {
+export async function Plans({
+  locale,
+  activeClassSlugs,
+}: {
+  locale: Locale;
+  activeClassSlugs?: string[];
+}) {
   const dict = getDictionary(locale);
   const result = await readData(() => getPlans());
   if (!result.ok)
@@ -20,7 +30,14 @@ export async function Plans({ locale }: { locale: Locale }) {
         <DataUnavailable locale={locale} code={result.code} />
       </Section>
     );
-  const plans = result.data;
+  const visibility = publicDisciplineVisibility(activeClassSlugs);
+  const plans = result.data.filter((plan) =>
+    isPlanVisibleForDisciplines(plan.slug, visibility),
+  );
+  // Orden fijo del diccionario: el tercer beneficio menciona el área de boxeo.
+  const included = dict.plans.included.map((item, index) =>
+    !visibility.showBoxing && index === 2 ? dict.plans.changingRoom : item,
+  );
 
   return (
     <Section id="planes" className="border-b border-line">
@@ -155,7 +172,7 @@ export async function Plans({ locale }: { locale: Locale }) {
           </p>
 
           <ul className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
-            {dict.plans.included.map((item) => (
+            {included.map((item) => (
               <li key={item} className="flex items-start gap-2.5">
                 <Check
                   className="mt-0.5 size-4 shrink-0 text-brand"

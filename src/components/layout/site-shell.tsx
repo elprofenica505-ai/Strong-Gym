@@ -14,10 +14,12 @@ export function SiteShell({
   banner,
   children,
   footer,
+  bookCtaEnabled = true,
 }: {
   banner?: ReactNode;
   children: ReactNode;
   footer: ReactNode;
+  bookCtaEnabled?: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   // Dentro de los paneles del personal no se muestran el pie largo ni el botón de reserva.
@@ -32,7 +34,10 @@ export function SiteShell({
 
       <div className="flex min-h-dvh min-w-0 max-w-full flex-col lg:pl-64">
         {banner}
-        <SiteHeader onOpenMenu={openMenu} showBookCta={!inPanel} />
+        <SiteHeader
+          onOpenMenu={openMenu}
+          showBookCta={!inPanel && bookCtaEnabled}
+        />
         <main id="contenido" className="relative min-w-0 flex-1">
           {children}
         </main>

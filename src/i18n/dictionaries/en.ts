@@ -3,6 +3,12 @@ const en = {
     title: "Strong Fitness Gym | Los Cedros, Villa El Carmen",
     description:
       "Gym in Los Cedros, km 28½ Old Road to León. Modern machines, free weights, boxing for all ages, dance cardio and sports supplements. Monday to Saturday.",
+    descriptionBoxingOnly:
+      "Gym in Los Cedros, km 28½ Old Road to León. Modern machines, free weights, boxing for all ages and sports supplements. Monday to Saturday.",
+    descriptionDanceOnly:
+      "Gym in Los Cedros, km 28½ Old Road to León. Modern machines, free weights, dance cardio and sports supplements. Monday to Saturday.",
+    descriptionWeightsOnly:
+      "Gym in Los Cedros, km 28½ Old Road to León. Modern machines, free weights and sports supplements. Monday to Saturday.",
     keywords:
       "gym Villa El Carmen, gym Los Cedros, boxing Managua, zumba, supplements, weights, Old Road to Leon",
   },
@@ -49,6 +55,12 @@ const en = {
     titleBottom: "close to home",
     subtitle:
       "Modern machines, free weights, boxing for all ages and dance cardio. We also sell supplements and sportswear. Find us at km 28½ of the Old Road to León.",
+    subtitleBoxingOnly:
+      "Modern machines, free weights and boxing for all ages. We also sell supplements and sportswear. Find us at km 28½ of the Old Road to León.",
+    subtitleDanceOnly:
+      "Modern machines, free weights and dance cardio. We also sell supplements and sportswear. Find us at km 28½ of the Old Road to León.",
+    subtitleWeightsOnly:
+      "Modern machines and free weights. We also sell supplements and sportswear. Find us at km 28½ of the Old Road to León.",
     primary: "Message us on WhatsApp",
     secondary: "See the gym",
     scroll: "Scroll for more",
@@ -76,6 +88,12 @@ const en = {
   features: {
     title: "Everything in one place",
     subtitle: "Train, dance, box and get your supplements without leaving Los Cedros.",
+    subtitleBoxingOnly:
+      "Train, box and get your supplements without leaving Los Cedros.",
+    subtitleDanceOnly:
+      "Train, dance and get your supplements without leaving Los Cedros.",
+    subtitleWeightsOnly:
+      "Train and get your supplements without leaving Los Cedros.",
     items: [
       {
         title: "Modern machines",
@@ -174,6 +192,11 @@ const en = {
     title: "What we offer",
     subtitle:
       "Walk-in access to the weights and machine floor, plus coached boxing and dance cardio classes.",
+    subtitleBoxingOnly:
+      "Walk-in access to the weights and machine floor, plus coached boxing classes.",
+    subtitleDanceOnly:
+      "Walk-in access to the weights and machine floor, plus coached dance cardio classes.",
+    subtitleWeightsOnly: "Walk-in access to the weights and machine floor.",
     duration: "min",
     capacity: "Capacity: {count} people",
     sessionCapacity: "Capacity: {count} people per session",
@@ -197,6 +220,7 @@ const en = {
     title: "Schedule and bookings",
     subtitle:
       "Boxing classes run Tuesday, Wednesday and Thursday with three daily slots. Pick yours and book your spot.",
+    subtitleGeneral: "Choose a published coached class and book your spot.",
     week: "Week",
     today: "Today",
     prevWeek: "Previous week",
@@ -253,6 +277,7 @@ const en = {
     ask: "Ask on WhatsApp",
     consult: "Ask us",
     allIncluded: "Every plan includes",
+    changingRoom: "Changing area",
     included: [
       "Modern machines and free weights",
       "Staff guidance on how to use the equipment",
@@ -266,6 +291,7 @@ const en = {
   coaches: {
     title: "Our team",
     subtitle: "Boxing classes always have a coach in charge.",
+    subtitleGeneral: "Our staff helps you train safely.",
     seeClasses: "See their classes",
     // No names yet: only what is already confirmed at the gym.
     facts: [
@@ -348,7 +374,7 @@ const en = {
       },
       {
         q: "Can I visit before signing up?",
-        a: "Of course. Come by during opening hours and we will show you the floor, the machines and the boxing area.",
+        a: "Of course. Come by during opening hours and we will show you the floor and the machines.",
       },
     ],
   },
@@ -377,7 +403,7 @@ const en = {
       info: "I want general information",
       trial: "I want to visit the gym",
       plans: "Question about prices",
-      corporate: "Boxing and coached classes",
+      corporate: "Coached classes",
       other: "Something else",
     },
     message: "Message",
@@ -559,7 +585,7 @@ const en = {
         "No connection. No change was confirmed; check the status before retrying.",
       adminOnly: "Only an administrator can activate or deactivate disciplines.",
       effect:
-        "When a discipline is deactivated, it disappears from the website and stops accepting new bookings. Existing sessions and bookings are not cancelled.",
+        "When a discipline is deactivated, it disappears from the website — including the home page and its linked price card — and stops accepting new bookings. Existing sessions and bookings are not cancelled.",
     },
     empty: {
       bookings: "No bookings recorded yet.",
@@ -574,6 +600,12 @@ const en = {
     tagline: "Train hard.",
     about:
       "Gym in Los Cedros, Villa El Carmen. Modern machines, free weights, boxing for all ages, dance cardio and sports supplements.",
+    aboutBoxingOnly:
+      "Gym in Los Cedros, Villa El Carmen. Modern machines, free weights, boxing for all ages and sports supplements.",
+    aboutDanceOnly:
+      "Gym in Los Cedros, Villa El Carmen. Modern machines, free weights, dance cardio and sports supplements.",
+    aboutWeightsOnly:
+      "Gym in Los Cedros, Villa El Carmen. Modern machines, free weights and sports supplements.",
     quickLinks: "Navigation",
     servicesTitle: "Services",
     services: ["Weights and machines", "Boxing", "Zumba and dance cardio", "Supplements and sportswear"],

@@ -6,9 +6,20 @@ import { Section, SectionHeading } from "@/components/ui/section";
 import { Accordion } from "@/components/ui/accordion";
 import { ButtonLink } from "@/components/ui/button";
 import { Reveal } from "@/components/ui/reveal";
+import type { PublicDisciplineVisibility } from "@/lib/public-disciplines";
 
-export function Faq({ locale }: { locale: Locale }) {
+export function Faq({
+  locale,
+  showBoxing = true,
+  showZumba = true,
+}: { locale: Locale } & Partial<PublicDisciplineVisibility>) {
   const dict = getDictionary(locale);
+  // Orden fijo del diccionario: boxeo es la 3.ª pregunta y zumba la 5.ª.
+  const items = dict.faq.items.filter((_, index) => {
+    if (index === 2) return showBoxing;
+    if (index === 4) return showZumba;
+    return true;
+  });
 
   return (
     <Section id="preguntas" className="border-b border-line bg-cloud">
@@ -52,7 +63,7 @@ export function Faq({ locale }: { locale: Locale }) {
         </div>
 
         <Reveal delay={80} className="lg:col-span-7">
-          <Accordion items={dict.faq.items} />
+          <Accordion items={items} />
         </Reveal>
       </div>
     </Section>
