@@ -111,6 +111,9 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   precio asociada también siguen `is_active`; al desactivar Boxeo o Zumba ya
   no se anuncian en portada, cinta, tarjetas fijas, bloque especial, Precios,
   textos promocionales de Equipo, preguntas, pie, encabezado ni Horarios.
+  La verificación pública detectó además que la lista de sesiones conectada a
+  la base no aplicaba el filtro; ahora la vista pública excluye disciplinas
+  inactivas y solo Operación puede pedirlas explícitamente.
 - [ ] **OP-04 · Alta · Código/operación — Generar sesiones futuras sin depender
   de SQL manual.** En la auditoría quedaban 18 sesiones futuras, del 27 de
   octubre al **5 de noviembre de 2026**. Existe `generate_week_sessions()`,

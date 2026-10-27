@@ -140,7 +140,7 @@ const session = {
   starts_at: "2026-10-19T12:00:00Z",
   ends_at: "2026-10-19T13:00:00Z",
   capacity: 10,
-  gymClass: { id: "class", capacity: 10 },
+  gymClass: { id: "class", capacity: 10, is_active: true },
 };
 test("ocupación fallida no fabrica cupos disponibles", async () => {
   db((table) =>

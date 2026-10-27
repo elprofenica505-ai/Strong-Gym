@@ -343,7 +343,7 @@ export async function getSessionsForWeek(
     }
 
     const resolved = await resolveSessions(supabase, rows);
-    const sessions = rows.map((row) => {
+    const allSessions = rows.map((row) => {
       const session = resolved.get(row.id)!;
       const bookedCount = occupancy.get(row.id) ?? 0;
       return {
@@ -352,6 +352,11 @@ export async function getSessionsForWeek(
         spotsLeft: Math.max(0, session.capacity - bookedCount),
       };
     });
+    // La oferta pública no muestra sesiones de disciplinas pausadas.
+    // Operación puede pedirlas explícitamente para seguir viendo el historial.
+    const sessions = includeInactiveClasses
+      ? allSessions
+      : allSessions.filter((session) => session.gymClass.is_active === true);
 
     return { week, sessions };
   } catch (error) {
