@@ -389,9 +389,10 @@ export function AdminPanel({
         </p>
       ) : null}
 
-      {/* --- Pestañas --- */}
+      {/* --- Pestañas: en móvil, cuadrícula 2×2 para que ninguna quede
+          fuera de pantalla (Clases se escondía tras el desplazamiento). --- */}
       <div
-        className="flex gap-1.5 overflow-x-auto rounded-2xl border border-line bg-card p-1.5 no-scrollbar"
+        className="grid grid-cols-2 gap-1.5 rounded-2xl border border-line bg-card p-1.5 sm:flex sm:overflow-x-auto sm:no-scrollbar"
         role="tablist"
       >
         {tabs.map(({ id, label, Icon, badge }) => (
@@ -402,7 +403,7 @@ export function AdminPanel({
             aria-selected={tab === id}
             onClick={() => setTab(id)}
             className={cn(
-              "flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-[0.8125rem] font-medium transition-colors",
+              "flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-[0.8125rem] font-medium transition-colors sm:shrink-0 sm:px-4",
               tab === id
                 ? "bg-brand text-onbrand"
                 : "text-mist hover:bg-cloud hover:text-ink",
