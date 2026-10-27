@@ -19,6 +19,29 @@ test("código TOTP: exactamente 6 dígitos", () => {
   for (const bad of ["12345", "1234567", "12a456", " 123456", ""]) assert.equal(isTotpCode(bad), false);
 });
 
+test("código TOTP: arrays, números y objetos no se convierten a string", () => {
+  const manyCodes = Array.from({ length: 10_000 }, (_, i) => String(i).padStart(6, "0"));
+  for (const bad of [
+    ["123456"],
+    manyCodes,
+    123456,
+    { toString: () => "123456" },
+    new String("123456"),
+    true,
+    null,
+    undefined,
+  ]) {
+    assert.equal(isTotpCode(bad), false);
+  }
+
+  const arrayLevels = Object.assign([], { currentLevel: "aal2", nextLevel: "aal2" });
+  assert.equal(mfaStateFromLevels("admin", arrayLevels), "unavailable");
+  assert.equal(
+    mfaStateFromLevels("admin", { currentLevel: ["aal2"], nextLevel: "aal2" }),
+    "unavailable",
+  );
+});
+
 function mfaClient(overrides = {}) {
   const calls = [];
   const mfa = {
@@ -26,7 +49,7 @@ function mfaClient(overrides = {}) {
     listFactors: async () => overrides.list ?? { data: { all: [], totp: [] }, error: null },
     unenroll: async (params) => { calls.push(["unenroll", params.factorId]); return { data: { id: params.factorId }, error: null }; },
     enroll: async (params) => { calls.push(["enroll", params.factorType]); return overrides.enroll ?? { data: { id: "f1", type: "totp", totp: { qr_code: "data:image/svg+xml;utf8,<svg/>", secret: "SECRETO_DE_PRUEBA" } }, error: null }; },
-    challenge: async (params) => { calls.push(["challenge", params.factorId]); return { data: { id: "c1" }, error: null }; },
+    challenge: async (params) => { calls.push(["challenge", params.factorId]); return overrides.challenge ?? { data: { id: "c1" }, error: null }; },
     verify: async (params) => { calls.push(["verify", params.challengeId, params.code]); return overrides.verify ?? { data: {}, error: null }; },
   };
   return { client: { auth: { mfa } }, calls };
@@ -55,6 +78,26 @@ test("factor verificado: se usa el TOTP verificado o null si no hay", async () =
   assert.equal(await verifiedTotpFactorId(mfaClient().client), null);
 });
 
+test("respuestas MFA no escalares se descartan sin exponer un factor usable", async () => {
+  for (const enroll of [
+    { data: { id: ["f1"], type: "totp", totp: { qr_code: "data:image/svg+xml;utf8,<svg/>", secret: "SECRETO_DE_PRUEBA" } }, error: null },
+    { data: { id: "f1", type: "totp", totp: { qr_code: ["data:image/svg+xml;utf8,<svg/>"], secret: "SECRETO_DE_PRUEBA" } }, error: null },
+    { data: { id: "f1", type: "totp", totp: { qr_code: "data:image/svg+xml;utf8,<svg/>", secret: 123456 } }, error: null },
+  ]) {
+    assert.equal(await startTotpEnrollment(mfaClient({ enroll }).client), "unavailable");
+  }
+
+  const listNotArray = mfaClient({
+    list: { data: { all: [], totp: { id: "v1", status: "verified" } }, error: null },
+  });
+  assert.equal(await verifiedTotpFactorId(listNotArray.client), "unavailable");
+
+  const factorIdNotScalar = mfaClient({
+    list: { data: { all: [], totp: [{ id: ["v1"], status: "verified" }] }, error: null },
+  });
+  assert.equal(await verifiedTotpFactorId(factorIdNotScalar.client), "unavailable");
+});
+
 test("verificación: sólo con código de 6 dígitos y sin mensajes del proveedor", async () => {
   const { client, calls } = mfaClient();
   assert.deepEqual(await verifyTotpCode(client, "f1", "12345"), { ok: false, error: "code" });
@@ -63,6 +106,57 @@ test("verificación: sólo con código de 6 dígitos y sin mensajes del proveedo
   assert.deepEqual(calls, [["challenge", "f1"], ["verify", "c1", "123456"]]);
   const rejected = mfaClient({ verify: { data: null, error: { message: "EXAMPLE_PROVIDER_SECRET" } } });
   assert.deepEqual(await verifyTotpCode(rejected.client, "f1", "654321"), { ok: false, error: "code" });
+});
+
+test("verificación: una lista de códigos o un factor no escalar nunca llega al SDK", async () => {
+  const manyCodes = Array.from({ length: 10_000 }, (_, i) => String(i).padStart(6, "0"));
+  for (const code of [
+    manyCodes,
+    ["123456"],
+    123456,
+    { toString: () => "123456" },
+    new String("123456"),
+    null,
+    undefined,
+    true,
+  ]) {
+    const attempt = mfaClient();
+    assert.deepEqual(
+      await verifyTotpCode(attempt.client, "f1", code),
+      { ok: false, error: "code" },
+    );
+    assert.deepEqual(attempt.calls, []);
+  }
+
+  for (const factorId of [
+    ["f1"],
+    123,
+    { toString: () => "f1" },
+    new String("f1"),
+    "",
+    " ",
+    "x".repeat(129),
+    null,
+    undefined,
+  ]) {
+    const attempt = mfaClient();
+    assert.deepEqual(
+      await verifyTotpCode(attempt.client, factorId, "123456"),
+      { ok: false, error: "unavailable" },
+    );
+    assert.deepEqual(attempt.calls, []);
+  }
+
+  for (const challengeId of [["c1"], 123, { toString: () => "c1" }, "", null]) {
+    const attempt = mfaClient({
+      challenge: { data: { id: challengeId }, error: null },
+    });
+    assert.deepEqual(
+      await verifyTotpCode(attempt.client, "f1", "123456"),
+      { ok: false, error: "unavailable" },
+    );
+    assert.deepEqual(attempt.calls, [["challenge", "f1"]]);
+  }
 });
 
 test("pantalla MFA: primer render sin formulario ni secretos; copy ES/EN", async () => {
@@ -121,6 +215,16 @@ test("pantalla MFA: escribir el código no depende de repintar toda la tarjeta y
     assert.equal(confirm.disabled, true);
     fireEvent.change(input, { target: { value: "654321" } });
     assert.equal(confirm.disabled, false);
+
+    const duplicate = document.createElement("input");
+    duplicate.name = "code";
+    duplicate.value = "111111";
+    input.form.append(duplicate);
+    fireEvent.click(confirm);
+    assert.match((await screen.findByRole("alert")).textContent, /código no es válido/);
+    assert.deepEqual(calls.filter(([name]) => name === "challenge" || name === "verify"), []);
+    assert.equal(globalThis.__mfaRefreshes, 0);
+    duplicate.remove();
 
     fireEvent.click(confirm);
     await waitFor(() => assert.equal(globalThis.__mfaRefreshes, 1));

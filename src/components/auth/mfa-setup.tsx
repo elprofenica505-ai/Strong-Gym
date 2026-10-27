@@ -135,8 +135,11 @@ export function MfaSetup({
     const factorId =
       phase.kind === "enroll" ? phase.enrollment?.factorId : phase.kind === "verify" ? phase.factorId : null;
     if (!factorId) return false;
-    const submittedCode = new FormData(event.currentTarget).get("code");
-    const code = typeof submittedCode === "string" ? submittedCode : "";
+    const submittedCodes = new FormData(event.currentTarget).getAll("code");
+    const code =
+      submittedCodes.length === 1 && typeof submittedCodes[0] === "string"
+        ? submittedCodes[0]
+        : "";
     if (!isTotpCode(code)) {
       setError(t.wrongCode);
       return false;

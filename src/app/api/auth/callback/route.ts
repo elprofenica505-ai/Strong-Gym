@@ -22,7 +22,10 @@ export async function GET(request: Request) {
   });
   const code = url.searchParams.get("code");
   if (url.searchParams.has("error") || !code || code.length > 4096 ||
-      url.searchParams.getAll("code").length !== 1 || !["signup", "recovery"].includes(flow ?? "")) return redirect(failure);
+      url.searchParams.getAll("code").length !== 1 ||
+      url.searchParams.getAll("flow").length !== 1 ||
+      url.searchParams.getAll("locale").length > 1 ||
+      !["signup", "recovery"].includes(flow ?? "")) return redirect(failure);
   try {
     const client = await getSupabaseServerClient();
     if (!client) return redirect(failure);

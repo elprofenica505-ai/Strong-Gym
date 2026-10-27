@@ -20,6 +20,13 @@
 - Mientras exista **otro administrador con MFA**, ese administrador puede corregir la cuenta.
 - Por eso conviene dejar al dueño como segundo administrador antes de retirar el acceso temporal.
 
+## Protección contra listas de códigos
+
+- La verificación real la hace Supabase Auth: el código viaja como **un único texto** y el desafío como un UUID. Enviar una lista no convierte una petición en miles de intentos.
+- La app también falla cerrada en tiempo de ejecución: el código debe ser un string primitivo de exactamente 6 dígitos y el formulario debe traer un solo campo `code`. Arrays, números, objetos con `toString()` y duplicados se descartan antes de llamar al SDK.
+- El factor y el desafío también deben ser IDs escalares. Si Supabase devolviera un ID, QR o secreto con un tipo inesperado, el flujo se detiene como no disponible.
+- Esto no elimina la fuerza bruta con peticiones separadas si alguien roba primero la contraseña/sesión AAL1; esa capa depende de los límites de Supabase y de cuidar la sesión.
+
 ## Pendiente
 1. **Base de datos:** hoy el bloqueo está en la app. Una consulta directa a la API de Supabase con una sesión sin MFA todavía podría leer datos protegidos por las políticas actuales. Para cerrarlo hace falta un cambio SQL, que requiere autorización expresa.
 2. **Segundo administrador (dueño):** cambio de permisos remoto, sólo con autorización indicando su correo.
