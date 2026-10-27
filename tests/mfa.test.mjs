@@ -78,3 +78,57 @@ test("pantalla MFA: primer render sin formulario ni secretos; copy ES/EN", async
     assert.doesNotMatch(html, /<form|<input|<img|SECRETO/);
   }
 });
+
+test("pantalla MFA: escribir el código no depende de repintar toda la tarjeta y confirmar usa el valor del formulario", async () => {
+  const { JSDOM } = await import("jsdom");
+  const dom = new JSDOM("<!doctype html><html><body></body></html>", {
+    url: "https://strong.test/es/mi-cuenta",
+  });
+  for (const key of ["window", "document", "navigator", "HTMLElement", "Node", "FormData", "HTMLFormElement", "HTMLInputElement"])
+    Object.defineProperty(globalThis, key, {
+      value: dom.window[key],
+      configurable: true,
+      writable: true,
+    });
+  globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+  globalThis.self = dom.window;
+
+  const { client, calls } = mfaClient();
+  globalThis.__mfaBrowserClient = client;
+  globalThis.__mfaRefreshes = 0;
+  const React = (await import("react")).default;
+  const { render, screen, fireEvent, waitFor, cleanup } = await import("@testing-library/react");
+  const { MfaSetup } = await createLoader({
+    "next/navigation": "export const useRouter=()=>({refresh(){globalThis.__mfaRefreshes+=1;}});",
+    "@/lib/supabase/client": "export const getSupabaseBrowserClient=()=>globalThis.__mfaBrowserClient;",
+  })("components/auth/mfa-setup.tsx");
+
+  try {
+    render(React.createElement(MfaSetup, { locale: "es", role: "admin", initialState: "enroll" }));
+    const input = await screen.findByLabelText("Código de 6 dígitos");
+    const confirm = screen.getByRole("button", { name: "Confirmar" });
+    const qr = screen.getByAltText("Código QR para tu app de autenticación");
+    assert.equal(confirm.disabled, true);
+
+    fireEvent.change(input, { target: { value: "12a34" } });
+    assert.equal(input.value, "1234");
+    assert.equal(confirm.disabled, true);
+    assert.equal(screen.getByAltText("Código QR para tu app de autenticación"), qr);
+
+    fireEvent.change(input, { target: { value: "123456" } });
+    assert.equal(confirm.disabled, false);
+    fireEvent.change(input, { target: { value: "12345" } });
+    assert.equal(confirm.disabled, true);
+    fireEvent.change(input, { target: { value: "654321" } });
+    assert.equal(confirm.disabled, false);
+
+    fireEvent.click(confirm);
+    await waitFor(() => assert.equal(globalThis.__mfaRefreshes, 1));
+    assert.deepEqual(calls.filter(([name]) => name === "verify"), [["verify", "c1", "654321"]]);
+    assert.equal(input.value, "");
+    assert.equal(confirm.disabled, true);
+  } finally {
+    cleanup();
+    dom.window.close();
+  }
+});

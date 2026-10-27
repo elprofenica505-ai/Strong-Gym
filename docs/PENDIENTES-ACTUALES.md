@@ -297,11 +297,17 @@ Estado al cierre de hoy. Reemplaza las marcas anteriores donde haya diferencia.
 - [ ] Prueba guiada desde el celular de la nueva presentación: abrir Productos y stock (tarjetas, paginación, entrar y volver de una ficha de producto) y una ficha de cliente (volver al listado, abrir cada módulo, cobrar una tarifa, vender solo un producto, revisar saldo e historial). Entrenador y cliente no deben ver el catálogo de venta ni registrar estos cobros.
 - [ ] Siguiente tanda aprobada: cierre automático del personal a los 15 minutos de inactividad.
 
-## Actualización 26 oct 2026 — Caja por módulos (solo vista previa)
+## Actualización 26 oct 2026 — Caja por módulos publicada
 
-- [ ] La nueva presentación de **Caja** quedó únicamente en la rama `arena/d4ecf945-strong-gym` para revisarla en la vista previa del PR. Producción sigue en `main@989d71d`; **no fusionar hasta que el usuario vea la vista previa y la apruebe**. Si no le gusta, se cierra el PR sin fusionar y producción queda intacta.
+- [x] El usuario revisó la vista previa, la calificó perfecta y autorizó publicar primero esta tanda. El PR #53 se fusionó en `main@36cfb56`; Vercel `dpl_3sje75iELW9eB3HXBNP5fC96MGUo` quedó READY/PROMOTED y la producción pública respondió con las tarifas vigentes.
 - [x] La portada conserva el cobro principal y los KPI permitidos, pero deja de ser una página larga: las tarjetas abren **Movimientos**, **Cuentas y saldos**, **Métodos de pago**, **Gráficos** y **Cómo leer Caja** en pantallas propias con «Volver a Caja». **Registrar gasto**, **Cuentas por cobrar**, **Productos y stock** y **Reportes/cierre** reutilizan sus rutas existentes.
 - [x] No cambió ninguna regla de dinero, moneda, cálculo, permiso ni base de datos, y no se duplicó `MovementForm`. Los seis permisos separados de caja siguen decidiendo qué tarjetas y datos aparecen; sin permiso de saldos no se muestra el saldo.
 - [x] Movimientos reutiliza los últimos 30 que ya entrega el servidor, con búsqueda y filtros por tipo, método, moneda y estado, y muestra 25 por página. No debe presentarse como historial completo: paginar todo el historial requeriría otra tanda en el servidor.
-- [x] Verificación local de la vista previa: `npm run test:auth` 710/710, `npm run typecheck`, `npm run lint`, `npm run build` y `npm run test:metadata` en verde. Queda pendiente el CI del PR y la revisión visual del usuario.
-- [ ] La tanda de cierre automático por 15 minutos sigue pausada y no se mezcla con esta vista previa.
+- [x] Verificación de la tanda: `npm run test:auth` 710/710, `npm run typecheck`, `npm run lint`, `npm run build` y `npm run test:metadata` en verde; el CI del PR #53 también quedó en verde antes de fusionar.
+- [ ] La tanda de cierre automático por 15 minutos sigue pausada y no se mezcla con esta reorganización.
+
+## Actualización 26 oct 2026 — Respuesta del campo MFA (INP)
+
+- [ ] El usuario mostró un aviso **INP Issue** de **207,1 ms** cuyo selector corresponde al único campo con `w-40 tracking-[0.3em]`: el código de 6 dígitos de la verificación en dos pasos. No es un campo de Caja ni cambia ninguna regla MFA.
+- [x] Optimización aplicada en código: el código ahora vive en el DOM como campo no controlado; escribir los dígitos 1 a 5 no cambia estado de React y solo se actualiza el pequeño formulario al llegar a 6 o bajar de 6. Las instrucciones y el QR de registro quedaron memorizados para no repintarlos por la escritura. Al confirmar se lee el valor con `FormData`, se conserva la validación exacta de 6 dígitos y tras verificar se limpian el campo y el botón.
+- [ ] Falta la confirmación del usuario en el mismo celular: entrar otra vez con MFA y comprobar que escribir/pegar el código responde sin traba y que el aviso INP no vuelve a aparecer. La medición automática no sustituye esa confirmación en el dispositivo real.
