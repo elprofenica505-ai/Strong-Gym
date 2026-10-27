@@ -2,6 +2,20 @@ import { SCHEMA_DAYS, fullAddress, getSiteUrl, mapsLink, siteConfig } from "@/co
 import type { Dictionary } from "@/i18n/dictionaries";
 import type { Locale } from "@/i18n/config";
 
+/**
+ * Serializa JSON-LD sin permitir que un texto cierre la etiqueta script.
+ * JSON.parse interpreta las secuencias \uXXXX igual que los caracteres
+ * originales, pero el navegador ya no puede tomarlas como HTML.
+ */
+export function serializeJsonLd(value: unknown): string {
+  return (JSON.stringify(value) ?? "null")
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
+}
+
 /** JSON-LD del gimnasio, para que Google muestre horarios, dirección y teléfono. */
 export function homeJsonLd(locale: Locale, dict: Dictionary) {
   const siteUrl = getSiteUrl();

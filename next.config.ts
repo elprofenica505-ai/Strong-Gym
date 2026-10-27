@@ -31,21 +31,27 @@ const nextConfig: NextConfig = {
           { key: "Strict-Transport-Security", value: "max-age=31536000" },
           // Cámara sólo para este sitio (lector de QR); sin micrófono, ubicación ni pago de terceros.
           { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=(), payment=()" },
-          // CSP en modo informativo: no bloquea nada; los incumplimientos sólo se ven en la consola del navegador.
-          // Activar la política real (Content-Security-Policy) cuando no haya avisos en las páginas.
+          // CSP obligatoria con los únicos orígenes externos que usa la app:
+          // Supabase (datos/realtime/imágenes), Unsplash (fotos permitidas por
+          // next/image) y Google Maps (mapa embebido). Next todavía necesita
+          // scripts/estilos inline; no se permiten scripts de otros dominios.
           {
-            key: "Content-Security-Policy-Report-Only",
+            key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
+              "base-uri 'self'",
+              "object-src 'none'",
+              "frame-ancestors 'self'",
+              "form-action 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com",
               "font-src 'self' data:",
               "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
-              "frame-ancestors 'self'",
-              "object-src 'none'",
-              "base-uri 'self'",
-              "form-action 'self'",
+              "worker-src 'self' blob:",
+              "manifest-src 'self'",
+              "media-src 'self' blob:",
+              "frame-src 'self' https://www.google.com https://maps.google.com",
             ].join("; "),
           },
         ],

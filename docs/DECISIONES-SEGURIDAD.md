@@ -22,7 +22,7 @@ Fecha de esta versión: 2026-10-18 · Rama: `arena/85c54d7d-strong-gym` · PR ab
 **Hecho 2026-10-18:**
 - Paso 1: PR #14 mergeado a `main` (commit `3cc754c`).
 - Paso 2: SQL `00031_personal_requiere_mfa.sql` aplicado en Supabase (`crm_is_staff()` exige `aal2`). Verificado: definición actualizada; `anon` sin permiso de ejecución.
-- Verificación previa: único personal (admin `elprofenica505@gmail.com`) con factor TOTP verificado.
+- Verificación previa: único personal (administrador de prueba del desarrollador; correo exacto fuera de Git) con factor TOTP verificado.
 - Pendiente de prueba manual: entrar al panel y confirmar que Clientes y Caja cargan con datos.
 
 **Orden original:**

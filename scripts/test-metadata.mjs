@@ -74,6 +74,13 @@ try {
   for (const locale of ["es", "en"]) {
     const response = await fetchLocal(`/${locale}`);
     assert.equal(response.status, 200);
+    const csp = response.headers.get("content-security-policy");
+    assert.ok(csp, `${locale}: falta Content-Security-Policy obligatoria`);
+    assert.equal(response.headers.get("content-security-policy-report-only"), null);
+    assert.match(csp, /default-src 'self'/);
+    assert.match(csp, /object-src 'none'/);
+    assert.match(csp, /connect-src 'self' https:\/\/\*\.supabase\.co wss:\/\/\*\.supabase\.co/);
+    assert.match(csp, /frame-src 'self' https:\/\/www\.google\.com https:\/\/maps\.google\.com/);
     const html = await response.text();
     assert.match(html, /Servicio temporalmente no disponible|Service temporarily unavailable/);
     assert.doesNotMatch(html, /admin123|demo-admin|strong-gym:demo-users/);

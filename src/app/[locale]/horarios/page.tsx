@@ -10,7 +10,7 @@ import { getDictionary } from "@/i18n/dictionaries";
 import { isLocale, type Locale } from "@/i18n/config";
 import { siteConfig } from "@/config/site";
 import { getSessionsForWeek } from "@/lib/data/queries";
-import { scheduleJsonLd } from "@/lib/structured-data";
+import { scheduleJsonLd, serializeJsonLd } from "@/lib/structured-data";
 import { formatTime } from "@/lib/schedule";
 
 export async function generateMetadata({
@@ -93,7 +93,7 @@ export default async function SchedulePage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(scheduleJsonLd(locale, dict, jsonLdItems)),
+          __html: serializeJsonLd(scheduleJsonLd(locale, dict, jsonLdItems)),
         }}
       />
 

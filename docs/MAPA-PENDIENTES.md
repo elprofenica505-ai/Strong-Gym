@@ -39,18 +39,19 @@ Verificado con el historial completo del repositorio:
 - Antes de la venta integrada de productos, los PR #1 a #47 ya estaban fusionados en `main` (`5286f45`). Esta tanda se preparó en `arena/730a1319-strong-gym`.
 - Casi todas las ramas `arena/*` ya están contenidas en `main`. No se perdió trabajo en ellas.
 - La rama `arena/85c54d7d-strong-gym` se integró en esta rama (solo el archivo de la 00031). Su resto ya está en `main`.
-- La reorganización visual de Caja (PR #53) fue aprobada en vista previa, fusionada en `main@36cfb56` y promovida en producción. La corrección INP del campo MFA se publicó después en el PR #54 (`main@95f16af`); el endurecimiento escalar de MFA se trabaja en `arena/48373a8a-strong-gym`.
+- La reorganización visual de Caja (PR #53) fue aprobada en vista previa, fusionada en `main@36cfb56` y promovida en producción. La corrección INP y el endurecimiento escalar de MFA se publicaron después en los PR #54 y #55 (`main@30a9c5d`); la CSP obligatoria y el JSON-LD seguro se preparan en `arena/36288da5-strong-gym`.
 
 ## 4. Pendientes reales por área (resumen)
 
 Para el detalle, usa la fuente indicada en la sección 1.
 
 **Seguridad y legal**
-- Sin abrir: CSP (activar en modo informativo), verificador anti-bots (requiere cuenta externa), llave de acceso (cuando Supabase la saque de versión experimental).
+- Sin abrir: verificador anti-bots (requiere cuenta externa), llave de acceso (cuando Supabase la saque de versión experimental).
 - Sin empezar: revisión de Storage, CSRF y cabeceras completa; revisión del bundle final.
 - Requiere abogado: política de privacidad, términos, consentimiento de datos de salud, descargo de ejercicio, flujo de menores con tutor.
 - Dependencias: 0 vulnerabilidades en producción. `braces` (herramienta de desarrollo) quedó corregido con el parche `patches/braces+3.0.3.patch`: rechaza los patrones con llaves muy anidadas que desbordaban la pila. `npm audit` puede seguir nombrando el aviso porque la versión publicada no cambió. Detalle en `docs/DECISIONES-SEGURIDAD.md`.
 - MFA y listas de códigos (26 oct 2026): Supabase decodifica el código como un único string y limita los desafíos/verificaciones por IP, así que un array no prueba miles de códigos en una llamada. Aun así se cerró una coerción local: arrays, números, objetos y campos/parámetros duplicados se rechazan antes del SDK en MFA y en el callback PKCE. Queda como riesgo separado la fuerza bruta en peticiones individuales contra una sesión AAL1 robada.
+- CSP y JSON-LD (26 oct 2026): la CSP obligatoria permite el propio origen, Supabase HTTPS/WSS, imágenes de Supabase/Unsplash y el marco de Google Maps; el JSON-LD se serializa escapando los caracteres capaces de cerrar `script`. Las cuentas de prueba del usuario quedan intactas; sólo se quitaron sus direcciones completas del árbol actual de Git. Falta subir manualmente el mínimo remoto de contraseña de Supabase Auth de 6 a 12 porque el conector no expone ese campo.
 
 **Correo**
 - Remitente, dominio y SMTP propios: esperan datos del dueño.
