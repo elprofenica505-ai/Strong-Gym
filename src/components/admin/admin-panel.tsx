@@ -1,12 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   BadgeCheck,
   CalendarDays,
   CalendarX,
   Check,
   LayoutDashboard,
+  Loader2,
   Mail,
   MessageSquare,
   ShieldAlert,
@@ -24,7 +26,11 @@ import {
   formatTime,
   gymNow,
 } from "@/lib/schedule";
-import type { ContactMessage, GymClass } from "@/lib/types";
+import {
+  canStaffChangeBookingStatus,
+  type StaffBookingTargetStatus,
+} from "@/lib/admin/booking-status";
+import type { BookingStatus, ContactMessage, GymClass } from "@/lib/types";
 
 /* ============================================================
    Tipos que recibe el panel
@@ -34,7 +40,7 @@ export interface AdminBookingRow {
   id: string;
   memberName: string;
   memberEmail: string;
-  status: "confirmed" | "cancelled" | "attended" | "no_show";
+  status: BookingStatus;
   createdAt: string;
   className: string;
   classColor: string;
@@ -65,6 +71,8 @@ interface Props {
 }
 
 type Tab = "overview" | "bookings" | "messages" | "classes";
+type Notice = { tone: "ok" | "error"; text: string } | null;
+type BookingSaving = { id: string; status: StaffBookingTargetStatus } | null;
 
 export function AdminPanel({
   bookings,
@@ -74,17 +82,93 @@ export function AdminPanel({
   isDemo,
 }: Props) {
   const { dict, locale } = useDictionary();
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>("overview");
 
-  const [bookingStatuses, setBookingStatuses] = useState<
-    Record<string, string>
-  >(() => Object.fromEntries(bookings.map((b) => [b.id, b.status])));
+  // Solo se guardan los cambios ya confirmados por el servidor. El resto
+  // sigue mostrando el estado que vino de la base en `bookings`.
+  const [bookingStatusOverrides, setBookingStatusOverrides] = useState<
+    Partial<Record<string, StaffBookingTargetStatus>>
+  >({});
+  const [bookingSaving, setBookingSaving] = useState<BookingSaving>(null);
+  const [bookingNotice, setBookingNotice] = useState<Notice>(null);
   const [readMessages, setReadMessages] = useState<Record<string, boolean>>(
     () => Object.fromEntries(messages.map((m) => [m.id, m.is_read])),
   );
   const [classActive, setClassActive] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(classes.map((c) => [c.id, c.isActive])),
   );
+
+  async function updateBookingStatus(
+    booking: AdminBookingRow,
+    target: StaffBookingTargetStatus,
+  ) {
+    const expectedStatus =
+      bookingStatusOverrides[booking.id] ?? booking.status;
+    if (
+      isDemo ||
+      bookingSaving ||
+      !canStaffChangeBookingStatus(expectedStatus, target)
+    ) {
+      return;
+    }
+
+    setBookingSaving({ id: booking.id, status: target });
+    setBookingNotice(null);
+
+    try {
+      const response = await fetch("/api/admin/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookingId: booking.id,
+          status: target,
+          expectedStatus,
+        }),
+      });
+      const body = (await response.json().catch(() => null)) as {
+        ok?: unknown;
+        bookingId?: unknown;
+        sessionId?: unknown;
+        status?: unknown;
+        error?: unknown;
+        message?: unknown;
+      } | null;
+
+      if (
+        !response.ok ||
+        body?.ok !== true ||
+        body.bookingId !== booking.id ||
+        body.sessionId !== booking.sessionId ||
+        body.status !== target
+      ) {
+        setBookingNotice({
+          tone: "error",
+          text:
+            typeof body?.message === "string"
+              ? body.message
+              : dict.admin.bookingStatus.failed,
+        });
+        if (body?.error === "STALE_STATUS") router.refresh();
+        return;
+      }
+
+      setBookingStatusOverrides((prev) => ({ ...prev, [booking.id]: target }));
+      setBookingNotice({
+        tone: "ok",
+        text: `${booking.memberName}: ${dict.admin.bookingStatus.saved}`,
+      });
+      router.refresh();
+    } catch {
+      setBookingNotice({
+        tone: "error",
+        text: dict.admin.bookingStatus.offline,
+      });
+      router.refresh();
+    } finally {
+      setBookingSaving(null);
+    }
+  }
 
   const now = useMemo(() => gymNow(), []);
   const todayISO = formatDateNumeric(now, "es");
@@ -306,7 +390,29 @@ export function AdminPanel({
 
       {/* --- Reservas --- */}
       {tab === "bookings" ? (
-        <div className="overflow-hidden rounded-2xl border border-line bg-card">
+        <div className="flex flex-col gap-3">
+          {bookingSaving ? (
+            <p
+              role="status"
+              className="flex items-center gap-2 rounded-xl border border-line bg-card px-4 py-3 text-[0.8125rem] text-mist"
+            >
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              {dict.admin.bookingStatus.saving}
+            </p>
+          ) : bookingNotice ? (
+            <p
+              role={bookingNotice.tone === "error" ? "alert" : "status"}
+              className={
+                bookingNotice.tone === "error"
+                  ? "rounded-xl border border-alert/40 bg-alert/10 px-4 py-3 text-[0.8125rem] text-alert"
+                  : "rounded-xl border border-brand/30 bg-brand/[0.06] px-4 py-3 text-[0.8125rem] text-mist"
+              }
+            >
+              {bookingNotice.text}
+            </p>
+          ) : null}
+
+          <div className="overflow-hidden rounded-2xl border border-line bg-card">
           {bookings.length === 0 ? (
             <p className="px-5 py-14 text-center text-[0.875rem] text-fog">
               {dict.admin.empty.bookings}
@@ -337,7 +443,12 @@ export function AdminPanel({
                 <tbody className="divide-y divide-line">
                   {bookings.slice(0, 100).map((booking) => {
                     const status =
-                      bookingStatuses[booking.id] ?? booking.status;
+                      bookingStatusOverrides[booking.id] ?? booking.status;
+                    const savingTarget =
+                      bookingSaving?.id === booking.id
+                        ? bookingSaving.status
+                        : null;
+                    const savingThisBooking = savingTarget !== null;
 
                     return (
                       <tr
@@ -389,53 +500,92 @@ export function AdminPanel({
                           <div className="flex gap-1.5">
                             <button
                               type="button"
-                              disabled={isDemo}
+                              disabled={
+                                isDemo ||
+                                bookingSaving !== null ||
+                                !canStaffChangeBookingStatus(status, "attended")
+                              }
                               onClick={() =>
-                                setBookingStatuses((prev) => ({
-                                  ...prev,
-                                  [booking.id]: "attended",
-                                }))
+                                void updateBookingStatus(booking, "attended")
                               }
                               title={dict.admin.actions.markAttended}
                               aria-label={dict.admin.actions.markAttended}
-                              className="grid size-8 place-items-center rounded-lg border border-line text-fog transition-colors hover:border-brand/60 hover:text-brand"
+                              aria-busy={
+                                savingThisBooking &&
+                                savingTarget === "attended"
+                              }
+                              className="grid size-8 place-items-center rounded-lg border border-line text-fog transition-colors hover:border-brand/60 hover:text-brand disabled:cursor-not-allowed disabled:opacity-40"
                             >
-                              <Check className="size-3.5" aria-hidden="true" />
+                              {savingThisBooking &&
+                              savingTarget === "attended" ? (
+                                <Loader2
+                                  className="size-3.5 animate-spin"
+                                  aria-hidden="true"
+                                />
+                              ) : (
+                                <Check className="size-3.5" aria-hidden="true" />
+                              )}
                             </button>
 
                             <button
                               type="button"
-                              disabled={isDemo}
+                              disabled={
+                                isDemo ||
+                                bookingSaving !== null ||
+                                !canStaffChangeBookingStatus(status, "no_show")
+                              }
                               onClick={() =>
-                                setBookingStatuses((prev) => ({
-                                  ...prev,
-                                  [booking.id]: "no_show",
-                                }))
+                                void updateBookingStatus(booking, "no_show")
                               }
                               title={dict.admin.actions.markNoShow}
                               aria-label={dict.admin.actions.markNoShow}
-                              className="grid size-8 place-items-center rounded-lg border border-line text-fog transition-colors hover:border-alert/60 hover:text-alert"
+                              aria-busy={
+                                savingThisBooking &&
+                                savingTarget === "no_show"
+                              }
+                              className="grid size-8 place-items-center rounded-lg border border-line text-fog transition-colors hover:border-alert/60 hover:text-alert disabled:cursor-not-allowed disabled:opacity-40"
                             >
-                              <ShieldAlert
-                                className="size-3.5"
-                                aria-hidden="true"
-                              />
+                              {savingThisBooking &&
+                              savingTarget === "no_show" ? (
+                                <Loader2
+                                  className="size-3.5 animate-spin"
+                                  aria-hidden="true"
+                                />
+                              ) : (
+                                <ShieldAlert
+                                  className="size-3.5"
+                                  aria-hidden="true"
+                                />
+                              )}
                             </button>
 
                             <button
                               type="button"
-                              disabled={isDemo}
+                              disabled={
+                                isDemo ||
+                                bookingSaving !== null ||
+                                !canStaffChangeBookingStatus(status, "cancelled")
+                              }
                               onClick={() =>
-                                setBookingStatuses((prev) => ({
-                                  ...prev,
-                                  [booking.id]: "cancelled",
-                                }))
+                                void updateBookingStatus(booking, "cancelled")
                               }
                               title={dict.admin.actions.cancelBooking}
                               aria-label={dict.admin.actions.cancelBooking}
-                              className="grid size-8 place-items-center rounded-lg border border-line text-fog transition-colors hover:border-alert/60 hover:text-alert"
+                              aria-busy={
+                                savingThisBooking &&
+                                savingTarget === "cancelled"
+                              }
+                              className="grid size-8 place-items-center rounded-lg border border-line text-fog transition-colors hover:border-alert/60 hover:text-alert disabled:cursor-not-allowed disabled:opacity-40"
                             >
-                              <X className="size-3.5" aria-hidden="true" />
+                              {savingThisBooking &&
+                              savingTarget === "cancelled" ? (
+                                <Loader2
+                                  className="size-3.5 animate-spin"
+                                  aria-hidden="true"
+                                />
+                              ) : (
+                                <X className="size-3.5" aria-hidden="true" />
+                              )}
                             </button>
                           </div>
                         </td>
@@ -446,6 +596,7 @@ export function AdminPanel({
               </table>
             </div>
           )}
+          </div>
         </div>
       ) : null}
 
