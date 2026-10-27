@@ -227,6 +227,8 @@ const en = {
       "You already have the maximum of 3 active bookings. Cancel one to book another class.",
     sessionFull: "That class is full, try another time.",
     pastSession: "That class has already happened.",
+    inactiveClass:
+      "That discipline has been deactivated by the gym and is not accepting new bookings.",
     cancelledByGym: "The class was cancelled by the gym.",
     bookingUnconfirmed: "We could not verify the booking or cancellation in your account. Check My account before repeating; do not book again yet.",
     bookingError: "We could not complete the booking. Please try again.",
@@ -542,6 +544,22 @@ const en = {
       failed: "The enquiry status could not be saved. It remains unchanged.",
       offline:
         "No connection. No change was confirmed; check the status before retrying.",
+    },
+    classActive: {
+      active: "Active",
+      inactive: "Deactivated",
+      saving: "Saving the discipline status…",
+      savedActive:
+        "Discipline activated. It is now shown on the website and accepts new bookings.",
+      savedInactive:
+        "Discipline deactivated. It is no longer shown on the website and does not accept new bookings.",
+      failed:
+        "The discipline status could not be saved. It remains unchanged.",
+      offline:
+        "No connection. No change was confirmed; check the status before retrying.",
+      adminOnly: "Only an administrator can activate or deactivate disciplines.",
+      effect:
+        "When a discipline is deactivated, it disappears from the website and stops accepting new bookings. Existing sessions and bookings are not cancelled.",
     },
     empty: {
       bookings: "No bookings recorded yet.",

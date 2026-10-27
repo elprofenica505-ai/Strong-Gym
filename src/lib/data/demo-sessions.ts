@@ -103,7 +103,11 @@ function simulatedBookedCount(sessionId: string, capacity: number, hour: number)
 }
 
 /** Todas las clases de una semana, con su profe y su ocupación. */
-export function generateWeekSessions(week: WeekRange): SessionDetail[] {
+export function generateWeekSessions(
+  week: WeekRange,
+  options?: { includeInactiveClasses?: boolean },
+): SessionDetail[] {
+  const includeInactiveClasses = options?.includeInactiveClasses === true;
   const sessions: SessionDetail[] = [];
   let counter = 0;
 
@@ -114,7 +118,9 @@ export function generateWeekSessions(week: WeekRange): SessionDetail[] {
 
     for (const slot of slots) {
       const gymClass = classesBySlug.get(slot.slug);
-      if (!gymClass) continue;
+      if (!gymClass || (!includeInactiveClasses && !gymClass.is_active)) {
+        continue;
+      }
 
       const [hour, minute] = slot.time.split(":").map(Number);
       const startsAt = fromGymTime(parts.year, parts.month, parts.day, hour, minute);
