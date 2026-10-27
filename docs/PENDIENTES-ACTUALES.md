@@ -30,7 +30,7 @@ o de un servicio de pago. No se ejecutan mientras tanto. Se retoman cuando el us
 - [x] Cierre por inactividad (18 oct, rama arena/985edb39): sólo administrador cierra sesión tras 2 horas sin actividad (personal confirmado sin cierre automático); clientes no se cierran solos (sólo cierre manual). Pruebas en tests/session-policy.test.mjs. Pendiente: verificar en navegador real.
 - [~] Roles de caja y entrenador. Fase A aplicada (00033). Fase B lista en código y SQL 00034 probada localmente (58/58), pendiente de autorización para aplicar en Supabase. Pendiente de UI: panel de asignación de roles y vista del entrenador (requieren aprobar dónde van en el menú). Fase C (anulación) sin empezar. Ver docs/ROLES-MIGRACION-PLAN.md.
 - [ ] Llave de acceso (huella o rostro): cuando Supabase la saque de versión experimental.
-- [ ] Cuenta de prueba de cliente (`baltodano19932025@gmail.com`): sólo recibe correos si se agrega como miembro del equipo o si hay correo propio; no se creó.
+- [ ] Cuenta de prueba de cliente del desarrollador (correo exacto fuera de Git): sólo recibe correos si se agrega como miembro del equipo o si hay correo propio; no se creó.
 
 Ya quedó hecho en esta misma etapa (sin pendientes de pago): MFA del personal, verificación en dos pasos de la cuenta Supabase, 00031 y 00032, antispam básico, cabeceras HSTS y Permissions-Policy, revisión de bundle y secretos, alcance de la app instalada.
 
@@ -130,7 +130,7 @@ explícita. No afirmar seguridad absoluta ni certificación externa por tener HT
 - [x] Prueba manual: ingreso con código de app y datos sin cambios.
 - [x] Activar verificación en dos pasos en la cuenta de Supabase (panel). Verificado en sólo lectura: mfa_enabled = true.
 - [ ] Correo del gimnasio (remitente real y dominio). En espera del dato del usuario; bloquea los pasos de recuperación con correo real.
-- [ ] Recuperación con correo real: sólo después de tener remitente. Cuenta de prueba de cliente: `baltodano19932025@gmail.com`, que no es miembro del equipo de Supabase; no recibe correos del servicio integrado.
+- [ ] Recuperación con correo real: sólo después de tener remitente. Cuenta de prueba de cliente del desarrollador (correo exacto fuera de Git), que no es miembro del equipo de Supabase; no recibe correos del servicio integrado.
 - [ ] Dueño como segundo administrador: sólo con correo del dueño y autorización escrita, cuando la aplicación esté lista.
 - [x] Revisión de secretos en código e historial (sólo lectura): sin claves reales; `.env` ignorado; sólo ejemplos y nombres en documentación/pruebas. Falta revisar el bundle compilado en el build de producción.
 - [x] HALLAZGO 18 oct: 22 políticas usan is_staff() sin aal2. Corregido con 00032 (aplicado y verificado: is_staff exige aal2; anon no ejecuta is_staff).
@@ -319,3 +319,12 @@ Estado al cierre de hoy. Reemplaza las marcas anteriores donde haya diferencia.
 - [x] El formulario MFA ahora exige exactamente un campo `code`. El callback PKCE ya exigía un único `code`; además ahora rechaza `flow` duplicado y `locale` repetido antes de consultar el SDK.
 - [x] La configuración remota revisada mantiene TOTP de registro/verificación activo y `mfa_allow_low_aal = false`. No se cambió configuración de Supabase ni se hizo migración.
 - [ ] Riesgo residual normal de cualquier TOTP de 6 dígitos: intentos separados contra una sesión AAL1 robada siguen dependiendo del límite de Supabase y de proteger la contraseña/sesión. Un bloqueo adicional por usuario/factor con Auth Hook sería otra tanda con política de recuperación propia; no se mezcla con esta corrección.
+
+## Actualización 26 oct 2026 — CSP obligatoria, JSON-LD seguro y correos fuera del árbol actual
+
+- [x] El usuario autorizó las propuestas y decidió seguir usando sus propias cuentas/correos de prueba hasta mostrar la app al dueño. En esta tanda **no se cambiaron cuentas, correos de ingreso, contraseñas, roles ni MFA**.
+- [x] Se retiraron las direcciones completas del árbol actual de documentación y del SQL de diagnóstico; el diagnóstico usa `correo-de-prueba@test.invalid` para reemplazarlo sólo en una copia local. Esto no borra commits históricos que ya contenían esos textos.
+- [x] JSON-LD ahora pasa por `serializeJsonLd`, que escapa `<`, `>`, `&` y separadores Unicode para que un nombre de clase o sala no pueda cerrar la etiqueta `script`. Hay una prueba específica con un texto malicioso.
+- [x] La CSP dejó de ser `Report-Only`: ahora es obligatoria y sólo permite el propio origen, Supabase HTTPS/WSS, imágenes de Supabase/Unsplash y el marco de Google Maps. Se conservan `unsafe-inline`/`unsafe-eval` por compatibilidad actual de Next; endurecerla con nonce queda como mejora posterior opcional.
+- [x] Verificación local: `npm run test:auth` 717/717, tipos, lint, build y `test:metadata` en verde. La prueba HTTP exige la CSP obligatoria y la ausencia de la cabecera Report-Only.
+- [ ] Supabase Auth remoto todavía muestra `password_min_length = 6`: la herramienta de actualización disponible no expone ese campo y no se fingió el cambio. Queda como paso manual en Supabase Dashboard ponerlo en 12. Mientras tanto, la app ya exige 12–128 caracteres al registrarse y al recuperar contraseña.

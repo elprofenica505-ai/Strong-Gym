@@ -17,7 +17,7 @@ import { Testimonials } from "@/components/sections/testimonials";
 import { MemberSummary } from "@/components/account/member-summary";
 import { getDictionary } from "@/i18n/dictionaries";
 import { isLocale } from "@/i18n/config";
-import { homeJsonLd } from "@/lib/structured-data";
+import { homeJsonLd, serializeJsonLd } from "@/lib/structured-data";
 import { fotoDisponible } from "@/components/ui/gym-photo";
 
 export async function generateMetadata({
@@ -46,7 +46,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       <script
         type="application/ld+json"
         // Datos estructurados para Google (negocio local)
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd(safeLocale, dict)) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(homeJsonLd(safeLocale, dict)) }}
       />
 
       <Hero fachada={fotoDisponible("/images/fachada.jpg")} />

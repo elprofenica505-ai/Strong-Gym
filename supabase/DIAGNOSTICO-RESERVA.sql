@@ -1,8 +1,9 @@
 -- SÓLO LECTURA. No crea, reserva, cancela, actualiza ni borra nada.
--- Caso de prueba: Carlicheta, Boxeo 20-oct-2026 06:00 Managua.
+-- Caso de prueba: cuenta del desarrollador, Boxeo 20-oct-2026 06:00 Managua.
+-- Reemplazá correo-de-prueba@test.invalid por el correo real sólo en tu copia local; no lo guardés en Git.
 select 'cuenta_prueba' as apartado,
   coalesce(jsonb_agg(jsonb_build_object('id',p.id,'role',p.role)), '[]'::jsonb) as resultado
-from public.profiles p where lower(p.email)='carlichetasequeira@gmail.com'
+from public.profiles p where lower(p.email)='correo-de-prueba@test.invalid'
 union all
 select 'clase_y_reservas', coalesce(jsonb_agg(to_jsonb(x)), '[]'::jsonb)
 from (
@@ -10,7 +11,7 @@ from (
     (select count(*) from public.bookings b where b.session_id=s.id and b.status in ('confirmed','attended')) as ocupadas,
     (select coalesce(jsonb_agg(jsonb_build_object('id',b.id,'user_id',b.user_id,'status',b.status,'created_at',b.created_at)), '[]'::jsonb)
       from public.bookings b join public.profiles p on p.id=b.user_id
-      where b.session_id=s.id and lower(p.email)='carlichetasequeira@gmail.com') as reservas_de_la_cuenta_prueba
+      where b.session_id=s.id and lower(p.email)='correo-de-prueba@test.invalid') as reservas_de_la_cuenta_prueba
   from public.sessions s
   where s.starts_at='2026-10-20 06:00:00-06'::timestamptz
 ) x
