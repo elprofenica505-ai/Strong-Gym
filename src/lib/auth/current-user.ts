@@ -35,16 +35,22 @@ export function mfaStateFromLevels(
   levels: AalLevels | null | undefined,
 ): MfaState {
   if (!isStaffRole(role)) return "not_required";
-  if (!levels) return "unavailable";
+  if (!levels || typeof levels !== "object" || Array.isArray(levels)) {
+    return "unavailable";
+  }
   if (levels.currentLevel === "aal2") return "ok";
   if (levels.currentLevel === "aal1" && levels.nextLevel === "aal2") return "verify";
   if (levels.currentLevel === "aal1" && levels.nextLevel === "aal1") return "enroll";
   return "unavailable";
 }
 
-/** Código TOTP: exactamente 6 dígitos. */
-export function isTotpCode(value: string): boolean {
-  return /^\d{6}$/.test(value);
+/**
+ * Código TOTP: exactamente un string primitivo de 6 dígitos.
+ * No convertir arrays, números ni objetos: RegExp.test() los pasaría a texto
+ * y una entrada como ["123456"] podría colarse como si fuera escalar.
+ */
+export function isTotpCode(value: unknown): value is string {
+  return typeof value === "string" && /^\d{6}$/.test(value);
 }
 
 export interface AuthUser {

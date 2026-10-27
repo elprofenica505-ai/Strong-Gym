@@ -14,6 +14,16 @@ export interface TotpEnrollment {
   secret: string;
 }
 
+/** Solo strings primitivos no vacíos; nunca arrays ni objetos convertibles. */
+function isScalarString(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
+}
+
+/** IDs de factor/desafío: un único string acotado y sin espacios. */
+function isScalarId(value: unknown): value is string {
+  return isScalarString(value) && value.length <= 128 && !/\s/.test(value);
+}
+
 /** Lee el estado real de la sesión; no confía en metadata ni en el rol del JWT. */
 export async function readMfaState(
   client: SupabaseClient,
@@ -38,8 +48,11 @@ export async function startTotpEnrollment(
   try {
     const { data: list, error: listError } = await client.auth.mfa.listFactors();
     if (listError || !list) return "unavailable";
-    for (const factor of list.all ?? []) {
-      if (factor.factor_type === "totp" && factor.status === "unverified") {
+    const allFactors: unknown = list.all ?? [];
+    if (!Array.isArray(allFactors)) return "unavailable";
+    for (const factor of allFactors) {
+      if (factor?.factor_type === "totp" && factor.status === "unverified") {
+        if (!isScalarId(factor.id)) return "unavailable";
         await client.auth.mfa.unenroll({ factorId: factor.id });
       }
     }
@@ -47,11 +60,21 @@ export async function startTotpEnrollment(
       factorType: "totp",
       friendlyName: MFA_FACTOR_NAME,
     });
-    if (error || !data?.id || data.type !== "totp") return "unavailable";
+    const qrCode: unknown = data?.totp?.qr_code;
+    const secret: unknown = data?.totp?.secret;
+    if (
+      error ||
+      !isScalarId(data?.id) ||
+      data.type !== "totp" ||
+      !isScalarString(qrCode) ||
+      !isScalarString(secret)
+    ) {
+      return "unavailable";
+    }
     return {
       factorId: data.id,
-      qrCode: data.totp.qr_code,
-      secret: data.totp.secret,
+      qrCode,
+      secret,
     };
   } catch {
     return "unavailable";
@@ -65,8 +88,11 @@ export async function verifiedTotpFactorId(
   try {
     const { data, error } = await client.auth.mfa.listFactors();
     if (error || !data) return "unavailable";
-    const factor = (data.totp ?? []).find((f) => f.status === "verified");
-    return factor?.id ?? null;
+    const totpFactors: unknown = data.totp ?? [];
+    if (!Array.isArray(totpFactors)) return "unavailable";
+    const factor = totpFactors.find((f) => f?.status === "verified");
+    if (!factor) return null;
+    return isScalarId(factor.id) ? factor.id : "unavailable";
   } catch {
     return "unavailable";
   }
@@ -75,13 +101,18 @@ export async function verifiedTotpFactorId(
 /** Desafío + verificación del código. Al éxito Supabase sube la sesión a AAL2. */
 export async function verifyTotpCode(
   client: SupabaseClient,
-  factorId: string,
-  code: string,
+  factorId: unknown,
+  code: unknown,
 ): Promise<MfaActionResult> {
+  // Frontera en tiempo de ejecución: TypeScript no protege llamadas desde JS,
+  // JSON o superficies sin tipar. Nada que no sea un único string llega al SDK.
   if (!isTotpCode(code)) return { ok: false, error: "code" };
+  if (!isScalarId(factorId)) return { ok: false, error: "unavailable" };
   try {
     const { data: challenge, error: challengeError } = await client.auth.mfa.challenge({ factorId });
-    if (challengeError || !challenge) return { ok: false, error: "unavailable" };
+    if (challengeError || !challenge || !isScalarId(challenge.id)) {
+      return { ok: false, error: "unavailable" };
+    }
     const { error } = await client.auth.mfa.verify({
       factorId,
       challengeId: challenge.id,

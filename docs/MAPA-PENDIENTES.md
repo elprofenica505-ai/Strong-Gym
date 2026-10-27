@@ -39,7 +39,7 @@ Verificado con el historial completo del repositorio:
 - Antes de la venta integrada de productos, los PR #1 a #47 ya estaban fusionados en `main` (`5286f45`). Esta tanda se preparó en `arena/730a1319-strong-gym`.
 - Casi todas las ramas `arena/*` ya están contenidas en `main`. No se perdió trabajo en ellas.
 - La rama `arena/85c54d7d-strong-gym` se integró en esta rama (solo el archivo de la 00031). Su resto ya está en `main`.
-- La reorganización visual de Caja (PR #53) fue aprobada en vista previa, fusionada en `main@36cfb56` y promovida en producción. La misma sesión continúa en `arena/d4ecf945-strong-gym` solo para la corrección INP del campo MFA.
+- La reorganización visual de Caja (PR #53) fue aprobada en vista previa, fusionada en `main@36cfb56` y promovida en producción. La corrección INP del campo MFA se publicó después en el PR #54 (`main@95f16af`); el endurecimiento escalar de MFA se trabaja en `arena/48373a8a-strong-gym`.
 
 ## 4. Pendientes reales por área (resumen)
 
@@ -50,6 +50,7 @@ Para el detalle, usa la fuente indicada en la sección 1.
 - Sin empezar: revisión de Storage, CSRF y cabeceras completa; revisión del bundle final.
 - Requiere abogado: política de privacidad, términos, consentimiento de datos de salud, descargo de ejercicio, flujo de menores con tutor.
 - Dependencias: 0 vulnerabilidades en producción. `braces` (herramienta de desarrollo) quedó corregido con el parche `patches/braces+3.0.3.patch`: rechaza los patrones con llaves muy anidadas que desbordaban la pila. `npm audit` puede seguir nombrando el aviso porque la versión publicada no cambió. Detalle en `docs/DECISIONES-SEGURIDAD.md`.
+- MFA y listas de códigos (26 oct 2026): Supabase decodifica el código como un único string y limita los desafíos/verificaciones por IP, así que un array no prueba miles de códigos en una llamada. Aun así se cerró una coerción local: arrays, números, objetos y campos/parámetros duplicados se rechazan antes del SDK en MFA y en el callback PKCE. Queda como riesgo separado la fuerza bruta en peticiones individuales contra una sesión AAL1 robada.
 
 **Correo**
 - Remitente, dominio y SMTP propios: esperan datos del dueño.

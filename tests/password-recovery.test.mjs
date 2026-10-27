@@ -64,11 +64,16 @@ const loadCallback=(configured=true)=>createLoader({
   '@/lib/supabase/server':'export const getSupabaseServerClient=()=>globalThis.__callbackClient;',
 })('app/api/auth/callback/route.ts');
 const {GET}=await loadCallback();
-for(const query of ['','?code=x&flow=evil','?error=access_denied&flow=recovery','?code=x&code=y&flow=recovery','?flow=recovery&code='+ 'x'.repeat(4097)])test(`callback inválido no consulta SDK (${query.length})`,async()=>{
-  globalThis.__callbackClient=null;
+for(const query of ['','?code=x&flow=evil','?error=access_denied&flow=recovery','?code=x&code=y&flow=recovery','?code=x&flow=recovery&flow=signup','?code=x&flow=recovery&locale=es&locale=en','?flow=recovery&code='+ 'x'.repeat(4097)])test(`callback inválido no consulta SDK (${query.length})`,async()=>{
+  const calls=[];
+  globalThis.__callbackClient={auth:{
+    exchangeCodeForSession:async()=>{calls.push('exchange');return {data:{session:{user:{id:'expected'}}},error:null};},
+    getUser:async()=>{calls.push('verify');return {data:{user:{id:'expected'}},error:null};},
+  }};
   const response=await GET(new Request('https://untrusted.example/api/auth/callback'+query));
   assert.equal(response.status,303);assert.match(response.headers.get('location'),/^\/es\/(ingresar|recuperar)\?error=link$/);
   assert.match(response.headers.get('cache-control'),/no-store/);assert.equal(response.headers.get('referrer-policy'),'no-referrer');
+  assert.deepEqual(calls,[]);
 });
 for(const flow of ['signup','recovery'])test(`callback ${flow}: código intercambiado, identidad verificada y next externo ignorado`,async()=>{
   const calls=[];
