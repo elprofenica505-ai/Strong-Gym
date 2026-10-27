@@ -525,12 +525,21 @@ const en = {
       markNoShow: "Mark no show",
       cancelBooking: "Cancel",
       markRead: "Mark read",
+      markUnread: "Mark unread",
       toggleClass: "Enable / disable",
     },
     bookingStatus: {
       saving: "Saving the booking status…",
       saved: "Booking status saved.",
       failed: "The booking status could not be saved. It remains unchanged.",
+      offline:
+        "No connection. No change was confirmed; check the status before retrying.",
+    },
+    messageRead: {
+      saving: "Saving the enquiry status…",
+      savedRead: "Enquiry marked as read.",
+      savedUnread: "Enquiry marked as unread.",
+      failed: "The enquiry status could not be saved. It remains unchanged.",
       offline:
         "No connection. No change was confirmed; check the status before retrying.",
     },

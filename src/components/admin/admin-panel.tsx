@@ -73,6 +73,7 @@ interface Props {
 type Tab = "overview" | "bookings" | "messages" | "classes";
 type Notice = { tone: "ok" | "error"; text: string } | null;
 type BookingSaving = { id: string; status: StaffBookingTargetStatus } | null;
+type MessageSaving = { id: string; isRead: boolean } | null;
 
 export function AdminPanel({
   bookings,
@@ -92,9 +93,12 @@ export function AdminPanel({
   >({});
   const [bookingSaving, setBookingSaving] = useState<BookingSaving>(null);
   const [bookingNotice, setBookingNotice] = useState<Notice>(null);
-  const [readMessages, setReadMessages] = useState<Record<string, boolean>>(
-    () => Object.fromEntries(messages.map((m) => [m.id, m.is_read])),
-  );
+  // Igual que en reservas: solo se conserva lo confirmado por el servidor.
+  const [messageReadOverrides, setMessageReadOverrides] = useState<
+    Partial<Record<string, boolean>>
+  >({});
+  const [messageSaving, setMessageSaving] = useState<MessageSaving>(null);
+  const [messageNotice, setMessageNotice] = useState<Notice>(null);
   const [classActive, setClassActive] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(classes.map((c) => [c.id, c.isActive])),
   );
@@ -170,6 +174,70 @@ export function AdminPanel({
     }
   }
 
+  async function updateMessageRead(message: ContactMessage, target: boolean) {
+    const expectedIsRead =
+      messageReadOverrides[message.id] ?? message.is_read;
+    if (isDemo || messageSaving || expectedIsRead === target) return;
+
+    setMessageSaving({ id: message.id, isRead: target });
+    setMessageNotice(null);
+
+    try {
+      const response = await fetch("/api/admin/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messageId: message.id,
+          isRead: target,
+          expectedIsRead,
+        }),
+      });
+      const body = (await response.json().catch(() => null)) as {
+        ok?: unknown;
+        messageId?: unknown;
+        isRead?: unknown;
+        error?: unknown;
+        message?: unknown;
+      } | null;
+
+      if (
+        !response.ok ||
+        body?.ok !== true ||
+        body.messageId !== message.id ||
+        body.isRead !== target
+      ) {
+        setMessageNotice({
+          tone: "error",
+          text:
+            typeof body?.message === "string"
+              ? body.message
+              : dict.admin.messageRead.failed,
+        });
+        if (body?.error === "STALE_READ_STATE") router.refresh();
+        return;
+      }
+
+      setMessageReadOverrides((prev) => ({ ...prev, [message.id]: target }));
+      setMessageNotice({
+        tone: "ok",
+        text: `${message.name}: ${
+          target
+            ? dict.admin.messageRead.savedRead
+            : dict.admin.messageRead.savedUnread
+        }`,
+      });
+      router.refresh();
+    } catch {
+      setMessageNotice({
+        tone: "error",
+        text: dict.admin.messageRead.offline,
+      });
+      router.refresh();
+    } finally {
+      setMessageSaving(null);
+    }
+  }
+
   const now = useMemo(() => gymNow(), []);
   const todayISO = formatDateNumeric(now, "es");
 
@@ -188,8 +256,8 @@ export function AdminPanel({
   const bookingsThisWeek = bookings.filter(
     (b) => new Date(b.startsAt) >= startOfWeek,
   ).length;
-  const unreadCount = Object.values(readMessages).filter(
-    (value) => !value,
+  const unreadCount = messages.filter(
+    (message) => !(messageReadOverrides[message.id] ?? message.is_read),
   ).length;
 
   const stats = [
@@ -603,13 +671,39 @@ export function AdminPanel({
       {/* --- Consultas --- */}
       {tab === "messages" ? (
         <div className="flex flex-col gap-3">
+          {messageSaving ? (
+            <p
+              role="status"
+              className="flex items-center gap-2 rounded-xl border border-line bg-card px-4 py-3 text-[0.8125rem] text-mist"
+            >
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              {dict.admin.messageRead.saving}
+            </p>
+          ) : messageNotice ? (
+            <p
+              role={messageNotice.tone === "error" ? "alert" : "status"}
+              className={
+                messageNotice.tone === "error"
+                  ? "rounded-xl border border-alert/40 bg-alert/10 px-4 py-3 text-[0.8125rem] text-alert"
+                  : "rounded-xl border border-brand/30 bg-brand/[0.06] px-4 py-3 text-[0.8125rem] text-mist"
+              }
+            >
+              {messageNotice.text}
+            </p>
+          ) : null}
+
           {messages.length === 0 ? (
             <p className="rounded-2xl border border-line bg-card px-5 py-14 text-center text-[0.875rem] text-fog">
               {dict.admin.empty.messages}
             </p>
           ) : (
             messages.map((message) => {
-              const isRead = readMessages[message.id] ?? message.is_read;
+              const isRead =
+                messageReadOverrides[message.id] ?? message.is_read;
+              const savingThisMessage = messageSaving?.id === message.id;
+              const actionLabel = isRead
+                ? dict.admin.actions.markUnread
+                : dict.admin.actions.markRead;
 
               return (
                 <article
@@ -648,21 +742,26 @@ export function AdminPanel({
 
                       <button
                         type="button"
-                        disabled={isDemo}
+                        disabled={isDemo || messageSaving !== null}
                         onClick={() =>
-                          setReadMessages((prev) => ({
-                            ...prev,
-                            [message.id]: !isRead,
-                          }))
+                          void updateMessageRead(message, !isRead)
                         }
+                        aria-pressed={isRead}
+                        aria-busy={savingThisMessage}
                         className={cn(
-                          "rounded-full border px-3 py-1.5 text-[0.6875rem] font-semibold transition-colors",
+                          "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[0.6875rem] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
                           isRead
                             ? "border-line text-fog hover:text-ink"
                             : "border-brand/50 text-brand-300 hover:bg-brand/10",
                         )}
                       >
-                        {dict.admin.actions.markRead}
+                        {savingThisMessage ? (
+                          <Loader2
+                            className="size-3.5 animate-spin"
+                            aria-hidden="true"
+                          />
+                        ) : null}
+                        {actionLabel}
                       </button>
                     </div>
                   </header>

@@ -45,8 +45,8 @@ Según el caso, debe cumplir:
 - GitHub al auditar: sin PR ni issues abiertos. No se encontró trabajo de una
   fase esperando en un PR sin fusionar.
 - Supabase: proyecto ACTIVE_HEALTHY. La última migración del repositorio y del
-  historial remoto es la **00061** (`estado_reservas_personal`). El siguiente
-  número libre es **00062**.
+  historial remoto es la **00063** (`mensajes_leidos_personal_alineacion`). El
+  siguiente número libre es **00064**.
 - Nota permanente de la 00049: sus tablas y funciones principales existen en
   producción, pero su nombre no aparece en el historial remoto de migraciones.
   **No volver a ejecutarla sin investigar.**
@@ -59,7 +59,7 @@ Según el caso, debe cumplir:
 
 | Orden | Trabajo | Motivo |
 |---:|---|---|
-| 1 | **OP-02 a OP-04** | Quedan botones que no guardan y las sesiones futuras terminan el 5 de noviembre de 2026. |
+| 1 | **OP-03 y OP-04** | Queda un botón que no guarda y las sesiones futuras terminan el 5 de noviembre de 2026. |
 | 2 | **SEG-01 y QA-01/QA-02** | Cierre corto de Auth y confirmación real de la CSP/MFA ya publicadas. |
 | 3 | **PER-01** | Cierre automático de 15 minutos; primero se confirma a qué roles aplica. |
 | 4 | **CLI-01** | Las vigencias ordenan planes, categorías y operación diaria. |
@@ -81,9 +81,16 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   cambia tras la confirmación del servidor y la RPC valida estado esperado,
   transiciones, sesión y cupo. Evidencia: 40 comprobaciones SQL por rol y 11
   pruebas de reglas/API; la aceptación integral sigue en CAL-03.
-- [ ] **OP-02 · Alta · Código — Guardar mensajes leídos/no leídos.** Hoy solo
-  cambia `readMessages` en React. Cierre: persistir `messages.is_read` con
-  permiso de personal, manejar error y conservar el estado tras recargar.
+- [x] **OP-02 · Alta · Código — Guardar mensajes leídos/no leídos.** Cerrado el
+  26 de octubre de 2026 con las migraciones 00062–00063
+  (`mensajes_leidos_personal` y su alineación, versiones remotas
+  `20261027043633` y `20261027044010`), la RPC `staff_set_message_read()` y
+  `POST /api/admin/messages`. Solo administración/caja con MFA; la pantalla
+  cambia tras la confirmación del servidor, muestra error sin fingir el guardado
+  y conserva el estado tras recargar. La migración también restauró la lectura
+  del personal, exige que el alta pública nazca como no leída y retiró el
+  `UPDATE`/`DELETE` directo sobre `messages`. Evidencia: 35 comprobaciones SQL
+  por rol y 9 pruebas de reglas/API; la aceptación integral sigue en CAL-03.
 - [ ] **OP-03 · Alta · Código — Guardar activación/desactivación de
   disciplinas.** Hoy solo cambia `classActive` en React y la lectura trae solo
   disciplinas activas. Cierre: listar activas e inactivas para administración,
@@ -364,7 +371,7 @@ orden nueva.**
 |---|---|---|
 | Etapa 1 — Proteger lo construido | Muy avanzada | SEG-01 a SEG-06, CAL-03, QA-01, QA-02 |
 | Etapa 2 — Ordenar navegación | Hecha con módulos actuales | OP-09 |
-| Etapa 3 — Operación diaria | Parcial | OP-02 a OP-08, CLI-01, PER-01, QA-03, QA-06 |
+| Etapa 3 — Operación diaria | Parcial | OP-03 a OP-08, CLI-01, PER-01, QA-03, QA-06 |
 | Etapa 4 — Gestión y finanzas | Parcial | FIN-01 a FIN-07, CLI-02 |
 | Etapa 5 — Aceptación integral | Sin cerrar | CAL-01 a CAL-04, QA-01 a QA-07, LEG-01, NEG-01 |
 | Etapa 6 — Entrega | No empezada, a propósito | ENT-01 a ENT-05, SEG-03 |
@@ -377,7 +384,7 @@ orden nueva.**
 | Calculadora E — Productos | Cerrada | — |
 | Seguridad 1A/1B/1C | Código cerrado | SEG-02 para la aceptación con correo real |
 | B.1 lecturas / B04/B05/B07 | Cerrada | — |
-| B.2 acciones persistentes | Parcial | OP-02 a OP-03 |
+| B.2 acciones persistentes | Parcial | OP-03 |
 | Demo/entrega 1 | Aplazada | ENT-01 |
 | Demo/entrega 2 | Aplazada | ENT-02 a ENT-04 |
 | Demo/entrega 3 | Aplazada | ENT-05 |
@@ -404,6 +411,9 @@ Esta sección es un resumen, no otra lista de tareas.
 - Reservas OP-01: asistencia, inasistencia y cancelación administrativa se
   guardan con `staff_set_booking_status()` (00061), con estado esperado,
   idempotencia, control de cupo y sin escritura directa a `bookings`.
+- Consultas OP-02: el estado leído/no leído se guarda con
+  `staff_set_message_read()` (00062–00063), con lectura solo para personal con
+  MFA, alta pública siempre como no leída y sin escritura directa a `messages`.
 - Finanzas ya construidas: cobros, gastos, deudas/abonos NIO y USD, vuelto en
   abonos, comprobantes internos, reportes y exportaciones con filtros.
 - Progreso: medidas, altura única corregible solo por admin, asistencia por

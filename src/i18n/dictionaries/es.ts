@@ -528,6 +528,7 @@ const es = {
       markNoShow: "Marcar ausente",
       cancelBooking: "Cancelar",
       markRead: "Marcar leído",
+      markUnread: "Marcar no leído",
       toggleClass: "Activar / desactivar",
     },
     bookingStatus: {
@@ -535,6 +536,15 @@ const es = {
       saved: "Estado de la reserva guardado.",
       failed:
         "No se pudo guardar el estado de la reserva. Quedó como estaba.",
+      offline:
+        "Sin conexión. No confirmamos ningún cambio; revisá el estado antes de reintentar.",
+    },
+    messageRead: {
+      saving: "Guardando el estado de la consulta…",
+      savedRead: "Consulta marcada como leída.",
+      savedUnread: "Consulta marcada como no leída.",
+      failed:
+        "No se pudo guardar el estado de la consulta. Quedó como estaba.",
       offline:
         "Sin conexión. No confirmamos ningún cambio; revisá el estado antes de reintentar.",
     },
