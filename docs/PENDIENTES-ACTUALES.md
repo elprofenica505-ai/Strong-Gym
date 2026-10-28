@@ -52,18 +52,18 @@ Según el caso, debe cumplir:
   **No volver a ejecutarla sin investigar.**
 - Las cuentas y correos de prueba del usuario siguen intactos por decisión
   suya, para seguir probando antes de mostrar la app al dueño.
-- Supabase Auth verificado en esta auditoría: JWT de 1200 segundos, TOTP
-  activo, SMTP propio sin configurar y `password_min_length = 6`.
+- Supabase Auth verificado: JWT de 1200 segundos, TOTP activo, SMTP propio
+  sin configurar (SEG-02) y `password_min_length = 12` desde el cierre de
+  SEG-01.
 
 ## Orden recomendado de trabajo
 
 | Orden | Trabajo | Motivo |
 |---:|---|---|
-| 1 | **SEG-01 y QA-01/QA-02** | Cierre corto de Auth y confirmación real de la CSP/MFA ya publicadas. |
-| 2 | **PER-01** | Cierre automático de 15 minutos; primero se confirma a qué roles aplica. |
-| 3 | **CLI-01** | Las vigencias ordenan planes, categorías y operación diaria. |
-| 4 | **FIN-01 y FIN-02** | Anulaciones y vuelto son los huecos financieros más visibles. |
-| 5 | **CAL-01, CAL-03, LEG-01 y NEG-01** | Preparan una entrega segura cuando el dueño entregue datos y decisiones. |
+| 1 | **PER-01** | Cierre automático de 15 minutos; primero se confirma a qué roles aplica. |
+| 2 | **CLI-01** | Las vigencias ordenan planes, categorías y operación diaria. |
+| 3 | **FIN-01 y FIN-02** | Anulaciones y vuelto son los huecos financieros más visibles. |
+| 4 | **CAL-01, CAL-03, LEG-01 y NEG-01** | Preparan una entrega segura cuando el dueño entregue datos y decisiones. |
 
 ---
 
@@ -274,10 +274,14 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
 
 ## 5. Seguridad, Auth y correo
 
-- [ ] **SEG-01 · Alta · Configuración manual — Mínimo de contraseña remoto en
-  12.** La app exige 12–128, pero Supabase Auth sigue en 6. El conector no
-  expone `password_min_length`; hay que cambiarlo en Supabase Dashboard
-  (Authentication → Sign In / Providers → Email) y leerlo de vuelta como 12.
+- [x] **SEG-01 · Alta · Configuración manual — Mínimo de contraseña remoto en
+  12.** Cerrado el 27 de octubre de 2026. El usuario subió
+  `password_min_length` de 6 a **12** en Supabase Dashboard (Authentication
+  → Sign In / Providers → Email) y la lectura posterior con el conector lo
+  confirmó en 12, alineado con la regla única de la app (12–128 en registro
+  y recuperación). No se tocaron requisitos de caracteres. El cambio no
+  invalida contraseñas actuales ni cierra sesiones; solo aplica a registros
+  y cambios de contraseña nuevos.
 - [ ] **SEG-02 · Alta · Dato del dueño y configuración — Correo propio y
   recuperación real.** Faltan remitente, dominio y proveedor SMTP autorizados.
   Después hay que revisar plantillas, límites y entregabilidad, y aceptar el
@@ -356,13 +360,16 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
 Estas no son funciones nuevas: son cierres de aceptación. No repetir cobros ni
 crear operaciones ficticias en producción sin coordinarlo.
 
-- [ ] **QA-01 · Alta · Celular — CSP obligatoria.** Abrir portada con fotos y
-  mapa, Horarios, ingreso/MFA, Panel y Caja; confirmar que nada queda en blanco
-  por un recurso bloqueado.
-- [ ] **QA-02 · Media · Celular — INP del código MFA.** En el mismo celular del
-  aviso de 207,1 ms, escribir y pegar el código y confirmar por separado que
-  responde sin traba y que el aviso INP no vuelve. El ingreso normal ya fue
-  confirmado; falta solo esta confirmación específica.
+- [x] **QA-01 · Alta · Celular — CSP obligatoria.** Cerrada el 27 de octubre
+  de 2026: el usuario recorrió en el celular la portada con fotos y mapa,
+  Horarios, ingreso/MFA, Panel y Caja sin recursos en blanco por la CSP. El
+  encabezado obligatorio de `next.config.ts` además se verifica en CI en
+  cada PR con `test:metadata`.
+- [x] **QA-02 · Media · Celular — INP del código MFA.** Cerrada el 27 de
+  octubre de 2026: en el mismo celular del aviso de 207,1 ms, escribir el
+  código dígito a dígito y pegarlo completo respondió sin traba, tras dejar
+  el campo no controlado (el estado solo cambia al completar los 6
+  dígitos).
 - [ ] **QA-03 · Media · Celular — Cierre formal de Productos y ficha.** La venta
   real ya funcionó y Caja fue aprobada. Falta cerrar la lista guiada de tarjetas,
   paginación de 25, entrar/salir de producto, abrir cada módulo de la ficha y
@@ -468,8 +475,9 @@ Esta sección es un resumen, no otra lista de tareas.
   AAL2, MFA TOTP del personal, rechazo de valores no escalares en MFA/PKCE,
   demo imposible en producción, recuperación PKCE y contraseñas de la app de
   12–128 caracteres.
-- CSP obligatoria y JSON-LD serializado de forma segura en el PR #56; solo
-  queda la confirmación de QA-01.
+- CSP obligatoria y JSON-LD serializado de forma segura en el PR #56, con
+  confirmación visual en celular de que ningún recurso queda bloqueado
+  (QA-01).
 - Lecturas B.1: sin datos ficticios ante errores conectados y sin convertir
   fallos en cero/vacío. El endpoint antiguo de reset quedó retirado con 410;
   la limpieza final segura es ENT-02/ENT-03.
@@ -493,6 +501,10 @@ Esta sección es un resumen, no otra lista de tareas.
   permite a administración con MFA generar desde Operación las próximas 4
   semanas de la grilla vigente, sin duplicados ni sesiones pasadas. La prueba
   real creó 27 sesiones y la repetición confirmó que ya estaban generadas.
+- Contraseñas y MFA (SEG-01, QA-02): la app y Supabase Auth comparten el
+  mínimo de 12 caracteres, verificado por lectura remota tras el cambio en
+  Dashboard; escribir y pegar el código TOTP responde sin traba en el
+  celular donde aparecía el aviso de INP.
 - Finanzas ya construidas: cobros, gastos, deudas/abonos NIO y USD, vuelto en
   abonos, comprobantes internos, reportes y exportaciones con filtros.
 - Progreso: medidas, altura única corregible solo por admin, asistencia por
