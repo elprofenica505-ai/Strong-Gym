@@ -59,12 +59,11 @@ Según el caso, debe cumplir:
 
 | Orden | Trabajo | Motivo |
 |---:|---|---|
-| 1 | **OP-04** | Tras la corrección 00066 falta repetir la pulsación real; las sesiones futuras terminan el 5 de noviembre de 2026. |
-| 2 | **SEG-01 y QA-01/QA-02** | Cierre corto de Auth y confirmación real de la CSP/MFA ya publicadas. |
-| 3 | **PER-01** | Cierre automático de 15 minutos; primero se confirma a qué roles aplica. |
-| 4 | **CLI-01** | Las vigencias ordenan planes, categorías y operación diaria. |
-| 5 | **FIN-01 y FIN-02** | Anulaciones y vuelto son los huecos financieros más visibles. |
-| 6 | **CAL-01, CAL-03, LEG-01 y NEG-01** | Preparan una entrega segura cuando el dueño entregue datos y decisiones. |
+| 1 | **SEG-01 y QA-01/QA-02** | Cierre corto de Auth y confirmación real de la CSP/MFA ya publicadas. |
+| 2 | **PER-01** | Cierre automático de 15 minutos; primero se confirma a qué roles aplica. |
+| 3 | **CLI-01** | Las vigencias ordenan planes, categorías y operación diaria. |
+| 4 | **FIN-01 y FIN-02** | Anulaciones y vuelto son los huecos financieros más visibles. |
+| 5 | **CAL-01, CAL-03, LEG-01 y NEG-01** | Preparan una entrega segura cuando el dueño entregue datos y decisiones. |
 
 ---
 
@@ -114,31 +113,71 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   La verificación pública detectó además que la lista de sesiones conectada a
   la base no aplicaba el filtro; ahora la vista pública excluye disciplinas
   inactivas y solo Operación puede pedirlas explícitamente.
-- [ ] **OP-04 · Alta · Código/operación — Generar sesiones futuras sin depender
-  de SQL manual.** La acción quedó publicada el 27 de octubre de 2026 con la
-  migración 00065 (`generar_sesiones_futuras`, versión remota
-  `20261028001706`), la RPC `admin_generate_future_sessions()` y
+- [x] **OP-04 · Alta · Código/operación — Generar sesiones futuras sin depender
+  de SQL manual.** Cerrado y aprobado el 27 de octubre de 2026 con las
+  migraciones 00065 (`generar_sesiones_futuras`, versión remota
+  `20261028001706`) y 00066 (`coaches_specialties_generador`, versión remota
+  `20261028011737`), la RPC `admin_generate_future_sessions()` y
   `POST /api/admin/sessions/generate`. En **Operación > Clases**, solo
   administración con MFA puede generar las próximas 4 semanas completas desde
-  el próximo lunes, reutilizando `generate_week_sessions()` con candado por
-  transacción e idempotencia. **La primera pulsación real falló sin crear
-  sesiones**: el generador histórico busca `coaches.specialties`, pero la
-  tabla productiva solo tenía el texto visible `specialty`, así que PostgreSQL
-  devolvió 42703 y revirtió todo. La corrección aditiva 00066
-  (`coaches_specialties_generador`, versión remota `20261028011737`) restauró
-  `specialties text[]` sin inferir slugs desde el texto visible ni cambiar
-  entrenadores, sesiones o reservas. Después, una prueba remota en una
-  subtransacción revertida creó internamente las 9 sesiones de una semana y
-  la base siguió con 52 sesiones. **Falta repetir la pulsación como
-  administración con MFA y verificar Horarios; recién entonces se cierra.**
-  Evidencia: 27 comprobaciones SQL por rol/divergencia productiva y 10
-  pruebas de contrato/API/UI/migración; la aceptación integral sigue en
-  CAL-03.
-- [ ] **OP-05 · Media · Código — Administrar clases, sesiones y catálogos
-  operativos.** Falta una gestión completa de disciplina, sesión, horario,
-  cupo, sala y entrenador, además de planes/entrenadores más allá de las cuatro
-  tarifas NIO ya editables. Cierre: CRUD autorizado, sin sobreventa al bajar un
-  cupo y con efectos documentados sobre reservas futuras.
+  el próximo lunes, reutilizando la grilla vigente con candado por transacción
+  e idempotencia. La primera pulsación real falló sin crear sesiones porque
+  el generador histórico buscaba `coaches.specialties` y producción solo
+  tenía el texto visible `specialty`; la 00066 restauró esa columna sin
+  inferir slugs ni cambiar entrenadores, sesiones o reservas. El usuario
+  repitió la prueba desde el celular: la primera pulsación creó **27 sesiones
+  nuevas** y la segunda confirmó que no hacía falta crear ninguna. La
+  verificación posterior encontró 79 sesiones, 9 en cada semana del 26 de
+  octubre y del 2, 9, 16 y 23 de noviembre, 0 duplicados, 2 reservas sin
+  cambios y última sesión el 26 de noviembre a las 20:00. Evidencia: 27
+  comprobaciones SQL por rol/divergencia productiva y 10 pruebas de
+  contrato/API/UI/migración; la aceptación integral sigue en CAL-03. La
+  administración avanzada de grillas y excepciones queda en OP-05.
+- [ ] **OP-05 · Media · Código — Administrar disciplinas, grillas, sesiones y
+  excepciones del calendario.** Alcance ampliado el 27 de octubre de 2026 a
+  petición del usuario, después de aprobar OP-04. Hoy el generador solo sigue
+  la grilla fija de Boxeo y el botón crea cuatro semanas completas; las demás
+  acciones de esta tarea todavía no se pueden hacer desde Operación. OP-05
+  debe permitir, sin SQL manual ni cambios de código:
+  - Crear, editar y desactivar disciplinas nuevas o existentes, con sus
+    textos, duración, cupo, intensidad, color y orden. Debe reutilizarse el
+    interruptor persistente de OP-03 y no borrarse una disciplina con
+    historial.
+  - Crear, editar y desactivar **una o varias grillas recurrentes por
+    disciplina** —por ejemplo, una futura grilla de Zumba— con días de la
+    semana, horas de inicio, duración, sala, cupo, entrenador y vigencia
+    desde/hasta. La grilla actual de Boxeo debe pasar a ser la primera
+    grilla administrable sin duplicar sesiones ya generadas.
+  - Generar sesiones desde una grilla para un horizonte o rango elegido,
+    mostrando antes cuántas se crearían y cuáles se omitirían por duplicado,
+    choque o bloqueo. El botón de OP-04 puede quedar como atajo de cuatro
+    semanas, pero no debe seguir siendo la única forma de generar.
+  - Crear, editar, mover y cancelar **sesiones sueltas o días especiales**
+    fuera de la grilla, además de sesiones individuales o rangos elegidos de
+    una serie. Al bajar un cupo o mover una sesión no debe permitirse
+    sobreventa ni perderse el efecto sobre las reservas futuras.
+  - Registrar **bloqueos y cierres por rango de fechas u horas** para todo
+    el gimnasio, una disciplina o un entrenador, con motivo —feriado,
+    vacaciones, enfermedad, mantenimiento u otro—. El generador debe
+    omitir lo bloqueado. Si ya existen sesiones, antes de confirmar debe
+    mostrar las afectadas y sus reservas; las sesiones se cancelarán sin
+    borrar historial, las reservas quedarán canceladas por el gimnasio con
+    motivo y también debe poder asignarse un entrenador sustituto en vez de
+    cancelar. Levantar un bloqueo no resucitará sesiones canceladas sin una
+    acción explícita.
+  - Asignar entrenadores por grilla y por sesión, usando especialidades
+    estructuradas, y detectar choques del mismo entrenador o de la misma
+    sala en el mismo horario. También debe completarse la gestión de
+    catálogos operativos de planes y entrenadores más allá de las cuatro
+    tarifas NIO ya editables.
+  Todo el CRUD debe estar autorizado en pantalla, servidor y RLS/RPC, con
+  bitácora, control de concurrencia e idempotencia, fechas en
+  `America/Managua`, sin crear sesiones pasadas por error y sin borrar
+  sesiones o reservas para corregirlas. Cierre: probar el esquema productivo
+  divergente y, desde el celular, crear una disciplina de ejemplo, definir
+  su grilla, generar sus sesiones, agregar un día suelto, bloquear un rango
+  y comprobar el resultado en Horarios y en las reservas afectadas. Sin esos
+  casos, OP-05 no se considera terminada.
 - [ ] **OP-06 · Media · Decisión y código — Cierre de reservas pasadas.**
   Existe `close_past_sessions()`, pero no se ejecuta automáticamente. Primero
   hay que decidir cuándo una reserva confirmada pasa a asistida o ausente; no
@@ -450,6 +489,10 @@ Esta sección es un resumen, no otra lista de tareas.
   (00064), solo para administración con MFA y sin escritura directa a
   `classes`; desactivar oculta la oferta y frena reservas nuevas sin cancelar
   sesiones ni reservas ya hechas, y reactivar restaura ambas cosas.
+- Sesiones futuras OP-04: `admin_generate_future_sessions()` (00065–00066)
+  permite a administración con MFA generar desde Operación las próximas 4
+  semanas de la grilla vigente, sin duplicados ni sesiones pasadas. La prueba
+  real creó 27 sesiones y la repetición confirmó que ya estaban generadas.
 - Finanzas ya construidas: cobros, gastos, deudas/abonos NIO y USD, vuelto en
   abonos, comprobantes internos, reportes y exportaciones con filtros.
 - Progreso: medidas, altura única corregible solo por admin, asistencia por
