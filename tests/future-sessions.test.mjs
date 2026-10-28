@@ -200,6 +200,27 @@ test("API: otro rango o conteos imposibles no son éxito", async () => {
   assert.equal((await response.json()).error, "UNKNOWN");
 });
 
+test("migración 00066: restaura specialties sin poblar datos ni generar sesiones", () => {
+  const source = readFileSync(
+    new URL(
+      "../supabase/migrations/00066_coaches_specialties_generador.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.ok(
+    source.includes(
+      "add column if not exists specialties text[] not null default '{}'::text[]",
+    ),
+  );
+  assert.ok(source.includes("COACHES_SPECIALTIES_TYPE_MISMATCH"));
+  assert.doesNotMatch(
+    source,
+    /\b(?:insert\s+into|update\s+public\.coaches|delete\s+from)\b/i,
+  );
+  assert.doesNotMatch(source, /select\s+public\.generate_week_sessions\s*\(/i);
+});
+
 test("Operación: el botón vive con Clases, pide 4 semanas y respeta permisos", () => {
   const source = readFileSync(
     new URL("../src/components/admin/admin-panel.tsx", import.meta.url),
