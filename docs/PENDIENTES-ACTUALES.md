@@ -265,16 +265,18 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
 ## 4. Personal, roles y sesiones
 
 - [x] **PER-01 · Alta · Decisión y código — Cierre automático a los 15
-  minutos.** Cerrado técnicamente el 27 de octubre de 2026 con la decisión del
-  usuario de aplicar la regla solo a **administración y caja**.
-  `session-policy.ts` ahora usa `ADMIN_CASHIER_INACTIVITY_MS` —15 minutos—
-  para `admin` y `cashier`, y `AppProvider` reutiliza el guardia existente de
-  actividad y `signOut`, sin un segundo temporizador. Para administración,
-  los 15 minutos reemplazan el límite anterior de 2 horas; entrenador,
-  clientes, visitantes y demo siguen sin cierre automático. Es una regla del
-  navegador y se revisa cada 30 segundos. Evidencia: 3 pruebas por rol y de
-  borde exacto en `tests/session-policy.test.mjs`; la aceptación integral
-  sigue en CAL-03.
+  minutos.** Cerrado y aceptado el 28 de octubre de 2026 tras aplicar la regla
+  solo a **administración y caja**. `session-policy.ts` ahora usa
+  `ADMIN_CASHIER_INACTIVITY_MS` —15 minutos— para `admin` y `cashier`, y
+  `AppProvider` reutiliza el guardia existente de actividad y `signOut`, sin
+  un segundo temporizador. Para administración, los 15 minutos reemplazan el
+  límite anterior de 2 horas; entrenador, clientes, visitantes y demo siguen
+  sin cierre automático. Es una regla del navegador y se revisa cada 30
+  segundos. Evidencia: 3 pruebas por rol y de borde exacto en
+  `tests/session-policy.test.mjs`, más la confirmación en celular del usuario:
+  administración y caja cerraron tras la inactividad, mientras entrenador y
+  cliente permanecieron con la sesión abierta. La aceptación integral del
+  conjunto sigue en CAL-03.
 
 ## 5. Seguridad, Auth y correo
 
@@ -511,7 +513,7 @@ Esta sección es un resumen, no otra lista de tareas.
   celular donde aparecía el aviso de INP.
 - Inactividad PER-01: administración y caja cierran sesión en el navegador
   tras 15 minutos sin actividad; entrenador y clientes no tienen cierre
-  automático.
+  automático. La prueba móvil por rol fue aprobada por el usuario.
 - Finanzas ya construidas: cobros, gastos, deudas/abonos NIO y USD, vuelto en
   abonos, comprobantes internos, reportes y exportaciones con filtros.
 - Progreso: medidas, altura única corregible solo por admin, asistencia por
