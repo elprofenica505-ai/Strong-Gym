@@ -503,8 +503,8 @@ export function AppProvider({
     }
   }, [isDemo, initialUser, router, toast, invalidateRequests]);
 
-  /* Cierre por inactividad: administrador y personal, 2 horas sin actividad.
-     Clientes no se cierran solos. Demo no aplica. */
+  /* Cierre por inactividad: administración y caja, 15 minutos sin actividad.
+     Entrenador y clientes no se cierran solos. Demo no aplica. */
   const inactivityLimit = isDemo ? null : inactivityLimitMs(user?.role);
   const lastActivityRef = useRef<number>(0);
   useEffect(() => {
