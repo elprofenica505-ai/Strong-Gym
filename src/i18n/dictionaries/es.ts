@@ -593,6 +593,24 @@ const es = {
       effect:
         "Al desactivar una disciplina, deja de verse en la web —incluida la página principal y su tarjeta de precio asociada— y no acepta reservas nuevas. Las sesiones y reservas ya hechas no se cancelan.",
     },
+    futureSessions: {
+      title: "Sesiones futuras",
+      description:
+        "Generá las próximas 4 semanas completas desde el próximo lunes, según la grilla vigente. Solo crea sesiones de disciplinas activas y no duplica las que ya existen.",
+      action: "Generar próximas 4 semanas",
+      generating: "Generando sesiones futuras…",
+      savedCreated:
+        "Se crearon {count} sesiones nuevas. La grilla queda generada hasta el {date}.",
+      savedExisting:
+        "No hacía falta crear sesiones: la grilla ya estaba generada hasta el {date}.",
+      savedNoActive:
+        "No se crearon sesiones. Revisá que la disciplina de la grilla esté activa.",
+      failed:
+        "No se pudieron generar las sesiones futuras. No confirmamos ningún cambio.",
+      offline:
+        "Sin conexión. No confirmamos la generación; revisá Horarios antes de reintentar.",
+      adminOnly: "Solo la administración puede generar sesiones futuras.",
+    },
     empty: {
       bookings: "Todavía no hay reservas registradas.",
       messages: "No hay consultas nuevas.",
