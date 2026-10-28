@@ -1,14 +1,14 @@
 /**
  * Cierre automático por inactividad según el rol.
- * - Administrador y personal: 2 horas sin actividad.
- * - Clientes: sin cierre automático; cierran sesión manualmente.
+ * - Administración y caja: 15 minutos sin actividad.
+ * - Entrenador y clientes: sin cierre automático; cierran sesión manualmente.
  * La regla vive en el navegador: si la pestaña no responde, el cierre ocurre al volver.
  */
-export const STAFF_INACTIVITY_MS = 2 * 60 * 60 * 1000;
+export const ADMIN_CASHIER_INACTIVITY_MS = 15 * 60 * 1000;
 
-/** Sólo el administrador tiene cierre automático; personal y clientes cierran manualmente. */
+/** Sólo administración y caja tienen cierre automático por inactividad. */
 export function inactivityLimitMs(role: "member" | "cashier" | "trainer" | "admin" | null | undefined): number | null {
-  return role === "admin" ? STAFF_INACTIVITY_MS : null;
+  return role === "admin" || role === "cashier" ? ADMIN_CASHIER_INACTIVITY_MS : null;
 }
 
 export function isInactive(lastActivityMs: number, nowMs: number, limitMs: number | null): boolean {

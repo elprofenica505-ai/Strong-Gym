@@ -60,10 +60,9 @@ Según el caso, debe cumplir:
 
 | Orden | Trabajo | Motivo |
 |---:|---|---|
-| 1 | **PER-01** | Cierre automático de 15 minutos; primero se confirma a qué roles aplica. |
-| 2 | **CLI-01** | Las vigencias ordenan planes, categorías y operación diaria. |
-| 3 | **FIN-01 y FIN-02** | Anulaciones y vuelto son los huecos financieros más visibles. |
-| 4 | **CAL-01, CAL-03, LEG-01 y NEG-01** | Preparan una entrega segura cuando el dueño entregue datos y decisiones. |
+| 1 | **CLI-01** | Las vigencias ordenan planes, categorías y operación diaria. |
+| 2 | **FIN-01 y FIN-02** | Anulaciones y vuelto son los huecos financieros más visibles. |
+| 3 | **CAL-01, CAL-03, LEG-01 y NEG-01** | Preparan una entrega segura cuando el dueño entregue datos y decisiones. |
 
 ---
 
@@ -265,12 +264,17 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
 
 ## 4. Personal, roles y sesiones
 
-- [ ] **PER-01 · Alta · Decisión y código — Cierre automático a los 15
-  minutos.** Hoy solo el administrador cierra a las 2 horas; caja, entrenador y
-  clientes no tienen cierre automático en el navegador. Primero hay que
-  confirmar si los 15 minutos aplican solo al administrador, a admin/caja o a
-  todo el personal. Cierre: reutilizar `session-policy.ts` y el proveedor
-  actual, sin un segundo guardia, con prueba en navegador por rol.
+- [x] **PER-01 · Alta · Decisión y código — Cierre automático a los 15
+  minutos.** Cerrado técnicamente el 27 de octubre de 2026 con la decisión del
+  usuario de aplicar la regla solo a **administración y caja**.
+  `session-policy.ts` ahora usa `ADMIN_CASHIER_INACTIVITY_MS` —15 minutos—
+  para `admin` y `cashier`, y `AppProvider` reutiliza el guardia existente de
+  actividad y `signOut`, sin un segundo temporizador. Para administración,
+  los 15 minutos reemplazan el límite anterior de 2 horas; entrenador,
+  clientes, visitantes y demo siguen sin cierre automático. Es una regla del
+  navegador y se revisa cada 30 segundos. Evidencia: 3 pruebas por rol y de
+  borde exacto en `tests/session-policy.test.mjs`; la aceptación integral
+  sigue en CAL-03.
 
 ## 5. Seguridad, Auth y correo
 
@@ -505,6 +509,9 @@ Esta sección es un resumen, no otra lista de tareas.
   mínimo de 12 caracteres, verificado por lectura remota tras el cambio en
   Dashboard; escribir y pegar el código TOTP responde sin traba en el
   celular donde aparecía el aviso de INP.
+- Inactividad PER-01: administración y caja cierran sesión en el navegador
+  tras 15 minutos sin actividad; entrenador y clientes no tienen cierre
+  automático.
 - Finanzas ya construidas: cobros, gastos, deudas/abonos NIO y USD, vuelto en
   abonos, comprobantes internos, reportes y exportaciones con filtros.
 - Progreso: medidas, altura única corregible solo por admin, asistencia por
