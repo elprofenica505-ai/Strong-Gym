@@ -45,8 +45,8 @@ Según el caso, debe cumplir:
 - GitHub al auditar: sin PR ni issues abiertos. No se encontró trabajo de una
   fase esperando en un PR sin fusionar.
 - Supabase: proyecto ACTIVE_HEALTHY. La última migración del repositorio y del
-  historial remoto es la **00064** (`disciplinas_activas`, versión remota
-  `20261027060406`). El siguiente número libre es **00065**.
+  historial remoto es la **00066** (`coaches_specialties_generador`, versión
+  remota `20261028011737`). El siguiente número libre es **00067**.
 - Nota permanente de la 00049: sus tablas y funciones principales existen en
   producción, pero su nombre no aparece en el historial remoto de migraciones.
   **No volver a ejecutarla sin investigar.**
@@ -59,7 +59,7 @@ Según el caso, debe cumplir:
 
 | Orden | Trabajo | Motivo |
 |---:|---|---|
-| 1 | **OP-04** | Las sesiones futuras terminan el 5 de noviembre de 2026. |
+| 1 | **OP-04** | Tras la corrección 00066 falta repetir la pulsación real; las sesiones futuras terminan el 5 de noviembre de 2026. |
 | 2 | **SEG-01 y QA-01/QA-02** | Cierre corto de Auth y confirmación real de la CSP/MFA ya publicadas. |
 | 3 | **PER-01** | Cierre automático de 15 minutos; primero se confirma a qué roles aplica. |
 | 4 | **CLI-01** | Las vigencias ordenan planes, categorías y operación diaria. |
@@ -114,20 +114,26 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   La verificación pública detectó además que la lista de sesiones conectada a
   la base no aplicaba el filtro; ahora la vista pública excluye disciplinas
   inactivas y solo Operación puede pedirlas explícitamente.
-- [x] **OP-04 · Alta · Código/operación — Generar sesiones futuras sin depender
-  de SQL manual.** Cerrado técnicamente el 27 de octubre de 2026 con la
+- [ ] **OP-04 · Alta · Código/operación — Generar sesiones futuras sin depender
+  de SQL manual.** La acción quedó publicada el 27 de octubre de 2026 con la
   migración 00065 (`generar_sesiones_futuras`, versión remota
   `20261028001706`), la RPC `admin_generate_future_sessions()` y
   `POST /api/admin/sessions/generate`. En **Operación > Clases**, solo
   administración con MFA puede generar las próximas 4 semanas completas desde
-  el próximo lunes. Se reutiliza `generate_week_sessions()` y su grilla, con
-  candado por transacción e idempotencia; no se crean sesiones pasadas, no se
-  generan disciplinas inactivas y no se cancelan sesiones ni reservas. La
-  función histórica sigue cerrada a la API. La migración por sí sola no creó
-  sesiones: la verificación remota conservó 9 disciplinas, 52 sesiones y 2
-  reservas; la primera generación productiva se hace con el botón. Evidencia:
-  22 comprobaciones SQL por rol y 9 pruebas de contrato/API/UI; la aceptación
-  integral sigue en CAL-03.
+  el próximo lunes, reutilizando `generate_week_sessions()` con candado por
+  transacción e idempotencia. **La primera pulsación real falló sin crear
+  sesiones**: el generador histórico busca `coaches.specialties`, pero la
+  tabla productiva solo tenía el texto visible `specialty`, así que PostgreSQL
+  devolvió 42703 y revirtió todo. La corrección aditiva 00066
+  (`coaches_specialties_generador`, versión remota `20261028011737`) restauró
+  `specialties text[]` sin inferir slugs desde el texto visible ni cambiar
+  entrenadores, sesiones o reservas. Después, una prueba remota en una
+  subtransacción revertida creó internamente las 9 sesiones de una semana y
+  la base siguió con 52 sesiones. **Falta repetir la pulsación como
+  administración con MFA y verificar Horarios; recién entonces se cierra.**
+  Evidencia: 27 comprobaciones SQL por rol/divergencia productiva y 10
+  pruebas de contrato/API/UI/migración; la aceptación integral sigue en
+  CAL-03.
 - [ ] **OP-05 · Media · Código — Administrar clases, sesiones y catálogos
   operativos.** Falta una gestión completa de disciplina, sesión, horario,
   cupo, sala y entrenador, además de planes/entrenadores más allá de las cuatro

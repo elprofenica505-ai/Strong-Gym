@@ -4,6 +4,9 @@ import assert from "node:assert/strict";
 
 const sql = (name) => readFileSync(new URL(`../${name}`, import.meta.url), "utf8");
 const migration = sql("supabase/migrations/00065_generar_sesiones_futuras.sql");
+const coachesCompatMigration = sql(
+  "supabase/migrations/00066_coaches_specialties_generador.sql",
+);
 const db = new PGlite();
 let checks = 0;
 
@@ -53,6 +56,7 @@ try {
   await db.exec(sql("supabase/migrations/00034_roles_fase_b.sql"));
   await db.exec(sql("supabase/migrations/00064_disciplinas_activas.sql"));
   await db.exec(migration);
+  await db.exec(coachesCompatMigration);
 
   const row = async (query, args = []) => (await db.query(query, args)).rows[0];
   const makeUser = async (name, role) => {
@@ -129,6 +133,18 @@ try {
   const beforeSecondApply = await dataSnapshot();
   await db.exec(migration);
   check("00065 es idempotente y reaplicarla no cambia datos", (await dataSnapshot()) === beforeSecondApply);
+
+  const coachesSnapshot = async () =>
+    JSON.stringify(
+      (await db.query("select to_jsonb(c) as value from public.coaches c order by c.id")).rows,
+    );
+  const coachesBeforeCompat = await coachesSnapshot();
+  await db.exec(coachesCompatMigration);
+  check(
+    "00066 es idempotente en el esquema canónico y no cambia entrenadores",
+    (await coachesSnapshot()) === coachesBeforeCompat &&
+      (await dataSnapshot()) === beforeSecondApply,
+  );
 
   const functions = (await db.query(
     `select proname, prosecdef, coalesce(array_to_string(proconfig, ','), '') as config,
@@ -270,6 +286,95 @@ try {
   check(
     "las sesiones generadas conservan sala, cupo y duración de la disciplina",
     generatedShape.total === 72 && generatedShape.valid === 72,
+  );
+
+  // Producción divergió de 00001: coaches conserva el texto visible
+  // `specialty`, pero perdió el arreglo estructurado `specialties` que usa
+  // el generador. Reproducimos ese 42703 real antes de probar la 00066.
+  const mondayAfterEight = (
+    await row("select ($1::date + 1)::text as monday", [eight.last_sunday])
+  ).monday;
+  const sessionsInWeek = async (monday) =>
+    Number((
+      await row(
+        `select count(*)::int as n
+           from public.sessions
+          where starts_at >= ($1::date::timestamp at time zone 'America/Managua')
+            and starts_at < (($1::date + 7)::timestamp at time zone 'America/Managua')`,
+        [monday],
+      )
+    ).n);
+
+  await db.exec(`
+    insert into public.coaches
+      (id, slug, name, role_es, role_en, specialties, initials, color, sort_order)
+    values
+      ('coa_ejemplo_boxeo', 'entrenador-ejemplo', 'Entrenador EJEMPLO',
+       'Boxeo y acondicionamiento', 'Boxing and conditioning',
+       array['boxeo'], 'EE', '#d81a22', 99);
+    alter table public.coaches add column specialty text;
+    update public.coaches set specialty = role_es;
+    alter table public.coaches drop column specialties;
+  `);
+  await denied(
+    "la divergencia productiva sin specialties reproduce el error real",
+    db.query("select public.generate_week_sessions($1::date) as created", [
+      mondayAfterEight,
+    ]),
+    /specialties/,
+  );
+  check(
+    "el error por la columna faltante revierte la generación completa",
+    (await sessionsInWeek(mondayAfterEight)) === 0,
+  );
+
+  const visibleSpecialties = async () =>
+    JSON.stringify(
+      (await db.query("select id, specialty from public.coaches order by id")).rows,
+    );
+  const visibleSpecialtiesBefore = await visibleSpecialties();
+  await db.exec(coachesCompatMigration);
+  await db.exec(coachesCompatMigration);
+
+  const compatColumn = await row(
+    `select data_type, udt_name, is_nullable,
+            coalesce(column_default, '') as column_default
+       from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'coaches'
+        and column_name = 'specialties'`,
+  );
+  const compatRows = await row(
+    `select count(*)::int as total,
+            count(*) filter (where specialties = '{}'::text[])::int as empty
+       from public.coaches`,
+  );
+  check(
+    "00066 restaura specialties sin inferir slugs desde el texto visible",
+    compatColumn.data_type === "ARRAY" &&
+      compatColumn.udt_name === "_text" &&
+      compatColumn.is_nullable === "NO" &&
+      compatColumn.column_default.includes("{}") &&
+      compatRows.total > 0 &&
+      compatRows.empty === compatRows.total &&
+      (await visibleSpecialties()) === visibleSpecialtiesBefore,
+  );
+
+  const repaired = Number((
+    await row("select public.generate_week_sessions($1::date) as created", [
+      mondayAfterEight,
+    ])
+  ).created);
+  const repairedRepeat = Number((
+    await row("select public.generate_week_sessions($1::date) as created", [
+      mondayAfterEight,
+    ])
+  ).created);
+  check(
+    "con 00066 el generador vuelve a crear la semana y sigue sin duplicar",
+    repaired === 9 &&
+      repairedRepeat === 0 &&
+      (await sessionsInWeek(mondayAfterEight)) === 9,
   );
 } finally {
   await db.close();
