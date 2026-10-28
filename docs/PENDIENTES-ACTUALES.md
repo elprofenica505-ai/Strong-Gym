@@ -114,12 +114,20 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   La verificación pública detectó además que la lista de sesiones conectada a
   la base no aplicaba el filtro; ahora la vista pública excluye disciplinas
   inactivas y solo Operación puede pedirlas explícitamente.
-- [ ] **OP-04 · Alta · Código/operación — Generar sesiones futuras sin depender
-  de SQL manual.** En la auditoría quedaban 18 sesiones futuras, del 27 de
-  octubre al **5 de noviembre de 2026**. Existe `generate_week_sessions()`,
-  pero no hay pantalla ni tarea automática y `pg_cron` no está instalado.
-  Cierre: generación idempotente de las próximas semanas, sin duplicar, con un
-  mecanismo sostenible y verificación en Horarios.
+- [x] **OP-04 · Alta · Código/operación — Generar sesiones futuras sin depender
+  de SQL manual.** Cerrado técnicamente el 27 de octubre de 2026 con la
+  migración 00065 (`generar_sesiones_futuras`, versión remota
+  `20261028001706`), la RPC `admin_generate_future_sessions()` y
+  `POST /api/admin/sessions/generate`. En **Operación > Clases**, solo
+  administración con MFA puede generar las próximas 4 semanas completas desde
+  el próximo lunes. Se reutiliza `generate_week_sessions()` y su grilla, con
+  candado por transacción e idempotencia; no se crean sesiones pasadas, no se
+  generan disciplinas inactivas y no se cancelan sesiones ni reservas. La
+  función histórica sigue cerrada a la API. La migración por sí sola no creó
+  sesiones: la verificación remota conservó 9 disciplinas, 52 sesiones y 2
+  reservas; la primera generación productiva se hace con el botón. Evidencia:
+  22 comprobaciones SQL por rol y 9 pruebas de contrato/API/UI; la aceptación
+  integral sigue en CAL-03.
 - [ ] **OP-05 · Media · Código — Administrar clases, sesiones y catálogos
   operativos.** Falta una gestión completa de disciplina, sesión, horario,
   cupo, sala y entrenador, además de planes/entrenadores más allá de las cuatro

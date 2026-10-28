@@ -17,10 +17,11 @@ import {
   X,
 } from "lucide-react";
 import { useDictionary } from "@/components/providers/dictionary-provider";
-import { ButtonLink } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { accentOnDark, cn } from "@/lib/utils";
 import {
+  dateFromISO,
   formatDateNumeric,
   formatLongDate,
   formatTime,
@@ -30,6 +31,7 @@ import {
   canStaffChangeBookingStatus,
   type StaffBookingTargetStatus,
 } from "@/lib/admin/booking-status";
+import { FUTURE_SESSION_GENERATION_WEEKS } from "@/lib/admin/future-sessions";
 import type { BookingStatus, ContactMessage, GymClass } from "@/lib/types";
 
 /* ============================================================
@@ -108,6 +110,9 @@ export function AdminPanel({
   >({});
   const [classSaving, setClassSaving] = useState<ClassSaving>(null);
   const [classNotice, setClassNotice] = useState<Notice>(null);
+  const [futureSessionsSaving, setFutureSessionsSaving] = useState(false);
+  const [futureSessionsNotice, setFutureSessionsNotice] =
+    useState<Notice>(null);
 
   async function updateBookingStatus(
     booking: AdminBookingRow,
@@ -316,6 +321,91 @@ export function AdminPanel({
       router.refresh();
     } finally {
       setClassSaving(null);
+    }
+  }
+
+  async function generateFutureSessions() {
+    if (isDemo || !canManageClasses || futureSessionsSaving) return;
+
+    setFutureSessionsSaving(true);
+    setFutureSessionsNotice(null);
+
+    try {
+      const response = await fetch("/api/admin/sessions/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          weeks: FUTURE_SESSION_GENERATION_WEEKS,
+        }),
+      });
+      const body = (await response.json().catch(() => null)) as {
+        ok?: unknown;
+        weeks?: unknown;
+        firstMonday?: unknown;
+        lastSunday?: unknown;
+        createdCount?: unknown;
+        scheduledCount?: unknown;
+        message?: unknown;
+      } | null;
+
+      const lastSunday =
+        typeof body?.lastSunday === "string"
+          ? dateFromISO(body.lastSunday)
+          : null;
+      const createdRaw = body?.createdCount;
+      const scheduledRaw = body?.scheduledCount;
+      const countsAreValid =
+        Number.isSafeInteger(createdRaw) &&
+        Number(createdRaw) >= 0 &&
+        Number.isSafeInteger(scheduledRaw) &&
+        Number(scheduledRaw) >= Number(createdRaw);
+
+      if (
+        !response.ok ||
+        body?.ok !== true ||
+        body.weeks !== FUTURE_SESSION_GENERATION_WEEKS ||
+        typeof body.firstMonday !== "string" ||
+        !dateFromISO(body.firstMonday) ||
+        !lastSunday ||
+        !countsAreValid
+      ) {
+        setFutureSessionsNotice({
+          tone: "error",
+          text:
+            typeof body?.message === "string"
+              ? body.message
+              : dict.admin.futureSessions.failed,
+        });
+        router.refresh();
+        return;
+      }
+
+      const createdCount = Number(body.createdCount);
+      const scheduledCount = Number(body.scheduledCount);
+      const throughDate = formatLongDate(lastSunday, locale);
+      setFutureSessionsNotice({
+        tone: "ok",
+        text:
+          createdCount > 0
+            ? dict.admin.futureSessions.savedCreated
+                .replace("{count}", String(createdCount))
+                .replace("{date}", throughDate)
+            : scheduledCount > 0
+              ? dict.admin.futureSessions.savedExisting.replace(
+                  "{date}",
+                  throughDate,
+                )
+              : dict.admin.futureSessions.savedNoActive,
+      });
+      router.refresh();
+    } catch {
+      setFutureSessionsNotice({
+        tone: "error",
+        text: dict.admin.futureSessions.offline,
+      });
+      router.refresh();
+    } finally {
+      setFutureSessionsSaving(false);
     }
   }
 
@@ -895,12 +985,76 @@ export function AdminPanel({
             </p>
           ) : null}
 
+          <section className="rounded-2xl border border-brand/25 bg-card p-5 sm:col-span-2 lg:col-span-3">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="max-w-2xl">
+                <h2 className="flex items-center gap-2 text-[1rem] font-semibold text-ink">
+                  <CalendarDays
+                    className="size-5 text-brand-300"
+                    aria-hidden="true"
+                  />
+                  {dict.admin.futureSessions.title}
+                </h2>
+                <p className="mt-1.5 text-[0.8125rem] leading-relaxed text-mist">
+                  {dict.admin.futureSessions.description}
+                </p>
+              </div>
+
+              <Button
+                type="button"
+                onClick={() => void generateFutureSessions()}
+                disabled={
+                  isDemo ||
+                  !canManageClasses ||
+                  classSaving !== null ||
+                  futureSessionsSaving
+                }
+                aria-busy={futureSessionsSaving}
+                title={
+                  !isDemo && !canManageClasses
+                    ? dict.admin.futureSessions.adminOnly
+                    : undefined
+                }
+                className="w-full shrink-0 sm:w-auto"
+              >
+                {futureSessionsSaving ? (
+                  <Loader2
+                    className="size-4 animate-spin"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <CalendarDays className="size-4" aria-hidden="true" />
+                )}
+                {futureSessionsSaving
+                  ? dict.admin.futureSessions.generating
+                  : dict.admin.futureSessions.action}
+              </Button>
+            </div>
+          </section>
+
+          {futureSessionsNotice ? (
+            <p
+              role="status"
+              className={cn(
+                "rounded-xl border px-4 py-3 text-[0.8125rem] sm:col-span-2 lg:col-span-3",
+                futureSessionsNotice.tone === "ok"
+                  ? "border-brand/30 bg-brand/[0.06] text-mist"
+                  : "border-alert/40 bg-alert/[0.08] text-alert",
+              )}
+            >
+              {futureSessionsNotice.text}
+            </p>
+          ) : null}
+
           {classes.map((gymClass) => {
             const active =
               classActiveOverrides[gymClass.id] ?? gymClass.isActive;
             const savingThis = classSaving?.id === gymClass.id;
             const toggleDisabled =
-              isDemo || !canManageClasses || classSaving !== null;
+              isDemo ||
+              !canManageClasses ||
+              classSaving !== null ||
+              futureSessionsSaving;
 
             return (
               <div

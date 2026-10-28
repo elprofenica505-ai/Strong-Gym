@@ -587,6 +587,24 @@ const en = {
       effect:
         "When a discipline is deactivated, it disappears from the website — including the home page and its linked price card — and stops accepting new bookings. Existing sessions and bookings are not cancelled.",
     },
+    futureSessions: {
+      title: "Future sessions",
+      description:
+        "Generate the next 4 complete weeks starting next Monday, using the current timetable. It only creates sessions for active disciplines and never duplicates existing ones.",
+      action: "Generate the next 4 weeks",
+      generating: "Generating future sessions…",
+      savedCreated:
+        "Created {count} new sessions. The timetable is now generated through {date}.",
+      savedExisting:
+        "No new sessions were needed: the timetable was already generated through {date}.",
+      savedNoActive:
+        "No sessions were created. Check that the timetable discipline is active.",
+      failed:
+        "Future sessions could not be generated. No change was confirmed.",
+      offline:
+        "No connection. Generation was not confirmed; check the schedule before retrying.",
+      adminOnly: "Only an administrator can generate future sessions.",
+    },
     empty: {
       bookings: "No bookings recorded yet.",
       messages: "No new enquiries.",
