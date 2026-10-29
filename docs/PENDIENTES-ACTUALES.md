@@ -142,7 +142,7 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   entrenador y vigencia desde/hasta). `generate_week_sessions()` lee esa
   tabla; la migración cargó como semilla los nueve horarios de Boxeo que ya
   existían, así que el calendario no cambió solo. Pantalla nueva
-  **Administración → Horarios y grilla** (`/panel/administracion/horarios`):
+  **Administración → Horarios y clases** (`/panel/administracion/horarios`):
   agregar, editar, anular y reactivar horarios; al guardar se crean las
   sesiones de las próximas cuatro semanas sin duplicar y sin tocar reservas.
   Se rechazan choques de la misma sala o del mismo entrenador en el mismo día
@@ -155,6 +155,27 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   confirmó que `coaches.sort_order` **no existe** en la base productiva
   (divergencia con las migraciones): la grilla ordena entrenadores por `id` y no
   depende de esa columna.
+  **Orden y claridad del 29 de octubre (migración 00076, aplicada en
+  producción como `horario_no_genera_solo`):** el usuario dijo que la pantalla
+  se sentía confusa. Se encontró la causa de fondo: un efecto oculto. Guardar,
+  editar, suspender o reactivar un horario creaba por su cuenta las clases de
+  las próximas cuatro semanas, así que la misma clase podía aparecer por dos
+  caminos distintos y nadie sabía de dónde salió. Ahora **guardar un horario
+  solo cambia la semana fija**; las clases con fecha se crean únicamente en el
+  paso 2 (`admin_apply_schedule`). Las firmas no cambian: `p_weeks` sigue
+  aceptándose por compatibilidad pero ya no tiene efecto y `created_sessions`
+  vuelve siempre en 0.
+  La pantalla quedó en tres pasos numerados, con un recuadro «¿Cómo funciona
+  esta pantalla?» arriba y textos en palabras del gimnasio (se dejó de decir
+  «sesión» en pantalla y se dice «clase»; «anular» pasó a «suspender»;
+  «bloqueo» pasó a «cerrar»): **1. Tu semana fija** (lo que se repite),
+  **2. Pasar la semana al calendario** (crea las fechas, con previsualización y
+  el período avanzado plegado, cuatro semanas por defecto), **3. Días que no
+  abrís** (cierres, ahora con «primer día» y «último día» en vez de dos fechas
+  con hora). Al guardar un horario, la pantalla avisa que falta pasarlo y
+  prepara sola la previsualización, sin escribir nada. El menú pasó de
+  «Horarios y grilla» a **«Horarios y clases»**. Pruebas: 82 comprobaciones SQL
+  y 17 de pantalla (9 del tablero y 8 de cierres).
   **Corrección del 29 de octubre (migración 00073, aplicada en producción):** al
   abrir la pantalla mostraba «No pudimos confirmar estos datos» con el código
   `SCHEDULE_UNCONFIRMED`. La causa no era la pantalla sino la base: en

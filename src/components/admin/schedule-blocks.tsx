@@ -89,12 +89,15 @@ const scopeName = (block: ScheduleBlock) =>
       ? (block.class_name ?? "Disciplina")
       : (block.coach_name ?? "Entrenador");
 
+const plural = (count: number, one: string, many: string) =>
+  `${count} ${count === 1 ? one : many}`;
+
 type Draft = {
   scope: BlockScope;
   classId: string;
   coachId: string;
-  starts: string;
-  ends: string;
+  fromDate: string;
+  toDate: string;
   reasonKind: ReasonKind;
   reason: string;
   substituteCoachId: string;
@@ -108,18 +111,17 @@ const newDraft = (
   scope: "gym",
   classId: classes[0]?.id ?? "",
   coachId: coaches[0]?.id ?? "",
-  starts: `${today}T00:00`,
-  ends: `${today}T23:59`,
+  fromDate: today,
+  toDate: today,
   reasonKind: "holiday",
   reason: "",
   substituteCoachId: "",
 });
 
 /**
- * Bloqueos y cierres del calendario (OP-05). Feriado, vacaciones, enfermedad
- * o mantenimiento: se elige a quién afecta, se revisa qué sesiones y reservas
- * toca, y recién entonces se guarda. Nada se borra: lo cancelado queda con su
- * motivo en el historial.
+ * Cierres del calendario (OP-05, paso 3). Feriado, vacaciones, enfermedad o
+ * mantenimiento: se elige a quién afecta, se revisa qué clases y reservas toca
+ * y recién entonces se guarda. Nada se borra: lo cancelado queda con su motivo.
  */
 export function ScheduleBlocks({
   initial,
@@ -147,8 +149,8 @@ export function ScheduleBlocks({
     scope: draft!.scope,
     classId: draft!.scope === "class" ? draft!.classId || null : null,
     coachId: draft!.scope === "coach" ? draft!.coachId || null : null,
-    starts: draft!.starts,
-    ends: draft!.ends,
+    starts: `${draft!.fromDate}T00:00`,
+    ends: `${draft!.toDate}T23:59`,
     substituteCoachId:
       draft!.scope === "coach" ? draft!.substituteCoachId || null : null,
     ...extra,
@@ -176,7 +178,7 @@ export function ScheduleBlocks({
           tone: "error",
           text:
             (data?.message as string | undefined) ??
-            "No pudimos revisar el bloqueo. Recargá antes de reintentar.",
+            "No pudimos revisar el cierre. Recargá antes de reintentar.",
         });
         return;
       }
@@ -184,7 +186,7 @@ export function ScheduleBlocks({
     } catch {
       setNotice({
         tone: "error",
-        text: "No pudimos revisar el bloqueo. Revisá la conexión antes de reintentar.",
+        text: "No pudimos revisar el cierre. Revisá la conexión antes de reintentar.",
       });
     } finally {
       setBusy(false);
@@ -208,7 +210,7 @@ export function ScheduleBlocks({
           tone: "error",
           text:
             (data?.message as string | undefined) ??
-            "No se guardó el bloqueo. Recargá antes de repetirlo.",
+            "No se guardó el cierre. Recargá antes de repetirlo.",
         });
         return;
       }
@@ -220,17 +222,17 @@ export function ScheduleBlocks({
         tone: "ok",
         text:
           reassigned > 0
-            ? `Bloqueo guardado. ${reassigned} ${reassigned === 1 ? "sesión pasó" : "sesiones pasaron"} al sustituto, sin cancelar a nadie.`
+            ? `Listo: ${plural(reassigned, "clase pasó", "clases pasaron")} al sustituto. No se canceló a nadie.`
             : cancelled > 0
-              ? `Bloqueo guardado. Se cancelaron ${cancelled} ${cancelled === 1 ? "sesión" : "sesiones"} y sus reservas quedaron con el motivo.`
-              : "Bloqueo guardado. No había sesiones programadas en ese rango.",
+              ? `Listo: ${plural(cancelled, "clase se canceló", "clases se cancelaron")} y cada reserva quedó con el motivo escrito.`
+              : "Cierre guardado. No había clases programadas en esos días.",
       });
       setDraft(null);
       setImpact(null);
     } catch {
       setNotice({
         tone: "error",
-        text: "No se guardó el bloqueo. Revisá la conexión antes de repetir.",
+        text: "No se guardó el cierre. Revisá la conexión antes de repetir.",
       });
     } finally {
       setBusy(false);
@@ -247,49 +249,58 @@ export function ScheduleBlocks({
           tone: "error",
           text:
             (data?.message as string | undefined) ??
-            "No se pudo levantar el bloqueo. Recargá antes de repetir.",
+            "No se pudo reabrir. Recargá antes de repetir.",
         });
         return;
       }
       setBlocks(data.blocks as ScheduleBlock[]);
       setNotice({
         tone: "ok",
-        text: "Bloqueo levantado. Las sesiones que ya se habían cancelado no vuelven solas: hay que generarlas de nuevo.",
+        text: "Cierre levantado. Las clases que se habían cancelado no vuelven solas: se crean de nuevo en el paso 2.",
       });
     } catch {
       setNotice({
         tone: "error",
-        text: "No se pudo levantar el bloqueo. Revisá la conexión antes de repetir.",
+        text: "No se pudo reabrir. Revisá la conexión antes de repetir.",
       });
     } finally {
       setBusy(false);
     }
   }
 
-  const open = draft
-    ? blocks.filter((block) => block.is_active).length + 1
-    : blocks.filter((block) => block.is_active).length;
   const activeBlocks = blocks.filter((block) => block.is_active);
 
   return (
     <section className="space-y-4 rounded-2xl border border-line bg-card p-4">
-      <div>
-        <h2 className="text-base font-bold text-ink">Bloqueos y cierres</h2>
-        <p className="text-[0.8125rem] text-fog">
-          Feriado, vacaciones, enfermedad o mantenimiento. Elegí a quién afecta
-          y revisá qué sesiones y reservas toca antes de guardar. Nada se borra:
-          lo cancelado queda con su motivo.
-        </p>
-        <p className="mt-1 text-[0.8125rem] text-mist">
-          {open === 0
-            ? "No hay bloqueos activos."
-            : `${open} ${open === 1 ? "bloqueo activo" : "bloqueos activos"}.`}
-        </p>
+      <div className="flex gap-3">
+        <span
+          aria-hidden="true"
+          className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full bg-brand text-[0.875rem] font-bold text-white"
+        >
+          3
+        </span>
+        <div className="min-w-0">
+          <h2 className="text-base font-bold text-ink">
+            <span className="sr-only">Paso 3: </span>
+            Días que no abrís
+          </h2>
+          <p className="mt-1 text-[0.8125rem] text-fog">
+            Feriado, vacaciones, un profesor enfermo o mantenimiento. Al cerrar,
+            esas clases no se programan y las que ya tenían gente se cancelan con
+            el motivo. Nada se borra.
+          </p>
+          <p className="mt-1 text-[0.8125rem] text-mist">
+            {activeBlocks.length === 0
+              ? "No hay cierres programados."
+              : `${plural(activeBlocks.length, "cierre programado", "cierres programados")}.`}
+          </p>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
         <Button
           type="button"
+          variant="outline"
           disabled={busy || !!draft}
           onClick={() => {
             setDraft(newDraft(classes, coaches, today));
@@ -297,7 +308,7 @@ export function ScheduleBlocks({
             setNotice(null);
           }}
         >
-          Agregar bloqueo
+          Cerrar un día o un rango
         </Button>
       </div>
 
@@ -305,7 +316,7 @@ export function ScheduleBlocks({
         <div className="space-y-3 rounded-xl border border-brand/40 bg-paper p-4">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <label className="text-[0.8125rem] text-mist">
-              Qué se bloquea
+              Qué cerrás
               <select
                 className={`${input} mt-1`}
                 value={draft.scope}
@@ -361,7 +372,7 @@ export function ScheduleBlocks({
                   </select>
                 </label>
                 <label className="text-[0.8125rem] text-mist">
-                  Sustituto (opcional)
+                  Quién lo cubre (opcional)
                   <select
                     className={`${input} mt-1`}
                     value={draft.substituteCoachId}
@@ -371,7 +382,7 @@ export function ScheduleBlocks({
                       setImpact(null);
                     }}
                   >
-                    <option value="">Cancelar las clases</option>
+                    <option value="">Nadie: se cancelan sus clases</option>
                     {coaches
                       .filter((coach) => coach.id !== draft.coachId)
                       .map((coach) => (
@@ -384,33 +395,33 @@ export function ScheduleBlocks({
               </>
             ) : null}
             <label className="text-[0.8125rem] text-mist">
-              Desde
+              Primer día
               <input
                 className={`${input} mt-1`}
-                type="datetime-local"
-                value={draft.starts}
+                type="date"
+                value={draft.fromDate}
                 disabled={busy}
                 onChange={(event) => {
-                  setDraft({ ...draft, starts: event.target.value });
+                  setDraft({ ...draft, fromDate: event.target.value });
                   setImpact(null);
                 }}
               />
             </label>
             <label className="text-[0.8125rem] text-mist">
-              Hasta
+              Último día
               <input
                 className={`${input} mt-1`}
-                type="datetime-local"
-                value={draft.ends}
+                type="date"
+                value={draft.toDate}
                 disabled={busy}
                 onChange={(event) => {
-                  setDraft({ ...draft, ends: event.target.value });
+                  setDraft({ ...draft, toDate: event.target.value });
                   setImpact(null);
                 }}
               />
             </label>
             <label className="text-[0.8125rem] text-mist">
-              Motivo
+              Por qué
               <select
                 className={`${input} mt-1`}
                 value={draft.reasonKind}
@@ -427,12 +438,12 @@ export function ScheduleBlocks({
               </select>
             </label>
             <label className="text-[0.8125rem] text-mist sm:col-span-2">
-              Nota
+              Contales qué pasa
               <input
                 className={`${input} mt-1`}
                 value={draft.reason}
                 maxLength={200}
-                placeholder="Por ejemplo: feriado nacional, se retoma el jueves"
+                placeholder="Por ejemplo: feriado nacional, retomamos el jueves"
                 disabled={busy}
                 onChange={(event) =>
                   setDraft({ ...draft, reason: event.target.value })
@@ -448,14 +459,14 @@ export function ScheduleBlocks({
               disabled={busy}
               onClick={() => void preview()}
             >
-              {busy ? "Revisando…" : "Ver qué se afecta"}
+              {busy ? "Revisando…" : "Ver a quién afecta"}
             </Button>
             <Button
               type="button"
               disabled={busy || !impact || draft.reason.trim().length < 3}
               onClick={() => void save()}
             >
-              Guardar bloqueo
+              Confirmar cierre
             </Button>
             <Button
               type="button"
@@ -474,10 +485,10 @@ export function ScheduleBlocks({
             <div className="space-y-2 rounded-xl border border-line bg-card p-3">
               <p className="text-[0.875rem] text-mist">
                 {impact.session_count === 0
-                  ? "No hay sesiones programadas en ese rango: el bloqueo va a impedir que se generen."
+                  ? "No hay clases programadas en esos días: el cierre va a impedir que se creen."
                   : impact.action === "reassign"
-                    ? `Se reasignarían ${impact.session_count} ${impact.session_count === 1 ? "sesión" : "sesiones"} al sustituto. No se cancela ninguna reserva.`
-                    : `Se cancelarían ${impact.session_count} ${impact.session_count === 1 ? "sesión" : "sesiones"} y ${impact.booking_count} ${impact.booking_count === 1 ? "reserva" : "reservas"}. Cada reserva queda cancelada con el motivo escrito.`}
+                    ? `Se pasan ${plural(impact.session_count, "clase", "clases")} al sustituto. No se cancela ninguna reserva.`
+                    : `Se cancelan ${plural(impact.session_count, "clase", "clases")} y ${plural(impact.booking_count, "reserva", "reservas")}. Cada reserva queda cancelada con el motivo escrito.`}
               </p>
               {impact.sessions.length ? (
                 <ul className="space-y-1">
@@ -486,7 +497,7 @@ export function ScheduleBlocks({
                       {formatDay(session.starts_at)} {formatHour(session.starts_at)} ·{" "}
                       {session.class_name} · {session.room}
                       {session.bookings > 0
-                        ? ` · ${session.bookings} ${session.bookings === 1 ? "reserva" : "reservas"}`
+                        ? ` · ${plural(session.bookings, "reserva", "reservas")}`
                         : " · sin reservas"}
                     </li>
                   ))}
@@ -523,7 +534,7 @@ export function ScheduleBlocks({
                   {block.substitute_coach_name
                     ? ` · cubre ${block.substitute_coach_name}`
                     : block.cancelled_sessions > 0
-                      ? ` · ${block.cancelled_sessions} ${block.cancelled_sessions === 1 ? "sesión cancelada" : "sesiones canceladas"}`
+                      ? ` · ${plural(block.cancelled_sessions, "clase cancelada", "clases canceladas")}`
                       : ""}
                 </p>
               </div>
@@ -534,7 +545,7 @@ export function ScheduleBlocks({
                 disabled={busy}
                 onClick={() => void lift(block)}
               >
-                Levantar
+                Reabrir
               </Button>
             </li>
           ))}
