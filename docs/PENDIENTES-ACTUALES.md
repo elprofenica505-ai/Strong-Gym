@@ -247,8 +247,12 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   cobro de una disciplina no registra entrada de gimnasio. Evidencia local:
   cadenas `00001…00068` aplicadas en PGlite, 24 comprobaciones PASS de CLI-06
   más 37 de CLI-01, 769 pruebas de reglas/UI, `typecheck`, `lint` y `build` sin
-  errores. Pendiente: aceptación en celular con un usuario de cada rol y
-  aplicar la migración en producción. Reversión: dejar de enviar `planId`; las
+  errores. La migración quedó aplicada en producción como
+  `catalogo_planes@20261029042701`; una corrección posterior
+  (`catalogo_planes_plan_class_state`) reparó la lectura de vigencias
+  «por comenzar» y «vencidas», que se había transcrito con un nombre de columna
+  equivocado al aplicarla. Pendiente: aceptación en celular con un usuario de
+  cada rol. Reversión: dejar de enviar `planId`; las
   columnas pueden quedar vacías sin afectar cobros ni vigencias ya creadas.
 - [ ] **CLI-02 · Media · Código — Completar la categoría automática.** Ya se
   calcula Común/Amigo/Familia/Strong Gym al leer, usando visitas, plan asignado
