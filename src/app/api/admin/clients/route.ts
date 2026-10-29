@@ -261,7 +261,8 @@ export async function POST(request: Request) {
         args = { p_id: d.id };
         break;
       case "payment":
-        name = "crm_record_payment";
+        // Con plan, la RPC cobra y crea la vigencia en la misma transacción.
+        name = d.planId ? "crm_record_payment_plan" : "crm_record_payment";
         args = {
           p_id: d.id,
           p_request: d.requestId,
@@ -271,6 +272,7 @@ export async function POST(request: Request) {
           p_account: d.account,
           p_concept: d.concept,
           p_fx: d.fx,
+          ...(d.planId ? { p_plan: d.planId } : {}),
         };
         break;
     }

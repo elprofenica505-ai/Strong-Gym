@@ -15,6 +15,7 @@ type ErrorCode =
   | "LIMIT"
   | "PAST"
   | "CLASS_INACTIVE"
+  | "PLAN_REQUIRED"
   | "CANCELLED"
   | "NOT_FOUND"
   | "TOO_LATE"
@@ -82,6 +83,7 @@ export async function POST(request: Request) {
     if (message.includes("LIMIT")) return fail("LIMIT", 409);
     if (message.includes("PAST")) return fail("PAST", 409);
     if (message.includes("CLASS_INACTIVE")) return fail("CLASS_INACTIVE", 409);
+    if (message.includes("PLAN_REQUIRED")) return fail("PLAN_REQUIRED", 409);
     if (message.includes("CANCELLED")) return fail("CANCELLED", 409);
     if (message.includes("NOT_FOUND")) return fail("NOT_FOUND", 404);
     return fail("UNKNOWN", 500);

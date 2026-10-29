@@ -40,6 +40,7 @@ const errorMessages = {
   LIMIT: "tooManyBookings",
   PAST: "pastSession",
   CLASS_INACTIVE: "inactiveClass",
+  PLAN_REQUIRED: "requiresPlan",
   CANCELLED: "cancelledByGym",
   TOO_LATE: "bookingError",
   NOT_FOUND: "bookingError",

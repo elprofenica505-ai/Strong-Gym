@@ -1,4 +1,5 @@
 "use client";
+import { validityRows } from "@/lib/crm/validity";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -477,12 +478,11 @@ export function ClientsPanel({
               siempre. También podés agregar productos con stock al mismo
               total antes de confirmar.
             </p>
-            {!selectedQuickTariff.isDayPass && (
-              <p className="text-fog">
-                Este cobro rápido solo registra el pago: todavía no activa ni
-                renueva la vigencia.
-              </p>
-            )}
+            <p className="text-fog">
+              {selectedQuickTariff.plan.duration_days
+                ? `Al confirmarse, activa o renueva la vigencia del plan: ${selectedQuickTariff.plan.duration_days} ${selectedQuickTariff.plan.duration_days === 1 ? "día" : "días"} contando este pago como día 1.`
+                : "Este plan no tiene una duración definida: el cobro solo registra el pago y no crea vigencia."}
+            </p>
             <label className="flex items-start gap-2 text-ink">
               <input
                 type="checkbox"
@@ -526,6 +526,11 @@ export function ClientsPanel({
               quickTariffArmed && selectedQuickTariff && quickTariffPreset
                 ? `quick-tariff:${selectedQuickTariff.plan.slug ?? selectedQuickTariff.plan.id}:${quickTariffPreset.stamp}`
                 : "standard"
+            }
+            initialPlanId={
+              quickTariffArmed && selectedQuickTariff
+                ? selectedQuickTariff.plan.id
+                : undefined
             }
             onSuccess={async (_receiptId, result) => {
               if (!quickTariffArmed) return;
@@ -992,6 +997,14 @@ export function ClientsPanel({
             >
               {enteredToday ? "Ya entró hoy" : "Sin entrada hoy"}
             </span>
+            {validityRows(detail.plan_validity, "es").map((row) => (
+              <span
+                key={row.key}
+                className={`rounded-full border px-2.5 py-1 ${row.value.startsWith("Vigente") ? "border-brand/50 text-brand-300" : row.value.startsWith("Venció") ? "border-alert/50 text-alert" : "border-line bg-paper text-fog"}`}
+              >
+                {row.label}: {row.value}
+              </span>
+            ))}
             {headerDebt &&
               (headerDebt.debt_nio > 0 || headerDebt.debt_usd > 0) && (
                 <span className="rounded-full border border-alert/50 px-2.5 py-1 text-alert">
@@ -1526,14 +1539,16 @@ function PaymentForm({
       sessionStorage.setItem(key, JSON.stringify(body));
       intent.current = body;
       setPending(body);
-      const res = await crmRequest<{ data: string }>(
+      const res = await crmRequest<{ data: string | { id?: string } }>(
         "/api/admin/clients",
         body,
       );
       sessionStorage.removeItem(key);
       intent.current = null;
       setPending(null);
-      setMessage(`Cobro confirmado. Referencia: ${res.data}`);
+      const reference =
+        typeof res.data === "string" ? res.data : (res.data?.id ?? "");
+      setMessage(`Cobro confirmado. Referencia: ${reference}`);
       onRefresh();
     } catch (e) {
       setMessage(

@@ -15,6 +15,8 @@ export interface GymClient {
   category: ClientCategory;
   status: ClientStatus;
   plan_id: string | null;
+  /** Fecha local en que se congeló la ficha; vacía si nunca se congeló. */
+  frozen_since?: string | null;
   notes: string;
   joined_on: string;
   created_at: string;
@@ -23,6 +25,31 @@ export interface GymClient {
   plan_name?: string;
   visits_30?: number;
   last_visit?: string | null;
+  /** Vigencia por acceso (gimnasio y boxeo) calculada en el servidor. */
+  plan_validity?: PlanValidity | null;
+}
+export type PlanAccessState = "active" | "upcoming" | "expired" | "none";
+export interface PlanAccess {
+  state: PlanAccessState;
+  plan_id: string | null;
+  starts_on: string | null;
+  expires_on: string | null;
+  days_left: number;
+}
+export interface PlanSegment {
+  id: string;
+  plan_id: string;
+  access: "gym" | "boxing";
+  started_on: string;
+  expires_on: string;
+  price: number | string | null;
+  currency: string;
+}
+export interface PlanValidity {
+  today: string;
+  gym: PlanAccess;
+  boxing: PlanAccess;
+  segments: PlanSegment[];
 }
 export interface Visit {
   id: string;
@@ -59,6 +86,7 @@ export interface ClientDetail {
     debt_nio: number;
     debt_usd: number;
   } | null;
+  plan_validity?: PlanValidity | null;
 }
 export interface Directory {
   rows: GymClient[];
@@ -75,6 +103,11 @@ export interface CrmOptions {
     period?: string;
     /** Tarifa NIO opcional; la base puede devolverla como número o texto. */
     price_nio?: number | string | null;
+    /** Vigencia definida para el plan; vacía si el plan no genera periodo. */
+    access?: "gym" | "boxing" | null;
+    duration_days?: number | null;
+    validity_currency?: "NIO" | "USD" | null;
+    validity_amount?: number | string | null;
   }[];
   methods: {
     id: string;

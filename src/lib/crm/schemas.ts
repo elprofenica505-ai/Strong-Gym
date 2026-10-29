@@ -47,6 +47,8 @@ export const crmActionSchema = z.discriminatedUnion("action", [
       account: z.string().min(1).max(80),
       concept: z.string().trim().min(2).max(200),
       fx: z.number().positive().max(10000).multipleOf(0.0001),
+      // Opcional: sin plan el cobro sigue siendo genérico y no crea vigencia.
+      planId: z.string().min(1).max(64).optional(),
     })
     .refine((d) => d.currency !== "NIO" || d.fx === 1),
 ]);

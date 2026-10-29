@@ -258,6 +258,8 @@ const es = {
       "Esa disciplina está desactivada por el gimnasio y no acepta reservas nuevas.",
     cancelledByGym: "La clase fue cancelada por el gimnasio.",
     bookingUnconfirmed: "No pudimos confirmar la reserva o su cancelación en tu cuenta. Revisá Mi cuenta antes de repetir; no vuelvas a reservar todavía.",
+    requiresPlan:
+      "Para reservar Boxeo necesitás tu mensualidad de Boxeo vigente para la fecha de la clase. Pedí en recepción que registren el cobro.",
     bookingError: "No pudimos completar la reserva. Intentá de nuevo.",
     weekOf: "Semana del",
     weeklySummary: "clases esta semana",
