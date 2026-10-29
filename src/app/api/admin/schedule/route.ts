@@ -56,16 +56,30 @@ const messages: Record<string, [string, number]> = {
   NOT_FOUND: ["No encontramos ese horario. Recargá antes de reintentar.", 404],
 };
 
+/**
+ * La base y la app pueden quedar desalineadas (una columna o una función que
+ * todavía no existe). Eso no se puede arreglar recargando, así que se avisa
+ * aparte en vez de mostrar el mensaje genérico de "no pudimos confirmar".
+ */
+const SETUP_CODES = new Set([
+  "PGRST202", // falta la función
+  "42883", // undefined_function
+  "42703", // undefined_column
+  "42P01", // undefined_table
+]);
+
 function failure(error: { code?: string; message?: string }) {
-  if (error.code === "PGRST202")
+  if (error.code && SETUP_CODES.has(error.code)) {
+    console.error("[admin/schedule] setup", error.code, error.message);
     return NextResponse.json(
       {
         error: "SETUP_REQUIRED",
         message:
-          "Falta instalar la grilla de horarios en la base. No se cambió ningún horario.",
+          "La grilla de horarios está desactualizada en la base. No se guardó nada: avisá para aplicar la actualización.",
       },
       { status: 503, headers },
     );
+  }
   const match = Object.hasOwn(messages, error.message ?? "")
     ? messages[error.message!]
     : null;

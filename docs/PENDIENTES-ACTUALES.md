@@ -148,13 +148,25 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   Se rechazan choques de la misma sala o del mismo entrenador en el mismo día
   y horario. Solo administración con MFA; la tabla no es accesible desde la
   API. Anular un horario deja la fila (`is_active = false`) y conserva las
-  sesiones ya creadas. Evidencia: 30 comprobaciones SQL nuevas y 4 de la
+  sesiones ya creadas. Evidencia: 33 comprobaciones SQL nuevas y 4 de la
   pantalla; `typecheck`, `lint` y `build` limpios. Aplicada en producción como
-  `20261029061123 grilla_horarios`; los cinco hashes
-  `md5(pg_get_functiondef)` coinciden con los locales. Al aplicarla se confirmó
-  que `coaches.sort_order` **no existe** en la base productiva (divergencia con
-  las migraciones): la grilla ordena entrenadores por `id` y no depende de esa
-  columna.
+  `20261029061123 grilla_horarios`; los hashes `md5(pg_get_functiondef)` de las
+  cinco funciones coinciden con los locales salvo comentarios. Al aplicarla se
+  confirmó que `coaches.sort_order` **no existe** en la base productiva
+  (divergencia con las migraciones): la grilla ordena entrenadores por `id` y no
+  depende de esa columna.
+  **Corrección del 29 de octubre (migración 00073, aplicada en producción):** al
+  abrir la pantalla mostraba «No pudimos confirmar estos datos» con el código
+  `SCHEDULE_UNCONFIRMED`. La causa no era la pantalla sino la base: en
+  producción `coaches` guarda el nombre en `full_name` y `admin_schedule_board()`
+  (00072) leía `co.name`, así que PostgREST devolvía `42703` y el servidor lo
+  traducía a un error genérico. `00073` lee el nombre con `to_jsonb(co)`: toma
+  `full_name`, luego `name` y por último el identificador, sin depender de cómo
+  se llame la columna. La prueba SQL arma el entrenador con `full_name` y `name`
+  vacío para que ese fallo no vuelva a pasar desapercibido. El servidor además
+  distingue los errores de base desalineada (`PGRST202`, `42883`, `42703`,
+  `42P01`) y avisa que la grilla está desactualizada, en vez de un mensaje que
+  invitaba a recargar sin salida.
   **Falta para cerrar OP-05** (sin SQL manual ni cambios de código):
   - Crear, editar y desactivar disciplinas nuevas o existentes, con sus
     textos, duración, cupo, intensidad, color y orden. Debe reutilizarse el

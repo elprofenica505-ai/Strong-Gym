@@ -18,9 +18,12 @@ const denied = async (label, promise, pattern) => {
 };
 
 const db = await createTestDb({
-  extra: ["supabase/migrations/00072_grilla_horarios.sql"],
+  extra: [
+    "supabase/migrations/00072_grilla_horarios.sql",
+    "supabase/migrations/00073_grilla_nombre_entrenador.sql",
+  ],
 });
-ok("00072 se aplica sobre 00071 sin error", true);
+ok("00072 y 00073 se aplican sobre 00071 sin error", true);
 
 const row = async (query, args = []) => (await db.query(query, args)).rows[0];
 const makeUser = async (email, role) => {
@@ -137,9 +140,11 @@ await denied("Dos clases a la misma hora en la misma sala se rechazan",
   adminRpc("admin_save_schedule_slot", [null, "cls_boxeo", 2, "18:30", 60, 20, "Salón de clases", null, true, 1]),
   /SCHEDULE_CONFLICT/);
 const coachId = "coach_test";
+// Igual que en producción: el nombre vive en `full_name`. `name` se deja
+// vacío a propósito para comprobar que la grilla no depende de esa columna.
 await db.query(
-  `insert into public.coaches(id, slug, name, specialties, is_active)
-   values ($1, 'coach-test', 'Profe de prueba', array['boxeo','zumba'], true)`,
+  `insert into public.coaches(id, slug, name, full_name, specialties, is_active)
+   values ($1, 'coach-test', '', 'Profe Uno', array['boxeo','zumba'], true)`,
   [coachId],
 );
 await adminRpc("admin_save_schedule_slot", [
@@ -152,6 +157,15 @@ const free = await adminRpc("admin_save_schedule_slot", [
   null, "cls_boxeo", 5, "09:00", 60, 20, "Área de boxeo", null, true, 1,
 ]);
 ok("Un horario sin choque en otro día se guarda", free.slot_id !== zumbaId);
+
+// 4b. El nombre del entrenador no depende de que la columna se llame `name`.
+const named = await adminRpc("admin_schedule_board", []);
+ok("La grilla muestra el nombre del entrenador desde full_name",
+  named.slots.some((s) => s.coach_id === coachId && s.coach_name === "Profe Uno"));
+ok("La lista de entrenadores usa el mismo nombre",
+  named.coaches.some((c) => c.id === coachId && c.name === "Profe Uno"));
+ok("Los especialidades se devuelven como lista",
+  Array.isArray(named.coaches.find((c) => c.id === coachId)?.specialties));
 
 // 5. Anular no borra: la fila y las sesiones ya creadas siguen.
 const beforeOff = (await row("select count(*)::int as n from public.sessions where class_id='cls_zumba'")).n;
