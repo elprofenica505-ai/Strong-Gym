@@ -76,7 +76,7 @@ select c.id, s.day, s.start_time, c.duration_min, c.capacity,
   end,
   (select co.id from public.coaches co
     where co.is_active and c.slug = any (co.specialties)
-    order by co.sort_order, co.id limit 1)
+    order by co.id limit 1)
 from (values
   (1, '06:00'::time), (1, '17:30'::time), (1, '20:00'::time),
   (2, '06:00'::time), (2, '17:30'::time), (2, '20:00'::time),
@@ -132,7 +132,7 @@ begin
       select id into v_coach
       from public.coaches
       where is_active and v_slot.slug = any (specialties)
-      order by sort_order, id
+      order by id
       limit 1;
     end if;
 
@@ -227,7 +227,7 @@ begin
     ), '[]'::jsonb),
     'coaches', coalesce((
       select jsonb_agg(jsonb_build_object('id', co.id, 'name', co.name, 'specialties', co.specialties)
-        order by co.sort_order, co.id)
+        order by co.id)
       from public.coaches co
       where co.is_active
     ), '[]'::jsonb),

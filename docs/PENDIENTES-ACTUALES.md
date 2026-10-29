@@ -149,7 +149,12 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   y horario. Solo administración con MFA; la tabla no es accesible desde la
   API. Anular un horario deja la fila (`is_active = false`) y conserva las
   sesiones ya creadas. Evidencia: 30 comprobaciones SQL nuevas y 4 de la
-  pantalla; `typecheck`, `lint` y `build` limpios.
+  pantalla; `typecheck`, `lint` y `build` limpios. Aplicada en producción como
+  `20261029061123 grilla_horarios`; los cinco hashes
+  `md5(pg_get_functiondef)` coinciden con los locales. Al aplicarla se confirmó
+  que `coaches.sort_order` **no existe** en la base productiva (divergencia con
+  las migraciones): la grilla ordena entrenadores por `id` y no depende de esa
+  columna.
   **Falta para cerrar OP-05** (sin SQL manual ni cambios de código):
   - Crear, editar y desactivar disciplinas nuevas o existentes, con sus
     textos, duración, cupo, intensidad, color y orden. Debe reutilizarse el
