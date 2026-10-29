@@ -191,7 +191,15 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
     acción explícita.
   - Asignar entrenadores por grilla y por sesión, usando especialidades
     estructuradas, y detectar choques del mismo entrenador o de la misma
-    sala en el mismo horario. También debe completarse la gestión de
+    sala en el mismo horario. **Dato comprobado el 29 de octubre:** en la base
+    productiva la columna `coaches.specialties` (lista) está vacía en los tres
+    entrenadores; la especialidad real vive en `coaches.specialty`, como texto
+    libre («Boxeo y acondicionamiento»). Por eso las 79 sesiones programadas
+    quedaron **sin entrenador**: el generador solo asigna por coincidencia de
+    especialidad y esa lista está vacía. No es un error nuevo ni una regresión,
+    y se arregla desde la grilla asignando el entrenador a mano. Completar esa
+    lista con un texto libre sería adivinar; queda como dato del catálogo de
+    entrenadores que falta. También debe completarse la gestión de
     catálogos operativos de planes y entrenadores más allá de las cuatro
     tarifas NIO ya editables.
   Todo el CRUD debe estar autorizado en pantalla, servidor y RLS/RPC, con
