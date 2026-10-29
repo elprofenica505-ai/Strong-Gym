@@ -1,5 +1,5 @@
 "use client";
-import { validityRows } from "@/lib/crm/validity";
+import { accessLabel, formatPlanDate, validityRows } from "@/lib/crm/validity";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -108,6 +108,27 @@ function ModuleCard({
     </button>
   );
 }
+/**
+ * Tarifa de Boxeo: el catálogo ya informa su vigencia en dólares. Se toma el
+ * importe exacto de ahí, nunca del precio histórico del plan.
+ */
+function findBoxingTariff(plans: CrmOptions["plans"]): QuickTariff | null {
+  for (const plan of plans) {
+    if (plan.access !== "boxing" || !plan.duration_days) continue;
+    const amount = Number(plan.validity_amount);
+    const currency = plan.validity_currency;
+    if (!currency || !Number.isFinite(amount) || amount <= 0) continue;
+    return {
+      plan,
+      amount,
+      currency,
+      buttonLabel: "Boxeo",
+      isDayPass: false,
+      isBoxing: true,
+    };
+  }
+  return null;
+}
 const emptyOptions: CrmOptions = {
   plans: [],
   methods: [],
@@ -122,9 +143,13 @@ const QUICK_TARIFFS = [
 ] as const;
 type QuickTariff = {
   plan: CrmOptions["plans"][number];
-  priceNio: number;
-  buttonLabel: (typeof QUICK_TARIFFS)[number]["buttonLabel"];
+  /** Importe y moneda canónicos de la tarifa; el cobro exige que coincidan. */
+  amount: number;
+  currency: "NIO" | "USD";
+  buttonLabel: string;
   isDayPass: boolean;
+  /** Boxeo es un acceso aparte: no registra la entrada de gimnasio. */
+  isBoxing: boolean;
 };
 function validQuickTariffPrice(plan: CrmOptions["plans"][number]) {
   const price = Number(plan.price_nio);
@@ -154,9 +179,11 @@ function findQuickTariffs(plans: CrmOptions["plans"]): QuickTariff[] {
       ? [
           {
             plan,
-            priceNio,
+            amount: priceNio,
+            currency: "NIO" as const,
             buttonLabel: expected.buttonLabel,
             isDayPass: index === 0,
+            isBoxing: false,
           },
         ]
       : [];
@@ -232,6 +259,11 @@ export function ClientsPanel({
     failed: boolean;
   } | null>(null);
   const [quickTariffPreset, setQuickTariffPreset] = useState<{
+    clientId: string;
+    planId: string;
+    stamp: number;
+  } | null>(null);
+  const [boxingPreset, setBoxingPreset] = useState<{
     clientId: string;
     planId: string;
     stamp: number;
@@ -355,13 +387,127 @@ export function ClientsPanel({
     options.finance_layout === "bank_accounts_split"
       ? findQuickTariffs(options.plans)
       : [];
-  const selectedQuickTariff =
+  const boxingTariff =
+    options.finance_layout === "bank_accounts_split"
+      ? findBoxingTariff(options.plans)
+      : null;
+  const gymTariffSelected =
     detail && quickTariffPreset?.clientId === detail.client.id
       ? quickTariffs.find(
           (tariff) => tariff.plan.id === quickTariffPreset.planId,
         )
       : undefined;
+  const boxingSelected =
+    detail && boxingPreset?.clientId === detail.client.id && boxingTariff
+      ? boxingTariff.plan.id === boxingPreset.planId
+        ? boxingTariff
+        : undefined
+      : undefined;
+  const selectedQuickTariff = gymTariffSelected ?? boxingSelected;
   const quickTariffArmed = !!selectedQuickTariff;
+  /** Arma un cobro con plan y abre su formulario en el módulo de cobro. */
+  function armPlan(tariff: QuickTariff, registerEntry: boolean, stamp: number) {
+    if (!detail || detailBusy || detail.client.status !== "active") return;
+    setEntryChargeClientId(detail.client.id);
+    setRegisterEntryAfterQuickTariff(registerEntry);
+    setQuickTariffPreset(
+      tariff.isBoxing
+        ? null
+        : {
+            clientId: detail.client.id,
+            planId: tariff.plan.id,
+            stamp,
+          },
+    );
+    setBoxingPreset(
+      tariff.isBoxing
+        ? {
+            clientId: detail.client.id,
+            planId: tariff.plan.id,
+            stamp,
+          }
+        : null,
+    );
+    setEntryFeedback(null);
+    openModuleView(tariff.isBoxing ? "cobrar" : "entrada");
+    requestAnimationFrame(() =>
+      document
+        .getElementById("cobro")
+        ?.scrollIntoView?.({ behavior: "smooth", block: "start" }),
+    );
+  }
+  /** Tarifa de gimnasio sugerida para renovar: mes si existe, si no la primera. */
+  const renewTariff =
+    quickTariffs.find((tariff) => tariff.plan.slug === "gimnasio-mensual") ??
+    quickTariffs[quickTariffs.length - 1] ??
+    null;
+  /** Panel de vigencias: Gimnasio y Boxeo con su propio botón de cobro. */
+  const validityPanel = () => {
+    if (!detail || options.finance_layout !== "bank_accounts_split") return null;
+    const rows = [
+      {
+        key: "gym" as const,
+        label: "Gimnasio",
+        access: detail.plan_validity?.gym,
+        tariff: renewTariff,
+      },
+      {
+        key: "boxing" as const,
+        label: "Boxeo",
+        access: detail.plan_validity?.boxing,
+        tariff: boxingTariff,
+      },
+    ];
+    return (
+      <section className="space-y-3 rounded-2xl border border-line bg-card p-4">
+        <div>
+          <h3 className="text-lg font-bold text-ink">Vigencias</h3>
+          <p className="text-sm text-fog">
+            Gimnasio y Boxeo se cobran y vencen por separado. Podés tener los dos
+            vigentes a la vez. El «plan asignado» de la ficha es solo una
+            etiqueta y no cobra ni activa nada.
+          </p>
+        </div>
+        <ul className="space-y-2">
+          {rows.map((row) => (
+            <li
+              key={row.key}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-paper/60 p-3"
+            >
+              <div className="min-w-0">
+                <p className="font-semibold text-ink">{row.label}</p>
+                <p
+                  className={`text-sm ${row.access?.state === "active" ? "text-brand-300" : row.access?.state === "expired" ? "text-alert" : "text-fog"}`}
+                >
+                  {row.access ? accessLabel(row.access, "es") : "Sin vigencia registrada"}
+                  {row.access?.expires_on &&
+                    row.access.state !== "none" &&
+                    ` · vence el ${formatPlanDate(row.access.expires_on, "es")}`}
+                </p>
+              </div>
+              {row.tariff ? (
+                <Button
+                  type="button"
+                  variant={row.key === "boxing" ? "outline" : "primary"}
+                  size="sm"
+                  className="shrink-0"
+                  disabled={detailBusy || detail.client.status !== "active"}
+                  onClick={() => armPlan(row.tariff!, false, Date.now())}
+                >
+                  Cobrar {row.label} ·{" "}
+                  {formatMoney(row.tariff.amount, row.tariff.currency)}
+                </Button>
+              ) : (
+                <p className="text-xs text-fog">
+                  Sin tarifa configurada para este acceso.
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
+  };
   function select(id: string, token: string | null = null) {
     setEntryFeedback(null);
     setQuickTariffPreset(null);
@@ -473,33 +619,40 @@ export function ClientsPanel({
               <strong>
                 {selectedQuickTariff.plan.name_es} listo para cobrar.
               </strong>{" "}
-              El monto de {formatMoney(selectedQuickTariff.priceNio, "NIO")} y
-              el concepto ya están cargados; elegí método, cuenta y tasa como
-              siempre. También podés agregar productos con stock al mismo
-              total antes de confirmar.
+              El monto de{" "}
+              {formatMoney(selectedQuickTariff.amount, selectedQuickTariff.currency)}{" "}
+              y el concepto ya están cargados; elegí método, cuenta y tasa como
+              siempre.{" "}
+              {selectedQuickTariff.isBoxing
+                ? "Boxeo se cobra solo, en dólares y sin productos, y crea una vigencia aparte de la del gimnasio."
+                : "También podés agregar productos con stock al mismo total antes de confirmar."}
             </p>
             <p className="text-fog">
               {selectedQuickTariff.plan.duration_days
                 ? `Al confirmarse, activa o renueva la vigencia del plan: ${selectedQuickTariff.plan.duration_days} ${selectedQuickTariff.plan.duration_days === 1 ? "día" : "días"} contando este pago como día 1.`
                 : "Este plan no tiene una duración definida: el cobro solo registra el pago y no crea vigencia."}
             </p>
-            <label className="flex items-start gap-2 text-ink">
-              <input
-                type="checkbox"
-                checked={registerEntryAfterQuickTariff}
-                disabled={detailBusy}
-                onChange={(event) =>
-                  setRegisterEntryAfterQuickTariff(event.target.checked)
-                }
-                className="mt-0.5 size-4 shrink-0 accent-brand"
-              />
-              <span>Registrar entrada ahora al confirmarse el cobro</span>
-            </label>
-            <p className="text-fog">
-              {selectedQuickTariff.isDayPass
-                ? "Desmarcala solo si la persona pagó para entrar más tarde."
-                : "Desmarcala si hoy la persona solo viene a pagar y no va a entrenar."}
-            </p>
+            {!selectedQuickTariff.isBoxing && (
+              <>
+                <label className="flex items-start gap-2 text-ink">
+                  <input
+                    type="checkbox"
+                    checked={registerEntryAfterQuickTariff}
+                    disabled={detailBusy}
+                    onChange={(event) =>
+                      setRegisterEntryAfterQuickTariff(event.target.checked)
+                    }
+                    className="mt-0.5 size-4 shrink-0 accent-brand"
+                  />
+                  <span>Registrar entrada ahora al confirmarse el cobro</span>
+                </label>
+                <p className="text-fog">
+                  {selectedQuickTariff.isDayPass
+                    ? "Desmarcala solo si la persona pagó para entrar más tarde."
+                    : "Desmarcala si hoy la persona solo viene a pagar y no va a entrenar."}
+                </p>
+              </>
+            )}
           </div>
         )}
         {options.finance_layout === "bank_accounts_split" ? (
@@ -514,7 +667,12 @@ export function ClientsPanel({
             onRefresh={() => setRevision((n) => n + 1)}
             defaultAmount={
               quickTariffArmed && selectedQuickTariff
-                ? selectedQuickTariff.priceNio
+                ? selectedQuickTariff.amount
+                : undefined
+            }
+            initialCurrency={
+              quickTariffArmed && selectedQuickTariff
+                ? selectedQuickTariff.currency
                 : undefined
             }
             defaultConcept={
@@ -523,8 +681,8 @@ export function ClientsPanel({
                 : undefined
             }
             presetKey={
-              quickTariffArmed && selectedQuickTariff && quickTariffPreset
-                ? `quick-tariff:${selectedQuickTariff.plan.slug ?? selectedQuickTariff.plan.id}:${quickTariffPreset.stamp}`
+              quickTariffArmed && selectedQuickTariff
+                ? `quick-tariff:${selectedQuickTariff.plan.slug ?? selectedQuickTariff.plan.id}:${quickTariffPreset?.stamp ?? boxingPreset?.stamp ?? 0}`
                 : "standard"
             }
             initialPlanId={
@@ -534,11 +692,18 @@ export function ClientsPanel({
             }
             onSuccess={async (_receiptId, result) => {
               if (!quickTariffArmed) return;
+              if (selectedQuickTariff?.isBoxing) {
+                // Boxeo no registra entrada de gimnasio: solo la vigencia.
+                setBoxingPreset(null);
+                setEntryChargeClientId(null);
+                return;
+              }
               const clientId = detail.client.id;
               const includedService = result.serviceAmount !== 0;
               const shouldRegisterEntry =
                 registerEntryAfterQuickTariff && includedService;
               setQuickTariffPreset(null);
+              setBoxingPreset(null);
               if (shouldRegisterEntry) {
                 await registerEntry(clientId, true);
               } else if (registerEntryAfterQuickTariff && !includedService) {
@@ -880,7 +1045,7 @@ export function ClientsPanel({
                 maxLength={120}
               />
             </Field>
-            <Field label="Plan (opcional)">
+            <Field label="Plan asignado (solo etiqueta)">
               <select className={input} name="plan">
                 <option value="">Sin plan asignado</option>
                 {options.plans.map((p) => (
@@ -1023,7 +1188,8 @@ export function ClientsPanel({
             {detail.client.plan_id
               ? (options.plans.find((p) => p.id === detail.client.plan_id)
                   ?.name_es ?? "Plan asignado")
-              : "Sin plan"}
+              : "Sin plan asignado"}{" "}
+            (etiqueta; las vigencias están arriba)
           </p>
           {detail.client.status !== "active" && (
             <p className="text-alert">
@@ -1087,25 +1253,10 @@ export function ClientsPanel({
                 aria-pressed={selectedQuickTariff?.plan.id === tariff.plan.id}
                 className={`w-full justify-center ${selectedQuickTariff?.plan.id === tariff.plan.id ? "ring-2 ring-white/90 ring-offset-2 ring-offset-paper" : ""}`}
                 disabled={detailBusy || detail.client.status !== "active"}
-                onClick={() => {
-                  if (detailBusy || detail.client.status !== "active") return;
-                  setEntryChargeClientId(detail.client.id);
-                  setRegisterEntryAfterQuickTariff(true);
-                  setQuickTariffPreset({
-                    clientId: detail.client.id,
-                    planId: tariff.plan.id,
-                    stamp: Date.now(),
-                  });
-                  setEntryFeedback(null);
-                  requestAnimationFrame(() =>
-                    document
-                      .getElementById("cobro")
-                      ?.scrollIntoView?.({ behavior: "smooth", block: "start" }),
-                  );
-                }}
+                onClick={() => armPlan(tariff, true, Date.now())}
               >
                 Cobrar {tariff.buttonLabel} ·{" "}
-                {formatMoney(tariff.priceNio, "NIO")}
+                {formatMoney(tariff.amount, tariff.currency)}
               </Button>
             ))}
             <Button
@@ -1142,6 +1293,7 @@ export function ClientsPanel({
           )}
           {openModule === "cobrar" && (
             <div className="space-y-4">
+            {validityPanel()}
             {paymentBlock()}
             </div>
           )}
@@ -1286,6 +1438,7 @@ export function ClientsPanel({
           )}
           {openModule === null && (
             <>
+              {validityPanel()}
               <div className="space-y-3">
                 <ModuleCard
                   module="entrada"
@@ -1456,7 +1609,7 @@ function EditClient({
               <option value="cancelled">Cancelado</option>
             </select>
           </Field>
-          <Field label="Plan">
+          <Field label="Plan asignado (solo etiqueta)">
             <select
               className={input}
               name="plan"

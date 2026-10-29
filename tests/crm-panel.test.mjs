@@ -637,6 +637,10 @@ const quickTariffPlans = [
     period: "month",
     price_nio: 750,
     sort_order: 1,
+    access: "boxing",
+    duration_days: 30,
+    validity_currency: "USD",
+    validity_amount: 20,
   },
   {
     id: "pln_dia",
@@ -687,7 +691,7 @@ const quickTariffPlans = [
     validity_amount: 560,
   },
 ];
-function setupQuickTariffs(checkIn, plans = quickTariffPlans) {
+function setupQuickTariffs(checkIn, plans = quickTariffPlans, usd = false) {
   window.confirm = () => true;
   window.requestAnimationFrame = (callback) => {
     callback(0);
@@ -699,6 +703,23 @@ function setupQuickTariffs(checkIn, plans = quickTariffPlans) {
     finance_layout: "bank_accounts_split",
     payments_enabled: false,
     plans,
+    ...(usd
+      ? {
+          methods: [
+            ...options.methods,
+            {
+              id: "cash_usd",
+              name_es: "Efectivo dólares",
+              accepts_nio: false,
+              accepts_usd: true,
+            },
+          ],
+          accounts: [
+            ...options.accounts,
+            { id: "cash_usd", name: "Caja USD", currency: "USD" },
+          ],
+        }
+      : {}),
   };
   return setup(
     (url, init) => {
@@ -744,8 +765,8 @@ function setupQuickTariffs(checkIn, plans = quickTariffPlans) {
                 protocol: "service-v1",
                 writes_enabled: true,
                 finance_layout: "bank_accounts_split",
-                methods: options.methods,
-                accounts: options.accounts,
+                methods: bank.methods,
+                accounts: bank.accounts,
                 categories: [],
                 plans,
               },
@@ -998,6 +1019,63 @@ test("mes sin registrar entrada cobra C$560 una vez y no llama check-in", async 
   assert.equal(quickTariffCharges(calls)[0].body.planId, "pln_mes");
   assert.equal(quickTariffCheckIns(calls).length, 0);
   assert.equal(calls.filter((call) => call.body?.action).length, 0);
+});
+
+test("Boxeo se cobra aparte en dólares y no registra entrada de gimnasio", async () => {
+  const calls = setupQuickTariffs(
+    () => json({ data: { already: false, id: token } }),
+    quickTariffPlans,
+    true,
+  );
+  await open();
+  await heading();
+  await openModule("Cobrar un servicio");
+  fireEvent.click(
+    await screen.findByRole("button", { name: /Cobrar Boxeo · USD\s*20/ }),
+  );
+  await screen.findByText(/Boxeo se cobra solo, en dólares/);
+  assert.equal(
+    screen.queryByRole("checkbox", { name: /Registrar entrada ahora/ }),
+    null,
+  );
+  const submit = screen.getByRole("button", {
+    name: "Confirmar cobro por servicio",
+  });
+  await waitFor(() => assert.equal(submit.disabled, false));
+  assert.equal(screen.getByLabelText("Monto").value, "20");
+  assert.equal(screen.getByLabelText("Concepto").value, "Boxeo mensual");
+  assert.equal(screen.getByLabelText("Moneda").value, "USD");
+  fireEvent.change(screen.getByLabelText("Método"), {
+    target: { value: "cash_usd" },
+  });
+  fireEvent.change(screen.getByLabelText("Cuenta"), {
+    target: { value: "cash_usd" },
+  });
+  fireEvent.change(screen.getByLabelText("Tasa NIO por 1 USD"), {
+    target: { value: "36.7244" },
+  });
+  fireEvent.click(submit);
+  await screen.findByRole("link", { name: /Abrir comprobante interno/ });
+  assert.equal(quickTariffCharges(calls).length, 1);
+  const body = quickTariffCharges(calls)[0].body;
+  assert.equal(body.amount, 20);
+  assert.equal(body.currency, "USD");
+  assert.equal(body.planId, "pln_boxeo");
+  assert.equal(quickTariffCheckIns(calls).length, 0);
+  assert.equal(calls.filter((call) => call.body?.action).length, 0);
+});
+
+test("la ficha muestra Gimnasio y Boxeo con su propio botón de cobro", async () => {
+  setupQuickTariffs(
+    () => json({ data: { already: false, id: token } }),
+    quickTariffPlans,
+    true,
+  );
+  await open();
+  await heading();
+  await screen.findByText("Vigencias");
+  assert.ok(screen.getByRole("button", { name: /Cobrar Gimnasio · C\$560/ }));
+  assert.ok(screen.getByRole("button", { name: /Cobrar Boxeo · USD\s*20/ }));
 });
 
 test("un plan sin duración definida cobra sin crear vigencia", async () => {
