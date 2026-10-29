@@ -276,7 +276,11 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   reglas/UI, `typecheck`, `lint` y `build` limpios, y los siete hashes
   `md5(pg_get_functiondef)` de producción coinciden con los locales. Los cuatro
   clientes del directorio quedaron con categoría asignada (3 Común, 1 Strong
-  Gym). **Pendiente: aceptación en celular** con un usuario de cada rol.
+  Gym) al ejecutar el recálculo. Desplegado en producción con
+  `dpl_F3oHWLBBhNdEQeHN2PXMWkjsmVSx` (commit `86952ca`); `/api/admin/categories`
+  responde 403 AUTH sin sesión (ya no PGRST202) y la página de Categorías
+  redirige a Ingresar. **Pendiente: aceptación en celular** con un usuario de
+  cada rol.
   Reversión: dejar de llamar `client_category_apply`; las columnas nuevas
   pueden quedar vacías sin afectar cobros ni vigencias y no se borra nada.
 - [ ] **CLI-03 · Media · Revisión profesional — Calculadora, dieta y rutinas.**
