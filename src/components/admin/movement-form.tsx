@@ -23,6 +23,7 @@ import {
   type MovementResult,
 } from "@/lib/finance/movements";
 import { formatMoney } from "@/lib/finance/format-money";
+import { formatPlanDate } from "@/lib/crm/validity";
 import {
   saleCatalogSchema,
   type SaleCatalog,
@@ -368,7 +369,7 @@ export function MovementForm({
       }
       setMessage(
         result.plan
-          ? `Cobro confirmado. ${result.plan.access === "boxing" ? "Boxeo" : "Gimnasio"}: vigencia del ${result.plan.started_on} al ${result.plan.expires_on} (${result.plan.days} ${result.plan.days === 1 ? "día" : "días"}). Abrí el comprobante interno para revisar los datos guardados.`
+          ? `Cobro confirmado. ${result.plan.access === "boxing" ? "Boxeo" : "Gimnasio"}: vigencia del ${formatPlanDate(result.plan.started_on, locale === "en" ? "en" : "es")} al ${formatPlanDate(result.plan.expires_on, locale === "en" ? "en" : "es")} (${result.plan.days} ${result.plan.days === 1 ? "día" : "días"}). Abrí el comprobante interno para revisar los datos guardados.`
           : result.receipts && result.receipts.length > 1
             ? "Cobro confirmado. Abrí los comprobantes internos de cada línea para revisar los datos guardados."
             : "Movimiento confirmado. Abrí el comprobante interno para revisar los datos guardados.",

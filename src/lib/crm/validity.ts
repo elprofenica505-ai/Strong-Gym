@@ -17,6 +17,18 @@ function formatDay(day: string, locale: ValidityLocale): string {
   }).format(date);
 }
 
+/** "28 oct 2026" a partir de una fecha local `YYYY-MM-DD`. */
+export function formatPlanDate(day: string, locale: ValidityLocale): string {
+  const date = new Date(`${day}T12:00:00Z`);
+  if (Number.isNaN(date.getTime())) return day;
+  return new Intl.DateTimeFormat(locale === "es" ? "es-NI" : "en-US", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
 export function accessLabel(access: PlanAccess, locale: ValidityLocale): string {
   const es = locale === "es";
   switch (access.state) {
