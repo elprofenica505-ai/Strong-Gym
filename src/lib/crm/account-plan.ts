@@ -10,6 +10,8 @@ const plan = z.object({
 // Vigencia real (CLI-01). Una asignación sin cobro sigue sin fechas.
 const planAccess = z
   .object({
+    key: z.string(),
+    label: z.string(),
     state: z.enum(["active", "upcoming", "expired", "none"]),
     plan_id: z.string().nullable(),
     starts_on: z.string().nullable(),
@@ -21,7 +23,9 @@ const planSegment = z
   .object({
     id: z.string(),
     plan_id: z.string(),
-    access: z.enum(["gym", "boxing"]),
+    access: z.enum(["gym", "class"]),
+    class_id: z.string().nullable(),
+    class_name: z.string().nullable(),
     started_on: z.string(),
     expires_on: z.string(),
     price: z.union([z.number(), z.string()]).nullable(),
@@ -32,7 +36,10 @@ const planValidity = z
   .object({
     today: z.string(),
     gym: planAccess,
-    boxing: planAccess,
+    // `classes` llega con la migración 00068; `boxing` es el formato anterior.
+    // Aceptar ambos permite desplegar el código sin cortar vigencias.
+    classes: z.array(planAccess).optional().default([]),
+    boxing: planAccess.optional(),
     segments: z.array(planSegment),
   })
   .strict();

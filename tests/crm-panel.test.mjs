@@ -637,7 +637,9 @@ const quickTariffPlans = [
     period: "month",
     price_nio: 750,
     sort_order: 1,
-    access: "boxing",
+    access: "class",
+    class_id: "cls_boxeo",
+    class_name: "Boxeo",
     duration_days: 30,
     validity_currency: "USD",
     validity_amount: 20,
@@ -1033,7 +1035,7 @@ test("Boxeo se cobra aparte en dólares y no registra entrada de gimnasio", asyn
   fireEvent.click(
     await screen.findByRole("button", { name: /Cobrar Boxeo · USD\s*20/ }),
   );
-  await screen.findByText(/Boxeo se cobra solo, en dólares/);
+  await screen.findByText(/Boxeo se cobra solo, sin productos/);
   assert.equal(
     screen.queryByRole("checkbox", { name: /Registrar entrada ahora/ }),
     null,

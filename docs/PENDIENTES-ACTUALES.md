@@ -60,9 +60,10 @@ Según el caso, debe cumplir:
 
 | Orden | Trabajo | Motivo |
 |---:|---|---|
-| 1 | **CLI-01** | Las vigencias ordenan planes, categorías y operación diaria. |
-| 2 | **FIN-01 y FIN-02** | Anulaciones y vuelto son los huecos financieros más visibles. |
-| 3 | **CAL-01, CAL-03, LEG-01 y NEG-01** | Preparan una entrega segura cuando el dueño entregue datos y decisiones. |
+| 1 | **CLI-06** | Cualquier plan o modalidad nueva se cobra con vigencia sin tocar código. |
+| 2 | **CLI-01** | Las vigencias ordenan planes, categorías y operación diaria. |
+| 3 | **FIN-01 y FIN-02** | Anulaciones y vuelto son los huecos financieros más visibles. |
+| 4 | **CAL-01, CAL-03, LEG-01 y NEG-01** | Preparan una entrega segura cuando el dueño entregue datos y decisiones. |
 
 ---
 
@@ -222,6 +223,33 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   encadenamiento, 768 pruebas de reglas/UI, `typecheck`, `lint` y `build` sin
   errores, más 2 pruebas nuevas del cobro de Boxeo y del panel de vigencias. Reversión: dejar de enviar `planId`, luego retirar las RPC `*_plan`;
   no se borran datos.
+- [ ] **CLI-06 · Alta · Código — Catálogo de planes y modalidades.** Decisión
+  cerrada por el usuario (modelo C + opción 1): cada plan se ata a **una
+  disciplina existente** o a **todo el gimnasio**, y su vigencia sale de los
+  datos del plan, no de su slug. Así el dueño crea desde Administración un plan
+  nuevo —por ejemplo Zumba mensual— y ese mismo plan aparece para cobrar con
+  vigencia real en la ficha del cliente, sin pedir cambios de código.
+  Implementación: migración 00068 (`catalogo_planes`) con columnas
+  `access_kind`, `class_id`, `duration_days`, `validity_currency`,
+  `validity_amount` y `updated_at` en `plans` (con checks), más `class_id` en
+  `payment_plans`. `plan_validity_terms` deja de tener slugs escritos a mano.
+  Boxeo y las cuatro tarifas NIO quedaron migrados al modelo nuevo; el acceso
+  histórico `boxing` de los segmentos se conserva como valor permitido y la
+  aplicación usa `class` con `class_id`. Funciones nuevas: `plan_class_state`,
+  `plan_access_state` (puente), `plan_validity_summary` con `classes[]`,
+  `plan_register_segment` con disciplina, `book_session` genérico (exige
+  vigencia solo si hay un plan activo con duración para esa disciplina;
+  `PLAN_REQUIRED`), `admin_plans_catalog()` y `admin_save_plan(...)`. Módulo
+  **Administración → Planes y modalidades** con API propia (administrador con
+  MFA, zod estricto, desactivar en vez de borrar). La ficha y Mi Cuenta
+  recorren los planes activos: el panel **Vigencias** muestra una fila por
+  acceso (gimnasio y cada disciplina con plan) con su botón de cobro, y el
+  cobro de una disciplina no registra entrada de gimnasio. Evidencia local:
+  cadenas `00001…00068` aplicadas en PGlite, 24 comprobaciones PASS de CLI-06
+  más 37 de CLI-01, 769 pruebas de reglas/UI, `typecheck`, `lint` y `build` sin
+  errores. Pendiente: aceptación en celular con un usuario de cada rol y
+  aplicar la migración en producción. Reversión: dejar de enviar `planId`; las
+  columnas pueden quedar vacías sin afectar cobros ni vigencias ya creadas.
 - [ ] **CLI-02 · Media · Código — Completar la categoría automática.** Ya se
   calcula Común/Amigo/Familia/Strong Gym al leer, usando visitas, plan asignado
   y compras de 90 días. Falta usar la vigencia real de CLI-01, guardar historial
