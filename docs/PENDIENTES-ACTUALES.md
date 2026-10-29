@@ -215,9 +215,12 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   por referencia y envoltorios `finance_record_movement_plan`,
   `finance_record_checkout_plan` y `crm_record_payment_plan`. La ficha, el
   directorio, las opciones de cobro, el cobro rápido, Mi Cuenta y el recibo
-  muestran la vigencia. Evidencia local: 37 comprobaciones SQL por rol y
+  muestran la vigencia. La ficha tiene un panel **Vigencias** con Gimnasio y
+  Boxeo por separado y su propio botón «Cobrar»; Boxeo se cobra en dólares, sin
+  productos y sin registrar entrada de gimnasio. El «plan asignado» quedó
+  rotulado como etiqueta: no cobra ni activa nada. Evidencia local: 37 comprobaciones SQL por rol y
   encadenamiento, 768 pruebas de reglas/UI, `typecheck`, `lint` y `build` sin
-  errores. Reversión: dejar de enviar `planId`, luego retirar las RPC `*_plan`;
+  errores, más 2 pruebas nuevas del cobro de Boxeo y del panel de vigencias. Reversión: dejar de enviar `planId`, luego retirar las RPC `*_plan`;
   no se borran datos.
 - [ ] **CLI-02 · Media · Código — Completar la categoría automática.** Ya se
   calcula Común/Amigo/Familia/Strong Gym al leer, usando visitas, plan asignado

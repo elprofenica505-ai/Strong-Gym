@@ -73,6 +73,7 @@ export function MovementForm({
   defaultConcept,
   presetKey,
   initialPlanId,
+  initialCurrency,
   onSuccess,
   heading,
 }: {
@@ -91,6 +92,8 @@ export function MovementForm({
   presetKey?: string;
   /** Plan con vigencia definida: el cobro crea el periodo en el servidor. */
   initialPlanId?: string;
+  /** Moneda de la tarifa elegida (Boxeo se cobra en USD). */
+  initialCurrency?: "NIO" | "USD";
   /** Solo se llama después de que el servidor confirma el movimiento. */
   onSuccess?: (
     receiptId: string,
@@ -145,7 +148,18 @@ export function MovementForm({
     productsEnabled,
     validateSaleCatalog,
   );
-  const [currency, setCurrency] = useState<"NIO" | "USD">("NIO");
+  // La moneda inicial viene de la tarifa elegida (Boxeo en USD). Al cambiar de
+  // tarifa se ajusta en el mismo render, sin desmontar el comprobante.
+  const [currency, setCurrency] = useState<"NIO" | "USD">(
+    initialCurrency ?? "NIO",
+  );
+  const [currencyPresetKey, setCurrencyPresetKey] = useState(
+    presetKey ?? "",
+  );
+  if ((presetKey ?? "") !== currencyPresetKey) {
+    setCurrencyPresetKey(presetKey ?? "");
+    if (initialCurrency) setCurrency(initialCurrency);
+  }
   const selectedCurrency = pending?.currency ?? currency;
   const [cartItems, setCartItems] = useState<CheckoutItem[]>(() =>
     pending?.kind === "service_income" ? pending.items : [],
