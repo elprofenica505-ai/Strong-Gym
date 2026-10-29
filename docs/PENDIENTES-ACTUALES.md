@@ -254,11 +254,30 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   equivocado al aplicarla. Pendiente: aceptación en celular con un usuario de
   cada rol. Reversión: dejar de enviar `planId`; las
   columnas pueden quedar vacías sin afectar cobros ni vigencias ya creadas.
-- [ ] **CLI-02 · Media · Código — Completar la categoría automática.** Ya se
-  calcula Común/Amigo/Familia/Strong Gym al leer, usando visitas, plan asignado
-  y compras de 90 días. Falta usar la vigencia real de CLI-01, guardar historial
-  de cambios y permitir una fijación manual del administrador con motivo. Hay
-  que confirmar los umbrales y la prioridad cuando una regla se cruza con otra.
+- [ ] **CLI-02 · Media · Código — Categoría automática por vigencia real.**
+  Decisión cerrada: la categoría deja de mirar el «plan asignado» y pasa a usar
+  las fechas de `payment_plans`. Implementación: migración 00070
+  (`categorias_automaticas`) con `category_rules` (las cuatro categorías como
+  datos editables, con orden de prioridad, umbrales y categoría de reserva),
+  `category_rules_history`, columnas `category_auto` y `category_override` en
+  `gym_clients` y las funciones `client_category_eval`,
+  `client_category` (devuelve categoría, motivo, vigencia, visitas y compras),
+  `client_category_apply` (guarda y audita cambios en `client_events`),
+  `crm_set_client_category` y `crm_clear_client_category` (solo administrador
+  con motivo obligatorio y bitácora) y `admin_category_rules` /
+  `admin_save_category_rules`. Reglas por defecto: mes vigente + compra en 90
+  días = Strong Gym; cualquier vigencia activa = Familia; sin vigencia y 3
+  visitas en 30 días = Amigo; el resto Común. Módulo **Administración →
+  Categorías** para cambiar números y orden sin código, con conteos y botón
+  «Recalcular todos»; la ficha muestra la categoría con su motivo y permite
+  fijarla o liberarla a mano. El directorio filtra por la categoría calculada.
+  Evidencia local: 36 comprobaciones SQL nuevas por rol (dos clientes con las
+  mismas visitas y distinta vigencia ya no comparten categoría, cambio de
+  umbrales, prioridad, reserva, permisos y bitácora), 777 pruebas de reglas/UI,
+  `typecheck`, `lint` y `build` sin errores. Pendiente: aplicar 00070 en
+  producción y aceptación en celular con un usuario de cada rol. Reversión:
+  dejar de llamar `client_category_apply`; las columnas nuevas pueden quedar
+  vacías sin afectar cobros ni vigencias.
 - [ ] **CLI-03 · Media · Revisión profesional — Calculadora, dieta y rutinas.**
   La herramienta, el consentimiento, la aprobación del personal y el bloqueo de
   menores ya existen. Falta que un profesional revise fórmulas, mínimos de

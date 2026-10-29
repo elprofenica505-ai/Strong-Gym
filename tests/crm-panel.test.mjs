@@ -32,12 +32,14 @@ const { ClientsPanel } = await createLoader({
 const originalFetch = globalThis.fetch;
 const originalConfirm = window.confirm;
 let saleCatalogResponse = { products: [] };
+let categoryResponse = () => categoryInfo();
 afterEach(() => {
   cleanup();
   globalThis.fetch = originalFetch;
   sessionStorage.clear();
   window.confirm = originalConfirm;
   saleCatalogResponse = { products: [] };
+  categoryResponse = () => categoryInfo();
 });
 const id = "11111111-1111-4111-8111-111111111111",
   other = "22222222-2222-4222-8222-222222222222";
@@ -77,6 +79,20 @@ const options = {
 };
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status });
+const categoryInfo = (over = {}) => ({
+  category: "familia",
+  auto_category: "familia",
+  reason: "gimnasio vigente",
+  source: "auto",
+  manual: false,
+  manual_reason: null,
+  validity_days: 30,
+  visits_30_days: 4,
+  purchases_90_days: 0,
+  gym: { state: "active", expires_on: "2026-11-26" },
+  classes: [],
+  ...over,
+});
 function setup(
   handler,
   rows = [client()],
@@ -90,6 +106,8 @@ function setup(
     });
     const u = new URL(url, "https://strong.test");
     if (u.pathname === "/api/products") return json(saleCatalogResponse);
+    if (u.pathname === "/api/admin/categories")
+      return json(init.method === "POST" ? { ok: true } : categoryResponse());
     if (u.pathname === "/api/admin/finance") return handler(u, init);
     if (u.searchParams.get("mode") === "options") return optionsResponse();
     if (!u.searchParams.has("id") && init.method !== "POST")
@@ -1201,4 +1219,66 @@ test("cada tarjeta de la ficha abre su propia vista y Volver regresa al menú", 
   assert.equal(screen.queryByText("Saldo y cobros del cliente"), null);
   assert.equal(moduleScreen.dataset.moduleScreen, undefined);
   assert.equal(document.body.style.overflow, "");
+});
+
+test("la ficha muestra la categoría real por vigencia y su motivo", async () => {
+  setup(() => json(detail()));
+  await open();
+  await heading();
+  await openModule("Datos del cliente y carnet");
+  assert.ok(await screen.findByText(/gimnasio vigente/));
+  assert.ok(screen.getByText(/Gimnasio vigente hasta el 26\/11\/2026/));
+  assert.ok(screen.getByText(/4 visitas en 30 días/));
+  assert.ok(screen.getByText(/Sale de la vigencia pagada, no de la etiqueta del plan asignado/));
+});
+
+test("el administrador fija la categoría con motivo y queda registrada", async () => {
+  const calls = setup(() => json(detail()));
+  await open();
+  await heading();
+  await openModule("Datos del cliente y carnet");
+  await screen.findByText(/gimnasio vigente/);
+  const confirm = screen.getByRole("button", { name: "Fijar categoría" });
+  assert.equal(confirm.disabled, true, "sin motivo no se puede fijar");
+  fireEvent.change(screen.getByLabelText("Categoría"), {
+    target: { value: "comun" },
+  });
+  fireEvent.change(screen.getByPlaceholderText("Motivo (obligatorio)"), {
+    target: { value: "Acuerdo con el dueño" },
+  });
+  fireEvent.click(confirm);
+  await screen.findByText(/Categoría fijada y registrada/);
+  const post = calls.find(
+    (call) => call.url === "/api/admin/categories" && call.body?.action,
+  );
+  assert.equal(post.body.action, "set-override");
+  assert.equal(post.body.clientId, client().id);
+  assert.equal(post.body.category, "comun");
+  assert.equal(post.body.reason, "Acuerdo con el dueño");
+});
+
+test("una categoría fijada a mano se muestra con su motivo y se puede liberar", async () => {
+  categoryResponse = () =>
+    categoryInfo({
+      category: "comun",
+      source: "manual",
+      manual: true,
+      manual_reason: "Acuerdo con el dueño",
+    });
+  const calls = setup(() => json(detail()));
+  await open();
+  await heading();
+  await openModule("Datos del cliente y carnet");
+  assert.ok(await screen.findByText(/Fijada a mano por administración/));
+  assert.ok(screen.getByText(/El cálculo automático diría «Familia»/));
+  fireEvent.change(screen.getByPlaceholderText("Motivo para volver al cálculo"), {
+    target: { value: "Terminó el acuerdo" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Volver al cálculo" }));
+  await screen.findByText(/vuelve al cálculo automático/);
+  const post = calls.find(
+    (call) => call.url === "/api/admin/categories" && call.body?.action,
+  );
+  assert.equal(post.body.action, "clear-override");
+  assert.equal(post.body.reason, "Terminó el acuerdo");
 });
