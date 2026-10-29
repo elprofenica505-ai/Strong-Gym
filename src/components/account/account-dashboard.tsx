@@ -1,5 +1,6 @@
 "use client";
 
+import { validityRows } from "@/lib/crm/validity";
 import { useEffect, useMemo, useState } from "react";
 import { resolveAccountBookings } from "@/lib/account-bookings";
 import type { AccountPlanRead } from "@/lib/crm/account-plan";
@@ -90,6 +91,9 @@ export function AccountDashboard({
   const ownPlan = accountPlan?.userId === user?.id ? accountPlan : null;
   const planKnown = isDemo || ownPlan?.ok === true;
   const currentPlan = isDemo ? demoPlan : ownPlan?.ok ? ownPlan.data.plan : null;
+  const validity =
+    !isDemo && ownPlan?.ok ? ownPlan.data.validity ?? null : null;
+  const validityLines = validityRows(validity, locale);
 
   async function onSaveProfile(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -309,10 +313,19 @@ export function AccountDashboard({
               {ownPlan && !ownPlan.ok && <p className="break-all font-mono text-xs">{ownPlan.code}</p>}
               <ReloadButton label={locale === "es" ? "Reintentar consulta" : "Retry query"} />
             </div>
+          ) : validityLines.length > 0 ? (
+            <dl className="mt-3 space-y-1 text-sm text-fog">
+              {validityLines.map((row) => (
+                <div key={row.key} className="flex flex-wrap gap-x-2">
+                  <dt className="font-semibold text-ink">{row.label}:</dt>
+                  <dd>{row.value}</dd>
+                </div>
+              ))}
+            </dl>
           ) : (
             <p className="mt-3 text-sm text-fog">{locale === "es"
-              ? "La asignación no confirma pago ni vigencia."
-              : "An assignment does not confirm payment or validity dates."}</p>
+              ? "La asignación no confirma pago ni vigencia. Si ya pagaste, pedí en recepción que registren el cobro con tu plan."
+              : "An assignment does not confirm payment or validity dates. If you already paid, ask reception to record it with your plan."}</p>
           )}
           {currentPlan && !currentPlan.is_active && <p className="mt-2 text-sm text-fog">{locale === "es"
             ? "Este plan ya no está disponible para nuevas asignaciones."

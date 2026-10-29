@@ -10,6 +10,18 @@ const fields = {
   // Ambos tipos de moneda requieren una tasa explícita, nunca una tasa fija.
   fx: z.number().min(0.0001).max(10000).multipleOf(0.0001),
 };
+/** Segmento de vigencia creado junto con un cobro estructurado. */
+export const planSegmentSchema = z
+  .object({
+    id: z.string().uuid(),
+    plan_id: z.string().min(1),
+    access: z.enum(["gym", "boxing"]),
+    started_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    expires_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    days: z.number().int().positive().max(3660),
+  })
+  .strict();
+export type PlanSegment = z.infer<typeof planSegmentSchema>;
 export const checkoutItemSchema = z
   .object({
     product: z.string().uuid(),
@@ -29,6 +41,9 @@ export const movementSchema = z
         amount: z.number().nonnegative().max(99999999).multipleOf(0.01),
         kind: z.literal("service_income"),
         clientId: z.string().uuid(),
+        // Opcional para no invalidar intentos guardados antes de CLI-01.
+        // Solo crea vigencia si el servidor reconoce el plan y el importe exacto.
+        planId: z.string().min(1).max(64).optional(),
         items: z.array(checkoutItemSchema).max(50).default([]),
       })
       .strict(),
@@ -99,6 +114,21 @@ export const financeOptionsSchema = z.object({
     }),
   ),
   categories: z.array(z.object({ id: z.string(), name: z.string() })),
+  plans: z
+    .array(
+      z.object({
+        id: z.string(),
+        name_es: z.string(),
+        slug: z.string().optional(),
+        period: z.string().optional(),
+        price_nio: z.union([z.number(), z.string()]).nullable().optional(),
+        access: z.enum(["gym", "boxing"]).nullable().optional(),
+        duration_days: z.number().int().positive().nullable().optional(),
+        validity_currency: z.enum(["NIO", "USD"]).nullable().optional(),
+        validity_amount: z.union([z.number(), z.string()]).nullable().optional(),
+      }),
+    )
+    .default([]),
 });
 export type FinanceOptions = z.infer<typeof financeOptionsSchema>;
 export const receiptSchema = z.object({
@@ -153,6 +183,7 @@ export const movementResultSchema = z
       .optional(),
     serviceTransactionId: z.string().uuid().nullable().optional(),
     serviceAmount: resultMoney.optional(),
+    plan: planSegmentSchema.nullable().optional(),
     productsTotal: resultMoney.optional(),
     total: resultMoney.refine((value) => value > 0).optional(),
     currency: z.enum(["NIO", "USD"]).optional(),

@@ -255,6 +255,8 @@ const en = {
       "That discipline has been deactivated by the gym and is not accepting new bookings.",
     cancelledByGym: "The class was cancelled by the gym.",
     bookingUnconfirmed: "We could not verify the booking or cancellation in your account. Check My account before repeating; do not book again yet.",
+    requiresPlan:
+      "To book Boxing you need a Boxing membership valid on the class date. Ask reception to record the payment.",
     bookingError: "We could not complete the booking. Please try again.",
     weekOf: "Week of",
     weeklySummary: "classes this week",

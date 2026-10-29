@@ -645,6 +645,10 @@ const quickTariffPlans = [
     period: "session",
     price_nio: 40,
     sort_order: 2,
+    access: "gym",
+    duration_days: 1,
+    validity_currency: "NIO",
+    validity_amount: 40,
   },
   {
     id: "pln_semana",
@@ -653,6 +657,10 @@ const quickTariffPlans = [
     period: "week",
     price_nio: 150,
     sort_order: 3,
+    access: "gym",
+    duration_days: 7,
+    validity_currency: "NIO",
+    validity_amount: 150,
   },
   {
     id: "pln_quincena",
@@ -661,6 +669,10 @@ const quickTariffPlans = [
     period: "fortnight",
     price_nio: 280,
     sort_order: 4,
+    access: "gym",
+    duration_days: 15,
+    validity_currency: "NIO",
+    validity_amount: 280,
   },
   {
     id: "pln_mes",
@@ -669,6 +681,10 @@ const quickTariffPlans = [
     period: "month",
     price_nio: 560,
     sort_order: 5,
+    access: "gym",
+    duration_days: 30,
+    validity_currency: "NIO",
+    validity_amount: 560,
   },
 ];
 function setupQuickTariffs(checkIn, plans = quickTariffPlans) {
@@ -731,6 +747,7 @@ function setupQuickTariffs(checkIn, plans = quickTariffPlans) {
                 methods: options.methods,
                 accounts: options.accounts,
                 categories: [],
+                plans,
               },
         );
       }
@@ -934,7 +951,7 @@ test("tarifa sin precio NIO válido no aparece como cobro rápido", async () => 
   assert.ok(screen.getByRole("button", { name: /Cobrar mes/ }));
 });
 
-test("quincena precarga C$280, avisa que no activa vigencia y registra la entrada tras el cobro", async () => {
+test("quincena precarga C$280, avisa que activa la vigencia y registra la entrada tras el cobro", async () => {
   const calls = setupQuickTariffs(() =>
     json({ data: { already: false, id: token } }),
   );
@@ -942,7 +959,7 @@ test("quincena precarga C$280, avisa que no activa vigencia y registra la entrad
     buttonName: /Cobrar quincena/,
     amount: "280",
     concept: "Gimnasio quincenal",
-    expectedNotice: /todavía no activa ni renueva la vigencia/,
+    expectedNotice: /activa o renueva la vigencia del plan: 15 días/,
   });
   await screen.findByText("Cobro confirmado y entrada registrada.");
   assert.equal(quickTariffCharges(calls).length, 1);
@@ -953,6 +970,7 @@ test("quincena precarga C$280, avisa que no activa vigencia y registra la entrad
     "Gimnasio quincenal",
   );
   assert.equal(quickTariffCharges(calls)[0].body.clientId, id);
+  assert.equal(quickTariffCharges(calls)[0].body.planId, "pln_quincena");
   assert.equal(quickTariffCheckIns(calls).length, 1);
   assert.equal(
     calls.filter((call) => call.body?.action && call.body.action !== "check-in")
@@ -970,15 +988,33 @@ test("mes sin registrar entrada cobra C$560 una vez y no llama check-in", async 
     amount: "560",
     concept: "Gimnasio mensual",
     registerEntry: false,
-    expectedNotice: /todavía no activa ni renueva la vigencia/,
+    expectedNotice: /activa o renueva la vigencia del plan: 30 días/,
   });
   await screen.findByRole("link", { name: /Abrir comprobante interno/ });
   assert.equal(quickTariffCharges(calls).length, 1);
   assert.equal(quickTariffCharges(calls)[0].body.amount, 560);
   assert.equal(quickTariffCharges(calls)[0].body.currency, "NIO");
   assert.equal(quickTariffCharges(calls)[0].body.concept, "Gimnasio mensual");
+  assert.equal(quickTariffCharges(calls)[0].body.planId, "pln_mes");
   assert.equal(quickTariffCheckIns(calls).length, 0);
   assert.equal(calls.filter((call) => call.body?.action).length, 0);
+});
+
+test("un plan sin duración definida cobra sin crear vigencia", async () => {
+  const calls = setupQuickTariffs(
+    () => json({ data: { already: false, id: token } }),
+    quickTariffPlans.map((plan) =>
+      plan.slug === "pase-del-dia"
+        ? { ...plan, duration_days: null, validity_amount: null, validity_currency: null, access: null }
+        : plan,
+    ),
+  );
+  await chargeDayPass({
+    expectedNotice: /no tiene una duración definida/,
+  });
+  await screen.findByRole("link", { name: /Abrir comprobante interno/ });
+  assert.equal(quickTariffCharges(calls).length, 1);
+  assert.equal(quickTariffCharges(calls)[0].body.planId, undefined);
 });
 
 test("saldo: SQL anterior no bloquea recepción y reintentar confirma sección sólo con GET", async () => {

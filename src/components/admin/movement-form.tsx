@@ -71,6 +71,7 @@ export function MovementForm({
   defaultAmount,
   defaultConcept,
   presetKey,
+  initialPlanId,
   onSuccess,
   heading,
 }: {
@@ -87,6 +88,8 @@ export function MovementForm({
   defaultConcept?: string;
   /** Cambiarlo remonta solo los campos para aplicar un preset nuevo. */
   presetKey?: string;
+  /** Plan con vigencia definida: el cobro crea el periodo en el servidor. */
+  initialPlanId?: string;
   /** Solo se llama después de que el servidor confirma el movimiento. */
   onSuccess?: (
     receiptId: string,
@@ -302,6 +305,27 @@ export function MovementForm({
     !!options.error ||
     options.data?.writes_enabled !== true ||
     !!recovered.error;
+  // Solo se adjunta un plan cuando el catálogo confirma que tiene duración e
+  // importe exacto. Así un plan sin vigencia sigue siendo un cobro genérico.
+  const validityPlan =
+    kind === "service_income" && initialPlanId
+      ? (options.data?.plans ?? []).find(
+          (plan) =>
+            plan.id === initialPlanId &&
+            !!plan.duration_days &&
+            plan.validity_amount !== null &&
+            plan.validity_amount !== undefined &&
+            !!plan.validity_currency,
+        )
+      : undefined;
+  const planAmount =
+    validityPlan?.validity_amount !== undefined &&
+    validityPlan?.validity_amount !== null
+      ? Number(validityPlan.validity_amount)
+      : null;
+  const planNotice = validityPlan
+    ? `Este cobro corresponde a ${validityPlan.name_es}: ${validityPlan.validity_currency} ${planAmount?.toFixed(2)} y ${validityPlan.duration_days} ${validityPlan.duration_days === 1 ? "día" : "días"}. Si el importe o la moneda no coinciden, no se activa la vigencia.`
+    : "";
   async function pay(body: MovementIntent) {
     if (lock.current) return;
     lock.current = true;
@@ -343,9 +367,11 @@ export function MovementForm({
         setCatalogView("productos");
       }
       setMessage(
-        result.receipts && result.receipts.length > 1
-          ? "Cobro confirmado. Abrí los comprobantes internos de cada línea para revisar los datos guardados."
-          : "Movimiento confirmado. Abrí el comprobante interno para revisar los datos guardados.",
+        result.plan
+          ? `Cobro confirmado. ${result.plan.access === "boxing" ? "Boxeo" : "Gimnasio"}: vigencia del ${result.plan.started_on} al ${result.plan.expires_on} (${result.plan.days} ${result.plan.days === 1 ? "día" : "días"}). Abrí el comprobante interno para revisar los datos guardados.`
+          : result.receipts && result.receipts.length > 1
+            ? "Cobro confirmado. Abrí los comprobantes internos de cada línea para revisar los datos guardados."
+            : "Movimiento confirmado. Abrí el comprobante interno para revisar los datos guardados.",
       );
       try {
         sessionStorage.removeItem(key);
@@ -389,9 +415,17 @@ export function MovementForm({
       <p className="text-sm text-fog">
         {kind === "expense"
           ? "Descuenta de la cuenta en su moneda. Puede dejar un saldo negativo; se mostrará en el comprobante."
-          : "Registra el ingreso recibido. Podés agregar productos con stock al mismo cobro en córdobas; el inventario baja solo si todo se confirma. No reduce deudas, no crea crédito ni renueva planes. No lo uses para un abono de deuda o un anticipo."}{" "}
+          : "Registra el ingreso recibido. Podés agregar productos con stock al mismo cobro en córdobas; el inventario baja solo si todo se confirma. No reduce deudas ni crea crédito. Solo activa o renueva la vigencia cuando el cobro lleva un plan con duración definida. No lo uses para un abono de deuda o un anticipo."}{" "}
         No emite factura fiscal ni descuenta comisiones automáticamente.
       </p>
+      {validityPlan && (
+        <p
+          role="status"
+          className="rounded-xl border border-brand/40 bg-brand/10 p-3 text-sm text-ink"
+        >
+          {planNotice}
+        </p>
+      )}
       <p className="text-sm text-fog">
         Ingresá la tasa NIO por 1 USD usada para los equivalentes de reportes,
         también al registrar NIO. No convierte ni transfiere dinero entre
@@ -795,7 +829,11 @@ export function MovementForm({
             fx: Number(f.get("fx")),
             ...(kind === "expense"
               ? { category: String(f.get("category")) }
-              : { clientId, items: selectedItems }),
+              : {
+                  clientId,
+                  items: selectedItems,
+                  ...(validityPlan ? { planId: validityPlan.id } : {}),
+                }),
           });
           if (!parsed.success) {
             setMessage(
@@ -804,13 +842,25 @@ export function MovementForm({
             return;
           }
           const d = parsed.data;
+          if (
+            d.kind === "service_income" &&
+            validityPlan &&
+            (d.currency !== validityPlan.validity_currency ||
+              planAmount === null ||
+              d.amount !== planAmount)
+          ) {
+            setMessage(
+              `Para activar la vigencia de ${validityPlan.name_es} el importe debe ser exactamente ${validityPlan.validity_currency} ${planAmount?.toFixed(2)}. Corregí el monto o desmarcá la tarifa rápida. No se envió el movimiento.`,
+            );
+            return;
+          }
           const accountName = options.data?.accounts.find(
             (a) => a.id === d.account,
           )?.name;
           const confirmation =
             d.kind === "service_income" && d.items.length > 0
-              ? `¿Registrar este cobro por un total de ${formatMoney(d.amount + itemsTotal(d.items), "NIO")}? Servicio: ${formatMoney(d.amount, "NIO")} (${d.concept}). Productos: ${d.items.map((item) => `${productLabel(item)} x${item.qty} (${formatMoney(item.unitPrice * item.qty, "NIO")})`).join(", ")}. Cuenta: ${accountName}. Tasa NIO/USD ${d.fx}. Bajará el stock y no aplica deuda, crédito ni vigencia.`
-              : `¿Registrar ${kind === "expense" ? "gasto" : "cobro por servicio"} de ${d.currency} ${d.amount.toFixed(2)}, tasa NIO/USD ${d.fx}? Cuenta: ${accountName}. Concepto: ${d.concept}. ${kind === "expense" ? "Puede dejar saldo negativo." : "No aplica deuda, crédito ni vigencia."}`;
+              ? `¿Registrar este cobro por un total de ${formatMoney(d.amount + itemsTotal(d.items), "NIO")}? Servicio: ${formatMoney(d.amount, "NIO")} (${d.concept}). Productos: ${d.items.map((item) => `${productLabel(item)} x${item.qty} (${formatMoney(item.unitPrice * item.qty, "NIO")})`).join(", ")}. Cuenta: ${accountName}. Tasa NIO/USD ${d.fx}. Bajará el stock y no aplica deuda ni crédito.${validityPlan ? ` Se activará la vigencia de ${validityPlan.name_es} por ${validityPlan.duration_days} días.` : " No aplica vigencia porque el cobro no lleva plan."}`
+              : `¿Registrar ${kind === "expense" ? "gasto" : "cobro por servicio"} de ${d.currency} ${d.amount.toFixed(2)}, tasa NIO/USD ${d.fx}? Cuenta: ${accountName}. Concepto: ${d.concept}. ${kind === "expense" ? "Puede dejar saldo negativo." : validityPlan ? `Se activará o renovará la vigencia de ${validityPlan.name_es} por ${validityPlan.duration_days} días.` : "No aplica deuda, crédito ni vigencia."}`;
           if (!window.confirm(confirmation)) return;
           void pay(d);
         }}

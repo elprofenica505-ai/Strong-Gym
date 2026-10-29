@@ -199,12 +199,26 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
 
 ## 2. Clientes, planes, categorías y progreso
 
-- [ ] **CLI-01 · Alta · Decisión y código — Vigencias de planes.** Cobrar Día,
-  Semana, Quincena, Mes o Boxeo hoy solo registra el pago. Hay que definir y
-  construir inicio, vencimiento, renovación antes de vencer, pago atrasado,
-  congelamiento, gracia, cambios de plan y efecto de deuda. Cierre: una sola
-  fuente de vigencia, avisos claros antes de cobrar y pruebas de fechas en
-  America/Managua. Ningún cobro anterior debe inventar una vigencia retroactiva.
+- [ ] **CLI-01 · Alta · Código — Vigencias de planes.** Decisión cerrada y
+  código aplicado el 28 de octubre de 2026; **falta la aceptación en celular
+  con un usuario de cada rol**. Duraciones aprobadas contando el pago como día
+  1: Día 1, Semana 7, Quincena 15, Mes 30 y Boxeo 30. Renovar o cambiar antes de
+  vencer encadena desde el día siguiente al vencimiento; después de vencer
+  empieza el día del pago. Gimnasio y Boxeo son accesos separados y
+  simultáneos; reservar Boxeo exige vigencia en la fecha local de la clase
+  (`PLAN_REQUIRED`). Recepción y entrada **solo avisan** por vencimiento o
+  deuda: no bloquean. Ningún cobro anterior ni ningún abono crea vigencia.
+  Implementación: migración 00067 (`vigencias_planes`, versión remota
+  `20261029021510`), que reutiliza y endurece `payment_plans` (sin grants ni
+  políticas para `anon`/`authenticated`; acceso solo por RPC), agrega
+  `gym_clients.frozen_since`, términos estrictos por plan, registro idempotente
+  por referencia y envoltorios `finance_record_movement_plan`,
+  `finance_record_checkout_plan` y `crm_record_payment_plan`. La ficha, el
+  directorio, las opciones de cobro, el cobro rápido, Mi Cuenta y el recibo
+  muestran la vigencia. Evidencia local: 37 comprobaciones SQL por rol y
+  encadenamiento, 768 pruebas de reglas/UI, `typecheck`, `lint` y `build` sin
+  errores. Reversión: dejar de enviar `planId`, luego retirar las RPC `*_plan`;
+  no se borran datos.
 - [ ] **CLI-02 · Media · Código — Completar la categoría automática.** Ya se
   calcula Común/Amigo/Familia/Strong Gym al leer, usando visitas, plan asignado
   y compras de 90 días. Falta usar la vigencia real de CLI-01, guardar historial
