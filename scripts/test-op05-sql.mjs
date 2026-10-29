@@ -21,9 +21,10 @@ const db = await createTestDb({
   extra: [
     "supabase/migrations/00072_grilla_horarios.sql",
     "supabase/migrations/00073_grilla_nombre_entrenador.sql",
+    "supabase/migrations/00074_generar_sesiones_preview.sql",
   ],
 });
-ok("00072 y 00073 se aplican sobre 00071 sin error", true);
+ok("00072, 00073 y 00074 se aplican sobre 00071 sin error", true);
 
 const row = async (query, args = []) => (await db.query(query, args)).rows[0];
 const makeUser = async (email, role) => {
@@ -237,5 +238,117 @@ ok("La pantalla trae disciplinas y entrenadores para elegir",
   board.classes.length >= 3 && board.coaches.length >= 1);
 ok("La pantalla muestra las próximas cuatro semanas", board.weeks.length === 4);
 ok("Las próximas semanas ya tienen sesiones programadas", board.weeks.every((w) => w.scheduled > 0));
+
+// 10. Generar con previsualización (00074): mirar antes de escribir.
+const totalSessions = async () =>
+  (await row("select count(*)::int as n from public.sessions")).n;
+const activeSlots = (
+  await row(
+    `select count(*)::int as n from public.class_schedule_slots s
+       join public.classes c on c.id = s.class_id
+      where s.is_active and c.is_active`,
+  )
+).n;
+
+const emptyWeek = addWeeks(20);
+const previewEmpty = await adminRpc("admin_preview_schedule", [emptyWeek, 1]);
+ok("La previsualización de una semana vacía marca lo que se crearía",
+  previewEmpty.totals.create === activeSlots && previewEmpty.created === 0);
+ok("Previsualizar no crea ninguna sesión",
+  (await totalSessions()) === (await totalSessions()) &&
+  (await row(
+    `select count(*)::int as n from public.sessions
+      where starts_at >= ($1::date::timestamp at time zone 'America/Managua')
+        and starts_at < (($1::date + 7)::timestamp at time zone 'America/Managua')`,
+    [emptyWeek],
+  )).n === 0);
+const plusDays = (date, n) => {
+  const d = new Date(`${date}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+};
+ok("La previsualización devuelve el rango pedido",
+  previewEmpty.from === emptyWeek &&
+  previewEmpty.to === plusDays(emptyWeek, 6) &&
+  previewEmpty.weeks === 1);
+
+const applied = await adminRpc("admin_apply_schedule", [emptyWeek, 1]);
+ok("Generar crea exactamente lo que se previsualizó",
+  applied.created === previewEmpty.totals.create);
+const appliedAgain = await adminRpc("admin_apply_schedule", [emptyWeek, 1]);
+ok("Generar dos veces no duplica nada", appliedAgain.created === 0);
+ok("La segunda previsualización solo ve duplicados",
+  appliedAgain.totals.create === 0 && appliedAgain.totals.duplicate === activeSlots);
+
+const previewDup = await adminRpc("admin_preview_schedule", [emptyWeek, 1]);
+ok("Repetir la previsualización sobre una semana llena da todo duplicado",
+  previewDup.totals.duplicate === activeSlots && previewDup.totals.create === 0);
+
+// 10b. Motivos: choque de sala y de entrenador se explican, no se crean.
+const weekFuture = addWeeks(22);
+const dowDate = (from, dow) => {
+  const d = new Date(`${from}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + dow);
+  return d.toISOString().slice(0, 10);
+};
+const martes = dowDate(weekFuture, 1);
+const miercoles = dowDate(weekFuture, 2);
+await db.query(
+  `insert into public.sessions (class_id, coach_id, starts_at, ends_at, capacity, room)
+   values ('cls_boxeo', null,
+           ($1::date + time '06:30') at time zone 'America/Managua',
+           ($1::date + time '07:30') at time zone 'America/Managua', 20, 'Área de boxeo')`,
+  [martes],
+);
+await db.query(
+  `insert into public.sessions (class_id, coach_id, starts_at, ends_at, capacity, room)
+   values ('cls_boxeo', $2,
+           ($1::date + time '18:00') at time zone 'America/Managua',
+           ($1::date + time '19:00') at time zone 'America/Managua', 20, 'Otra sala')`,
+  [miercoles, coachId],
+);
+const previewConflict = await adminRpc("admin_preview_schedule", [weekFuture, 1]);
+ok("Un choque de sala se detecta y se explica antes de crear",
+  previewConflict.totals.room_conflict >= 1 &&
+  previewConflict.items.some((i) => i.status === "room_conflict" && i.room === "Área de boxeo"));
+ok("Un choque de entrenador se detecta y se explica antes de crear",
+  previewConflict.totals.coach_conflict >= 1 &&
+  previewConflict.items.some((i) => i.status === "coach_conflict" && i.coach_id === coachId));
+const conflictApplied = await adminRpc("admin_apply_schedule", [weekFuture, 1]);
+ok("Generar no crea lo que choca con una sesión existente",
+  conflictApplied.created === previewConflict.totals.create);
+
+// 10c. Una disciplina desactivada no se programa y el motivo se ve.
+await db.query("update public.classes set is_active = false where id = 'cls_zumba'");
+const previewInactive = await adminRpc("admin_preview_schedule", [addWeeks(24), 1]);
+ok("La previsualización avisa que la disciplina está desactivada",
+  previewInactive.totals.inactive >= 1 &&
+  previewInactive.items.some((i) => i.status === "inactive" && i.class_id === "cls_zumba"));
+ok("Nada desactivado se crea al generar",
+  (await adminRpc("admin_apply_schedule", [addWeeks(24), 1])).items
+    .every((i) => i.class_id !== "cls_zumba" || i.status !== "create"));
+await db.query("update public.classes set is_active = true where id = 'cls_zumba'");
+
+// 10d. Nunca se crean sesiones pasadas, aunque se pida un rango viejo.
+const previewPast = await adminRpc("admin_preview_schedule", [addDays(-28), 1]);
+ok("Un rango viejo se marca como pasado",
+  previewPast.totals.past >= 1 && previewPast.totals.create === 0);
+ok("Generar un rango viejo no crea sesiones pasadas",
+  (await adminRpc("admin_apply_schedule", [addDays(-28), 1])).created === 0);
+
+// 10e. Permisos y validaciones.
+await denied("Caja no puede previsualizar la generación",
+  rpc(cashier, "aal2", "admin_preview_schedule", [addWeeks(26), 1]), /AUTH/);
+await denied("Caja no puede generar sesiones",
+  rpc(cashier, "aal2", "admin_apply_schedule", [addWeeks(26), 1]), /AUTH/);
+await denied("Sin sesión iniciada no se puede generar",
+  as(null, null, "select public.admin_apply_schedule(date '2030-01-07', 1)"), /AUTH|permission denied/);
+await denied("Más de ocho semanas se rechaza",
+  adminRpc("admin_preview_schedule", [addWeeks(26), 9]), /INVALID_WEEKS/);
+await denied("Cero semanas se rechaza",
+  adminRpc("admin_apply_schedule", [addWeeks(26), 0]), /INVALID_WEEKS/);
+const defaultFrom = await adminRpc("admin_preview_schedule", [null, 1]);
+ok("Sin fecha usa el lunes de la semana en curso",
+  defaultFrom.from === monday && defaultFrom.weeks === 1);
 
 console.log(`\n${checks} comprobaciones PASS (OP-05 grilla administrable, 00072)`);

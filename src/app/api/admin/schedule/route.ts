@@ -36,7 +36,25 @@ const toggleSchema = z
   })
   .strict();
 
-const bodySchema = z.discriminatedUnion("action", [saveSchema, toggleSchema]);
+const generateSchema = z
+  .object({
+    action: z.literal("preview-generate"),
+    from: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "la fecha va como AAAA-MM-DD")
+      .optional(),
+    weeks: z.number().int().min(1).max(8),
+  })
+  .strict();
+
+const applySchema = generateSchema.extend({ action: z.literal("apply-generate") });
+
+const bodySchema = z.discriminatedUnion("action", [
+  saveSchema,
+  toggleSchema,
+  generateSchema,
+  applySchema,
+]);
 
 const messages: Record<string, [string, number]> = {
   AUTH: ["Solo un administrador con verificación en dos pasos puede cambiar los horarios.", 403],
@@ -51,7 +69,10 @@ const messages: Record<string, [string, number]> = {
     "Ese horario se pisa con otra clase en la misma sala o con el mismo entrenador. Cambiá la hora, la sala o el entrenador.",
     409,
   ],
-  INVALID_WEEKS: ["No se pueden generar más de 8 semanas de una vez.", 422],
+  INVALID_WEEKS: [
+    "Elegí entre 1 y 8 semanas, con la fecha de inicio en formato de fecha.",
+    422,
+  ],
   INVALID_REQUEST: ["Faltan datos para cambiar el horario.", 422],
   NOT_FOUND: ["No encontramos ese horario. Recargá antes de reintentar.", 404],
 };
@@ -164,6 +185,44 @@ export async function POST(request: Request) {
       { error: "UNAVAILABLE", message: "No hay conexión con la base de datos." },
       { status: 503, headers },
     );
+
+  if (
+    parsed.data.action === "preview-generate" ||
+    parsed.data.action === "apply-generate"
+  ) {
+    const args = {
+      p_from: parsed.data.from ?? null,
+      p_weeks: parsed.data.weeks,
+    };
+    const { data, error } =
+      parsed.data.action === "preview-generate"
+        ? await supabase
+            .rpc("admin_preview_schedule", args)
+            .abortSignal(AbortSignal.timeout(15000))
+        : await supabase
+            .rpc("admin_apply_schedule", args)
+            .abortSignal(AbortSignal.timeout(30000));
+    if (error) return failure(error);
+    if (!data || typeof data !== "object" || !Array.isArray(data.items))
+      return NextResponse.json(
+        {
+          error: "UNKNOWN",
+          message:
+            "No pudimos confirmar el plan de generación. Recargá antes de intentarlo otra vez.",
+        },
+        { status: 503, headers },
+      );
+    if (parsed.data.action === "preview-generate")
+      return NextResponse.json(data, { headers });
+
+    const board = await supabase
+      .rpc("admin_schedule_board")
+      .abortSignal(AbortSignal.timeout(15000));
+    return NextResponse.json(
+      { ...data, board: board.error ? null : board.data },
+      { headers },
+    );
+  }
 
   if (parsed.data.action === "set-active") {
     const { data, error } = await supabase
