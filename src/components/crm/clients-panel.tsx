@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ClientCategoryPanel } from "@/components/crm/client-category";
 import { useDictionary } from "@/components/providers/dictionary-provider";
 import {
+  calculatedCategories,
   categories,
   frequency,
   type ClientDetail,
@@ -866,7 +867,7 @@ export function ClientsPanel({
               placeholder="Escribí el nombre del cliente…"
             />
           </Field>
-          <Field label="Etiqueta">
+          <Field label="Categoría o etiqueta">
             <select
               className={input}
               value={category}
@@ -875,12 +876,21 @@ export function ClientsPanel({
                 setOffset(0);
               }}
             >
-              <option value="">Todas las etiquetas</option>
-              {Object.entries(categories).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v}
-                </option>
-              ))}
+              <option value="">Todas las categorías</option>
+              <optgroup label="Categoría por vigencia">
+                {Object.entries(calculatedCategories).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {v}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Etiqueta histórica">
+                {Object.entries(categories).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {v}
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </Field>
           <Button className="self-end" disabled={isDemo || busy}>
@@ -922,7 +932,9 @@ export function ClientsPanel({
                 #{c.client_number} · {c.full_name}
               </p>
               <p className="mt-1 text-sm text-brand-300">
-                {categories[c.category]}
+                {c.category_calc
+                  ? `${calculatedCategories[c.category_calc]}${c.category_source === "manual" ? " (a mano)" : ""}`
+                  : categories[c.category]}
                 {c.is_demo ? " · EJEMPLO" : ""}
               </p>
               <p className="text-xs text-fog">
@@ -1166,7 +1178,7 @@ export function ClientsPanel({
           </h2>
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span className="rounded-full border border-line bg-paper px-2.5 py-1 text-fog">
-              {categories[detail.client.category]}
+              Etiqueta: {categories[detail.client.category]}
             </span>
             <span className="rounded-full border border-line bg-paper px-2.5 py-1 text-fog">
               {detail.client.status === "active"
@@ -1608,7 +1620,7 @@ function EditClient({
               maxLength={120}
             />
           </Field>
-          <Field label="Etiqueta (sólo admin)">
+          <Field label="Etiqueta del contacto (sólo admin)">
             <select
               className={input}
               name="category"

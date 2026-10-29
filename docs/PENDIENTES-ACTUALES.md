@@ -254,30 +254,31 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   equivocado al aplicarla. Pendiente: aceptación en celular con un usuario de
   cada rol. Reversión: dejar de enviar `planId`; las
   columnas pueden quedar vacías sin afectar cobros ni vigencias ya creadas.
-- [ ] **CLI-02 · Media · Código — Categoría automática por vigencia real.**
-  Decisión cerrada: la categoría deja de mirar el «plan asignado» y pasa a usar
-  las fechas de `payment_plans`. Implementación: migración 00070
-  (`categorias_automaticas`) con `category_rules` (las cuatro categorías como
-  datos editables, con orden de prioridad, umbrales y categoría de reserva),
-  `category_rules_history`, columnas `category_auto` y `category_override` en
-  `gym_clients` y las funciones `client_category_eval`,
-  `client_category` (devuelve categoría, motivo, vigencia, visitas y compras),
-  `client_category_apply` (guarda y audita cambios en `client_events`),
-  `crm_set_client_category` y `crm_clear_client_category` (solo administrador
-  con motivo obligatorio y bitácora) y `admin_category_rules` /
-  `admin_save_category_rules`. Reglas por defecto: mes vigente + compra en 90
+- [x] **CLI-02 · Media · Código — Categoría automática por vigencia real.**
+  Hecho y aplicado en producción (migración `00070`, versión
+  `20261029051354 categorias_automaticas`). La categoría deja de mirar el «plan
+  asignado» y usa las fechas reales de `payment_plans`: un cliente con el mes
+  vigente y otro vencido hace tres semanas ya no comparten categoría. Incluye
+  `category_rules` (las cuatro categorías como datos editables con orden de
+  prioridad, umbrales y categoría de reserva), `category_rules_history`,
+  columnas `category_auto`/`category_override` en `gym_clients` y las funciones
+  `client_category_eval`, `client_category`, `client_category_apply`,
+  `crm_set_client_category`, `crm_clear_client_category`, `admin_category_rules`
+  y `admin_save_category_rules`. Reglas por defecto: mes vigente + compra en 90
   días = Strong Gym; cualquier vigencia activa = Familia; sin vigencia y 3
   visitas en 30 días = Amigo; el resto Común. Módulo **Administración →
-  Categorías** para cambiar números y orden sin código, con conteos y botón
-  «Recalcular todos»; la ficha muestra la categoría con su motivo y permite
-  fijarla o liberarla a mano. El directorio filtra por la categoría calculada.
-  Evidencia local: 36 comprobaciones SQL nuevas por rol (dos clientes con las
-  mismas visitas y distinta vigencia ya no comparten categoría, cambio de
-  umbrales, prioridad, reserva, permisos y bitácora), 777 pruebas de reglas/UI,
-  `typecheck`, `lint` y `build` sin errores. Pendiente: aplicar 00070 en
-  producción y aceptación en celular con un usuario de cada rol. Reversión:
-  dejar de llamar `client_category_apply`; las columnas nuevas pueden quedar
-  vacías sin afectar cobros ni vigencias.
+  Categorías** para cambiar números y orden sin código, con conteos, historial
+  y «Recalcular todos». La ficha muestra la categoría con su motivo y permite
+  fijarla o liberarla a mano; el listado de clientes muestra la categoría real
+  (o la etiqueta histórica cuando todavía no se calculó) y filtra por las
+  cuatro categorías o por la etiqueta. Evidencia: 36 comprobaciones SQL nuevas
+  por rol, 38 pruebas de la ficha de clientes, 4 del editor de reglas, 777 de
+  reglas/UI, `typecheck`, `lint` y `build` limpios, y los siete hashes
+  `md5(pg_get_functiondef)` de producción coinciden con los locales. Los cuatro
+  clientes del directorio quedaron con categoría asignada (3 Común, 1 Strong
+  Gym). **Pendiente: aceptación en celular** con un usuario de cada rol.
+  Reversión: dejar de llamar `client_category_apply`; las columnas nuevas
+  pueden quedar vacías sin afectar cobros ni vigencias y no se borra nada.
 - [ ] **CLI-03 · Media · Revisión profesional — Calculadora, dieta y rutinas.**
   La herramienta, el consentimiento, la aprobación del personal y el bloqueo de
   menores ya existen. Falta que un profesional revise fórmulas, mínimos de
@@ -530,7 +531,7 @@ orden nueva.**
 | Roles A/B | Cerradas y aplicadas | — |
 | Roles C — Anulación | Sin empezar | FIN-01 |
 | Calculadora A — Asistencia | Cerrada | — |
-| Calculadora B — Categoría | Parcial | CLI-02 |
+| Calculadora B — Categoría | Construida y aplicada | Aceptación en celular |
 | Calculadora C — Plan/rutina | Construida | CLI-03, QA-04 |
 | Calculadora D — Interruptor | Construida para entrenador | CLI-05 solo si se piden permisos más finos |
 | Calculadora E — Productos | Cerrada | — |
