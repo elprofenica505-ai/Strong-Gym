@@ -3,6 +3,7 @@ import { accessLabel, formatPlanDate, validityRows } from "@/lib/crm/validity";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { ClientCategoryPanel } from "@/components/crm/client-category";
 import { useDictionary } from "@/components/providers/dictionary-provider";
 import {
   categories,
@@ -1410,6 +1411,12 @@ export function ClientsPanel({
               await action(body);
               setNotice("Ficha guardada. Las etiquetas no cambian precios.");
             }}
+          />
+          <ClientCategoryPanel
+            clientId={detail.client.id}
+            isAdmin={isAdmin}
+            disabled={detailBusy}
+            onChanged={() => setRevision((n) => n + 1)}
           />
           <div>
             <div className="space-y-3">
