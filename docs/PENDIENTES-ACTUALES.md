@@ -271,12 +271,16 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   y «Recalcular todos». La ficha muestra la categoría con su motivo y permite
   fijarla o liberarla a mano; el listado de clientes muestra la categoría real
   (o la etiqueta histórica cuando todavía no se calculó) y filtra por las
-  cuatro categorías o por la etiqueta. Evidencia: 36 comprobaciones SQL nuevas
+  cuatro categorías o por la etiqueta. Evidencia: 40 comprobaciones SQL nuevas
   por rol, 38 pruebas de la ficha de clientes, 4 del editor de reglas, 777 de
   reglas/UI, `typecheck`, `lint` y `build` limpios, y los siete hashes
   `md5(pg_get_functiondef)` de producción coinciden con los locales. Los cuatro
   clientes del directorio quedaron con categoría asignada (3 Común, 1 Strong
-  Gym) al ejecutar el recálculo. Desplegado en producción con
+  Gym) al ejecutar el recálculo. La migración `00071`
+  (`20261029053617 directorio_categoria_en_vivo`) hace que el listado calcule
+  en el momento la categoría de un cliente creado después del último
+  recálculo, así no aparece con la etiqueta vieja ni se queda fuera del filtro;
+  su hash de producción también coincide con el local. Desplegado en producción con
   `dpl_F3oHWLBBhNdEQeHN2PXMWkjsmVSx` (commit `86952ca`); `/api/admin/categories`
   responde 403 AUTH sin sesión (ya no PGRST202) y la página de Categorías
   redirige a Ingresar. **Pendiente: aceptación en celular** con un usuario de

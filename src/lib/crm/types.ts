@@ -27,6 +27,8 @@ export interface GymClient {
   /** Categoría calculada o fijada a mano (CLI-02). */
   category_calc?: CalculatedCategory | null;
   category_source?: "auto" | "manual" | null;
+  /** `false` cuando la categoría se calculó al leer y todavía no se guardó. */
+  category_saved?: boolean | null;
   status: ClientStatus;
   plan_id: string | null;
   /** Fecha local en que se congeló la ficha; vacía si nunca se congeló. */
