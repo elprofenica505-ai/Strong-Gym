@@ -135,23 +135,30 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   administración avanzada de grillas y excepciones queda en OP-05.
 - [ ] **OP-05 · Media · Código — Administrar disciplinas, grillas, sesiones y
   excepciones del calendario.** Alcance ampliado el 27 de octubre de 2026 a
-  petición del usuario, después de aprobar OP-04. Hoy el generador solo sigue
-  la grilla fija de Boxeo y el botón crea cuatro semanas completas; las demás
-  acciones de esta tarea todavía no se pueden hacer desde Operación. OP-05
-  debe permitir, sin SQL manual ni cambios de código:
+  petición del usuario, después de aprobar OP-04.
+  **Primera etapa hecha (migración 00072):** la grilla semanal dejó de ser una
+  plantilla fija escrita en SQL y pasó a ser datos en
+  `class_schedule_slots` (disciplina, día, hora, duración, cupo, sala,
+  entrenador y vigencia desde/hasta). `generate_week_sessions()` lee esa
+  tabla; la migración cargó como semilla los nueve horarios de Boxeo que ya
+  existían, así que el calendario no cambió solo. Pantalla nueva
+  **Administración → Horarios y grilla** (`/panel/administracion/horarios`):
+  agregar, editar, anular y reactivar horarios; al guardar se crean las
+  sesiones de las próximas cuatro semanas sin duplicar y sin tocar reservas.
+  Se rechazan choques de la misma sala o del mismo entrenador en el mismo día
+  y horario. Solo administración con MFA; la tabla no es accesible desde la
+  API. Anular un horario deja la fila (`is_active = false`) y conserva las
+  sesiones ya creadas. Evidencia: 30 comprobaciones SQL nuevas y 4 de la
+  pantalla; `typecheck`, `lint` y `build` limpios.
+  **Falta para cerrar OP-05** (sin SQL manual ni cambios de código):
   - Crear, editar y desactivar disciplinas nuevas o existentes, con sus
     textos, duración, cupo, intensidad, color y orden. Debe reutilizarse el
     interruptor persistente de OP-03 y no borrarse una disciplina con
     historial.
-  - Crear, editar y desactivar **una o varias grillas recurrentes por
-    disciplina** —por ejemplo, una futura grilla de Zumba— con días de la
-    semana, horas de inicio, duración, sala, cupo, entrenador y vigencia
-    desde/hasta. La grilla actual de Boxeo debe pasar a ser la primera
-    grilla administrable sin duplicar sesiones ya generadas.
-  - Generar sesiones desde una grilla para un horizonte o rango elegido,
-    mostrando antes cuántas se crearían y cuáles se omitirían por duplicado,
-    choque o bloqueo. El botón de OP-04 puede quedar como atajo de cuatro
-    semanas, pero no debe seguir siendo la única forma de generar.
+  - Generar sesiones para un horizonte o rango elegido, mostrando antes
+    cuántas se crearían y cuáles se omitirían por duplicado, choque o bloqueo.
+    Hoy se generan cuatro semanas al guardar y el botón de Operación sigue
+    creando cuatro.
   - Crear, editar, mover y cancelar **sesiones sueltas o días especiales**
     fuera de la grilla, además de sesiones individuales o rangos elegidos de
     una serie. Al bajar un cupo o mover una sesión no debe permitirse
