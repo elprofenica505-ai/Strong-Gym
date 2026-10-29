@@ -23,7 +23,7 @@ export async function generateMetadata({
   const { locale } = await params;
   if (!isLocale(locale)) return {};
   return {
-    title: "Horarios y grilla",
+    title: "Horarios y clases",
     robots: { index: false, follow: false },
   };
 }
@@ -90,9 +90,9 @@ export default async function HorariosPage({
             <ArrowLeft className="size-4" />
           </Link>
           <SectionHeading
-            eyebrow="Administración · Horarios"
-            title="Horarios y grilla"
-            subtitle="Cargá los horarios fijos de cada disciplina. Al guardar se crean las sesiones de las próximas semanas, sin duplicar y sin tocar las reservas que ya existen."
+            eyebrow="Administración · Horarios y clases"
+            title="Horarios y clases"
+            subtitle="Armá tu semana fija, pasala al calendario y cerrá los días que no abrís. Cada paso te muestra qué va a pasar antes de guardar."
           />
         </div>
       </section>

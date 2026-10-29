@@ -93,28 +93,28 @@ function setup(handler, blocks = [block()]) {
 
 test("muestra los bloqueos activos con su motivo y cuántas sesiones canceló", () => {
   setup(() => json({}));
-  assert.ok(screen.getByRole("heading", { name: "Bloqueos y cierres" }));
-  assert.ok(screen.getByText(/1 bloqueo activo/));
+  assert.ok(screen.getByRole("heading", { name: /Días que no abrís/ }));
+  assert.ok(screen.getByText(/1 cierre programado/));
   assert.ok(screen.getByText(/Feriado · Todo el gimnasio/));
   assert.ok(screen.getByText(/Feriado nacional/));
-  assert.ok(screen.getByText(/3 sesiones canceladas/));
-  assert.ok(screen.getByRole("button", { name: "Levantar" }));
+  assert.ok(screen.getByText(/3 clases canceladas/));
+  assert.ok(screen.getByRole("button", { name: "Reabrir" }));
 });
 
 test("sin bloqueos lo dice sin inventar filas", () => {
   setup(() => json({}), []);
-  assert.ok(screen.getByText("No hay bloqueos activos."));
-  assert.equal(screen.queryByRole("button", { name: "Levantar" }), null);
+  assert.ok(screen.getByText("No hay cierres programados."));
+  assert.equal(screen.queryByRole("button", { name: "Reabrir" }), null);
 });
 
 test("ver qué se afecta no guarda nada y avisa de las reservas", async () => {
   const calls = setup(() => json(impact()));
-  fireEvent.click(screen.getByRole("button", { name: "Agregar bloqueo" }));
-  fireEvent.change(screen.getByLabelText("Nota"), {
+  fireEvent.click(screen.getByRole("button", { name: "Cerrar un día o un rango" }));
+  fireEvent.change(screen.getByLabelText("Contales qué pasa"), {
     target: { value: "Feriado nacional" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Ver qué se afecta" }));
-  await screen.findByText(/Se cancelarían 1 sesión y 2 reservas/);
+  fireEvent.click(screen.getByRole("button", { name: "Ver a quién afecta" }));
+  await screen.findByText(/Se cancelan 1 clase y 2 reservas/);
 
   const preview = calls.find((call) => call.body?.action === "preview-block");
   assert.equal(preview.body.scope, "gym");
@@ -142,41 +142,41 @@ test("guardar envía el motivo, confirma y avisa cuántas sesiones canceló", as
       board: null,
     });
   });
-  fireEvent.click(screen.getByRole("button", { name: "Agregar bloqueo" }));
-  fireEvent.change(screen.getByLabelText("Motivo"), {
+  fireEvent.click(screen.getByRole("button", { name: "Cerrar un día o un rango" }));
+  fireEvent.change(screen.getByLabelText("Por qué"), {
     target: { value: "maintenance" },
   });
-  fireEvent.change(screen.getByLabelText("Nota"), {
+  fireEvent.change(screen.getByLabelText("Contales qué pasa"), {
     target: { value: "Pintura del salón" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Ver qué se afecta" }));
-  await screen.findByText(/Se cancelarían/);
-  fireEvent.click(screen.getByRole("button", { name: "Guardar bloqueo" }));
-  await screen.findByText(/Se cancelaron 1 sesión y sus reservas quedaron con el motivo/);
+  fireEvent.click(screen.getByRole("button", { name: "Ver a quién afecta" }));
+  await screen.findByText(/Se cancelan /);
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar cierre" }));
+  await screen.findByText(/Listo: 1 clase se canceló y cada reserva quedó con el motivo escrito/);
 
   const saved = calls.find((call) => call.body?.action === "save-block");
   assert.equal(saved.body.reasonKind, "maintenance");
   assert.equal(saved.body.reason, "Pintura del salón");
   assert.equal(saved.body.confirmed, true);
   // La lista se actualiza con lo que devolvió el servidor.
-  assert.ok(screen.getByText(/4 sesiones canceladas/));
+  assert.ok(screen.getByText(/4 clases canceladas/));
   // El formulario se cierra.
-  assert.equal(screen.queryByRole("button", { name: "Guardar bloqueo" }), null);
+  assert.equal(screen.queryByRole("button", { name: "Confirmar cierre" }), null);
 });
 
 test("bloquear un entrenador con sustituto avisa que reasigna", async () => {
   const calls = setup(() =>
     json(impact({ action: "reassign", booking_count: 0 })),
   );
-  fireEvent.click(screen.getByRole("button", { name: "Agregar bloqueo" }));
-  fireEvent.change(screen.getByLabelText("Qué se bloquea"), {
+  fireEvent.click(screen.getByRole("button", { name: "Cerrar un día o un rango" }));
+  fireEvent.change(screen.getByLabelText("Qué cerrás"), {
     target: { value: "coach" },
   });
-  fireEvent.change(screen.getByLabelText("Sustituto (opcional)"), {
+  fireEvent.change(screen.getByLabelText("Quién lo cubre (opcional)"), {
     target: { value: "coach_2" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Ver qué se afecta" }));
-  await screen.findByText(/Se reasignarían 1 sesión al sustituto/);
+  fireEvent.click(screen.getByRole("button", { name: "Ver a quién afecta" }));
+  await screen.findByText(/Se pasan 1 clase al sustituto/);
   const preview = calls.find((call) => call.body?.action === "preview-block");
   assert.equal(preview.body.coachId, "coach_1");
   assert.equal(preview.body.substituteCoachId, "coach_2");
@@ -184,17 +184,17 @@ test("bloquear un entrenador con sustituto avisa que reasigna", async () => {
 
 test("el sustituto no se ofrece como opción de sí mismo", () => {
   setup(() => json({}));
-  fireEvent.click(screen.getByRole("button", { name: "Agregar bloqueo" }));
-  fireEvent.change(screen.getByLabelText("Qué se bloquea"), {
+  fireEvent.click(screen.getByRole("button", { name: "Cerrar un día o un rango" }));
+  fireEvent.change(screen.getByLabelText("Qué cerrás"), {
     target: { value: "coach" },
   });
   fireEvent.change(screen.getByLabelText("Entrenador"), {
     target: { value: "coach_2" },
   });
   const options = Array.from(
-    screen.getByLabelText("Sustituto (opcional)").querySelectorAll("option"),
+    screen.getByLabelText("Quién lo cubre (opcional)").querySelectorAll("option"),
   ).map((option) => option.textContent);
-  assert.ok(options.includes("Cancelar las clases"));
+  assert.ok(options.includes("Nadie: se cancelan sus clases"));
   assert.ok(!options.includes("Profe Dos"));
 });
 
@@ -209,21 +209,21 @@ test("un error del servidor se muestra y no borra lo cargado", async () => {
       409,
     ),
   );
-  fireEvent.click(screen.getByRole("button", { name: "Agregar bloqueo" }));
-  fireEvent.change(screen.getByLabelText("Nota"), { target: { value: "Feriado" } });
-  fireEvent.click(screen.getByRole("button", { name: "Ver qué se afecta" }));
+  fireEvent.click(screen.getByRole("button", { name: "Cerrar un día o un rango" }));
+  fireEvent.change(screen.getByLabelText("Contales qué pasa"), { target: { value: "Feriado" } });
+  fireEvent.click(screen.getByRole("button", { name: "Ver a quién afecta" }));
   await waitFor(() => assert.ok(screen.getByRole("alert")));
   assert.match(screen.getByRole("alert").textContent, /Hay reservas en las clases afectadas/);
-  assert.ok(screen.getByLabelText("Nota"));
+  assert.ok(screen.getByLabelText("Contales qué pasa"));
 });
 
 test("levantar un bloqueo lo saca de la lista y aclara que no revive sesiones", async () => {
   const calls = setup(() =>
     json({ id: block().id, blocks: [block({ is_active: false })] }),
   );
-  fireEvent.click(screen.getByRole("button", { name: "Levantar" }));
+  fireEvent.click(screen.getByRole("button", { name: "Reabrir" }));
   await screen.findByText(/no vuelven solas/);
   const lifted = calls.find((call) => call.body?.action === "lift-block");
   assert.equal(lifted.body.id, block().id);
-  assert.ok(screen.getByText("No hay bloqueos activos."));
+  assert.ok(screen.getByText("No hay cierres programados."));
 });

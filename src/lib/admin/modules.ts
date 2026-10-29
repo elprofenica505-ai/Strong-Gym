@@ -82,7 +82,7 @@ export const PANEL_MODULES: PanelModule[] = [
       { id: "roles", label: "Personal y roles", href: "/panel/administracion/roles", adminOnly: true },
       { id: "entrenadores", label: "Entrenadores y accesos", href: "/panel/administracion/entrenadores", adminOnly: true },
       { id: "planes", label: "Planes y modalidades", href: "/panel/administracion/planes", adminOnly: true },
-      { id: "horarios", label: "Horarios y grilla", href: "/panel/administracion/horarios", adminOnly: true },
+      { id: "horarios", label: "Horarios y clases", href: "/panel/administracion/horarios", adminOnly: true },
       { id: "categorias", label: "Categorías", href: "/panel/administracion/categorias", adminOnly: true },
       { id: "tarifas", label: "Tarifas", href: "/panel/administracion/tarifas", adminOnly: true },
       { id: "importar", label: "Importar clientes", href: "/panel/importar", adminOnly: true },

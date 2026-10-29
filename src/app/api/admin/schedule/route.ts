@@ -350,6 +350,8 @@ export async function POST(request: Request) {
       .rpc("admin_set_schedule_slot_active", {
         p_id: parsed.data.id,
         p_active: parsed.data.active,
+        // `p_weeks` se mantiene por compatibilidad: desde 00076 este paso ya
+        // no crea clases, solo cambia la semana fija.
         p_weeks: 4,
       })
       .abortSignal(AbortSignal.timeout(20000));

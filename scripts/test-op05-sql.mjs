@@ -23,9 +23,10 @@ const db = await createTestDb({
     "supabase/migrations/00073_grilla_nombre_entrenador.sql",
     "supabase/migrations/00074_generar_sesiones_preview.sql",
     "supabase/migrations/00075_bloqueos_calendario.sql",
+    "supabase/migrations/00076_horario_no_genera_solo.sql",
   ],
 });
-ok("00072 a 00075 se aplican sobre 00071 sin error", true);
+ok("00072 a 00076 se aplican sobre 00071 sin error", true);
 
 const row = async (query, args = []) => (await db.query(query, args)).rows[0];
 const makeUser = async (email, role) => {
@@ -114,15 +115,24 @@ ok("Un horario guardado como inactivo no crea sesiones",
   zumba.created_sessions === 0 &&
   (await row("select count(*)::int as n from public.sessions where class_id='cls_zumba'")).n === 0);
 
+// 3b. Guardar o reactivar un horario no escribe en el calendario (00076).
 const activated = await adminRpc("admin_set_schedule_slot_active", [zumbaId, true, 4]);
+ok("Reactivar un horario no crea clases por su cuenta",
+  activated.created_sessions === 0 &&
+  (await row("select count(*)::int as n from public.sessions where class_id='cls_zumba'")).n === 0);
+const zumbaPass = await adminRpc("admin_apply_schedule", [monday, 4]);
+ok("Las clases se crean recién al pasar la semana al calendario",
+  zumbaPass.created >= 3 &&
+  zumbaPass.items.some((i) => i.class_id === "cls_zumba") &&
+  zumbaPass.totals.create === 0);
 const zumbaSessions = (
   await asAdmin(
     `select count(*)::int as n from public.sessions
       where class_id='cls_zumba' and starts_at >= now() + interval '1 day'`,
   )
 ).rows[0].n;
-ok("Activar el horario crea sus sesiones de las próximas semanas",
-  activated.created_sessions >= 1 && zumbaSessions >= 3);
+ok("El calendario queda con las clases de Zumba de las próximas semanas",
+  zumbaSessions >= 3);
 const zumbaFirst = (
   await asAdmin(
     `select room,
@@ -159,6 +169,8 @@ const free = await adminRpc("admin_save_schedule_slot", [
   null, "cls_boxeo", 5, "09:00", 60, 20, "Área de boxeo", null, true, 1,
 ]);
 ok("Un horario sin choque en otro día se guarda", free.slot_id !== zumbaId);
+ok("Guardar un horario activo tampoco crea clases solo",
+  free.created_sessions === 0);
 
 // 4b. El nombre del entrenador no depende de que la columna se llame `name`.
 const named = await adminRpc("admin_schedule_board", []);

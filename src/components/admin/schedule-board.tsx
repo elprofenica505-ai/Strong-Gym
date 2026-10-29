@@ -21,7 +21,6 @@ export type ScheduleSlot = {
   is_active: boolean;
 };
 
-/** Motivo que la base le da a cada clase candidata antes de crearla. */
 export type PlanStatus =
   | "create"
   | "duplicate"
@@ -53,16 +52,6 @@ export type SchedulePlan = {
   items: SchedulePlanItem[];
 };
 
-const STATUS_LABEL: Record<PlanStatus, string> = {
-  create: "se crea",
-  duplicate: "ya existe",
-  room_conflict: "choca la sala",
-  coach_conflict: "choca el entrenador",
-  blocked: "bloqueado por un cierre",
-  past: "ya pasó",
-  inactive: "disciplina desactivada",
-};
-
 export type ScheduleBoardData = {
   slots: ScheduleSlot[];
   classes: { id: string; name: string; active: boolean }[];
@@ -80,6 +69,17 @@ const DAYS = [
   "Sábado",
   "Domingo",
 ];
+
+/** Por qué no se crea una clase, dicho como se lo diría un recepcionista. */
+const STATUS_LABEL: Record<PlanStatus, string> = {
+  create: "se crea",
+  duplicate: "ya estaba en el calendario",
+  room_conflict: "esa sala ya está ocupada a esa hora",
+  coach_conflict: "ese entrenador ya tiene otra clase a esa hora",
+  blocked: "ese día está cerrado",
+  past: "esa fecha ya pasó",
+  inactive: "esa disciplina está apagada en Operación",
+};
 
 const input =
   "w-full rounded-lg border border-line bg-paper px-3 py-2 text-ink disabled:opacity-60";
@@ -125,10 +125,57 @@ const formatWeek = (value: string) => {
   return `${day}/${month}/${year}`;
 };
 
+/** «1 hora», «1 h 30 min», «45 min»: como se dice en el gimnasio. */
+const formatDuration = (minutes: number) => {
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest === 0
+    ? `${hours} ${hours === 1 ? "hora" : "horas"}`
+    : `${hours} h ${rest} min`;
+};
+
+const plural = (count: number, one: string, many: string) =>
+  `${count} ${count === 1 ? one : many}`;
+
+function Step({
+  number,
+  title,
+  hint,
+  children,
+}: {
+  number: number;
+  title: string;
+  hint: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-4 rounded-2xl border border-line bg-card p-4">
+      <div className="flex gap-3">
+        <span
+          aria-hidden="true"
+          className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full bg-brand text-[0.875rem] font-bold text-white"
+        >
+          {number}
+        </span>
+        <div className="min-w-0">
+          <h2 className="text-base font-bold text-ink">
+            <span className="sr-only">{`Paso ${number}: `}</span>
+            {title}
+          </h2>
+          <p className="mt-1 text-[0.8125rem] text-fog">{hint}</p>
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
 /**
- * Grilla semanal del gimnasio (OP-05). Cada fila es una clase fija que el
- * generador convierte en sesiones con fecha. Los cambios se guardan en la
- * base: no dependen de código ni de un despliegue.
+ * Horarios del gimnasio (OP-05), en tres pasos para que se entienda de una
+ * leída: armar la semana fija, pasarla al calendario con fechas, y cerrar los
+ * días que no se abre. Cada paso hace una sola cosa y avisa qué va a pasar
+ * antes de escribir.
  */
 export function ScheduleBoard({
   initial,
@@ -151,10 +198,14 @@ export function ScheduleBoard({
   });
   const [plan, setPlan] = useState<SchedulePlan | null>(null);
   const [genBusy, setGenBusy] = useState(false);
+  const [customRange, setCustomRange] = useState(false);
 
-  async function generate(action: "preview-generate" | "apply-generate") {
+  async function generate(
+    action: "preview-generate" | "apply-generate",
+    options: { quiet?: boolean } = {},
+  ) {
     setGenBusy(true);
-    setNotice(null);
+    if (!options.quiet) setNotice(null);
     try {
       const res = await fetch("/api/admin/schedule", {
         method: "POST",
@@ -174,7 +225,7 @@ export function ScheduleBoard({
           tone: "error",
           text:
             data?.message ??
-            "No pudimos revisar qué sesiones se crearían. Recargá antes de reintentar.",
+            "No pudimos revisar qué clases se crearían. Recargá antes de reintentar.",
         });
         return;
       }
@@ -186,8 +237,8 @@ export function ScheduleBoard({
           tone: "ok",
           text:
             created > 0
-              ? `Se crearon ${created} ${created === 1 ? "sesión" : "sesiones"} en el calendario. No se tocó ninguna reserva.`
-              : "No hizo falta crear sesiones nuevas: el calendario ya estaba al día.",
+              ? `Listo: ${plural(created, "clase nueva", "clases nuevas")} en el calendario. No se canceló ninguna reserva.`
+              : "No hizo falta crear nada: el calendario ya estaba al día.",
         });
       }
     } catch {
@@ -199,10 +250,6 @@ export function ScheduleBoard({
       setGenBusy(false);
     }
   }
-
-  const omitted = plan
-    ? plan.items.filter((item) => item.status !== "create")
-    : [];
 
   async function send(body: unknown) {
     setBusy(true);
@@ -232,14 +279,6 @@ export function ScheduleBoard({
         weeks: data.weeks,
         room_hint: data.room_hint,
       });
-      const created = data.created_sessions ?? 0;
-      setNotice({
-        tone: "ok",
-        text:
-          created > 0
-            ? `Horario guardado. Se crearon ${created} ${created === 1 ? "sesión" : "sesiones"} en el calendario.`
-            : "Horario guardado. No hizo falta crear sesiones nuevas.",
-      });
       return true;
     } catch {
       setNotice({
@@ -253,49 +292,19 @@ export function ScheduleBoard({
   }
 
   async function toggle(slot: ScheduleSlot) {
-    setBusy(true);
-    setNotice(null);
-    try {
-      const res = await fetch("/api/admin/schedule", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "set-active",
-          id: slot.id,
-          active: !slot.is_active,
-        }),
-      });
-      const data = (await res.json().catch(() => null)) as
-        | (ScheduleBoardData & { created_sessions?: number; message?: string })
-        | null;
-      if (!res.ok || !data?.slots) {
-        setNotice({
-          tone: "error",
-          text: data?.message ?? "No se pudo cambiar el horario.",
-        });
-        return;
-      }
-      setBoard({
-        slots: data.slots,
-        classes: data.classes,
-        coaches: data.coaches,
-        weeks: data.weeks,
-        room_hint: data.room_hint,
-      });
-      setNotice({
-        tone: "ok",
-        text: slot.is_active
-          ? "Horario anulado. Las sesiones que ya existían se conservan para quien reservó."
-          : "Horario reactivado.",
-      });
-    } catch {
-      setNotice({
-        tone: "error",
-        text: "No se pudo cambiar el horario. Revisá la conexión antes de repetir.",
-      });
-    } finally {
-      setBusy(false);
-    }
+    const saved = await send({
+      action: "set-active",
+      id: slot.id,
+      active: !slot.is_active,
+    });
+    if (!saved) return;
+    setNotice({
+      tone: "ok",
+      text: slot.is_active
+        ? "Horario suspendido: deja de repetirse cada semana. Las clases que ya estaban en el calendario se conservan para quien reservó."
+        : "Horario activo otra vez. Sus próximas clases se crean en el paso 2.",
+    });
+    void generate("preview-generate", { quiet: true });
   }
 
   const save = async () => {
@@ -312,86 +321,326 @@ export function ScheduleBoard({
       coachId: draft.coachId || null,
       active: draft.active,
     });
-    if (saved) setDraft(null);
+    if (!saved) return;
+    setDraft(null);
+    setNotice({
+      tone: "ok",
+      text: "Horario guardado en tu semana fija. Todavía no tiene fechas: pasalo al calendario en el paso 2.",
+    });
+    // Se revisa solo qué falta crear, sin escribir nada, para que el paso 2
+    // quede listo con el botón de crear.
+    void generate("preview-generate", { quiet: true });
   };
 
-  const totalSlots = board.slots.filter((slot) => slot.is_active).length;
+  const activeSlots = board.slots.filter((slot) => slot.is_active);
+  const totalWeek = activeSlots.length;
+  const nextFour = board.weeks.reduce((sum, week) => sum + week.scheduled, 0);
+  const omitted = plan ? plan.items.filter((item) => item.status !== "create") : [];
+  const omittedByStatus = omitted.reduce<Record<string, number>>((acc, item) => {
+    acc[item.status] = (acc[item.status] ?? 0) + 1;
+    return acc;
+  }, {});
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-card p-4">
-        <div>
-          <p className="text-[0.875rem] text-mist">
-            {totalSlots} {totalSlots === 1 ? "horario activo" : "horarios activos"} ·
-            la grilla se convierte en sesiones con fecha.
-          </p>
-          {board.weeks.length ? (
-            <p className="text-[0.8125rem] text-fog">
-              Próximas semanas:{" "}
-              {board.weeks
-                .map((week) => `${formatWeek(week.week_start)} (${week.scheduled})`)
-                .join(" · ")}
-            </p>
-          ) : null}
-        </div>
-        <Button
-          type="button"
-          disabled={busy || !!draft || board.classes.length === 0}
-          onClick={() => setDraft(newDraft(board.classes))}
-        >
-          Agregar horario
-        </Button>
-      </div>
+      <section className="rounded-2xl border border-brand/30 bg-brand/[0.06] p-4">
+        <h2 className="text-base font-bold text-ink">¿Cómo funciona esta pantalla?</h2>
+        <ol className="mt-2 space-y-1 text-[0.875rem] text-mist">
+          <li>
+            <strong className="text-ink">1. Armás tu semana fija.</strong> Qué
+            clase hay cada día y a qué hora. Por ejemplo: Boxeo, martes a las
+            06:00. Se repite todas las semanas.
+          </li>
+          <li>
+            <strong className="text-ink">2. La pasás al calendario.</strong> Ahí
+            esas clases reciben fecha. Podés ver cuántas se van a crear antes de
+            confirmar.
+          </li>
+          <li>
+            <strong className="text-ink">3. Cerrás los días que no abrís.</strong>{" "}
+            Feriado, vacaciones o un profesor enfermo.
+          </li>
+        </ol>
+        <p className="mt-2 text-[0.8125rem] text-fog">
+          Guardar un horario no crea clases: solo cambia tu semana fija. Las
+          clases con fecha se crean en el paso 2.
+        </p>
+      </section>
 
-      <section className="space-y-4 rounded-2xl border border-line bg-card p-4">
-        <div>
-          <h2 className="text-base font-bold text-ink">Generar sesiones</h2>
-          <p className="text-[0.8125rem] text-fog">
-            Elegí desde cuándo y cuántas semanas. Primero ves qué se crearía y
-            qué se omite; recién después se escribe en el calendario.
+      {notice ? (
+        <p
+          role={notice.tone === "error" ? "alert" : "status"}
+          className={`rounded-xl border px-4 py-3 text-[0.875rem] ${
+            notice.tone === "error"
+              ? "border-red-400/40 bg-red-400/10 text-red-200"
+              : "border-brand/30 bg-brand/[0.06] text-mist"
+          }`}
+        >
+          {notice.text}
+        </p>
+      ) : null}
+
+      <Step
+        number={1}
+        title="Tu semana fija"
+        hint="Lo que se repite cada semana. Ejemplo: Boxeo los martes a las 06:00."
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[0.8125rem] text-mist">
+            {totalWeek === 0
+              ? "Todavía no hay horarios."
+              : `${plural(totalWeek, "horario activo", "horarios activos")} por semana.`}
           </p>
+          <Button
+            type="button"
+            disabled={busy || !!draft || board.classes.length === 0}
+            onClick={() => {
+              setDraft(newDraft(board.classes));
+              setNotice(null);
+            }}
+          >
+            Agregar horario fijo
+          </Button>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <label className="text-[0.8125rem] text-mist">
-            Desde
-            <input
-              className={`${input} mt-1`}
-              type="date"
-              value={gen.from}
-              disabled={genBusy || busy}
-              onChange={(event) => {
-                setGen({ ...gen, from: event.target.value });
-                setPlan(null);
-              }}
-            />
-          </label>
-          <label className="text-[0.8125rem] text-mist">
-            Semanas
-            <select
-              className={`${input} mt-1`}
-              value={gen.weeks}
-              disabled={genBusy || busy}
-              onChange={(event) => {
-                setGen({ ...gen, weeks: Number(event.target.value) });
-                setPlan(null);
-              }}
-            >
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((weeks) => (
-                <option key={weeks} value={weeks}>
-                  {weeks} {weeks === 1 ? "semana" : "semanas"}
-                </option>
-              ))}
-            </select>
-          </label>
+
+        {board.classes.length === 0 ? (
+          <p className="rounded-xl border border-brand/30 bg-brand/[0.06] px-4 py-3 text-[0.875rem] text-mist">
+            Todavía no hay disciplinas cargadas. Creá al menos una para poder
+            cargar su horario.
+          </p>
+        ) : null}
+
+        {draft ? (
+          <div className="space-y-4 rounded-xl border border-brand/40 bg-paper p-4">
+            <h3 className="text-[0.9375rem] font-bold text-ink">
+              {draft.id ? "Cambiar horario fijo" : "Nuevo horario fijo"}
+            </h3>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <label className="text-[0.8125rem] text-mist">
+                Disciplina
+                <select
+                  className={`${input} mt-1`}
+                  value={draft.classId}
+                  disabled={busy}
+                  onChange={(event) =>
+                    setDraft({ ...draft, classId: event.target.value })
+                  }
+                >
+                  {board.classes.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                      {item.active ? "" : " (apagada en Operación)"}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-[0.8125rem] text-mist">
+                Día
+                <select
+                  className={`${input} mt-1`}
+                  value={draft.day}
+                  disabled={busy}
+                  onChange={(event) =>
+                    setDraft({ ...draft, day: Number(event.target.value) })
+                  }
+                >
+                  {DAYS.map((name, index) => (
+                    <option key={name} value={index}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-[0.8125rem] text-mist">
+                Hora de inicio
+                <input
+                  className={`${input} mt-1`}
+                  type="time"
+                  value={draft.start}
+                  disabled={busy}
+                  onChange={(event) =>
+                    setDraft({ ...draft, start: event.target.value })
+                  }
+                />
+              </label>
+              <label className="text-[0.8125rem] text-mist">
+                Duración (minutos)
+                <input
+                  className={`${input} mt-1`}
+                  type="number"
+                  min={10}
+                  max={180}
+                  value={draft.duration}
+                  disabled={busy}
+                  onChange={(event) =>
+                    setDraft({ ...draft, duration: Number(event.target.value) })
+                  }
+                />
+              </label>
+              <label className="text-[0.8125rem] text-mist">
+                Cuántos pueden entrar
+                <input
+                  className={`${input} mt-1`}
+                  type="number"
+                  min={1}
+                  max={200}
+                  value={draft.capacity}
+                  disabled={busy}
+                  onChange={(event) =>
+                    setDraft({ ...draft, capacity: Number(event.target.value) })
+                  }
+                />
+              </label>
+              <label className="text-[0.8125rem] text-mist">
+                Sala
+                <input
+                  className={`${input} mt-1`}
+                  value={draft.room}
+                  maxLength={60}
+                  disabled={busy}
+                  onChange={(event) =>
+                    setDraft({ ...draft, room: event.target.value })
+                  }
+                />
+              </label>
+              <label className="text-[0.8125rem] text-mist">
+                Entrenador
+                <select
+                  className={`${input} mt-1`}
+                  value={draft.coachId}
+                  disabled={busy}
+                  onChange={(event) =>
+                    setDraft({ ...draft, coachId: event.target.value })
+                  }
+                >
+                  <option value="">Sin asignar</option>
+                  {board.coaches.map((coach) => (
+                    <option key={coach.id} value={coach.id}>
+                      {coach.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <p className="text-[0.75rem] text-fog">
+              {board.room_hint ??
+                "Usá la misma sala para que el choque de horario se detecte."}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" disabled={busy} onClick={() => void save()}>
+                Guardar horario
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={() => setDraft(null)}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="space-y-3">
+          {DAYS.map((dayName, day) => {
+            const slots = board.slots.filter((slot) => slot.day_of_week === day);
+            return (
+              <div key={dayName} className="rounded-xl border border-line bg-paper p-3">
+                <h3 className="text-[0.9375rem] font-bold text-ink">
+                  {dayName}
+                  <span className="ml-2 text-[0.8125rem] font-normal text-fog">
+                    {slots.length === 0
+                      ? "sin clases fijas"
+                      : plural(slots.length, "horario", "horarios")}
+                  </span>
+                </h3>
+                {slots.length === 0 ? null : (
+                  <ul className="mt-2 space-y-2">
+                    {slots.map((slot) => (
+                      <li
+                        key={slot.id}
+                        className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 ${
+                          slot.is_active
+                            ? "border-line bg-card"
+                            : "border-dashed border-line bg-card/60"
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <p className="font-semibold text-ink">
+                            {slot.start_time} · {slot.class_name}
+                            {slot.is_active ? null : (
+                              <span className="ml-2 rounded-full border border-line px-2 py-0.5 text-[0.6875rem] font-normal text-fog">
+                                suspendido
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-[0.8125rem] text-fog">
+                            {formatDuration(slot.duration_min)} ·{" "}
+                            {plural(slot.capacity, "lugar", "lugares")} ·{" "}
+                            {slot.room} ·{" "}
+                            {slot.coach_name ?? "sin entrenador"}
+                            {slot.class_active
+                              ? ""
+                              : " · disciplina apagada en Operación"}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={busy}
+                            onClick={() => {
+                              setDraft(fromSlot(slot));
+                              setNotice(null);
+                            }}
+                          >
+                            Cambiar
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={busy}
+                            onClick={() => void toggle(slot)}
+                          >
+                            {slot.is_active ? "Suspender" : "Volver a activar"}
+                          </Button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
         </div>
+      </Step>
+
+      <Step
+        number={2}
+        title="Pasar la semana al calendario"
+        hint="Tu semana fija todavía no tiene fechas. Acá se crean las clases de las próximas semanas. No duplica, no cancela y no toca reservas."
+      >
+        {board.weeks.length ? (
+          <p className="text-[0.8125rem] text-fog">
+            En el calendario ahora hay {plural(nextFour, "clase", "clases")} en
+            las próximas cuatro semanas:{" "}
+            {board.weeks
+              .map((week) => `semana del ${formatWeek(week.week_start)} (${week.scheduled})`)
+              .join(" · ")}
+            .
+          </p>
+        ) : null}
+
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"
-            variant="outline"
             disabled={genBusy || busy || board.classes.length === 0}
             onClick={() => void generate("preview-generate")}
           >
-            {genBusy ? "Revisando…" : "Ver qué se crearía"}
+            {genBusy ? "Revisando…" : "Ver qué clases se crearían"}
           </Button>
           {plan && plan.totals.create > 0 ? (
             <Button
@@ -399,268 +648,100 @@ export function ScheduleBoard({
               disabled={genBusy || busy}
               onClick={() => void generate("apply-generate")}
             >
-              Crear {plan.totals.create}{" "}
-              {plan.totals.create === 1 ? "sesión" : "sesiones"}
+              Crear {plural(plan.totals.create, "clase", "clases")}
             </Button>
           ) : null}
         </div>
+
+        <details
+          className="rounded-xl border border-line bg-paper p-3"
+          open={customRange}
+          onToggle={(event) =>
+            setCustomRange((event.currentTarget as HTMLDetailsElement).open)
+          }
+        >
+          <summary className="cursor-pointer text-[0.8125rem] text-mist">
+            Elegir otro período (por defecto, las próximas 4 semanas)
+          </summary>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <label className="text-[0.8125rem] text-mist">
+              Empezar el
+              <input
+                className={`${input} mt-1`}
+                type="date"
+                value={gen.from}
+                disabled={genBusy || busy}
+                onChange={(event) => {
+                  setGen({ ...gen, from: event.target.value });
+                  setPlan(null);
+                }}
+              />
+            </label>
+            <label className="text-[0.8125rem] text-mist">
+              Cuántas semanas
+              <select
+                className={`${input} mt-1`}
+                value={gen.weeks}
+                disabled={genBusy || busy}
+                onChange={(event) => {
+                  setGen({ ...gen, weeks: Number(event.target.value) });
+                  setPlan(null);
+                }}
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((weeks) => (
+                  <option key={weeks} value={weeks}>
+                    {weeks} {weeks === 1 ? "semana" : "semanas"}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </details>
+
         {plan ? (
-          <div className="space-y-3">
-            <p className="text-[0.875rem] text-mist">
-              Entre el {formatWeek(plan.from)} y el {formatWeek(plan.to)}:{" "}
-              <strong className="text-ink">
-                {plan.totals.create}{" "}
-                {plan.totals.create === 1
-                  ? "sesión para crear"
-                  : "sesiones para crear"}
-              </strong>
-              . Se omiten {plan.totals.duplicate} que ya existen,{" "}
-              {plan.totals.room_conflict} por choque de sala,{" "}
-              {plan.totals.coach_conflict} por choque de entrenador,{" "}
-              {plan.totals.blocked} por bloqueo o cierre, {plan.totals.past}{" "}
-              porque ya pasaron y {plan.totals.inactive} porque la disciplina
-              está desactivada.
+          <div className="space-y-2 rounded-xl border border-line bg-paper p-3">
+            <p className="text-[0.875rem] text-ink">
+              {plan.totals.create === 0
+                ? "No falta ninguna clase en ese período."
+                : `Se van a crear ${plural(plan.totals.create, "clase", "clases")}.`}
             </p>
-            {omitted.length ? (
-              <div>
-                <p className="text-[0.8125rem] font-semibold text-ink">
-                  Lo que no se va a crear
-                </p>
-                <ul className="mt-2 space-y-1">
-                  {omitted.slice(0, 12).map((item) => (
+            <p className="text-[0.8125rem] text-fog">
+              Del {formatWeek(plan.from)} al {formatWeek(plan.to)}.
+              {Object.keys(omittedByStatus).length
+                ? ` No se crean ${omitted.length}: ${Object.entries(omittedByStatus)
+                    .map(
+                      ([status, count]) =>
+                        `${count} ${STATUS_LABEL[status as PlanStatus]}`,
+                    )
+                    .join(", ")}.`
+                : ""}
+            </p>
+            {plan.totals.create > 0 ? (
+              <ul className="space-y-1">
+                {plan.items
+                  .filter((item) => item.status === "create")
+                  .slice(0, 6)
+                  .map((item) => (
                     <li
                       key={`${item.slot_id}-${item.date}`}
-                      className="text-[0.8125rem] text-fog"
+                      className="text-[0.8125rem] text-mist"
                     >
-                      {formatWeek(item.date)} {item.start_time} ·{" "}
-                      {item.class_name} · {item.room} ·{" "}
-                      {STATUS_LABEL[item.status]}
+                      {formatWeek(item.date)} · {item.start_time} ·{" "}
+                      {item.class_name} · {item.room}
                     </li>
                   ))}
-                </ul>
-                {omitted.length > 12 ? (
-                  <p className="mt-1 text-[0.75rem] text-fog">
-                    Y {omitted.length - 12} más en el mismo estado.
-                  </p>
-                ) : null}
-              </div>
+              </ul>
+            ) : null}
+            {plan.items.filter((item) => item.status === "create").length > 6 ? (
+              <p className="text-[0.75rem] text-fog">
+                y{" "}
+                {plan.items.filter((item) => item.status === "create").length - 6}{" "}
+                más.
+              </p>
             ) : null}
           </div>
         ) : null}
-      </section>
-
-      {board.classes.length === 0 ? (
-        <p className="rounded-xl border border-brand/30 bg-brand/[0.06] px-4 py-3 text-[0.875rem] text-mist">
-          Todavía no hay disciplinas. Creá al menos una para poder cargar su
-          horario.
-        </p>
-      ) : null}
-
-      {draft ? (
-        <section className="space-y-4 rounded-2xl border border-brand/40 bg-card p-4">
-          <h2 className="text-lg font-bold text-ink">
-            {draft.id ? "Editar horario" : "Nuevo horario"}
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <label className="text-[0.8125rem] text-mist">
-              Disciplina
-              <select
-                className={`${input} mt-1`}
-                value={draft.classId}
-                disabled={busy}
-                onChange={(event) =>
-                  setDraft({ ...draft, classId: event.target.value })
-                }
-              >
-                {board.classes.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                    {item.active ? "" : " (desactivada)"}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="text-[0.8125rem] text-mist">
-              Día
-              <select
-                className={`${input} mt-1`}
-                value={draft.day}
-                disabled={busy}
-                onChange={(event) =>
-                  setDraft({ ...draft, day: Number(event.target.value) })
-                }
-              >
-                {DAYS.map((name, index) => (
-                  <option key={name} value={index}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="text-[0.8125rem] text-mist">
-              Hora de inicio
-              <input
-                className={`${input} mt-1`}
-                type="time"
-                value={draft.start}
-                disabled={busy}
-                onChange={(event) =>
-                  setDraft({ ...draft, start: event.target.value })
-                }
-              />
-            </label>
-            <label className="text-[0.8125rem] text-mist">
-              Duración (minutos)
-              <input
-                className={`${input} mt-1`}
-                type="number"
-                min={10}
-                max={180}
-                value={draft.duration}
-                disabled={busy}
-                onChange={(event) =>
-                  setDraft({ ...draft, duration: Number(event.target.value) })
-                }
-              />
-            </label>
-            <label className="text-[0.8125rem] text-mist">
-              Cupo
-              <input
-                className={`${input} mt-1`}
-                type="number"
-                min={1}
-                max={200}
-                value={draft.capacity}
-                disabled={busy}
-                onChange={(event) =>
-                  setDraft({ ...draft, capacity: Number(event.target.value) })
-                }
-              />
-            </label>
-            <label className="text-[0.8125rem] text-mist">
-              Sala
-              <input
-                className={`${input} mt-1`}
-                value={draft.room}
-                maxLength={60}
-                disabled={busy}
-                onChange={(event) =>
-                  setDraft({ ...draft, room: event.target.value })
-                }
-              />
-            </label>
-            <label className="text-[0.8125rem] text-mist">
-              Entrenador
-              <select
-                className={`${input} mt-1`}
-                value={draft.coachId}
-                disabled={busy}
-                onChange={(event) =>
-                  setDraft({ ...draft, coachId: event.target.value })
-                }
-              >
-                <option value="">Sin asignar</option>
-                {board.coaches.map((coach) => (
-                  <option key={coach.id} value={coach.id}>
-                    {coach.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <p className="text-[0.75rem] text-fog">
-            {board.room_hint ??
-              "Usá la misma sala para que el choque de horario se detecte."}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" disabled={busy} onClick={() => void save()}>
-              Guardar horario
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={busy}
-              onClick={() => setDraft(null)}
-            >
-              Cancelar
-            </Button>
-          </div>
-        </section>
-      ) : null}
-
-      {notice ? (
-        <p
-          role={notice.tone === "error" ? "alert" : "status"}
-          className={`text-[0.875rem] ${notice.tone === "error" ? "text-red-300" : "text-brand-300"}`}
-        >
-          {notice.text}
-        </p>
-      ) : null}
-
-      <div className="space-y-4">
-        {DAYS.map((dayName, day) => {
-          const slots = board.slots.filter((slot) => slot.day_of_week === day);
-          return (
-            <section key={dayName} className="rounded-2xl border border-line bg-card p-4">
-              <h2 className="text-base font-bold text-ink">
-                {dayName}
-                <span className="ml-2 text-[0.8125rem] font-normal text-fog">
-                  {slots.length === 0
-                    ? "sin clases fijas"
-                    : `${slots.length} ${slots.length === 1 ? "horario" : "horarios"}`}
-                </span>
-              </h2>
-              {slots.length === 0 ? null : (
-                <ul className="mt-3 space-y-2">
-                  {slots.map((slot) => (
-                    <li
-                      key={slot.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-paper px-3 py-2"
-                    >
-                      <div className="min-w-0">
-                        <p className="font-semibold text-ink">
-                          {slot.start_time} · {slot.class_name}
-                          {slot.is_active ? "" : " · anulado"}
-                        </p>
-                        <p className="text-[0.8125rem] text-fog">
-                          {slot.duration_min} min · {slot.capacity} cupos ·{" "}
-                          {slot.room} · {slot.coach_name ?? "sin entrenador"}
-                          {slot.class_active
-                            ? ""
-                            : " · disciplina desactivada en Operación"}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={busy}
-                          onClick={() => {
-                            setDraft(fromSlot(slot));
-                            setNotice(null);
-                          }}
-                        >
-                          Editar
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={busy}
-                          onClick={() => void toggle(slot)}
-                        >
-                          {slot.is_active ? "Anular" : "Reactivar"}
-                        </Button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          );
-        })}
-      </div>
+      </Step>
 
       <ScheduleBlocks
         initial={initialBlocks}
