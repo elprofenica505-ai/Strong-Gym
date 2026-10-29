@@ -20,6 +20,46 @@ export type ScheduleSlot = {
   is_active: boolean;
 };
 
+/** Motivo que la base le da a cada clase candidata antes de crearla. */
+export type PlanStatus =
+  | "create"
+  | "duplicate"
+  | "room_conflict"
+  | "coach_conflict"
+  | "past"
+  | "inactive";
+
+export type SchedulePlanItem = {
+  date: string;
+  slot_id: string;
+  day_of_week: number;
+  start_time: string;
+  class_id: string;
+  class_name: string;
+  room: string;
+  coach_id: string | null;
+  coach_name: string | null;
+  status: PlanStatus;
+};
+
+export type SchedulePlan = {
+  from: string;
+  to: string;
+  weeks: number;
+  created: number;
+  totals: Record<PlanStatus, number>;
+  items: SchedulePlanItem[];
+};
+
+const STATUS_LABEL: Record<PlanStatus, string> = {
+  create: "se crea",
+  duplicate: "ya existe",
+  room_conflict: "choca la sala",
+  coach_conflict: "choca el entrenador",
+  past: "ya pasó",
+  inactive: "disciplina desactivada",
+};
+
 export type ScheduleBoardData = {
   slots: ScheduleSlot[];
   classes: { id: string; name: string; active: boolean }[];
@@ -94,6 +134,64 @@ export function ScheduleBoard({ initial }: { initial: ScheduleBoardData }) {
   const [notice, setNotice] = useState<{ tone: "ok" | "error"; text: string } | null>(
     null,
   );
+  const [gen, setGen] = useState({
+    from: initial.weeks[0]?.week_start ?? "",
+    weeks: 4,
+  });
+  const [plan, setPlan] = useState<SchedulePlan | null>(null);
+  const [genBusy, setGenBusy] = useState(false);
+
+  async function generate(action: "preview-generate" | "apply-generate") {
+    setGenBusy(true);
+    setNotice(null);
+    try {
+      const res = await fetch("/api/admin/schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action,
+          from: gen.from || undefined,
+          weeks: gen.weeks,
+        }),
+      });
+      const data = (await res.json().catch(() => null)) as
+        | (SchedulePlan & { message?: string; board?: ScheduleBoardData | null })
+        | null;
+      if (!res.ok || !data?.totals) {
+        setPlan(null);
+        setNotice({
+          tone: "error",
+          text:
+            data?.message ??
+            "No pudimos revisar qué sesiones se crearían. Recargá antes de reintentar.",
+        });
+        return;
+      }
+      setPlan(data);
+      if (data.board) setBoard(data.board);
+      if (action === "apply-generate") {
+        const created = data.created ?? 0;
+        setNotice({
+          tone: "ok",
+          text:
+            created > 0
+              ? `Se crearon ${created} ${created === 1 ? "sesión" : "sesiones"} en el calendario. No se tocó ninguna reserva.`
+              : "No hizo falta crear sesiones nuevas: el calendario ya estaba al día.",
+        });
+      }
+    } catch {
+      setNotice({
+        tone: "error",
+        text: "No pudimos revisar la generación. Revisá la conexión antes de reintentar.",
+      });
+    } finally {
+      setGenBusy(false);
+    }
+  }
+
+  const omitted = plan
+    ? plan.items.filter((item) => item.status !== "create")
+    : [];
 
   async function send(body: unknown) {
     setBusy(true);
@@ -233,6 +331,111 @@ export function ScheduleBoard({ initial }: { initial: ScheduleBoardData }) {
           Agregar horario
         </Button>
       </div>
+
+      <section className="space-y-4 rounded-2xl border border-line bg-card p-4">
+        <div>
+          <h2 className="text-base font-bold text-ink">Generar sesiones</h2>
+          <p className="text-[0.8125rem] text-fog">
+            Elegí desde cuándo y cuántas semanas. Primero ves qué se crearía y
+            qué se omite; recién después se escribe en el calendario.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <label className="text-[0.8125rem] text-mist">
+            Desde
+            <input
+              className={`${input} mt-1`}
+              type="date"
+              value={gen.from}
+              disabled={genBusy || busy}
+              onChange={(event) => {
+                setGen({ ...gen, from: event.target.value });
+                setPlan(null);
+              }}
+            />
+          </label>
+          <label className="text-[0.8125rem] text-mist">
+            Semanas
+            <select
+              className={`${input} mt-1`}
+              value={gen.weeks}
+              disabled={genBusy || busy}
+              onChange={(event) => {
+                setGen({ ...gen, weeks: Number(event.target.value) });
+                setPlan(null);
+              }}
+            >
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((weeks) => (
+                <option key={weeks} value={weeks}>
+                  {weeks} {weeks === 1 ? "semana" : "semanas"}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={genBusy || busy || board.classes.length === 0}
+            onClick={() => void generate("preview-generate")}
+          >
+            {genBusy ? "Revisando…" : "Ver qué se crearía"}
+          </Button>
+          {plan && plan.totals.create > 0 ? (
+            <Button
+              type="button"
+              disabled={genBusy || busy}
+              onClick={() => void generate("apply-generate")}
+            >
+              Crear {plan.totals.create}{" "}
+              {plan.totals.create === 1 ? "sesión" : "sesiones"}
+            </Button>
+          ) : null}
+        </div>
+        {plan ? (
+          <div className="space-y-3">
+            <p className="text-[0.875rem] text-mist">
+              Entre el {formatWeek(plan.from)} y el {formatWeek(plan.to)}:{" "}
+              <strong className="text-ink">
+                {plan.totals.create}{" "}
+                {plan.totals.create === 1
+                  ? "sesión para crear"
+                  : "sesiones para crear"}
+              </strong>
+              . Se omiten {plan.totals.duplicate} que ya existen,{" "}
+              {plan.totals.room_conflict} por choque de sala,{" "}
+              {plan.totals.coach_conflict} por choque de entrenador,{" "}
+              {plan.totals.past} porque ya pasaron y {plan.totals.inactive}{" "}
+              porque la disciplina está desactivada.
+            </p>
+            {omitted.length ? (
+              <div>
+                <p className="text-[0.8125rem] font-semibold text-ink">
+                  Lo que no se va a crear
+                </p>
+                <ul className="mt-2 space-y-1">
+                  {omitted.slice(0, 12).map((item) => (
+                    <li
+                      key={`${item.slot_id}-${item.date}`}
+                      className="text-[0.8125rem] text-fog"
+                    >
+                      {formatWeek(item.date)} {item.start_time} ·{" "}
+                      {item.class_name} · {item.room} ·{" "}
+                      {STATUS_LABEL[item.status]}
+                    </li>
+                  ))}
+                </ul>
+                {omitted.length > 12 ? (
+                  <p className="mt-1 text-[0.75rem] text-fog">
+                    Y {omitted.length - 12} más en el mismo estado.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </section>
 
       {board.classes.length === 0 ? (
         <p className="rounded-xl border border-brand/30 bg-brand/[0.06] px-4 py-3 text-[0.875rem] text-mist">

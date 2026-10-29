@@ -148,3 +148,100 @@ test("anular un horario avisa que las sesiones ya reservadas se conservan", asyn
   assert.ok(screen.getByText(/06:00 · Boxeo · anulado/));
   assert.ok(screen.getByRole("button", { name: "Reactivar" }));
 });
+
+const planItem = (over = {}) => ({
+  date: "2026-11-03",
+  slot_id: "11111111-1111-4111-8111-111111111111",
+  day_of_week: 1,
+  start_time: "06:00",
+  class_id: "cls_boxeo",
+  class_name: "Boxeo",
+  room: "Área de boxeo",
+  coach_id: null,
+  coach_name: null,
+  status: "create",
+  ...over,
+});
+
+test("generar muestra qué se crearía antes de escribir y después crea solo eso", async () => {
+  const preview = {
+    from: "2026-10-26",
+    to: "2026-11-01",
+    weeks: 4,
+    created: 0,
+    totals: {
+      create: 2,
+      duplicate: 1,
+      room_conflict: 1,
+      coach_conflict: 0,
+      past: 0,
+      inactive: 0,
+    },
+    items: [
+      planItem(),
+      planItem({ slot_id: "b", start_time: "17:30" }),
+      planItem({ slot_id: "c", status: "duplicate" }),
+      planItem({
+        slot_id: "d",
+        start_time: "18:00",
+        class_id: "cls_zumba",
+        class_name: "Zumba y bailoterapia",
+        room: "Salón de clases",
+        status: "room_conflict",
+      }),
+    ],
+  };
+  const calls = setup((url, init) => {
+    const body = JSON.parse(init.body);
+    if (body.action === "preview-generate") return json(preview);
+    return json({
+      ...preview,
+      created: 2,
+      totals: { ...preview.totals, create: 0, duplicate: 3, room_conflict: 1 },
+      items: preview.items.filter((item) => item.status !== "create"),
+      board: board(),
+    });
+  });
+
+  fireEvent.click(screen.getByRole("button", { name: "Ver qué se crearía" }));
+  await screen.findAllByText(/2 sesiones para crear/);
+  assert.ok(screen.getAllByText(/por choque de sala/).length >= 1);
+  assert.ok(screen.getByText(/Zumba y bailoterapia · Salón de clases · choca la sala/));
+
+  // Nada se escribió todavía: sólo se pidió el plan.
+  assert.equal(calls.filter((call) => call.body?.action === "apply-generate").length, 0);
+  const previewCall = calls.find((call) => call.body?.action === "preview-generate");
+  assert.equal(previewCall.body.weeks, 4);
+  assert.equal(previewCall.body.from, "2026-10-26");
+
+  fireEvent.click(screen.getByRole("button", { name: "Crear 2 sesiones" }));
+  await screen.findByText(/Se crearon 2 sesiones en el calendario/);
+  assert.equal(
+    calls.filter((call) => call.body?.action === "apply-generate").length,
+    1,
+  );
+});
+
+test("generar sin nada nuevo lo dice sin inventar sesiones", async () => {
+  setup(() =>
+    json({
+      from: "2026-10-26",
+      to: "2026-11-01",
+      weeks: 4,
+      created: 0,
+      totals: {
+        create: 0,
+        duplicate: 9,
+        room_conflict: 0,
+        coach_conflict: 0,
+        past: 0,
+        inactive: 0,
+      },
+      items: [planItem({ status: "duplicate" })],
+      board: board(),
+    }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Ver qué se crearía" }));
+  await screen.findAllByText(/0 sesiones para crear/);
+  assert.equal(screen.queryByRole("button", { name: /^Crear / }), null);
+});

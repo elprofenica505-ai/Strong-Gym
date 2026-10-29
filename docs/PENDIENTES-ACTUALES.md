@@ -172,10 +172,19 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
     textos, duración, cupo, intensidad, color y orden. Debe reutilizarse el
     interruptor persistente de OP-03 y no borrarse una disciplina con
     historial.
-  - Generar sesiones para un horizonte o rango elegido, mostrando antes
-    cuántas se crearían y cuáles se omitirían por duplicado, choque o bloqueo.
-    Hoy se generan cuatro semanas al guardar y el botón de Operación sigue
-    creando cuatro.
+  - **Hecho el 29 de octubre (migración `00074`, aplicada en producción como
+    `generar_sesiones_preview`):** generar sesiones para una fecha de inicio y
+    1 a 8 semanas, mirando primero qué se crearía. `admin_preview_schedule()`
+    no escribe nada y devuelve cada clase candidata con su motivo —se crea, ya
+    existe, choca la sala, choca el entrenador, ya pasó o la disciplina está
+    desactivada—; `admin_apply_schedule()` inserta exactamente lo que el plan
+    marcó como «se crea» y nada más. En la pantalla **Horarios y grilla** hay
+    un bloque «Generar sesiones» con fecha y semanas: primero «Ver qué se
+    crearía», después «Crear N sesiones». Generar dos veces no duplica y no se
+    crean sesiones pasadas. Pruebas: 53 comprobaciones SQL y 6 de pantalla.
+    Sigue faltando que el generador omita **bloqueos** (llegan con los
+    bloqueos y cierres) y que el botón de Operación muestre esta misma
+    previsualización.
   - Crear, editar, mover y cancelar **sesiones sueltas o días especiales**
     fuera de la grilla, además de sesiones individuales o rangos elegidos de
     una serie. Al bajar un cupo o mover una sesión no debe permitirse
