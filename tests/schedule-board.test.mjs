@@ -67,7 +67,12 @@ function setup(handler) {
     calls.push({ url: String(url), body: init.body ? JSON.parse(init.body) : null });
     return handler(url, init);
   };
-  render(React.createElement(ScheduleBoard, { initial: board() }));
+  render(
+    React.createElement(ScheduleBoard, {
+      initial: board(),
+      today: "2026-10-29",
+    }),
+  );
   return calls;
 }
 
@@ -174,6 +179,7 @@ test("generar muestra qué se crearía antes de escribir y después crea solo es
       duplicate: 1,
       room_conflict: 1,
       coach_conflict: 0,
+      blocked: 0,
       past: 0,
       inactive: 0,
     },
@@ -234,6 +240,7 @@ test("generar sin nada nuevo lo dice sin inventar sesiones", async () => {
         duplicate: 9,
         room_conflict: 0,
         coach_conflict: 0,
+        blocked: 0,
         past: 0,
         inactive: 0,
       },

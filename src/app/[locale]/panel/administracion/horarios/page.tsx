@@ -7,6 +7,7 @@ import {
   ScheduleBoard,
   type ScheduleBoardData,
 } from "@/components/admin/schedule-board";
+import { type ScheduleBlock } from "@/components/admin/schedule-blocks";
 import { DataUnavailable } from "@/components/ui/data-unavailable";
 import { getCurrentUser } from "@/lib/data/queries";
 import { isLocale } from "@/i18n/config";
@@ -47,7 +48,11 @@ export default async function HorariosPage({
     redirect(`/${locale}/panel`);
   }
 
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Managua",
+  }).format(new Date());
   let board: ScheduleBoardData = emptyBoard;
+  let blocks: ScheduleBlock[] = [];
   let failed = false;
   if (DEMO_MODE) {
     board = emptyBoard;
@@ -61,7 +66,15 @@ export default async function HorariosPage({
         .rpc("admin_schedule_board")
         .abortSignal(AbortSignal.timeout(15000));
       if (error || !data) failed = true;
-      else board = data as ScheduleBoardData;
+      else {
+        board = data as ScheduleBoardData;
+        const list = await supabase
+          .rpc("admin_schedule_blocks")
+          .abortSignal(AbortSignal.timeout(15000));
+        if (!list.error && Array.isArray(list.data)) {
+          blocks = list.data as ScheduleBlock[];
+        }
+      }
     }
   }
 
@@ -92,7 +105,11 @@ export default async function HorariosPage({
           ) : failed ? (
             <DataUnavailable locale={locale} code="SCHEDULE_UNCONFIRMED" />
           ) : (
-            <ScheduleBoard initial={board} />
+            <ScheduleBoard
+              initial={board}
+              initialBlocks={blocks}
+              today={today}
+            />
           )}
         </div>
       </section>

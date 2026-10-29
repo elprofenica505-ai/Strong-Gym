@@ -22,9 +22,10 @@ const db = await createTestDb({
     "supabase/migrations/00072_grilla_horarios.sql",
     "supabase/migrations/00073_grilla_nombre_entrenador.sql",
     "supabase/migrations/00074_generar_sesiones_preview.sql",
+    "supabase/migrations/00075_bloqueos_calendario.sql",
   ],
 });
-ok("00072, 00073 y 00074 se aplican sobre 00071 sin error", true);
+ok("00072 a 00075 se aplican sobre 00071 sin error", true);
 
 const row = async (query, args = []) => (await db.query(query, args)).rows[0];
 const makeUser = async (email, role) => {
@@ -350,5 +351,169 @@ await denied("Cero semanas se rechaza",
 const defaultFrom = await adminRpc("admin_preview_schedule", [null, 1]);
 ok("Sin fecha usa el lunes de la semana en curso",
   defaultFrom.from === monday && defaultFrom.weeks === 1);
+
+// 11. Bloqueos y cierres (00075).
+const closeWeek = addWeeks(30);
+const closeTuesday = plusDays(closeWeek, 1);
+const closeWednesday = plusDays(closeWeek, 2);
+const dt = (date, time) => `${date}T${time}`;
+const daySessions = async (date, extra = "true") =>
+  (await row(
+    `select count(*)::int as n from public.sessions
+      where ${extra}
+        and starts_at >= ($1::date::timestamp at time zone 'America/Managua')
+        and starts_at < (($1::date + 1)::timestamp at time zone 'America/Managua')`,
+    [date],
+  )).n;
+
+await adminRpc("admin_apply_schedule", [closeWeek, 1]);
+ok("La semana del cierre queda programada antes de bloquearla",
+  (await daySessions(closeTuesday, "status = 'scheduled'")) === 3);
+
+const previewBlock = await adminRpc("admin_preview_schedule_block", [
+  "gym", null, null, dt(closeTuesday, "00:00"), dt(closeTuesday, "23:59"), null,
+]);
+ok("Un cierre de un día muestra las tres sesiones que toca",
+  previewBlock.session_count === 3 &&
+  previewBlock.sessions.every((s) => s.class_name === "Boxeo"));
+ok("El cierre avisa cuántas reservas hay encima", previewBlock.booking_count === 0);
+
+// Una reserva encima obliga a confirmar antes de cancelar.
+const firstSession = previewBlock.sessions[0].id;
+const clientId = await makeUser("socio@test.invalid", "member");
+await db.query(
+  "insert into public.bookings(session_id, user_id, status) values ($1,$2,'confirmed')",
+  [firstSession, clientId],
+);
+const previewWithBooking = await adminRpc("admin_preview_schedule_block", [
+  "gym", null, null, dt(closeTuesday, "00:00"), dt(closeTuesday, "23:59"), null,
+]);
+ok("Con una reserva encima, el cierre avisa y pide confirmación",
+  previewWithBooking.booking_count === 1 && previewWithBooking.action === "cancel");
+await denied("Sin confirmar no se cancela una clase con reservas",
+  adminRpc("admin_save_schedule_block", [
+    null, "gym", null, null, dt(closeTuesday, "00:00"), dt(closeTuesday, "23:59"),
+    "holiday", "Feriado nacional", null, false,
+  ]), /CONFIRM_REQUIRED/);
+
+const closed = await adminRpc("admin_save_schedule_block", [
+  null, "gym", null, null, dt(closeTuesday, "00:00"), dt(closeTuesday, "23:59"),
+  "holiday", "Feriado nacional", null, true,
+]);
+ok("Confirmar el cierre cancela las tres sesiones del día", closed.cancelled_sessions === 3);
+ok("Las sesiones canceladas no se borran, quedan con su estado",
+  (await daySessions(closeTuesday, "status = 'cancelled'")) === 3);
+const cancelledBooking = await row(
+  "select status, cancel_reason, cancelled_by from public.bookings where user_id = $1",
+  [clientId],
+);
+ok("La reserva queda cancelada con el motivo escrito y quién la canceló",
+  cancelledBooking.status === "cancelled" &&
+  cancelledBooking.cancel_reason === "Feriado nacional" &&
+  cancelledBooking.cancelled_by === admin);
+
+// 11b. Lo bloqueado no se programa ni se vuelve a crear.
+const blockWeek = addWeeks(34);
+const blockMonday = blockWeek;
+await adminRpc("admin_save_schedule_block", [
+  null, "gym", null, null, dt(blockMonday, "00:00"), dt(plusDays(blockMonday, 6), "23:59"),
+  "maintenance", "Pintura del salón", null, true,
+]);
+const planBlocked = await adminRpc("admin_preview_schedule", [blockWeek, 1]);
+ok("La previsualización explica que todo está bloqueado",
+  planBlocked.totals.blocked === activeSlots && planBlocked.totals.create === 0 &&
+  planBlocked.items.some((i) => i.status === "blocked"));
+ok("Generar una semana bloqueada no crea nada",
+  (await adminRpc("admin_apply_schedule", [blockWeek, 1])).created === 0 &&
+  (await daySessions(plusDays(blockWeek, 1), "true")) === 0);
+ok("El generador de semanas tampoco crea lo bloqueado",
+  (await adminRpc("generate_week_sessions", [blockWeek])) === 0);
+
+// 11c. La lista de bloqueos y levantar sin resucitar.
+const blocksList = await adminRpc("admin_schedule_blocks", []);
+ok("La lista muestra los bloqueos activos con su motivo",
+  blocksList.length === 2 &&
+  blocksList.every((b) => b.is_active) &&
+  blocksList.some((b) => b.reason_kind === "holiday" && b.reason === "Feriado nacional") &&
+  blocksList.some((b) => b.reason_kind === "maintenance" && b.cancelled_sessions === 0));
+const maintenance = blocksList.find((b) => b.reason_kind === "maintenance");
+const lifted = await adminRpc("admin_lift_schedule_block", [maintenance.id]);
+ok("Levantar el bloqueo lo deja inactivo sin borrarlo",
+  lifted.blocks.length === 2 &&
+  lifted.blocks.find((b) => b.id === maintenance.id).is_active === false);
+ok("Levantar el bloqueo no resucita las sesiones canceladas",
+  (await daySessions(closeTuesday, "status = 'scheduled'")) === 0);
+ok("Después de levantarlo, la semana se puede generar de nuevo",
+  (await adminRpc("admin_apply_schedule", [blockWeek, 1])).created === activeSlots);
+
+// 11d. Bloqueo de una disciplina: no toca las demás.
+const zumbaClosed = await adminRpc("admin_save_schedule_block", [
+  null, "class", "cls_zumba", null, dt(closeWednesday, "00:00"), dt(closeWednesday, "23:59"),
+  "vacation", "Vacaciones de la instructora", null, true,
+]);
+ok("El bloqueo de una disciplina cancela solo esa clase",
+  zumbaClosed.cancelled_sessions === 1 &&
+  (await daySessions(closeWednesday, "status = 'scheduled' and class_id = 'cls_boxeo'")) === 3);
+
+// 11e. Bloqueo de un entrenador con sustituto: reasigna, no cancela.
+await db.query(
+  `insert into public.coaches(id, slug, name, full_name, specialties, is_active)
+   values ('coach_sub', 'coach-sub', '', 'Profe Suplente', array['boxeo'], true)`,
+);
+const coachWeek = addWeeks(36);
+const coachTuesday = plusDays(coachWeek, 1);
+await adminRpc("admin_apply_schedule", [coachWeek, 1]);
+await db.query(
+  `update public.sessions set coach_id = $2
+    where class_id = 'cls_boxeo' and status = 'scheduled'
+      and starts_at >= ($1::date::timestamp at time zone 'America/Managua')
+      and starts_at < (($1::date + 1)::timestamp at time zone 'America/Managua')`,
+  [coachTuesday, coachId],
+);
+const substitutePreview = await adminRpc("admin_preview_schedule_block", [
+  "coach", null, coachId, dt(coachTuesday, "00:00"), dt(coachTuesday, "23:59"), "coach_sub",
+]);
+ok("Con sustituto, el bloqueo avisa que reasigna en vez de cancelar",
+  substitutePreview.action === "reassign" && substitutePreview.session_count === 3);
+const substituted = await adminRpc("admin_save_schedule_block", [
+  null, "coach", null, coachId, dt(coachTuesday, "00:00"), dt(coachTuesday, "23:59"),
+  "sick", "Reposo médico", "coach_sub", true,
+]);
+ok("El sustituto toma las clases y no se cancela ninguna sesión",
+  substituted.reassigned_sessions === 3 && substituted.cancelled_sessions === 0);
+ok("Las sesiones quedan a cargo del sustituto",
+  (await daySessions(coachTuesday, "status = 'scheduled' and coach_id = 'coach_sub'")) === 3);
+
+// 11f. Validaciones y permisos.
+await denied("Un bloqueo con fin anterior al inicio se rechaza",
+  adminRpc("admin_preview_schedule_block", [
+    "gym", null, null, dt(closeTuesday, "23:00"), dt(closeTuesday, "01:00"), null,
+  ]), /INVALID_RANGE/);
+await denied("Un bloqueo sin motivo válido se rechaza",
+  adminRpc("admin_save_schedule_block", [
+    null, "gym", null, null, dt(addWeeks(38), "00:00"), dt(addWeeks(38), "23:59"),
+    "fiesta", "Cumpleaños", null, true,
+  ]), /INVALID_REASON/);
+await denied("Un sustituto en un cierre general se rechaza",
+  adminRpc("admin_save_schedule_block", [
+    null, "gym", null, null, dt(addWeeks(38), "00:00"), dt(addWeeks(38), "23:59"),
+    "other", "Motivo de prueba", "coach_sub", true,
+  ]), /INVALID_SUBSTITUTE/);
+await denied("El mismo sustituto que el bloqueado se rechaza",
+  adminRpc("admin_preview_schedule_block", [
+    "coach", null, coachId, dt(addWeeks(38), "00:00"), dt(addWeeks(38), "23:59"), coachId,
+  ]), /INVALID_SUBSTITUTE/);
+await denied("Caja no puede ver ni cargar bloqueos",
+  rpc(cashier, "aal2", "admin_schedule_blocks", []), /AUTH/);
+await denied("Caja no puede cerrar el gimnasio",
+  rpc(cashier, "aal2", "admin_save_schedule_block", [
+    null, "gym", null, null, dt(addWeeks(38), "00:00"), dt(addWeeks(38), "23:59"),
+    "holiday", "Feriado", null, true,
+  ]), /AUTH/);
+await denied("Un entrenador no puede cerrar el gimnasio",
+  rpc(trainer, "aal2", "admin_save_schedule_block", [
+    null, "gym", null, null, dt(addWeeks(38), "00:00"), dt(addWeeks(38), "23:59"),
+    "holiday", "Feriado", null, true,
+  ]), /AUTH/);
 
 console.log(`\n${checks} comprobaciones PASS (OP-05 grilla administrable, 00072)`);
