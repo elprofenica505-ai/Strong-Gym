@@ -1282,3 +1282,30 @@ test("una categoría fijada a mano se muestra con su motivo y se puede liberar",
   assert.equal(post.body.action, "clear-override");
   assert.equal(post.body.reason, "Terminó el acuerdo");
 });
+
+test("el listado distingue la categoría por vigencia y el filtro la envía al servidor", async () => {
+  const calls = setup(() => json(detail()), [
+    { ...client(), category_calc: "strong_gym", category_source: "auto" },
+    {
+      ...client(other, "Marcos Vencido", 2),
+      category_calc: "comun",
+      category_source: "manual",
+    },
+    { ...client(other, "Sin recalcular", 3) },
+  ]);
+  // La categoría real se ve tal cual; la decisión manual se anuncia.
+  assert.ok(await screen.findByText(/Strong Gym · EJEMPLO/));
+  assert.ok(screen.getByText(/Común \(a mano\) · EJEMPLO/));
+  // Sin categoría calculada, el listado sigue mostrando la etiqueta histórica.
+  assert.ok(screen.getByText(/Clientes · EJEMPLO/));
+  fireEvent.change(screen.getByLabelText("Categoría o etiqueta"), {
+    target: { value: "amigo" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Buscar" }));
+  await waitFor(() =>
+    assert.ok(
+      calls.some((call) => call.url.includes("category=amigo")),
+      "el filtro de categoría debe viajar al servidor",
+    ),
+  );
+});

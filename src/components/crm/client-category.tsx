@@ -2,11 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  calculatedCategories,
+  type CalculatedCategory,
+} from "@/lib/crm/types";
 
 /** Respuesta de `client_category()` (CLI-02). */
 export type ClientCategory = {
-  category: "strong_gym" | "familia" | "amigo" | "comun";
-  auto_category: "strong_gym" | "familia" | "amigo" | "comun";
+  category: CalculatedCategory;
+  auto_category: CalculatedCategory;
   reason: string;
   source: "auto" | "manual";
   manual: boolean;
@@ -20,13 +24,6 @@ export type ClientCategory = {
     class_name: string | null;
     expires_on: string;
   }[];
-};
-
-const LABELS: Record<ClientCategory["category"], string> = {
-  strong_gym: "Strong Gym",
-  familia: "Familia",
-  amigo: "Amigo",
-  comun: "Común",
 };
 
 const formatDate = (value: string | null) => {
@@ -54,7 +51,7 @@ export function ClientCategoryPanel({
   const [info, setInfo] = useState<ClientCategory | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [category, setCategory] = useState<ClientCategory["category"]>("comun");
+  const [category, setCategory] = useState<CalculatedCategory>("comun");
   const [reason, setReason] = useState("");
   const [notice, setNotice] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
 
@@ -169,7 +166,7 @@ export function ClientCategoryPanel({
               : "border-line bg-paper/60 text-ink"
           }`}
         >
-          {LABELS[info.category]}
+          {calculatedCategories[info.category]}
         </span>
       </div>
 
@@ -202,7 +199,7 @@ export function ClientCategoryPanel({
             {info.manual_reason}
           </p>
           <p className="text-[0.8125rem] text-fog">
-            El cálculo automático diría «{LABELS[info.auto_category]}».
+            El cálculo automático diría «{calculatedCategories[info.auto_category]}».
           </p>
           {isAdmin ? (
             <div className="flex flex-wrap items-center gap-2">
@@ -248,13 +245,13 @@ export function ClientCategoryPanel({
                 value={category}
                 disabled={busy || disabled}
                 onChange={(event) =>
-                  setCategory(event.target.value as ClientCategory["category"])
+                  setCategory(event.target.value as CalculatedCategory)
                 }
                 className="ml-2 rounded-lg border border-line bg-paper px-2 py-2 text-ink"
               >
                 {(["strong_gym", "familia", "amigo", "comun"] as const).map((key) => (
                   <option key={key} value={key}>
-                    {LABELS[key]}
+                    {calculatedCategories[key]}
                   </option>
                 ))}
               </select>

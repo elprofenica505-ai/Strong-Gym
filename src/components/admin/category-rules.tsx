@@ -347,7 +347,7 @@ export function CategoryRules({ initial }: { initial: Catalog }) {
                   visits_window_days: rule.visits_window_days,
                 })),
               },
-              "Reglas guardadas. Las categorías se recalcularon con la vigencia de hoy.",
+              "Reglas guardadas. Las fichas se recalculan solas al abrirlas; para actualizar todo el listado de una vez usá «Recalcular todos».",
             )
           }
         >

@@ -4,6 +4,17 @@ export const categories = {
   family: "Clientes familia Strong",
 } as const;
 export type ClientCategory = keyof typeof categories;
+/**
+ * Categoría real del cliente (CLI-02): sale de la vigencia y de las reglas
+ * editables, no de la etiqueta histórica de arriba.
+ */
+export const calculatedCategories = {
+  strong_gym: "Strong Gym",
+  familia: "Familia",
+  amigo: "Amigo",
+  comun: "Común",
+} as const;
+export type CalculatedCategory = keyof typeof calculatedCategories;
 export type ClientStatus = "active" | "frozen" | "cancelled";
 export interface GymClient {
   id: string;
@@ -13,6 +24,9 @@ export interface GymClient {
   phone: string | null;
   email: string | null;
   category: ClientCategory;
+  /** Categoría calculada o fijada a mano (CLI-02). */
+  category_calc?: CalculatedCategory | null;
+  category_source?: "auto" | "manual" | null;
   status: ClientStatus;
   plan_id: string | null;
   /** Fecha local en que se congeló la ficha; vacía si nunca se congeló. */

@@ -174,7 +174,16 @@ export async function GET(request: Request) {
     const parsed = z
       .object({
         search: z.string().max(120),
-        category: z.enum(["", "client", "friend", "family"]),
+        category: z.enum([
+          "",
+          "client",
+          "friend",
+          "family",
+          "strong_gym",
+          "familia",
+          "amigo",
+          "comun",
+        ]),
         offset: z.coerce.number().int().min(0).max(1000000),
       })
       .safeParse({
