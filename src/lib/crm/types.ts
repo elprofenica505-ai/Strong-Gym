@@ -30,6 +30,10 @@ export interface GymClient {
 }
 export type PlanAccessState = "active" | "upcoming" | "expired" | "none";
 export interface PlanAccess {
+  /** "gym" o el id de la disciplina. */
+  key: string;
+  /** Nombre visible del acceso: «Gimnasio» o el nombre de la disciplina. */
+  label: string;
   state: PlanAccessState;
   plan_id: string | null;
   starts_on: string | null;
@@ -39,7 +43,9 @@ export interface PlanAccess {
 export interface PlanSegment {
   id: string;
   plan_id: string;
-  access: "gym" | "boxing";
+  access: "gym" | "class";
+  class_id: string | null;
+  class_name: string | null;
   started_on: string;
   expires_on: string;
   price: number | string | null;
@@ -48,7 +54,8 @@ export interface PlanSegment {
 export interface PlanValidity {
   today: string;
   gym: PlanAccess;
-  boxing: PlanAccess;
+  /** Una fila por disciplina con plan configurado o vigencia registrada. */
+  classes: PlanAccess[];
   segments: PlanSegment[];
 }
 export interface Visit {
@@ -104,7 +111,9 @@ export interface CrmOptions {
     /** Tarifa NIO opcional; la base puede devolverla como número o texto. */
     price_nio?: number | string | null;
     /** Vigencia definida para el plan; vacía si el plan no genera periodo. */
-    access?: "gym" | "boxing" | null;
+    access?: "gym" | "class" | null;
+    class_id?: string | null;
+    class_name?: string | null;
     duration_days?: number | null;
     validity_currency?: "NIO" | "USD" | null;
     validity_amount?: number | string | null;

@@ -52,20 +52,14 @@ export function accessLabel(access: PlanAccess, locale: ValidityLocale): string 
 export function validityRows(
   validity: PlanValidity | null | undefined,
   locale: ValidityLocale,
-): { key: "gym" | "boxing"; label: string; value: string }[] {
+): { key: string; label: string; value: string; access: PlanAccess }[] {
   if (!validity) return [];
-  return [
-    {
-      key: "gym",
-      label: locale === "es" ? "Gimnasio" : "Gym",
-      value: accessLabel(validity.gym, locale),
-    },
-    {
-      key: "boxing",
-      label: locale === "es" ? "Boxeo" : "Boxing",
-      value: accessLabel(validity.boxing, locale),
-    },
-  ];
+  return [validity.gym, ...(validity.classes ?? [])].map((access) => ({
+    key: access.key,
+    label: access.key === "gym" ? (locale === "es" ? "Gimnasio" : "Gym") : access.label,
+    value: accessLabel(access, locale),
+    access,
+  }));
 }
 
 export function isAccessActive(access: PlanAccess | null | undefined): boolean {

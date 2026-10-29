@@ -86,6 +86,7 @@ for (const f of [
   await db.exec(sql(f));
 }
 await db.exec(sql("supabase/migrations/00067_vigencias_planes.sql"));
+await db.exec(sql("supabase/migrations/00068_catalogo_planes.sql"));
 ok("00067 se aplica sobre la cadena hasta 00064 sin error", true);
 
 const row = async (query, args = []) => (await db.query(query, args)).rows[0];
@@ -135,7 +136,9 @@ ok("Día: gimnasio, 1 día, C$40", termsDia.access === "gym" && termsDia.days ==
 const termsMes = await rpc("plan_validity_terms", ["pln_gimnasio"]);
 ok("Mes: gimnasio, 30 días, C$560", termsMes.access === "gym" && termsMes.days === 30 && Number(termsMes.amount) === 560);
 const termsBoxeo = await rpc("plan_validity_terms", ["pln_boxeo"]);
-ok("Boxeo: acceso separado, 30 días, US$20", termsBoxeo.access === "boxing" && termsBoxeo.days === 30 && termsBoxeo.currency === "USD" && Number(termsBoxeo.amount) === 20);
+ok("Boxeo: acceso por disciplina, 30 días, US$20",
+  termsBoxeo.access === "class" && termsBoxeo.class_id === "cls_boxeo" &&
+  termsBoxeo.days === 30 && termsBoxeo.currency === "USD" && Number(termsBoxeo.amount) === 20);
 ok("Un plan sin duración definida no crea vigencia", (await rpc("plan_validity_terms", ["pln_semana"])) === null || true);
 
 // 2. Compra estructurada del pase del día.
@@ -173,9 +176,10 @@ ok("La quincena dura 15 días contando el pago", Number((await row("select (expi
 // 7. Boxeo separado y simultáneo.
 const payBoxeo = await rpc("finance_record_movement_plan", ["55555555-5555-4555-8555-555555555555", ana, 20, "Boxeo EJEMPLO", "USD", "efectivo-usd", "caja-usd", 1, "pln_boxeo"]);
 const validityAna = await rpc("crm_client_validity", [ana]);
-ok("Boxeo crea su propia vigencia", payBoxeo.plan.access === "boxing");
-ok("Gimnasio y Boxeo coexisten", validityAna.gym.state !== "none" && validityAna.boxing.state === "active");
-ok("El estado de Gimnasio no la inventa Boxeo", validityAna.gym.segments === undefined && validityAna.gym.state !== "boxing");
+ok("Boxeo crea su propia vigencia", payBoxeo.plan.access === "class");
+const boxeoRow = validityAna.classes.find((c) => c.key === "cls_boxeo");
+ok("Gimnasio y Boxeo coexisten", validityAna.gym.state !== "none" && boxeoRow?.state === "active");
+ok("El estado de Gimnasio no la inventa Boxeo", validityAna.gym.key === "gym" && boxeoRow.key !== "gym");
 
 // 8. Cobro genérico y reintento de un cobro previo: no crean vigencia.
 const before = Number((await row("select count(*) as n from payment_plans where client_id=$1", [luis])).n);
@@ -194,7 +198,9 @@ await denied("Entrenador no puede registrar vigencias",
 
 // 10. Lecturas: ficha, directorio y opciones.
 const detail = await rpc("crm_detail", [ana]);
-ok("La ficha devuelve la vigencia por acceso", detail.plan_validity.gym.state === "active" && detail.plan_validity.boxing.state === "active");
+ok("La ficha devuelve la vigencia por acceso",
+  detail.plan_validity.gym.state === "active" &&
+  detail.plan_validity.classes.some((c) => c.key === "cls_boxeo" && c.state === "active"));
 const directory = await rpc("crm_directory", ["", "", 0]);
 ok("El directorio trae la vigencia sin quitar campos", directory.rows.every((r) => r.plan_name !== undefined && r.plan_validity !== undefined));
 const options = await rpc("crm_options", []);
