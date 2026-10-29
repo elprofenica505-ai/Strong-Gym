@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { ScheduleBlocks, type ScheduleBlock } from "@/components/admin/schedule-blocks";
 
 /** Fila de `class_schedule_slots` tal como la devuelve `admin_schedule_board()`. */
 export type ScheduleSlot = {
@@ -26,6 +27,7 @@ export type PlanStatus =
   | "duplicate"
   | "room_conflict"
   | "coach_conflict"
+  | "blocked"
   | "past"
   | "inactive";
 
@@ -56,6 +58,7 @@ const STATUS_LABEL: Record<PlanStatus, string> = {
   duplicate: "ya existe",
   room_conflict: "choca la sala",
   coach_conflict: "choca el entrenador",
+  blocked: "bloqueado por un cierre",
   past: "ya pasó",
   inactive: "disciplina desactivada",
 };
@@ -127,7 +130,15 @@ const formatWeek = (value: string) => {
  * generador convierte en sesiones con fecha. Los cambios se guardan en la
  * base: no dependen de código ni de un despliegue.
  */
-export function ScheduleBoard({ initial }: { initial: ScheduleBoardData }) {
+export function ScheduleBoard({
+  initial,
+  initialBlocks = [],
+  today,
+}: {
+  initial: ScheduleBoardData;
+  initialBlocks?: ScheduleBlock[];
+  today: string;
+}) {
   const [board, setBoard] = useState<ScheduleBoardData>(initial);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
@@ -406,8 +417,9 @@ export function ScheduleBoard({ initial }: { initial: ScheduleBoardData }) {
               . Se omiten {plan.totals.duplicate} que ya existen,{" "}
               {plan.totals.room_conflict} por choque de sala,{" "}
               {plan.totals.coach_conflict} por choque de entrenador,{" "}
-              {plan.totals.past} porque ya pasaron y {plan.totals.inactive}{" "}
-              porque la disciplina está desactivada.
+              {plan.totals.blocked} por bloqueo o cierre, {plan.totals.past}{" "}
+              porque ya pasaron y {plan.totals.inactive} porque la disciplina
+              está desactivada.
             </p>
             {omitted.length ? (
               <div>
@@ -649,6 +661,14 @@ export function ScheduleBoard({ initial }: { initial: ScheduleBoardData }) {
           );
         })}
       </div>
+
+      <ScheduleBlocks
+        initial={initialBlocks}
+        classes={board.classes}
+        coaches={board.coaches}
+        today={today}
+        onBoard={setBoard}
+      />
     </div>
   );
 }

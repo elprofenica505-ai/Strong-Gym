@@ -189,15 +189,25 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
     fuera de la grilla, además de sesiones individuales o rangos elegidos de
     una serie. Al bajar un cupo o mover una sesión no debe permitirse
     sobreventa ni perderse el efecto sobre las reservas futuras.
-  - Registrar **bloqueos y cierres por rango de fechas u horas** para todo
-    el gimnasio, una disciplina o un entrenador, con motivo —feriado,
-    vacaciones, enfermedad, mantenimiento u otro—. El generador debe
-    omitir lo bloqueado. Si ya existen sesiones, antes de confirmar debe
-    mostrar las afectadas y sus reservas; las sesiones se cancelarán sin
-    borrar historial, las reservas quedarán canceladas por el gimnasio con
-    motivo y también debe poder asignarse un entrenador sustituto en vez de
-    cancelar. Levantar un bloqueo no resucitará sesiones canceladas sin una
-    acción explícita.
+  - **Hecho el 29 de octubre (migración `00075`, aplicada en producción como
+    `bloqueos_calendario`): bloqueos y cierres.** Tabla `schedule_blocks`:
+    todo el gimnasio, una disciplina o un entrenador, entre dos fechas y horas,
+    con motivo —feriado, vacaciones, enfermedad, mantenimiento u otro— y una
+    nota. En **Horarios y grilla** hay un bloque «Bloqueos y cierres»: primero
+    «Ver qué se afecta» (cuántas sesiones y cuántas reservas, con la lista) y
+    después «Guardar bloqueo». Con reservas encima la base exige confirmación
+    explícita (`CONFIRM_REQUIRED`). Al aplicar, las sesiones quedan
+    `cancelled` y cada reserva afectada queda cancelada con el motivo escrito
+    y quién la canceló (columnas nuevas `bookings.cancel_reason` y
+    `bookings.cancelled_by`); no se borra nada. Si el bloqueo es de un
+    entrenador y se elige sustituto, la sesión se reasigna en vez de
+    cancelarse. El generador omite lo bloqueado (`_session_blocked()`), y el
+    plan de generación lo muestra como «bloqueado». Levantar un bloqueo lo deja
+    inactivo y **no** resucita sesiones canceladas. Pruebas: 79 comprobaciones
+    SQL y 8 de pantalla. Verificado en producción dentro de una transacción
+    revertida: 9 sesiones creadas, 3 afectadas, 3 canceladas, 1 bloqueo activo,
+    3 bloqueadas en el plan y 0 al regenerar; los datos quedaron intactos
+    (79 sesiones, 0 bloqueos).
   - Asignar entrenadores por grilla y por sesión, usando especialidades
     estructuradas, y detectar choques del mismo entrenador o de la misma
     sala en el mismo horario. **Dato comprobado el 29 de octubre:** en la base

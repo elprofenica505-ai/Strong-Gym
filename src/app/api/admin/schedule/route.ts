@@ -49,11 +49,46 @@ const generateSchema = z
 
 const applySchema = generateSchema.extend({ action: z.literal("apply-generate") });
 
+const localDateTime = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "la fecha y hora van como AAAA-MM-DDTHH:MM");
+
+const blockFields = {
+  scope: z.enum(["gym", "class", "coach"]),
+  classId: z.string().min(1).max(64).nullable().optional(),
+  coachId: z.string().min(1).max(64).nullable().optional(),
+  starts: localDateTime,
+  ends: localDateTime,
+  substituteCoachId: z.string().min(1).max(64).nullable().optional(),
+};
+
+const previewBlockSchema = z
+  .object({ action: z.literal("preview-block"), ...blockFields })
+  .strict();
+
+const saveBlockSchema = z
+  .object({
+    action: z.literal("save-block"),
+    id: z.string().uuid().nullable().optional(),
+    reasonKind: z.enum(["holiday", "vacation", "sick", "maintenance", "other"]),
+    reason: z.string().trim().min(3).max(200),
+    confirmed: z.boolean().optional(),
+    ...blockFields,
+  })
+  .strict();
+
+const liftBlockSchema = z
+  .object({ action: z.literal("lift-block"), id: z.string().uuid() })
+  .strict();
+
 const bodySchema = z.discriminatedUnion("action", [
   saveSchema,
   toggleSchema,
   generateSchema,
   applySchema,
+  previewBlockSchema,
+  saveBlockSchema,
+  liftBlockSchema,
 ]);
 
 const messages: Record<string, [string, number]> = {
@@ -74,7 +109,19 @@ const messages: Record<string, [string, number]> = {
     422,
   ],
   INVALID_REQUEST: ["Faltan datos para cambiar el horario.", 422],
-  NOT_FOUND: ["No encontramos ese horario. Recargá antes de reintentar.", 404],
+  NOT_FOUND: ["No encontramos ese registro. Recargá antes de reintentar.", 404],
+  INVALID_SCOPE: ["Elegí si el bloqueo es de todo el gimnasio, una disciplina o un entrenador.", 422],
+  INVALID_RANGE: ["La fecha de fin tiene que ser posterior a la de inicio.", 422],
+  INVALID_REASON: ["Elegí el motivo y escribí una nota de al menos 3 caracteres.", 422],
+  INVALID_SUBSTITUTE: [
+    "El sustituto solo aplica cuando bloqueás a un entrenador, tiene que estar activo y no puede ser el mismo.",
+    422,
+  ],
+  CONFIRM_REQUIRED: [
+    "Hay reservas en las clases afectadas. Revisá primero qué se va a cancelar y confirmá después.",
+    409,
+  ],
+  BLOCK_EXISTS: ["Ese bloqueo ya está cargado. Revisá la lista antes de repetirlo.", 409],
 };
 
 /**
@@ -222,6 +269,80 @@ export async function POST(request: Request) {
       { ...data, board: board.error ? null : board.data },
       { headers },
     );
+  }
+
+  if (parsed.data.action === "preview-block") {
+    const { data, error } = await supabase
+      .rpc("admin_preview_schedule_block", {
+        p_scope: parsed.data.scope,
+        p_class_id: parsed.data.classId ?? null,
+        p_coach_id: parsed.data.coachId ?? null,
+        p_starts: parsed.data.starts,
+        p_ends: parsed.data.ends,
+        p_substitute: parsed.data.substituteCoachId ?? null,
+      })
+      .abortSignal(AbortSignal.timeout(15000));
+    if (error) return failure(error);
+    if (!data || typeof data !== "object")
+      return NextResponse.json(
+        {
+          error: "UNKNOWN",
+          message:
+            "No pudimos revisar qué sesiones afecta el bloqueo. Recargá antes de reintentar.",
+        },
+        { status: 503, headers },
+      );
+    return NextResponse.json(data, { headers });
+  }
+
+  if (parsed.data.action === "save-block") {
+    const { data, error } = await supabase
+      .rpc("admin_save_schedule_block", {
+        p_id: parsed.data.id ?? null,
+        p_scope: parsed.data.scope,
+        p_class_id: parsed.data.classId ?? null,
+        p_coach_id: parsed.data.coachId ?? null,
+        p_starts: parsed.data.starts,
+        p_ends: parsed.data.ends,
+        p_reason_kind: parsed.data.reasonKind,
+        p_reason: parsed.data.reason,
+        p_substitute: parsed.data.substituteCoachId ?? null,
+        p_confirmed: parsed.data.confirmed ?? false,
+      })
+      .abortSignal(AbortSignal.timeout(30000));
+    if (error) return failure(error);
+    if (!data || typeof data !== "object" || !Array.isArray(data.blocks))
+      return NextResponse.json(
+        {
+          error: "UNKNOWN",
+          message:
+            "No pudimos confirmar el bloqueo. Recargá antes de repetirlo.",
+        },
+        { status: 503, headers },
+      );
+    const board = await supabase
+      .rpc("admin_schedule_board")
+      .abortSignal(AbortSignal.timeout(15000));
+    return NextResponse.json(
+      { ...data, board: board.error ? null : board.data },
+      { headers },
+    );
+  }
+
+  if (parsed.data.action === "lift-block") {
+    const { data, error } = await supabase
+      .rpc("admin_lift_schedule_block", { p_id: parsed.data.id })
+      .abortSignal(AbortSignal.timeout(20000));
+    if (error) return failure(error);
+    if (!data || typeof data !== "object" || !Array.isArray(data.blocks))
+      return NextResponse.json(
+        {
+          error: "UNKNOWN",
+          message: "No pudimos levantar el bloqueo. Recargá antes de repetirlo.",
+        },
+        { status: 503, headers },
+      );
+    return NextResponse.json(data, { headers });
   }
 
   if (parsed.data.action === "set-active") {
