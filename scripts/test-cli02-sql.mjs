@@ -89,6 +89,8 @@ for (const f of [
 }
 await db.exec(sql("supabase/migrations/00070_categorias_automaticas.sql"));
 ok("00070 se aplica sobre 00068 sin error", true);
+await db.exec(sql("supabase/migrations/00071_directorio_categoria_en_vivo.sql"));
+ok("00071 se aplica sobre 00070 sin error", true);
 
 const row = async (query, args = []) => (await db.query(query, args)).rows[0];
 const makeUser = async (email, role) => {
@@ -266,4 +268,18 @@ ok("El directorio encuentra a los Amigo por categoría calculada",
 ok("Cada fila del directorio informa si la categoría es manual o automática",
   directory.rows.every((r) => r.category_source === "auto" || r.category_source === "manual"));
 
-console.log(`\n${checks} comprobaciones PASS (CLI-02 categorías automáticas, 00070)`);
+// 11. Un cliente creado después del último recálculo ya aparece con su
+//     categoría real en el directorio, sin esperar otro recálculo.
+const nuevo = await makeClient("NUEVO EJEMPLO");
+await pay(nuevo);
+const live = await rpc("crm_directory", ["NUEVO EJEMPLO", "familia", 0]);
+ok("El directorio encuentra por categoría a quien todavía no fue recalculado",
+  live.rows.length === 1 && live.rows[0].id === nuevo);
+ok("La fila avisa que la categoría no estaba guardada y se calculó en el momento",
+  live.rows[0].category_saved === false && live.rows[0].category_calc === "familia");
+const afterSave = await rpc("client_category_apply", [nuevo]);
+ok("Guardar la categoría de ese cliente deja de recalcular en vivo",
+  afterSave.changed === 1 &&
+  (await rpc("crm_directory", ["NUEVO EJEMPLO", "familia", 0])).rows[0].category_saved === true);
+
+console.log(`\n${checks} comprobaciones PASS (CLI-02 categorías automáticas, 00070 + 00071)`);
