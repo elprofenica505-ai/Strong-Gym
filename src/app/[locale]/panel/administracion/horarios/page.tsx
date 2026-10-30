@@ -67,24 +67,30 @@ export default async function HorariosPage({
     const supabase = await getSupabaseServerClient();
     if (!supabase) failed = true;
     else {
-      const { data, error } = await supabase
-        .rpc("admin_schedule_board")
-        .abortSignal(AbortSignal.timeout(15000));
-      if (error || !data) failed = true;
-      else {
-        board = data as ScheduleBoardData;
-        const list = await supabase
-          .rpc("admin_schedule_blocks")
+      // Cualquier falla de la consulta se muestra como tarjeta con código, no
+      // como pantalla de error: acá no se escribe nada al abrir la página.
+      try {
+        const { data, error } = await supabase
+          .rpc("admin_schedule_board")
           .abortSignal(AbortSignal.timeout(15000));
-        if (!list.error && Array.isArray(list.data)) {
-          blocks = list.data as ScheduleBlock[];
+        if (error || !data) failed = true;
+        else {
+          board = data as ScheduleBoardData;
+          const list = await supabase
+            .rpc("admin_schedule_blocks")
+            .abortSignal(AbortSignal.timeout(15000));
+          if (!list.error && Array.isArray(list.data)) {
+            blocks = list.data as ScheduleBlock[];
+          }
+          const agenda = await supabase
+            .rpc("admin_schedule_sessions", { p_from: null, p_to: null })
+            .abortSignal(AbortSignal.timeout(15000));
+          if (!agenda.error && agenda.data) {
+            sessions = agenda.data as SessionsBoard;
+          }
         }
-        const agenda = await supabase
-          .rpc("admin_schedule_sessions", { p_from: null, p_to: null })
-          .abortSignal(AbortSignal.timeout(15000));
-        if (!agenda.error && agenda.data) {
-          sessions = agenda.data as SessionsBoard;
-        }
+      } catch {
+        failed = true;
       }
     }
   }

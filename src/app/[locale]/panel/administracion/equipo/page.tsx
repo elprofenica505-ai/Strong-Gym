@@ -52,11 +52,17 @@ export default async function EquipoPage({
     const supabase = await getSupabaseServerClient();
     if (!supabase) failed = true;
     else {
-      const { data, error } = await supabase
-        .rpc("admin_coaches_catalog")
-        .abortSignal(AbortSignal.timeout(15000));
-      if (error || !data) failed = true;
-      else catalog = data as Catalog;
+      // Si la consulta falla o se corta, mostramos la tarjeta con código y no
+      // una pantalla de error: abrir la página no escribe nada.
+      try {
+        const { data, error } = await supabase
+          .rpc("admin_coaches_catalog")
+          .abortSignal(AbortSignal.timeout(15000));
+        if (error || !data) failed = true;
+        else catalog = data as Catalog;
+      } catch {
+        failed = true;
+      }
     }
   }
 
