@@ -3,6 +3,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScheduleBlocks, type ScheduleBlock } from "@/components/admin/schedule-blocks";
+import { AdminStep } from "@/components/admin/step";
+import {
+  ScheduleSessions,
+  sessionsBoardFrom,
+  type SessionsBoard,
+} from "@/components/admin/schedule-sessions";
 
 /** Fila de `class_schedule_slots` tal como la devuelve `admin_schedule_board()`. */
 export type ScheduleSlot = {
@@ -138,39 +144,6 @@ const formatDuration = (minutes: number) => {
 const plural = (count: number, one: string, many: string) =>
   `${count} ${count === 1 ? one : many}`;
 
-function Step({
-  number,
-  title,
-  hint,
-  children,
-}: {
-  number: number;
-  title: string;
-  hint: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="space-y-4 rounded-2xl border border-line bg-card p-4">
-      <div className="flex gap-3">
-        <span
-          aria-hidden="true"
-          className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full bg-brand text-[0.875rem] font-bold text-white"
-        >
-          {number}
-        </span>
-        <div className="min-w-0">
-          <h2 className="text-base font-bold text-ink">
-            <span className="sr-only">{`Paso ${number}: `}</span>
-            {title}
-          </h2>
-          <p className="mt-1 text-[0.8125rem] text-fog">{hint}</p>
-        </div>
-      </div>
-      {children}
-    </section>
-  );
-}
-
 /**
  * Horarios del gimnasio (OP-05), en tres pasos para que se entienda de una
  * leída: armar la semana fija, pasarla al calendario con fechas, y cerrar los
@@ -180,10 +153,12 @@ function Step({
 export function ScheduleBoard({
   initial,
   initialBlocks = [],
+  initialSessions,
   today,
 }: {
   initial: ScheduleBoardData;
   initialBlocks?: ScheduleBlock[];
+  initialSessions?: SessionsBoard;
   today: string;
 }) {
   const [board, setBoard] = useState<ScheduleBoardData>(initial);
@@ -360,6 +335,10 @@ export function ScheduleBoard({
             <strong className="text-ink">3. Cerrás los días que no abrís.</strong>{" "}
             Feriado, vacaciones o un profesor enfermo.
           </li>
+          <li>
+            <strong className="text-ink">4. Ajustás un día puntual.</strong> Un
+            sábado con clase especial o una fecha que se suspende. Solo ese día.
+          </li>
         </ol>
         <p className="mt-2 text-[0.8125rem] text-fog">
           Guardar un horario no crea clases: solo cambia tu semana fija. Las
@@ -380,7 +359,7 @@ export function ScheduleBoard({
         </p>
       ) : null}
 
-      <Step
+      <AdminStep
         number={1}
         title="Tu semana fija"
         hint="Lo que se repite cada semana. Ejemplo: Boxeo los martes a las 06:00."
@@ -616,9 +595,9 @@ export function ScheduleBoard({
             );
           })}
         </div>
-      </Step>
+      </AdminStep>
 
-      <Step
+      <AdminStep
         number={2}
         title="Pasar la semana al calendario"
         hint="Tu semana fija todavía no tiene fechas. Acá se crean las clases de las próximas semanas. No duplica, no cancela y no toca reservas."
@@ -741,7 +720,7 @@ export function ScheduleBoard({
             ) : null}
           </div>
         ) : null}
-      </Step>
+      </AdminStep>
 
       <ScheduleBlocks
         initial={initialBlocks}
@@ -749,6 +728,12 @@ export function ScheduleBoard({
         coaches={board.coaches}
         today={today}
         onBoard={setBoard}
+      />
+
+      <ScheduleSessions
+        initial={initialSessions ?? sessionsBoardFrom(today)}
+        classes={board.classes}
+        coaches={board.coaches}
       />
     </div>
   );

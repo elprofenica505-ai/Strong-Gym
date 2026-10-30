@@ -235,10 +235,32 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
     Sigue faltando que el generador omita **bloqueos** (llegan con los
     bloqueos y cierres) y que el botón de Operación muestre esta misma
     previsualización.
-  - Crear, editar, mover y cancelar **sesiones sueltas o días especiales**
-    fuera de la grilla, además de sesiones individuales o rangos elegidos de
-    una serie. Al bajar un cupo o mover una sesión no debe permitirse
-    sobreventa ni perderse el efecto sobre las reservas futuras.
+  - **Hecho el 30 de octubre (migración `00078`, aplicada en producción como
+    `sesiones_sueltas`): sesiones sueltas y días especiales.** El paso **4. Un
+    día puntual** de **Horarios y clases** crea una clase con fecha fuera de la
+    grilla —un sábado especial, un horario corrido por feriado— y permite
+    cambiarla de día, hora, duración, cupo, sala, entrenador o nota sin tocar la
+    semana fija. Las clases sueltas quedan marcadas (`sessions.origin =
+    'manual'`), así la pantalla las distingue sin adivinar. Mover una clase con
+    reservas encima está permitido y las reservas siguen con ella; bajar el cupo
+    por debajo de lo reservado o cambiar de disciplina con reservas se rechaza.
+    Se rechazan choques de sala y de entrenador, fechas pasadas, días cerrados
+    (`BLOCKED`) y clases repetidas. Cancelar una clase pide el motivo y, si hay
+    gente anotada, confirmación explícita: la clase y sus reservas quedan
+    canceladas con motivo, autor y fecha, y no se borra nada. Cancelar dos veces
+    no cambia nada. Para suspender varios días seguidos se sigue usando el paso
+    3 (bloqueos y cierres): no se duplicó esa herramienta. Además, la oferta
+    pública dejó de mostrar clases canceladas (antes se veían y al reservar
+    respondían «cancelada por el gimnasio»); Operación sigue viéndolas para el
+    historial. Pruebas: 43 comprobaciones SQL nuevas, 9 de pantalla y 2 de
+    lectura de datos; suite completa 814 en verde; `typecheck`, `lint` y `build`
+    limpios. Verificado en producción dentro de una transacción revertida:
+    crear una clase suelta, listarla con sus reservas, moverla, cancelarla con
+    motivo y comprobar que la clase y la reserva siguen existiendo; después del
+    `rollback` quedó todo igual (79 sesiones, 0 bloqueos).
+  - Rangos elegidos de una serie: se cubren con un **cierre** del paso 3
+    (alcance «una disciplina», con fecha desde y hasta), que ya cancela las
+    clases del período con su motivo. No hace falta otra pantalla.
   - **Hecho el 29 de octubre (migración `00075`, aplicada en producción como
     `bloqueos_calendario`): bloqueos y cierres.** Tabla `schedule_blocks`:
     todo el gimnasio, una disciplina o un entrenador, entre dos fechas y horas,
