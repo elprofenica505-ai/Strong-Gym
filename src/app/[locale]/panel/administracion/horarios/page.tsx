@@ -8,6 +8,10 @@ import {
   type ScheduleBoardData,
 } from "@/components/admin/schedule-board";
 import { type ScheduleBlock } from "@/components/admin/schedule-blocks";
+import {
+  sessionsBoardFrom,
+  type SessionsBoard,
+} from "@/components/admin/schedule-sessions";
 import { DataUnavailable } from "@/components/ui/data-unavailable";
 import { getCurrentUser } from "@/lib/data/queries";
 import { isLocale } from "@/i18n/config";
@@ -53,6 +57,7 @@ export default async function HorariosPage({
   }).format(new Date());
   let board: ScheduleBoardData = emptyBoard;
   let blocks: ScheduleBlock[] = [];
+  let sessions: SessionsBoard = sessionsBoardFrom(today);
   let failed = false;
   if (DEMO_MODE) {
     board = emptyBoard;
@@ -73,6 +78,12 @@ export default async function HorariosPage({
           .abortSignal(AbortSignal.timeout(15000));
         if (!list.error && Array.isArray(list.data)) {
           blocks = list.data as ScheduleBlock[];
+        }
+        const agenda = await supabase
+          .rpc("admin_schedule_sessions", { p_from: null, p_to: null })
+          .abortSignal(AbortSignal.timeout(15000));
+        if (!agenda.error && agenda.data) {
+          sessions = agenda.data as SessionsBoard;
         }
       }
     }
@@ -108,6 +119,7 @@ export default async function HorariosPage({
             <ScheduleBoard
               initial={board}
               initialBlocks={blocks}
+              initialSessions={sessions}
               today={today}
             />
           )}

@@ -140,6 +140,7 @@ const session = {
   starts_at: "2026-10-19T12:00:00Z",
   ends_at: "2026-10-19T13:00:00Z",
   capacity: 10,
+  status: "scheduled",
   gymClass: { id: "class", capacity: 10, is_active: true },
 };
 test("ocupación fallida no fabrica cupos disponibles", async () => {
@@ -167,6 +168,36 @@ test("ocupación sin filas tras lectura correcta sí representa cero reservas", 
   assert.equal(sessions[0].bookedCount, 0);
   assert.equal(sessions[0].spotsLeft, 10);
 });
+test("una clase cancelada no aparece en la oferta pública", async () => {
+  db((table) => ({
+    data:
+      table === "sessions"
+        ? [{ ...session, status: "cancelled" }]
+        : table === "classes"
+          ? [session.gymClass]
+          : [],
+    error: null,
+  }));
+  const { sessions } = await queries.getSessionsForWeek();
+  assert.deepEqual(sessions, []);
+});
+
+test("operación sí puede pedir las clases canceladas para ver el historial", async () => {
+  db((table) => ({
+    data:
+      table === "sessions"
+        ? [{ ...session, status: "cancelled" }]
+        : table === "classes"
+          ? [session.gymClass]
+          : [],
+    error: null,
+  }));
+  const { sessions } = await queries.getSessionsForWeek("2026-W43", {
+    includeInactiveClasses: true,
+  });
+  assert.equal(sessions.length, 1);
+});
+
 test("ocupación válida se aplica a capacidad", async () => {
   db((table) => ({
     data:

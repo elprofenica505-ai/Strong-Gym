@@ -352,11 +352,15 @@ export async function getSessionsForWeek(
         spotsLeft: Math.max(0, session.capacity - bookedCount),
       };
     });
-    // La oferta pública no muestra sesiones de disciplinas pausadas.
-    // Operación puede pedirlas explícitamente para seguir viendo el historial.
+    // La oferta pública no muestra sesiones de disciplinas pausadas ni clases
+    // canceladas (un feriado, un profesor enfermo o una fecha suspendida a
+    // mano). Operación puede pedirlas explícitamente para ver el historial.
     const sessions = includeInactiveClasses
       ? allSessions
-      : allSessions.filter((session) => session.gymClass.is_active === true);
+      : allSessions.filter(
+          (session) =>
+            session.gymClass.is_active === true && session.status === "scheduled",
+        );
 
     return { week, sessions };
   } catch (error) {

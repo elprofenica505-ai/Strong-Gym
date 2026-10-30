@@ -81,6 +81,43 @@ const liftBlockSchema = z
   .object({ action: z.literal("lift-block"), id: z.string().uuid() })
   .strict();
 
+const dayParam = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "la fecha va como AAAA-MM-DD");
+
+const listSessionsSchema = z
+  .object({
+    action: z.literal("list-sessions"),
+    from: dayParam.optional(),
+    to: dayParam.optional(),
+  })
+  .strict();
+
+const saveSessionSchema = z
+  .object({
+    action: z.literal("save-session"),
+    id: z.string().min(1).max(64).nullable().optional(),
+    classId: z.string().min(1).max(64),
+    date: dayParam,
+    time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+    duration: z.number().int().min(10).max(180),
+    capacity: z.number().int().min(1).max(200),
+    room: z.string().trim().min(2).max(60),
+    coachId: z.string().min(1).max(64).nullable().optional(),
+    note: z.string().trim().max(200).nullable().optional(),
+    expectedStarts: localDateTime.nullable().optional(),
+  })
+  .strict();
+
+const cancelSessionSchema = z
+  .object({
+    action: z.literal("cancel-session"),
+    id: z.string().min(1).max(64),
+    reason: z.string().trim().min(3).max(200),
+    confirmed: z.boolean().optional(),
+  })
+  .strict();
+
 const bodySchema = z.discriminatedUnion("action", [
   saveSchema,
   toggleSchema,
@@ -89,6 +126,9 @@ const bodySchema = z.discriminatedUnion("action", [
   previewBlockSchema,
   saveBlockSchema,
   liftBlockSchema,
+  listSessionsSchema,
+  saveSessionSchema,
+  cancelSessionSchema,
 ]);
 
 const messages: Record<string, [string, number]> = {
@@ -122,6 +162,37 @@ const messages: Record<string, [string, number]> = {
     409,
   ],
   BLOCK_EXISTS: ["Ese bloqueo ya está cargado. Revisá la lista antes de repetirlo.", 409],
+  INVALID_DATE: ["Elegí una fecha válida, con el formato de fecha.", 422],
+  INVALID_NOTE: ["La nota del día especial no puede pasar de 200 caracteres.", 422],
+  RANGE_TOO_LONG: ["Elegí un período de hasta cuatro meses para no marear la lista.", 422],
+  PAST_SESSION: [
+    "Esa fecha y hora ya pasaron. Elegí un horario que todavía no haya empezado.",
+    422,
+  ],
+  SESSION_EXISTS: [
+    "Esa disciplina ya tiene una clase a esa hora. Cambiá la hora o editá la que existe.",
+    409,
+  ],
+  SESSION_CANCELLED: [
+    "Esa clase está cancelada. Volvé a programarla como clase suelta si la necesitás.",
+    409,
+  ],
+  BLOCKED: [
+    "Ese día está cerrado en Bloqueos y cierres. Levantá el cierre antes de programar esa clase.",
+    409,
+  ],
+  CAPACITY_BELOW_BOOKINGS: [
+    "No podés bajar el cupo por debajo de los lugares ya reservados. Cancelá reservas o dejá el cupo como está.",
+    409,
+  ],
+  CLASS_CHANGE_WITH_BOOKINGS: [
+    "Esa clase ya tiene reservas: no se le puede cambiar la disciplina. Cancelala y creá la nueva.",
+    409,
+  ],
+  STALE_SESSION: [
+    "Otro administrador movió esta clase mientras la editabas. Recargá para ver el horario real.",
+    409,
+  ],
 };
 
 /**
@@ -339,6 +410,75 @@ export async function POST(request: Request) {
         {
           error: "UNKNOWN",
           message: "No pudimos levantar el bloqueo. Recargá antes de repetirlo.",
+        },
+        { status: 503, headers },
+      );
+    return NextResponse.json(data, { headers });
+  }
+
+  if (parsed.data.action === "list-sessions") {
+    const { data, error } = await supabase
+      .rpc("admin_schedule_sessions", {
+        p_from: parsed.data.from ?? null,
+        p_to: parsed.data.to ?? null,
+      })
+      .abortSignal(AbortSignal.timeout(20000));
+    if (error) return failure(error);
+    if (!data || typeof data !== "object" || !Array.isArray(data.sessions))
+      return NextResponse.json(
+        {
+          error: "UNKNOWN",
+          message:
+            "No pudimos traer las clases de ese período. Recargá antes de repetir.",
+        },
+        { status: 503, headers },
+      );
+    return NextResponse.json(data, { headers });
+  }
+
+  if (parsed.data.action === "save-session") {
+    const { data, error } = await supabase
+      .rpc("admin_save_session", {
+        p_id: parsed.data.id ?? null,
+        p_class_id: parsed.data.classId,
+        p_date: parsed.data.date,
+        p_time: parsed.data.time,
+        p_duration: parsed.data.duration,
+        p_capacity: parsed.data.capacity,
+        p_room: parsed.data.room,
+        p_coach: parsed.data.coachId ?? null,
+        p_note: parsed.data.note ?? null,
+        p_expected_starts: parsed.data.expectedStarts ?? null,
+      })
+      .abortSignal(AbortSignal.timeout(20000));
+    if (error) return failure(error);
+    if (!data || typeof data !== "object" || typeof data.action !== "string")
+      return NextResponse.json(
+        {
+          error: "UNKNOWN",
+          message:
+            "No pudimos confirmar el guardado de la clase. Recargá antes de repetirlo.",
+        },
+        { status: 503, headers },
+      );
+    return NextResponse.json(data, { headers });
+  }
+
+  if (parsed.data.action === "cancel-session") {
+    const { data, error } = await supabase
+      .rpc("admin_cancel_session", {
+        p_id: parsed.data.id,
+        p_reason: parsed.data.reason,
+        p_confirmed: parsed.data.confirmed ?? false,
+      })
+      .abortSignal(AbortSignal.timeout(20000));
+    if (error) return failure(error);
+    if (!data || typeof data !== "object" || data.ok !== true)
+      return NextResponse.json(
+        {
+          error: "UNKNOWN",
+          message:
+            "No pudimos confirmar la cancelación. Recargá antes de repetirla.",
         },
         { status: 503, headers },
       );
