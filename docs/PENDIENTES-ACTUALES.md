@@ -213,7 +213,12 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
     alta, edición con campos cambiados, guardado sin cambios, apagado,
     reactivación y catálogo con 4 entradas de bitácora; después del
     `rollback` quedó todo igual (79 sesiones, 0 entradas de bitácora, 0
-    bloqueos). Dato de hoy: la base productiva tiene **9 disciplinas**, de las
+    bloqueos). Después del despliegue se comprobó en producción que la API
+    nueva responde `AUTH` sin sesión, que un cliente con sesión recibe `AUTH`
+    al pedir el catálogo, que la tabla de bitácora no es legible desde la API
+    —ni con una fila sembrada a propósito— y que las funciones no tienen
+    permiso para el rol anónimo. Dato de hoy: la base productiva tiene **9
+    disciplinas**, de las
     cuales solo Pesas y máquinas y Boxeo están activas; **Zumba y bailoterapia
     existe pero está apagada, sin horarios y sin plan**, y desde esta pantalla
     ya se puede prender y completar.
