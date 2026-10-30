@@ -189,10 +189,34 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   `42P01`) y avisa que la grilla está desactualizada, en vez de un mensaje que
   invitaba a recargar sin salida.
   **Falta para cerrar OP-05** (sin SQL manual ni cambios de código):
-  - Crear, editar y desactivar disciplinas nuevas o existentes, con sus
-    textos, duración, cupo, intensidad, color y orden. Debe reutilizarse el
-    interruptor persistente de OP-03 y no borrarse una disciplina con
-    historial.
+  - **Hecho el 29 de octubre (migración `00077`, aplicada en producción como
+    `disciplinas_administrables`): disciplinas editables.** Pantalla nueva
+    **Administración → Disciplinas** (`/panel/administracion/disciplinas`):
+    crear una disciplina desde cero —Zumba, Spinning, lo que sea— y corregir
+    nombre en español e inglés, descripciones, intensidad, duración, cupo,
+    color y orden de las que ya existen. Al guardarla queda disponible para
+    cargarle horarios y venderle un plan, sin cambiar código. Cada fila dice
+    qué tiene encima antes de tocarla: horarios fijos activos, clases por
+    delante y planes que la cobran. El estado se cambia con el **mismo
+    interruptor de OP-03** (`admin_set_class_active`, migración `00064`), que
+    ahora deja bitácora de baja y reactivación; no se creó otro interruptor.
+    Nada se borra: apagar una disciplina conserva sus clases y sus reservas.
+    Toda alta o edición queda en `public.class_audit` con quién, cuándo, qué
+    acción y los **nombres** de los campos cambiados (nunca los valores); la
+    tabla no es legible desde la API, solo a través del catálogo y con RLS de
+    administración. Guardar sin cambios responde «sin cambios» y no ensucia la
+    bitácora. El identificador interno (`cls_<slug>`) se arma una vez al crear
+    y no cambia al editar: sesiones, reservas y planes apuntan a él. Solo
+    administración con MFA. Pruebas: 32 comprobaciones SQL nuevas y 8 de
+    pantalla; `typecheck`, `lint`, `build` limpios; suite completa 803 en
+    verde. Verificado en producción dentro de una transacción revertida:
+    alta, edición con campos cambiados, guardado sin cambios, apagado,
+    reactivación y catálogo con 4 entradas de bitácora; después del
+    `rollback` quedó todo igual (79 sesiones, 0 entradas de bitácora, 0
+    bloqueos). Dato de hoy: la base productiva tiene **9 disciplinas**, de las
+    cuales solo Pesas y máquinas y Boxeo están activas; **Zumba y bailoterapia
+    existe pero está apagada, sin horarios y sin plan**, y desde esta pantalla
+    ya se puede prender y completar.
   - **Hecho el 29 de octubre (migración `00074`, aplicada en producción como
     `generar_sesiones_preview`):** generar sesiones para una fecha de inicio y
     1 a 8 semanas, mirando primero qué se crearía. `admin_preview_schedule()`
