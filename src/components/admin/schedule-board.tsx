@@ -58,6 +58,27 @@ export type SchedulePlan = {
   items: SchedulePlanItem[];
 };
 
+export type SlotCoachItem = {
+  session_id: string;
+  starts_at: string;
+  capacity: number;
+  booked: number;
+  current_coach_id: string | null;
+  current_coach_name: string | null;
+  status: "assign" | "same" | "conflict" | "no_coach";
+};
+
+/** Lo que devuelve `admin_slot_coach_plan()`. */
+export type SlotCoachPlan = {
+  slot_id: string;
+  class_id: string;
+  coach_id: string | null;
+  coach_name: string | null;
+  slot_active: boolean;
+  totals: { sessions: number; assign: number; same: number; conflict: number; bookings: number };
+  items: SlotCoachItem[];
+};
+
 export type ScheduleBoardData = {
   slots: ScheduleSlot[];
   classes: { id: string; name: string; active: boolean }[];
@@ -174,6 +195,8 @@ export function ScheduleBoard({
   const [plan, setPlan] = useState<SchedulePlan | null>(null);
   const [genBusy, setGenBusy] = useState(false);
   const [customRange, setCustomRange] = useState(false);
+  const [coachPlan, setCoachPlan] = useState<SlotCoachPlan | null>(null);
+  const [coachBusy, setCoachBusy] = useState(false);
 
   async function generate(
     action: "preview-generate" | "apply-generate",
@@ -306,6 +329,69 @@ export function ScheduleBoard({
     // quede listo con el botón de crear.
     void generate("preview-generate", { quiet: true });
   };
+
+  /**
+   * Pasar el entrenador de un horario a las clases que ya están en el
+   * calendario. Se mira primero a cuántas afecta: nada se escribe hasta que se
+   * confirma, igual que en el resto de la pantalla.
+   */
+  async function coachAction(
+    action: "slot-coach-preview" | "slot-coach-apply",
+    slotId: string,
+  ) {
+    setCoachBusy(true);
+    setNotice(null);
+    try {
+      const res = await fetch("/api/admin/schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, id: slotId }),
+      });
+      const data = (await res.json().catch(() => null)) as
+        | (SlotCoachPlan & {
+            message?: string;
+            assigned?: number;
+            skipped_conflict?: number;
+            board?: ScheduleBoardData | null;
+          })
+        | null;
+      if (!res.ok || !data || !data.totals) {
+        setCoachPlan(null);
+        setNotice({
+          tone: "error",
+          text:
+            data?.message ??
+            "No pudimos revisar a qué clases les tocaría el entrenador. Recargá antes de reintentar.",
+        });
+        return;
+      }
+      if (action === "slot-coach-preview") {
+        setCoachPlan(data);
+        return;
+      }
+      if (data.board) setBoard(data.board);
+      const assigned = data.assigned ?? 0;
+      setCoachPlan(data);
+      setNotice({
+        tone: "ok",
+        text:
+          assigned > 0
+            ? `Listo: ${plural(assigned, "clase quedó con el entrenador", "clases quedaron con el entrenador")}${
+                (data.skipped_conflict ?? 0) > 0
+                  ? `. ${plural(data.skipped_conflict ?? 0, "clase se salteó", "clases se saltearon")} porque ese entrenador ya tiene otra clase a esa hora`
+                  : ""
+              }. No se tocó ninguna reserva.`
+            : "No hubo nada que asignar: esas clases ya tenían entrenador o chocaban con otra.",
+      });
+    } catch {
+      setNotice({
+        tone: "error",
+        text: "No pudimos pasar el entrenador. Revisá la conexión antes de reintentar.",
+      });
+    } finally {
+      setCoachBusy(false);
+    }
+  }
 
   const activeSlots = board.slots.filter((slot) => slot.is_active);
   const totalWeek = activeSlots.length;
@@ -577,6 +663,19 @@ export function ScheduleBoard({
                           >
                             Cambiar
                           </Button>
+                          {slot.coach_id ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={busy || coachBusy || !!draft}
+                              onClick={() =>
+                                void coachAction("slot-coach-preview", slot.id)
+                              }
+                            >
+                              Pasar a las clases ya creadas
+                            </Button>
+                          ) : null}
                           <Button
                             type="button"
                             size="sm"
@@ -595,6 +694,49 @@ export function ScheduleBoard({
             );
           })}
         </div>
+
+        {coachPlan ? (
+          <div className="space-y-2 rounded-xl border border-brand/40 bg-paper p-3">
+            <h3 className="text-[0.9375rem] font-bold text-ink">
+              Pasar a {coachPlan.coach_name ?? "el entrenador"} a las clases ya
+              creadas
+            </h3>
+            <p className="text-[0.8125rem] text-mist">
+              {coachPlan.totals.sessions === 0
+                ? "Ese horario todavía no tiene clases en el calendario. Primero pasá la semana al calendario en el paso 2."
+                : `Encontré ${plural(coachPlan.totals.sessions, "clase por delante", "clases por delante")} de este horario: ${coachPlan.totals.assign} ${coachPlan.totals.assign === 1 ? "se puede asignar" : "se pueden asignar"}, ${coachPlan.totals.same} ya ${coachPlan.totals.same === 1 ? "tiene" : "tienen"} ese entrenador${
+                    coachPlan.totals.conflict > 0
+                      ? ` y ${coachPlan.totals.conflict} ${coachPlan.totals.conflict === 1 ? "se saltea" : "se saltean"} porque choca con otra clase suya`
+                      : ""
+                  }.`}
+            </p>
+            {coachPlan.totals.bookings > 0 ? (
+              <p className="text-[0.8125rem] text-fog">
+                Esas clases tienen {plural(coachPlan.totals.bookings, "reserva", "reservas")}.
+                Solo cambia quién las dicta: ninguna reserva se toca.
+              </p>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              {coachPlan.totals.assign > 0 ? (
+                <Button
+                  type="button"
+                  disabled={coachBusy}
+                  onClick={() => void coachAction("slot-coach-apply", coachPlan.slot_id)}
+                >
+                  Asignar {plural(coachPlan.totals.assign, "clase", "clases")}
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                disabled={coachBusy}
+                onClick={() => setCoachPlan(null)}
+              >
+                Volver
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </AdminStep>
 
       <AdminStep

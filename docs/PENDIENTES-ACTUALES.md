@@ -280,18 +280,35 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
     revertida: 9 sesiones creadas, 3 afectadas, 3 canceladas, 1 bloqueo activo,
     3 bloqueadas en el plan y 0 al regenerar; los datos quedaron intactos
     (79 sesiones, 0 bloqueos).
-  - Asignar entrenadores por grilla y por sesión, usando especialidades
-    estructuradas, y detectar choques del mismo entrenador o de la misma
-    sala en el mismo horario. **Dato comprobado el 29 de octubre:** en la base
-    productiva la columna `coaches.specialties` (lista) está vacía en los tres
-    entrenadores; la especialidad real vive en `coaches.specialty`, como texto
-    libre («Boxeo y acondicionamiento»). Por eso las 79 sesiones programadas
-    quedaron **sin entrenador**: el generador solo asigna por coincidencia de
-    especialidad y esa lista está vacía. No es un error nuevo ni una regresión,
-    y se arregla desde la grilla asignando el entrenador a mano. Completar esa
-    lista con un texto libre sería adivinar; queda como dato del catálogo de
-    entrenadores que falta. También debe completarse la gestión de
-    catálogos operativos de planes y entrenadores más allá de las cuatro
+  - **Hecho el 30 de octubre (migración `00079`, aplicada en producción como
+    `entrenadores_admin`): entrenadores administrables y asignación con
+    detección de choques.** Pantalla nueva **Administración → Equipo de
+    entrenadores** (`/panel/administracion/equipo`): alta y edición de la
+    plantilla con nombre, especialidad visible y **disciplinas que dicta**,
+    elegidas de la lista de clases (nunca texto libre: `specialties` guarda los
+    slugs de `classes`, que es lo que ya leía el generador). Se reutiliza el
+    patrón de interruptor: dar de baja no borra nada y las clases ya programadas
+    siguen con su entrenador. Bitácora en `public.coach_audit` con quién, cuándo,
+    qué acción y los **nombres** de los campos cambiados; la tabla no es legible
+    desde la API. En **Horarios y clases**, cada horario con entrenador tiene el
+    botón **«Pasar a las clases ya creadas»**: primero muestra a cuántas clases
+    afecta, cuántas ya lo tienen y cuáles se saltean por choque, y solo después
+    asigna; guardar un horario sigue sin tocar el calendario. Además se corrigió
+    una diferencia real entre la previsualización y la generación: ahora las dos
+    resuelven el entrenador igual (el del horario y, si no hay, el primero
+    activo que dicte esa disciplina), así el plan muestra a quién se le va a
+    asignar y detecta también sus choques. Pruebas: 49 comprobaciones SQL
+    nuevas —incluidas dos corridas sobre el **esquema productivo** de `coaches`,
+    que no tiene `slug`, `name` ni `sort_order`—, 10 de pantalla y 3 nuevas de
+    la grilla; suite completa 827 en verde; `typecheck`, `lint` y `build`
+    limpios. Verificado en producción dentro de una transacción revertida: alta,
+    edición, guardado sin cambios, baja, reactivación, catálogo con 4 entradas
+    de bitácora y asignación del entrenador a las 4 clases de un horario; después
+    del `rollback` quedó todo igual (3 entrenadores, 79 sesiones, 0 con
+    entrenador, 9 horarios, 0 bloqueos).
+    **Sigue faltando acá:** que el socio vea quién dicta cada clase en la web
+    pública (la vista `coaches_public` existe, pero la grilla pública todavía no
+    muestra el nombre) y completar la gestión de planes más allá de las cuatro
     tarifas NIO ya editables.
   Todo el CRUD debe estar autorizado en pantalla, servidor y RLS/RPC, con
   bitácora, control de concurrencia e idempotencia, fechas en
