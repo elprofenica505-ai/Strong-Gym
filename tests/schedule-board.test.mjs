@@ -93,9 +93,14 @@ function setup(handler, initial = board()) {
   return calls;
 }
 
-test("la pantalla explica en tres pasos qué hace cada cosa", () => {
+test("la pantalla explica en cuatro pasos qué hace cada cosa", () => {
   setup(() => json({}));
   assert.ok(screen.getByRole("heading", { name: "¿Cómo funciona esta pantalla?" }));
+  assert.ok(screen.getByText(/Ajustás un día puntual/));
+  assert.match(
+    screen.getByText(/Un sábado con clase especial o una fecha que se suspende/).textContent,
+    /Solo ese día/,
+  );
   assert.ok(screen.getByRole("heading", { name: /Tu semana fija/ }));
   assert.ok(screen.getByRole("heading", { name: /Pasar la semana al calendario/ }));
   assert.ok(screen.getByRole("heading", { name: /Días que no abrís/ }));
@@ -296,4 +301,65 @@ test("el período avanzado está plegado y usa cuatro semanas por defecto", asyn
   const call = calls.find((item) => item.body?.action === "preview-generate");
   assert.equal(call.body.weeks, 4);
   assert.equal(call.body.from, "2026-10-26");
+});
+
+test("el entrenador del horario se puede pasar a las clases ya creadas, mirando antes", async () => {
+  const slotWithCoach = slot({ coach_id: "coach_1", coach_name: "Profe Uno" });
+  const plan = {
+    slot_id: slotWithCoach.id,
+    class_id: "cls_boxeo",
+    coach_id: "coach_1",
+    coach_name: "Profe Uno",
+    slot_active: true,
+    totals: { sessions: 3, assign: 2, same: 1, conflict: 0, bookings: 4 },
+    items: [],
+  };
+  const calls = setup((url, init) => {
+    const body = JSON.parse(init.body);
+    if (body.action === "slot-coach-preview") return json(plan);
+    if (body.action === "slot-coach-apply")
+      return json({ ...plan, ok: true, assigned: 2, skipped_conflict: 0, board: board([slotWithCoach]) });
+    return json({});
+  }, board([slotWithCoach]));
+
+  fireEvent.click(screen.getByRole("button", { name: "Pasar a las clases ya creadas" }));
+  await screen.findByRole("heading", { name: /Pasar a Profe Uno a las clases ya creadas/ });
+  assert.match(
+    screen.getByText(/Encontré 3 clases por delante/).textContent,
+    /2 se pueden asignar, 1 ya tiene ese entrenador/,
+  );
+  assert.match(screen.getByText(/4 reservas/).textContent, /ninguna reserva se toca/);
+  assert.equal(
+    calls.filter((call) => call.body?.action === "slot-coach-apply").length,
+    0,
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "Asignar 2 clases" }));
+  await screen.findByText(/Listo: 2 clases quedaron con el entrenador/);
+  const applied = calls.find((call) => call.body?.action === "slot-coach-apply");
+  assert.equal(applied.body.id, slotWithCoach.id);
+});
+
+test("si el entrenador choca con otra clase, la pantalla lo dice antes de asignar", async () => {
+  const slotWithCoach = slot({ coach_id: "coach_1", coach_name: "Profe Uno" });
+  setup((url, init) => {
+    const body = JSON.parse(init.body);
+    return json({
+      slot_id: slotWithCoach.id,
+      class_id: "cls_boxeo",
+      coach_id: "coach_1",
+      coach_name: "Profe Uno",
+      slot_active: true,
+      totals: { sessions: 3, assign: 0, same: 2, conflict: 1, bookings: 0 },
+      items: [],
+    });
+  }, board([slotWithCoach]));
+  fireEvent.click(screen.getByRole("button", { name: "Pasar a las clases ya creadas" }));
+  await screen.findByText(/1 se saltea porque choca con otra clase suya/);
+  assert.equal(screen.queryByRole("button", { name: /^Asignar / }), null);
+});
+
+test("un horario sin entrenador no ofrece pasarlo a las clases", () => {
+  setup(() => json({}));
+  assert.equal(screen.queryByRole("button", { name: "Pasar a las clases ya creadas" }), null);
 });

@@ -81,6 +81,12 @@ export const PANEL_MODULES: PanelModule[] = [
     children: [
       { id: "roles", label: "Personal y roles", href: "/panel/administracion/roles", adminOnly: true },
       { id: "entrenadores", label: "Entrenadores y accesos", href: "/panel/administracion/entrenadores", adminOnly: true },
+      {
+        id: "equipo",
+        label: "Equipo de entrenadores",
+        href: "/panel/administracion/equipo",
+        adminOnly: true,
+      },
       { id: "disciplinas", label: "Disciplinas", href: "/panel/administracion/disciplinas", adminOnly: true },
       { id: "planes", label: "Planes y modalidades", href: "/panel/administracion/planes", adminOnly: true },
       { id: "horarios", label: "Horarios y clases", href: "/panel/administracion/horarios", adminOnly: true },

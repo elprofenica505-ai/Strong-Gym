@@ -1,37 +1,66 @@
-## Qué se arregló
+## Qué hace este cambio (OP-05, etapa 6)
 
-La pantalla se sentía confusa. Buscando por qué, la causa de fondo no era el diseño: era un **efecto oculto**. Guardar un horario (o suspenderlo, o reactivarlo) creaba por su cuenta las clases de las próximas cuatro semanas. Así, la misma clase podía aparecer por dos caminos distintos —guardar y el botón de generar— y nadie sabía de dónde había salido.
+Cierra la última etapa de OP-05: los entrenadores dejan de ser un dato
+escondido y pasan a administrarse desde el panel, asignarse a cada horario y
+llegar a las clases ya creadas sin escribir código ni tocar la base a mano.
 
-### La lógica ahora es un paso, un efecto
+1. **Pantalla nueva: Administración → Equipo de entrenadores**
+   (`/panel/administracion/equipo`). Alta y edición con nombre, especialidad
+   visible y **disciplinas que dicta**, elegidas de la lista real de clases.
+   Dar de baja no borra nada: las clases ya programadas siguen con su
+   entrenador y las nuevas no lo toman. Bitácora en `public.coach_audit`
+   (quién, cuándo, qué acción y los nombres de los campos cambiados); la tabla
+   no se puede leer desde la API. La pantalla explica qué se puede hacer y
+   avisa que no se borra nada.
+2. **Entrenador por grilla y por sesión.** El entrenador se elige en cada
+   horario y baja a las sesiones. En **Horarios y clases** cada horario con
+   entrenador tiene el botón **«Pasar a las clases ya creadas»**: primero
+   muestra a cuántas clases afecta, cuántas ya lo tienen y cuáles se saltean
+   por choque; recién después asigna. Guardar un horario sigue sin tocar el
+   calendario.
+3. **Previsualización y generación coinciden.** Antes el plan no mostraba el
+   entrenador que el generador sí iba a usar. Ahora las dos resuelven igual
+   (el del horario; si no hay, el primero activo que dicte esa disciplina), así
+   el plan muestra a quién se le asigna y detecta también sus choques.
 
-| Antes | Ahora |
-|---|---|
-| Guardar un horario creaba 4 semanas de clases sin avisar | Guardar **solo** cambia tu semana fija |
-| Se podía generar por dos caminos distintos | Las clases con fecha se crean en **un único lugar**: el paso 2 |
-| Al reactivar un horario aparecían clases solas | Reactivar no resucita nada; se crean al pasar al calendario |
-| «Sesión», «grilla», «anular», «bloqueo» | «Clase», «horario fijo», «suspender», «cerrar» |
-
-### La pantalla quedó en tres pasos
-
-Con un recuadro **«¿Cómo funciona esta pantalla?»** arriba que lo explica en tres renglones:
-
-1. **Tu semana fija** — lo que se repite cada semana. «Boxeo, martes a las 06:00». Se agrega, se cambia y se suspende acá.
-2. **Pasar la semana al calendario** — ahí las clases reciben fecha. Muestra cuántas se crearían y cuáles no, con el motivo en castellano («esa sala ya está ocupada a esa hora», «ese día está cerrado»). El período avanzado (fecha y semanas) está plegado: por defecto son las próximas 4 semanas.
-3. **Días que no abrís** — feriados, vacaciones, profesor enfermo. Ahora se elige **primer día** y **último día** en el calendario, no dos fechas con hora.
-
-Además: al guardar un horario, la pantalla avisa «todavía no tiene fechas: pasalo al calendario en el paso 2» y prepara sola la previsualización, sin escribir nada. El menú pasó de «Horarios y grilla» a **«Horarios y clases»**.
+Antes, las 79 sesiones programadas habían quedado sin entrenador porque
+`coaches.specialties` estaba vacía en los tres entrenadores. Con el catálogo se
+completa desde la pantalla y no con texto adivinado.
 
 ## Base de datos
 
-Migración `00076` (`horario_no_genera_solo`), **ya aplicada en producción**: `admin_save_schedule_slot()` y `admin_set_schedule_slot_active()` dejan de llamar al generador. Mismas firmas, mismos permisos, mismas validaciones y mismos choques. `p_weeks` se sigue aceptando por compatibilidad, sin efecto; `created_sessions` sigue viniendo, siempre en 0. Reversión: volver a las definiciones de `00072`. No toca datos.
+- Migración aditiva `00079_entrenadores_admin.sql`, **ya aplicada en
+  producción** como `entrenadores_admin` (`20261030231745`):
+  - tabla `coach_audit` con RLS solo para administradores;
+  - `admin_coaches_catalog()`, `admin_save_coach()`, `admin_set_coach_active()`,
+    `admin_slot_coach_plan()`, `admin_apply_slot_coach()`;
+  - `_schedule_plan()` y `admin_apply_schedule()` reescritas para resolver el
+    entrenador igual que la previsualización;
+  - `notify pgrst` para refrescar el esquema de la API.
+- Todo es aditivo: no se renombró ni se borró ninguna columna ni se movieron
+  datos. Funciona sobre el esquema productivo real de `coaches`, que no tiene
+  `slug`, `name` ni `sort_order` (se leen por `to_jsonb`).
+- Permisos probados por rol: caja y entrenador no ven el catálogo ni pueden dar
+  de alta; `anon` no puede ejecutar ninguna de las funciones nuevas.
 
-## Verificación
+## Pruebas
 
-- `test-op05-sql.mjs`: **82 comprobaciones PASS** (eran 79), con tres nuevas que fijan la regla: guardar un horario activo no crea clases, reactivar tampoco, y las clases se crean recién al pasar la semana al calendario.
-- `tests/schedule-board.test.mjs` **9/9** y `tests/schedule-blocks.test.mjs` **8/8**. Total del proyecto: **795/795**.
-- `tsc`, `eslint` y `next build` limpios.
-- En producción, dentro de una transacción revertida: guardar dos horarios activos → 0 clases creadas; previsualizar la semana → 2 por crear; aplicar → 2 creadas; suspender → 0 creadas. Después del rollback: **79 clases, 9 horarios, 0 cierres**, igual que antes.
+- `npm run test:sql` verde: 82 + 32 + 43 + **49** comprobaciones. Las 49 nuevas
+  incluyen dos corridas sobre el esquema productivo de `coaches` y la
+  detección de choque de entrenador.
+- Suite Node **827/827** en verde, incluidas `tests/coaches-catalog.test.mjs`
+  (10) y `tests/schedule-board.test.mjs` (12, con 3 casos nuevos).
+- `npm run typecheck`, `npm run lint` y `npm run build` limpios.
+- Verificado en producción dentro de una transacción revertida: alta, edición,
+  guardado sin cambios, baja, reactivación, catálogo con 4 entradas de bitácora
+  y asignación del entrenador a las 4 clases de un horario. Después del
+  `rollback` quedó todo igual (3 entrenadores, 79 sesiones, 0 con entrenador,
+  9 horarios, 0 bloqueos, 2 reservas).
 
-## Pendiente de aceptación
+## Qué falta después
 
-Que el usuario abra **Administración → Horarios y clases** en el celular y confirme si ahora se entiende.
+- Probar en el celular con usuario administrador: catálogo, alta/edición, baja
+  y «Pasar a las clases ya creadas».
+- Mostrar quién dicta cada clase en la grilla pública (la vista existe, el
+  nombre todavía no se muestra).
+- Horarios de Zumba y su plan.

@@ -109,6 +109,13 @@ const saveSessionSchema = z
   })
   .strict();
 
+const slotCoachSchema = z
+  .object({
+    action: z.enum(["slot-coach-preview", "slot-coach-apply"]),
+    id: z.string().uuid(),
+  })
+  .strict();
+
 const cancelSessionSchema = z
   .object({
     action: z.literal("cancel-session"),
@@ -129,6 +136,7 @@ const bodySchema = z.discriminatedUnion("action", [
   listSessionsSchema,
   saveSessionSchema,
   cancelSessionSchema,
+  slotCoachSchema,
 ]);
 
 const messages: Record<string, [string, number]> = {
@@ -188,6 +196,10 @@ const messages: Record<string, [string, number]> = {
   CLASS_CHANGE_WITH_BOOKINGS: [
     "Esa clase ya tiene reservas: no se le puede cambiar la disciplina. Cancelala y creá la nueva.",
     409,
+  ],
+  NO_COACH: [
+    "Ese horario no tiene entrenador asignado. Elegilo primero y guardá el horario.",
+    422,
   ],
   STALE_SESSION: [
     "Otro administrador movió esta clase mientras la editabas. Recargá para ver el horario real.",
@@ -416,6 +428,37 @@ export async function POST(request: Request) {
     return NextResponse.json(data, { headers });
   }
 
+  if (
+    parsed.data.action === "slot-coach-preview" ||
+    parsed.data.action === "slot-coach-apply"
+  ) {
+    const preview = parsed.data.action === "slot-coach-preview";
+    const { data, error } = await supabase
+      .rpc(preview ? "admin_slot_coach_plan" : "admin_apply_slot_coach", {
+        p_slot_id: parsed.data.id,
+      })
+      .abortSignal(AbortSignal.timeout(preview ? 15000 : 30000));
+    if (error) return failure(error);
+    if (!data || typeof data !== "object")
+      return NextResponse.json(
+        {
+          error: "UNKNOWN",
+          message: preview
+            ? "No pudimos revisar qué clases se asignarían. Recargá antes de reintentar."
+            : "No pudimos confirmar la asignación. Recargá antes de repetirla.",
+        },
+        { status: 503, headers },
+      );
+    if (preview) return NextResponse.json(data, { headers });
+    const board = await supabase
+      .rpc("admin_schedule_board")
+      .abortSignal(AbortSignal.timeout(15000));
+    return NextResponse.json(
+      { ...data, board: board.error ? null : board.data },
+      { headers },
+    );
+  }
+
   if (parsed.data.action === "list-sessions") {
     const { data, error } = await supabase
       .rpc("admin_schedule_sessions", {
@@ -498,6 +541,12 @@ export async function POST(request: Request) {
     if (error) return failure(error);
     return NextResponse.json(data, { headers });
   }
+
+  if (parsed.data.action !== "save")
+    return NextResponse.json(
+      { error: "INVALID_REQUEST", message: messages.INVALID_REQUEST[0] },
+      { status: 422, headers },
+    );
 
   const slot = parsed.data;
   const { data, error } = await supabase
