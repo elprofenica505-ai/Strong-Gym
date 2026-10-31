@@ -19,6 +19,8 @@ const reply = (body: unknown, status = 200) =>
  * mandar un `client_id` ajeno. Acá sólo se valida la forma del pedido.
  */
 
+// `.strict()`: un campo que no corresponde (por ejemplo `clientId`) se rechaza
+// en vez de ignorarse en silencio. La base resuelve al cliente por la sesión.
 const bodySchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("save"),
@@ -27,11 +29,11 @@ const bodySchema = z.discriminatedUnion("action", [
     reps: z.string().trim().max(20).nullable().optional(),
     restSeconds: z.number().int().min(0).max(900).nullable().optional(),
     note: z.string().trim().max(200).nullable().optional(),
-  }),
+  }).strict(),
   z.object({
     action: z.literal("remove"),
     exerciseId: z.string().trim().min(1).max(80),
-  }),
+  }).strict(),
 ]);
 
 const MESSAGES: Record<string, string> = {
