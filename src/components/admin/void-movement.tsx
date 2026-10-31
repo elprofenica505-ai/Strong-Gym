@@ -230,6 +230,14 @@ function VoidDialog({
                 label="Saldo de la cuenta"
                 value={`${formatMoney(receipt.accountBefore, receipt.currency as Currency)} → ${formatMoney(receipt.accountAfter, receipt.currency as Currency)}`}
               />
+              {receipt.stockRestored && receipt.stockRestored.length > 0 && (
+                <Row
+                  label="Stock devuelto"
+                  value={receipt.stockRestored
+                    .map((item) => `${item.name} ×${item.qty}`)
+                    .join(" · ")}
+                />
+              )}
               <Row label="Motivo" value={receipt.reason} />
               <Row label="Quién" value={receipt.actorName} />
               <Row label="Cuándo" value={localDateTime(receipt.occurredAt)} />

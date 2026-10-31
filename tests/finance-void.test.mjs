@@ -80,6 +80,31 @@ test("anular: el comprobante se valida antes de mostrarse", () => {
   assert.equal(parseVoidReceipt(null), null);
 });
 
+test("anular una venta con productos: el comprobante cuenta el stock devuelto", () => {
+  const base = {
+    id: "3e4c774c-558a-4328-8756-fd70c6c8ad7c",
+    originalId: valid.transactionId,
+    reversalId: "3e4c774c-558a-4328-8756-fd70c6c8ad7c",
+    amount: 72,
+    currency: "NIO",
+    concept: "Anulación: Venta: Agua fuente pura x3",
+    originalConcept: "Venta: Agua fuente pura x3",
+    reason: valid.reason,
+    accountName: "Caja fuerte NIO",
+    accountBefore: 1000,
+    accountAfter: 1072,
+    actorName: "Carlos Sequeira",
+    occurredAt: "2026-10-31T06:02:55.392523+00:00",
+  };
+  const agua = { productId: "f7622a6e-189d-4736-8adb-f24127819856", name: "Agua fuente pura", qty: 3 };
+  assert.deepEqual(parseVoidReceipt({ ...base, stockRestored: [agua] })?.stockRestored, [agua]);
+  // Un cobro sin productos no inventa la fila.
+  assert.equal(parseVoidReceipt({ ...base, stockRestored: [] })?.stockRestored, undefined);
+  assert.equal(parseVoidReceipt(base)?.stockRestored, undefined);
+  // Un comprobante con cantidades rotas no se muestra a medias.
+  assert.equal(parseVoidReceipt({ ...base, stockRestored: [{ ...agua, qty: "3" }] }), null);
+});
+
 test("interruptor de anulación: nace apagado y el administrador lo ve encendido", () => {
   assert.ok(CASHIER_PERMISSION_FIELDS.includes("void"));
   assert.equal(CASHIER_PERMISSION_KEYS.void, "cashier_can_void");
