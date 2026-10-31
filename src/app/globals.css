@@ -115,6 +115,31 @@
   }
 }
 
+/* Biblioteca de ejercicios: el dibujo alterna posición inicial y final.
+   Es el mismo par de fotos que publica el origen, así que no se descarga
+   nada extra: las dos imágenes ya vienen en la ficha. */
+@keyframes exercise-frame-a {
+  0%,
+  49.99% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes exercise-frame-b {
+  0%,
+  49.99% {
+    opacity: 0;
+  }
+  50%,
+  100% {
+    opacity: 1;
+  }
+}
+
 @keyframes rise {
   from {
     opacity: 0;
@@ -301,6 +326,33 @@
 
 /* Animación al entrar en pantalla (se activa con IntersectionObserver) */
 @layer components {
+
+  /* Dos fotos del mismo movimiento: se muestran alternadas, como el origen. */
+  .exercise-frames {
+    position: relative;
+  }
+
+  .exercise-frames > img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .exercise-frames > img.frame-b {
+    opacity: 0;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .exercise-frames[data-animate="true"] > img.frame-a {
+      animation: exercise-frame-a 1.9s steps(1, end) infinite;
+    }
+
+    .exercise-frames[data-animate="true"] > img.frame-b {
+      animation: exercise-frame-b 1.9s steps(1, end) infinite;
+    }
+  }
   .reveal {
     opacity: 0;
     transform: translateY(22px);

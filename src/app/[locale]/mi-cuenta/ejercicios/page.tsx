@@ -8,6 +8,7 @@ import { isAdminRole } from "@/lib/auth/current-user";
 import { getExerciseCatalog, getExerciseFacets } from "@/lib/exercises/queries";
 import {
   BODY_PART_ORDER,
+  CATEGORY_LABELS,
   bodyPartLabel,
   DIFFICULTY_LABELS,
   EQUIPMENT_GROUPS,
@@ -86,6 +87,18 @@ export default async function ExerciseLibraryPage({
     const qs = next.toString();
     return `/${locale}/mi-cuenta/ejercicios${qs ? `?${qs}` : ""}`;
   };
+
+  const facets = result.ok ? result.data[1] : null;
+  const conEquipo = facets
+    ? Object.values(facets.equipment).reduce((total, count) => total + count, 0)
+    : 0;
+  const sinEquipo = facets ? Math.max(0, facets.total - conEquipo) : 0;
+  // Cuántos ejercicios hay en cada grupo de la pantalla. Sale de la base, no de
+  // una lista fija: si mañana se importa otro catálogo, los números cambian solos.
+  const groupCount = (slugs: string[]) =>
+    slugs.length === 0
+      ? sinEquipo
+      : slugs.reduce((total, slug) => total + (facets?.equipment[slug] ?? 0), 0);
 
   const chip = (active: boolean) =>
     cn(
@@ -188,9 +201,25 @@ export default async function ExerciseLibraryPage({
                     title={group.hint}
                     className={chip(equipmentKey === group.key)}
                   >
-                    {group.label}
+                    {group.label} ({groupCount(group.slugs)})
                   </Link>
                 ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-sm font-semibold text-ink">Tipo de trabajo</h2>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(CATEGORY_LABELS)
+                  .filter(([key]) => (result.data[1].category[key] ?? 0) > 0)
+                  .map(([key, label]) => (
+                    <Link
+                      key={key}
+                      href={href({ tipo: category === key ? null : key, pagina: null })}
+                      className={chip(category === key)}
+                    >
+                      {label} ({result.data[1].category[key]})
+                    </Link>
+                  ))}
               </div>
             </div>
             <div className="space-y-2">

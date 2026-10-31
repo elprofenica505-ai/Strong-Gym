@@ -47,10 +47,13 @@ await db.exec(`create schema auth; create role anon nologin; create role authent
 
 const migration = sql("supabase/migrations/00089_biblioteca_de_ejercicios.sql");
 const extra = sql("supabase/migrations/00090_catalogo_peso_corporal.sql");
+const orden = sql("supabase/migrations/00091_orden_de_gimnasio.sql");
 await db.exec(migration);
 await db.exec(migration);
 await db.exec(extra);
 await db.exec(extra);
+await db.exec(orden);
+await db.exec(orden);
 ok("las migraciones se pueden aplicar dos veces", true);
 
 const newUser = async (email, role) => {
@@ -223,6 +226,11 @@ ok("filtra por nivel", byDifficulty.total === 1);
 
 const page = await catalog({ limit: 2, offset: 2 });
 ok("pagina con total estable", page.total === 3 && page.rows.length === 1);
+
+// Orden de gimnasio: primero lo que usa equipo; el peso corporal va al final.
+const ordenado = await catalog({});
+ok("el orden pone primero lo que se hace con equipo",
+  ordenado.rows[0].id !== "push-up" && ordenado.rows.at(-1).id === "push-up");
 
 const facets = (await as(ana, "aal2", "select public.exercise_facets() as f")).at(0).f;
 ok("las facetas son conteos reales", facets.total === 3 && facets.bodyParts.upper_legs === 1);
