@@ -39,8 +39,8 @@ Según el caso, debe cumplir:
 
 ## Foto actual comprobada
 
-- Producción: `main` con el cierre de la anulación (PR #103) y FIN-05 en
-  revisión; CI verde en ambos.
+- Producción: `main` con FIN-05 (PR #104) y la baja de vigencia al anular
+  (PR #105); CI en verde en ambos.
 - Supabase: proyecto ACTIVE_HEALTHY. Las migraciones aplicadas y registradas
   llegan a la **00085** (`anular_da_de_baja_la_vigencia`): da de baja la
   vigencia del cobro anulado y alineó los datos que ya estaban anulados. El
