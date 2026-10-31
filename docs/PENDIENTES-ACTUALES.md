@@ -7,8 +7,8 @@ interpreta como una nota histórica y **manda esta lista**. Los demás documento
 pueden explicar decisiones, guías de uso o cómo se construyó una parte, pero no
 crean tareas nuevas.
 
-Última auditoría completa: **30 de octubre de 2026**, sobre producción
-`main@7228c04` (PR #94) y Supabase `hcnuepdxmbsmlzdmvwhx`.
+Última auditoría completa: **31 de octubre de 2026**, sobre producción
+`main@05dbca8` (PR #111) y Supabase `hcnuepdxmbsmlzdmvwhx`.
 
 ## Cómo mantener esta lista
 
@@ -40,14 +40,15 @@ Según el caso, debe cumplir:
 ## Foto actual comprobada
 
 - Producción: `main` con FIN-05 (PR #104), la baja de vigencia al anular
-  (PR #105) y el uso e historial de precios de los planes (PR #108); CI en
-  verde en los tres. La 00085 ya está aplicada en producción y
-  los datos de vigencias quedaron alineados.
+  (PR #105), el uso e historial de precios de los planes (PR #108) y **FIN-04**
+  completo: apertura, arqueo y cierre de caja (PR #110) más el bloqueo de
+  anulaciones de una caja cerrada (PR #111); CI en verde en todos. La 00085 ya
+  está aplicada en producción y los datos de vigencias quedaron alineados.
 - Supabase: proyecto ACTIVE_HEALTHY. Las migraciones aplicadas y registradas
-  llegan a la **00086** (`planes_uso_y_precio`, registrada como
-  `20261031204934`): la 00085 da de baja la vigencia del cobro anulado y la
-  00086 agrega el uso y el historial de precios de cada plan. El siguiente
-  número libre es **00087**.
+  llegan a la **00088** (`anular_caja_cerrada`, registrada como
+  `20261031214856`): la 00087 (`cierre_y_arqueo_de_caja`, `20261031213955`)
+  agrega abrir, arqueo y cierre, y la 00088 impide anular el efectivo de una
+  caja ya cerrada. El siguiente número libre es **00089**.
 - Datos productivos al 31 de octubre, comprobados con consulta directa:
   **9 disciplinas** (activas: Pesas y máquinas, Boxeo y Zumba), **6 planes**
   activos, **89 sesiones** (88 programadas y 1 anulada), **2 reservas**,
@@ -70,15 +71,15 @@ Según el caso, debe cumplir:
 |---:|---|---|
 | 1 | **QA-08** (celular) | Cierra Zumba: grilla pública, cobro del plan y horarios del panel. Es lo último que se publicó. |
 | 2 | **QA-03, QA-04 y QA-05** (celular y cuentas reales) | Son aceptaciones de cosas ya desplegadas; sin ellas no se puede decir «terminado». |
-| 3 | **QA-09 y QA-06** (celular) | Aceptar lo que ya está desplegado: vigencias, categorías, calendario y ahora el uso y el historial de precios de los planes (CLI-07). |
+| 3 | **QA-09 y QA-06** (celular) | Aceptar lo que ya está desplegado: vigencias, categorías, calendario, el uso y el historial de precios de los planes (CLI-07) y **abrir, contar y cerrar la caja** (FIN-04). |
 | 4 | **OP-06, FIN-03 a FIN-07, CAL-01/03, LEG-01 y NEG-01** | Reglas de negocio y entrega; no bloquean la operación diaria de hoy. |
 
 ## Resumen de avance al 31 de octubre de 2026
 
-**63 tareas listadas: 19 cerradas y 44 abiertas.** De las 44 abiertas, **7 son
+**63 tareas listadas: 20 cerradas y 43 abiertas.** De las 43 abiertas, **7 son
 aceptaciones** en celular o con cuenta real (QA-03 a QA-09), **5 son de
 entrega** (ENT-01 a ENT-05, aplazadas a propósito) y **8 son opcionales del
-futuro** (FUT-01 a FUT-08). Quedan **24 de producto o negocio** por resolver,
+futuro** (FUT-01 a FUT-08). Quedan **23 de producto o negocio** por resolver,
 **ninguna** en Administración → Planes.
 
 | Fase o bloque | Estado | Qué falta |
@@ -87,7 +88,7 @@ futuro** (FUT-01 a FUT-08). Quedan **24 de producto o negocio** por resolver,
 | **Etapa 2 — Navegación** | Hecha: Inicio, Clientes, Finanzas, Operación, Administración y Mis clientes | Solo la decisión de OP-09 |
 | **Etapa 3 — Operación diaria** | OP-01 a OP-05 cerradas y desplegadas | OP-06 (cierre de reservas pasadas), OP-07 (cambio de día sin recargar), OP-08 (vincular ficha con cuenta web) y la aceptación QA-09 |
 | **Clientes, vigencias y planes** | CLI-01, CLI-02 y CLI-06 cerradas y desplegadas | Aceptación en celular (QA-09); decisiones CLI-03, CLI-04 y CLI-05 |
-| **Etapa 4 — Finanzas y productos** | En uso real: cobros, gastos, deudas y abonos NIO/USD, vuelto, productos con stock, Caja por módulos con historial paginado, reportes y descargas | FIN-03, FIN-04, FIN-06 y FIN-07 |
+| **Etapa 4 — Finanzas y productos** | En uso real: cobros, gastos, deudas y abonos NIO/USD, vuelto, productos con stock, Caja por módulos con historial paginado, **apertura y cierre con arqueo**, reportes y descargas | FIN-03, FIN-06 y FIN-07 |
 | **Calendario y disciplinas (OP-05)** | Cerrado y desplegado, con grillas, sesiones sueltas, bloqueos, generador con vista previa y entrenadores | Solo la aceptación en celular (QA-09) |
 | **Etapa 5 — Aceptación integral** | Parcial: QA-01 y QA-02 cerradas | QA-03 a QA-08, CAL-03, LEG-01 y NEG-01 |
 | **Etapa 6 — Entrega al dueño** | Sin empezar, a propósito | ENT-01 a ENT-05 y SEG-03 |
@@ -569,7 +570,8 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   `NOT_VOIDABLE`). Pantalla: botón «Anular» en cada movimiento de Caja, con
   motivo obligatorio y comprobante de la reversa. **Fuera de esta tarea, a
   propósito:** una transferencia no se anula con una sola reversa (se rechaza
-  y se corrige con otra transferencia) y el día cerrado llegará con FIN-04.
+  y se corrige con otra transferencia). El día cerrado llegó con FIN-04: desde
+  la 00088, un cobro en efectivo de una caja ya cerrada no se anula.
   **Corrección del 31 de octubre (migración `00083`, aplicada y
   registrada como `20261031093000`):** la 00080 volvió a crear
   `finance_permission_enabled` copiando el `revoke all` de la 00056 **sin** el
@@ -599,11 +601,38 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   administrar cuentas de caja/banco, métodos y categorías desde la app, y
   registrar transferencias entre cuentas sin contarlas como ingreso o gasto.
   Cierre: reglas por moneda/FX, permisos, saldos antes/después y auditoría.
-- [ ] **FIN-04 · Media · Código — Apertura, cierre y arqueo de caja.** Hoy hay
-  reportes de cierre del día y tablas legadas `cash_sessions`/`cash_registers`,
-  pero no un flujo único de abrir, contar efectivo, cerrar, registrar
-  diferencias y conciliar por cuenta/responsable. Cierre: un solo modelo, sin
-  duplicar tablas, y bloqueo o aviso claro para movimientos de un día cerrado.
+- [x] **FIN-04 · Media · Código — Apertura, cierre y arqueo de caja.**
+  Cerrada el 31 de octubre en dos PR (#110 y #111) y dos migraciones.
+  **Antes:** `cash_sessions` existía y Caja mostraba «0 sesiones abiertas
+  informadas», pero nadie podía abrir ni cerrar una caja; la única política era
+  `ALL` para cualquier personal, así que un cajero podía insertar o borrar
+  sesiones sueltas sin arqueo, y el efectivo nunca se comprobaba. **Ahora:**
+  · `finance_cash_open` abre **una** caja (índice único: no puede haber dos),
+    con el efectivo inicial en córdobas y dólares y el nombre de quien abre.
+  · Lo esperado es **apertura + ingresos − egresos de efectivo desde la
+    apertura**. «Efectivo» es la cuenta de caja (`account_type =
+    'caja_fuerte'`), no el nombre del método: la misma regla de la 00081.
+  · `finance_cash_close` guarda lo contado, lo esperado y la diferencia; si no
+    cuadra, **exige el motivo por escrito** (`CASH_DIFFERENCE_REASON_REQUIRED`).
+    El arqueo cerrado no se edita y se lee con lo guardado, no con el historial
+    que cambie después.
+  · Sólo quien abrió —o un administrador— cierra (`CASH_NOT_YOURS`).
+    Reintentar el mismo pedido devuelve la misma caja, no abre otra.
+  · `cash_sessions` dejó de aceptar escrituras sueltas: sin política `ALL` y sin
+    permisos de tabla para `anon` ni `authenticated`; se escribe sólo por las
+    funciones, que dejan arqueo.
+  · **Día cerrado:** desde la 00088, un cobro en efectivo que cayó dentro de una
+    caja ya cerrada no se anula (`CASH_SESSION_CLOSED`), para ningún rol,
+    porque el arqueo es un hecho guardado. Un movimiento de banco o uno
+    posterior al cierre se sigue anulando igual.
+  · Pantalla: módulo **«Cierre y arqueo»** en Caja (tarjeta propia), con
+    apertura, conteo por moneda, diferencia en vivo («Cuadra exacto», «Falta
+    C$40»), motivo obligatorio y los últimos 20 cierres. El encabezado de Caja
+    dice «Caja cerrada · abrir» o «Caja abierta · ir al arqueo».
+  · Pruebas: `npm run test:caja:arqueo` (39 comprobaciones en PGlite, en CI),
+    `tests/cash-session.test.mjs` y `tests/cash-session-api.test.mjs`.
+  · **Queda para la aceptación (QA-09):** abrir con el usuario de caja, cobrar
+    en efectivo, ver subir lo esperado y cerrar con una diferencia real.
 - [x] **FIN-05 · Media · Código — Historial completo de Movimientos en Caja.**
   Cerrada el 31 de octubre. La pantalla usaba los últimos 30 movimientos y
   filtraba en el navegador: un cobro viejo existía y no había forma de
@@ -1039,6 +1068,13 @@ Esta sección es un resumen, no otra lista de tareas.
   automático. La prueba móvil por rol fue aprobada por el usuario.
 - Finanzas ya construidas: cobros, gastos, deudas/abonos NIO y USD, vuelto en
   abonos, comprobantes internos, reportes y exportaciones con filtros.
+- Cierre y arqueo de caja (FIN-04, PR #110 y #111, migraciones `00087` y
+  `00088`): abrir una sola caja por turno, contar por moneda y cerrar
+  comparando contra la apertura más los ingresos y egresos de efectivo. La
+  diferencia se guarda y, si no cuadra, exige motivo escrito. Sólo cierra quien
+  abrió o un administrador, el mismo pedido no duplica nada y la tabla ya no
+  acepta escrituras sueltas. Un cobro en efectivo de una caja cerrada no se
+  anula (`CASH_SESSION_CLOSED`).
 - Anulación de movimientos (FIN-01, PR #101, #102 y #103): el resultado ya no
   depende de que llegue el cuerpo de una respuesta. «Anular» en Caja envía un
   formulario del navegador y la ruta responde 303 a
