@@ -222,6 +222,21 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
     cuales solo Pesas y máquinas y Boxeo están activas; **Zumba y bailoterapia
     existe pero está apagada, sin horarios y sin plan**, y desde esta pantalla
     ya se puede prender y completar.
+  - **Estado de Zumba al 30 de octubre.** Todo el mecanismo está probado de
+    punta a punta en producción, dentro de una transacción revertida: prender
+    la disciplina, crear el plan `pln_zumba` (clase `cls_zumba`, 30 días, NIO
+    400 de prueba), guardar un horario de martes 18:00 con María Rodríguez
+    como entrenadora, generar 3 sesiones, cobrar el plan en Caja con
+    `finance_record_movement_plan` (crea el segmento «class cls_zumba» con
+    vencimiento a 30 días) y **reservar la clase como socia: la reserva quedó
+    `confirmed`**. Después del `rollback` todo quedó igual (5 planes, 0
+    vencimientos, 0 horarios de Zumba, 0 sesiones de Zumba). Conclusión: **no
+    falta código**; falta la decisión del negocio. Para publicar Zumba hay que
+    definir tres datos y cargarlos desde el panel: **(1)** el precio del plan
+    de Zumba y sus días de vigencia; **(2)** los días y horarios reales de las
+    clases; **(3)** si se prende la disciplina ahora o queda apagada hasta que
+    estén los horarios. Los tres están preguntados al dueño y **sin respuesta
+    todavía**; no se inventó ningún precio ni horario.
   - **Hecho el 29 de octubre (migración `00074`, aplicada en producción como
     `generar_sesiones_preview`):** generar sesiones para una fecha de inicio y
     1 a 8 semanas, mirando primero qué se crearía. `admin_preview_schedule()`
@@ -319,10 +334,16 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
     comprobó que la prueba falla con el error puesto a propósito). Verificado
     en local con el servidor de desarrollo: con el defecto la página responde
     500 y con el arreglo 200.
-    **Sigue faltando acá:** que el socio vea quién dicta cada clase en la web
-    pública (la vista `coaches_public` existe, pero la grilla pública todavía no
-    muestra el nombre) y completar la gestión de planes más allá de las cuatro
-    tarifas NIO ya editables.
+    **Aclarado el 30 de octubre:** dije que la grilla pública no mostraba el
+    entrenador y **era falso**. `src/components/schedule/schedule-board.tsx` ya
+    pinta «con {nombre}» cuando la clase tiene entrenador; lo que falta es el
+    **dato**, no la pantalla: las 79 sesiones productivas tienen `coach_id`
+    nulo. Lo que hay que hacer es del panel, en dos pasos: elegir el entrenador
+    en cada horario y apretar «Pasar a las clases ya creadas». Se sumó
+    `tests/public-schedule-coach.test.mjs` (2 casos) para que ese renglón no se
+    pierda: muestra el nombre cuando existe y no inventa nada cuando no.
+    **Sigue faltando acá:** completar la gestión de planes más allá de las
+    cuatro tarifas NIO ya editables.
   Todo el CRUD debe estar autorizado en pantalla, servidor y RLS/RPC, con
   bitácora, control de concurrencia e idempotencia, fechas en
   `America/Managua`, sin crear sesiones pasadas por error y sin borrar
