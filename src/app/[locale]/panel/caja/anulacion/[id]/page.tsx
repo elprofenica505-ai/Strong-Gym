@@ -5,14 +5,18 @@ import { ArrowLeft, CheckCircle2, ShieldAlert } from "lucide-react";
 import { FinanceUnavailable } from "@/components/admin/finance-unavailable";
 import { PrintReceipt } from "@/components/admin/print-receipt";
 import { canManageFinance, isFinanceRole } from "@/lib/auth/current-user";
-import { getCurrentUser } from "@/lib/data/queries";
+import { getCurrentUser, getVoidPlanImpact } from "@/lib/data/queries";
 import { formatMoney } from "@/lib/finance/format-money";
 import { FinanceReadError, readFinance } from "@/lib/finance/read-result";
 import {
   VOID_REASON_MAX,
   VOID_REASON_MIN,
+  accessLabel,
   findStoredVoidReceipt,
+  planImpactDone,
+  planImpactWarning,
   voidOutcome,
+  type VoidPlanImpact,
 } from "@/lib/finance/voids";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { isLocale } from "@/i18n/config";
@@ -26,6 +30,16 @@ export const metadata: Metadata = {
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function localDay(value: string): string {
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return value;
+  return new Intl.DateTimeFormat("es-NI", {
+    timeZone: "UTC",
+    day: "numeric",
+    month: "short",
+  }).format(new Date(Date.UTC(year, month - 1, day)));
+}
 
 function localDateTime(value: string): string {
   return new Intl.DateTimeFormat("es-NI", {
@@ -75,17 +89,20 @@ export default async function VoidResultPage({
   }
 
   const loaded = await readFinance(async () => {
-    const [plan, receipt] = await Promise.all([
+    const [plan, receipt, impact] = await Promise.all([
       db.rpc("finance_void_plan", { p_transaction: id }),
       findStoredVoidReceipt(db, id),
+      // Informativo: si falla, la página sigue contando la anulación.
+      getVoidPlanImpact(id).catch(() => [] as VoidPlanImpact[]),
     ]);
     if (plan.error) {
       const code = (plan.error.message ?? "").trim().toUpperCase();
       if (code.startsWith("AUTH")) throw new FinanceReadError("VOID", "AUTH");
-      if (code.startsWith("NOT_FOUND")) return { plan: null, receipt: null };
+      if (code.startsWith("NOT_FOUND"))
+        return { plan: null, receipt: null, impact: [] as VoidPlanImpact[] };
       throw new FinanceReadError("VOID", plan.error.code);
     }
-    return { plan: plan.data, receipt };
+    return { plan: plan.data, receipt, impact };
   });
 
   const backToCash = (
@@ -113,6 +130,11 @@ export default async function VoidResultPage({
   }
 
   const outcome = voidOutcome(loaded.data.plan, loaded.data.receipt);
+  // Dos frases distintas y ninguna inventada: si la vigencia quedó anulada
+  // (lo normal después de anular un cobro), se cuenta eso; si el cobro no
+  // activó ninguna, no se dice nada.
+  const planNote =
+    planImpactDone(loaded.data.impact) ?? planImpactWarning(loaded.data.impact);
 
   if (outcome.kind === "done") {
     const r = outcome.receipt;
@@ -162,6 +184,30 @@ export default async function VoidResultPage({
               </div>
             ))}
           </dl>
+          {planNote && (
+            <p className="flex items-start gap-2 rounded-2xl border border-amber-400/40 bg-card p-4 text-[0.8125rem] text-ink">
+              <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <span>{planNote}</span>
+            </p>
+          )}
+          {loaded.data.impact.some((row) => !row.voided) && (
+            <dl className="space-y-2 rounded-2xl border border-line bg-card p-4 text-[0.8125rem]">
+              {loaded.data.impact
+                .filter((row) => !row.voided)
+                .map((row) => (
+                  <div key={row.id} className="flex flex-wrap justify-between gap-2">
+                    <dt className="text-fog">
+                      {accessLabel(row.access)} · sigue vigente
+                    </dt>
+                    <dd className="text-right font-medium break-words text-ink">
+                      {row.planName}: {localDay(row.startedOn)} →{" "}
+                      {localDay(row.expiresOn)}
+                      {row.state === "expired" ? " (ya vencida)" : ""}
+                    </dd>
+                  </div>
+                ))}
+            </dl>
+          )}
           <div className="flex flex-wrap gap-2">
             <Link
               href={`/${locale}/panel/comprobantes/${r.reversalId}`}

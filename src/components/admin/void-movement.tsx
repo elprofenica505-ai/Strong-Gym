@@ -1,15 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ShieldAlert, Undo2, X } from "lucide-react";
+import { Info, ShieldAlert, Undo2, X } from "lucide-react";
 import { formatMoney } from "@/lib/finance/format-money";
 import type { Currency } from "@/lib/data/queries";
 import {
   VOID_REASON_MAX,
   VOID_REASON_MIN,
   parseVoidPlan,
+  parseVoidPlanImpact,
+  planImpactWarning,
   voidMessage,
   type VoidPlan,
+  type VoidPlanImpact,
 } from "@/lib/finance/voids";
 
 function newRequestId(): string {
@@ -102,6 +105,9 @@ function VoidDialog({
   onClose: () => void;
 }) {
   const [plan, setPlan] = useState<VoidPlan | null>(null);
+  // Qué vigencia activó este cobro: anularlo devuelve el dinero, no la da de
+  // baja. Hay que decirlo antes de confirmar.
+  const [planImpact, setPlanImpact] = useState<VoidPlanImpact[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [requestId] = useState(newRequestId);
@@ -126,6 +132,7 @@ function VoidDialog({
           return;
         }
         setPlan(parseVoidPlan(json));
+        setPlanImpact(parseVoidPlanImpact(json.planSegments));
       } catch {
         if (!cancelled)
           setLoadError(
@@ -151,6 +158,7 @@ function VoidDialog({
     trimmed.length >= VOID_REASON_MIN && trimmed.length <= VOID_REASON_MAX;
   // Solo se bloquea cuando la base ya dijo que no se puede anular.
   const blocked = !reasonOk || Boolean(plan && !plan.allowed);
+  const impactWarning = planImpactWarning(planImpact);
 
   return (
     <div
@@ -200,6 +208,13 @@ function VoidDialog({
           <p className="mt-3 flex items-start gap-2 rounded-2xl border border-alert/40 bg-night-3 p-3 text-[0.8125rem] text-alert">
             <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
             <span>{voidMessage(plan.code)}</span>
+          </p>
+        )}
+
+        {impactWarning && (!plan || plan.allowed) && (
+          <p className="mt-3 flex items-start gap-2 rounded-2xl border border-amber-400/40 bg-night-3 p-3 text-[0.8125rem] text-amber-200">
+            <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <span>{impactWarning}</span>
           </p>
         )}
 

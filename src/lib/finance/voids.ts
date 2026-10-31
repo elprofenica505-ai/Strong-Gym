@@ -240,3 +240,114 @@ export function parseVoidReceipt(value: unknown): VoidReceipt | null {
       : {}),
   };
 }
+
+/**
+ * Una vigencia que activó el cobro que se está por anular.
+ *
+ * Existe porque anular un cobro **da de baja** la membresía que pagó: quien
+ * anula tiene que verlo antes de confirmar y después leer qué quedó, en vez de
+ * descubrirlo por la persona que sigue entrando al gimnasio.
+ */
+export interface VoidPlanImpact {
+  id: string;
+  planId: string;
+  planName: string;
+  access: string;
+  startedOn: string;
+  expiresOn: string;
+  pricePaid: number | null;
+  currency: string;
+  voided: boolean;
+  state: "active" | "upcoming" | "expired" | "voided";
+}
+
+const planImpactRowSchema = z
+  .object({
+    id: z.string(),
+    planId: z.string(),
+    planName: z.string(),
+    access: z.string(),
+    startedOn: z.string(),
+    expiresOn: z.string(),
+    pricePaid: z.number().nullable().optional(),
+    currency: z.string(),
+    voided: z.boolean().optional().default(false),
+    state: z.enum(["active", "upcoming", "expired", "voided"]),
+  });
+
+/** Valida lo que devuelve la base; una fila rota se descarta, no se dibuja. */
+export function parseVoidPlanImpact(value: unknown): VoidPlanImpact[] {
+  if (!Array.isArray(value)) return [];
+  // Fila por fila: una fila rara se descarta sin vaciar el aviso completo.
+  return value.flatMap((item) => {
+    const parsed = planImpactRowSchema.safeParse(item);
+    if (!parsed.success) return [];
+    return [toImpact(parsed.data)];
+  });
+}
+
+function toImpact(row: z.infer<typeof planImpactRowSchema>): VoidPlanImpact {
+  return {
+    id: row.id,
+    planId: row.planId,
+    planName: row.planName,
+    access: row.access,
+    startedOn: row.startedOn,
+    expiresOn: row.expiresOn,
+    pricePaid: row.pricePaid ?? null,
+    currency: row.currency,
+    voided: row.voided || row.state === "voided",
+    state: row.state,
+  };
+}
+
+/** Nombre del acceso tal como lo ve la persona. */
+export function accessLabel(access: string): string {
+  if (access === "gym") return "Gimnasio";
+  if (access === "boxing") return "Boxeo";
+  if (access === "class") return "Clases";
+  return access;
+}
+
+/** Cada vigencia con su tramo: «Gimnasio: del 28 de octubre al 26 de noviembre». */
+function segmentsText(rows: VoidPlanImpact[]): string {
+  return rows
+    .map(
+      (row) =>
+        `${accessLabel(row.access)}: del ${formatPlanDay(row.startedOn)} al ${formatPlanDay(row.expiresOn)}`,
+    )
+    .join("; ");
+}
+
+/**
+ * Aviso previo: qué se da de baja si se confirma la anulación.
+ *
+ * La misma frase se usa en el diálogo y en la página de resultado, para que no
+ * haya dos versiones del mismo hecho. Se arma con lo que devuelve la base: si
+ * el cobro no activó ninguna vigencia, no se inventa una advertencia.
+ */
+export function planImpactWarning(impact: VoidPlanImpact[]): string | null {
+  const vivas = impact.filter((row) => !row.voided && row.state !== "expired");
+  if (!vivas.length) return null;
+  const una = vivas.length === 1;
+  return `Este cobro activó ${una ? "la vigencia de" : "las vigencias de"} ${segmentsText(vivas)}. Al anular, ${una ? "esa vigencia se da de baja" : "esas vigencias se dan de baja"} y los días que venían encadenados se adelantan: nadie pierde ni gana días.`;
+}
+
+/** Resultado: qué vigencias quedaron anuladas de verdad. */
+export function planImpactDone(impact: VoidPlanImpact[]): string | null {
+  const anuladas = impact.filter((row) => row.voided);
+  if (!anuladas.length) return null;
+  const una = anuladas.length === 1;
+  return `La vigencia que activó este cobro quedó anulada: ${segmentsText(anuladas)}. Los días encadenados se adelantaron, sin perder días.`;
+}
+
+function formatPlanDay(value: string): string {
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return value;
+  return new Intl.DateTimeFormat("es-NI", {
+    timeZone: "UTC",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(Date.UTC(year, month - 1, day)));
+}

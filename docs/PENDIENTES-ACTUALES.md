@@ -42,9 +42,9 @@ Según el caso, debe cumplir:
 - Producción: `main` con el cierre de la anulación (PR #103) y FIN-05 en
   revisión; CI verde en ambos.
 - Supabase: proyecto ACTIVE_HEALTHY. Las migraciones aplicadas y registradas
-  llegan a la **00084** (`movimientos_paginados`, registrada como
-  `20261031185633`). El siguiente número libre es **00085** (marca
-  `20261031185634`).
+  llegan a la **00085** (`anular_da_de_baja_la_vigencia`): da de baja la
+  vigencia del cobro anulado y alineó los datos que ya estaban anulados. El
+  siguiente número libre es **00086** (marca `20261031185635`).
 - Datos productivos al 31 de octubre, comprobados con consulta directa:
   **9 disciplinas** (activas: Pesas y máquinas, Boxeo y Zumba), **6 planes**
   activos, **89 sesiones** (88 programadas y 1 anulada), **2 reservas**,
@@ -67,12 +67,12 @@ Según el caso, debe cumplir:
 |---:|---|---|
 | 1 | **QA-08** (celular) | Cierra Zumba: grilla pública, cobro del plan y horarios del panel. Es lo último que se publicó. |
 | 2 | **QA-03, QA-04 y QA-05** (celular y cuentas reales) | Son aceptaciones de cosas ya desplegadas; sin ellas no se puede decir «terminado». |
-| 3 | **Plan de gestión de planes** | Único hueco de negocio abierto en Administración: hoy se editan las tarifas NIO y se crean planes; falta el resto. |
+| 3 | **Plan de gestión de planes** | Único hueco de negocio abierto en Administración: hoy se editan las tarifas NIO y se crean planes; falta el resto. La anulación ya da de baja la vigencia (FIN-09). |
 | 4 | **OP-06, FIN-03 a FIN-07, CAL-01/03, LEG-01 y NEG-01** | Reglas de negocio y entrega; no bloquean la operación diaria de hoy. |
 
 ## Resumen de avance al 31 de octubre de 2026
 
-**61 tareas listadas: 17 cerradas y 44 abiertas.** De las 44 abiertas, **7 son
+**62 tareas listadas: 18 cerradas y 44 abiertas.** De las 44 abiertas, **7 son
 aceptaciones** en celular o con cuenta real (QA-03 a QA-09), **5 son de
 entrega** (ENT-01 a ENT-05, aplazadas a propósito) y **8 son opcionales del
 futuro** (FUT-01 a FUT-08). Quedan **24 de producto o negocio** por resolver.
@@ -601,6 +601,40 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   `tests/finance-movements-page.test.mjs` (8),
   `tests/finance-movements-api.test.mjs` (5) y la prueba de la pantalla en
   `tests/finance-charts.test.mjs`. Suite completa **898/898**.
+- [x] **FIN-09 · Alta · Código — Anular un cobro da de baja la vigencia que
+  activó.** Cerrada el 31 de octubre (migración
+  `00085_anular_da_de_baja_la_vigencia`, aplicada y registrada en producción).
+  Antes, anular un cobro devolvía el dinero y **la membresía seguía corriendo**:
+  la persona que pidió la devolución conservaba los días pagados y nadie lo
+  veía en pantalla. Ahora el segmento de vigencia que nació de ese cobro queda
+  **anulado** —no se borra: `voided_at`, `voided_reason`, `voided_by`,
+  `void_id`— y los meses que venían encadenados detrás **se adelantan** los días
+  quitados, así nadie pierde ni gana días. Un hueco real (dejó vencer y volvió
+  después) se respeta: solo se encoge una cadena contigua. Todo movimiento de
+  fechas queda en la nueva tabla `plan_validity_log` con las fechas de antes y
+  de después, quién lo hizo, el motivo y la anulación que lo provocó, de modo
+  que se puede reponer. Se engancha por disparador en `finance_voids`, no por
+  cada pantalla: cualquier anulación —Caja o ruta interna— aplica la misma
+  regla, y anular una venta de producto o un gasto no cambia nada porque no
+  tiene segmentos. Las lecturas de vigencia (`plan_class_state`,
+  `plan_validity_summary`, `plan_register_segment` y la categoría automática)
+  ignoran los segmentos anulados, así que tampoco se encadenan renovaciones
+  sobre un mes devuelto. La pantalla de Caja avisa **antes** de confirmar qué
+  vigencia se da de baja y con qué fechas
+  (`finance_void_plan_impact`, misma puerta de personal con segundo factor), y
+  la página de resultado lo cuenta después con la frase ya consumada. Datos
+  productivos alineados en la misma migración: de los tres meses de C$560 de la
+  socia de prueba, dos tenían la anulación guardada y siguen mostrándose como
+  anulados; el mes que sí pagó quedó del 28 oct al 26 nov. Probado con
+  `scripts/test-plan-void-sql.mjs` (**24 casos** por rol en PGlite: rechazo sin
+  sesión de personal, marca sin borrado, adelanto encadenado, hueco respetado,
+  segunda pasada sin mover nada, ficha con un solo segmento vivo, renovación
+  encadenada a lo vivo y baja de un producto sin efecto),
+  `tests/void-plan-impact.test.mjs` (9 casos del aviso y del resultado) y
+  `tests/void-result-page.test.mjs` (8). Suite completa **909/909**.
+  Prueba en producción, con `rollback`: llamar a la anulación real como
+  administración dejó el segmento marcado como anulado, sin tocar los datos
+  guardados.
 - [ ] **FIN-06 · Media · Decisión y código — Importación de saldos e
   históricos.** El importador actual crea fichas de clientes desde CSV con
   mapeo, vista previa y avisos. No importa saldos, deudas, personal ni reservas,
@@ -672,10 +706,16 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   `tests/void-result-page.test.mjs` (6 casos, incluidos el error de lectura, el
   «no se sabe» sin afirmar nada y el id inválido), `tests/void-button.test.mjs` (formulario, marca de anulada
   y consulta previa caída) y `tests/finance-read.test.mjs` (`getRecentVoids`).
-  **Sigue abierto, y es de negocio:** anular el cobro no da de baja el plan
-  que ese cobro activó (membresías de C$560 del 28/10 y del 27/12 siguen
-  activas). Se decidirá aparte, porque puede haber devoluciones que no
-  cancelan la vigencia.
+  **Cerrado el 31 de octubre (migración 00085):** anular un cobro ahora **da
+  de baja la vigencia que ese cobro activó**. La fila no se borra: queda
+  marcada (`voided_at`, `voided_reason`, `voided_by`, `void_id`) y los meses
+  encadenados detrás se adelantan los días quitados, sin perder ni ganar días;
+  un hueco real (dejó vencer y volvió) no se toca. Todo movimiento de fechas
+  queda en `plan_validity_log` con antes/después, quién y por qué. Se engancha
+  por disparador en `finance_voids`, así vale para toda anulación. La pantalla
+  de Caja avisa **antes** de confirmar («al anular, esa vigencia se da de baja
+  y los días se adelantan») y la página de resultado cuenta qué quedó anulado.
+  Ver FIN-09 más abajo.
 
 ## 4. Personal, roles y sesiones
 
@@ -975,6 +1015,11 @@ Esta sección es un resumen, no otra lista de tareas.
   devuelto, o el motivo por el que no se pudo. Si no se puede leer el estado,
   el título no afirma que no se hizo. La lista de Caja marca los movimientos
   anulados con su motivo y deja de ofrecer «Anular» en ellos.
+- Baja de vigencia al anular (FIN-09, migración 00085): anular un cobro deja
+  el segmento marcado como anulado —nunca borrado—, adelanta los meses
+  encadenados sin perder ni ganar días, respeta los huecos reales y deja
+  bitácora con antes/después en `plan_validity_log`; la pantalla avisa antes de
+  confirmar y cuenta el resultado después.
 - Historial de Caja (FIN-05, migración 00084): buscar y paginar todo el
   historial desde el servidor, con el total real, sin comodines accidentales,
   con el interruptor de gastos aplicado en el servidor y sin convertir un
