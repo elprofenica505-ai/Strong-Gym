@@ -629,6 +629,30 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   y, si la anulación existe, muestra el comprobante real en vez del error.
   Probado con `tests/void-button.test.mjs` (respuesta perdida → aparece
   «Anulación registrada» con el stock devuelto).
+  **Cierre de raíz del 31 de octubre (tercera tanda):** los registros del
+  despliegue mostraron `POST 200` seguido de tres `GET 200` del mismo endpoint
+  y, aun así, la pantalla decía «no pudimos confirmar»: el resultado escrito
+  era correcto y lo que se perdía era **leer la respuesta** en el celular. Se
+  dejó de depender de ella. Ahora la anulación de Caja es un **formulario del
+  navegador** que termina en una **página armada en el servidor**
+  (`/[locale]/panel/caja/anulacion/[id]`): esa página lee `finance_void_plan`
+  y el comprobante guardado y muestra la verdad —«la anulación quedó
+  guardada» con cuenta, saldo, motivo, quién, cuándo y stock devuelto, o «no
+  quedó guardada» con el motivo de la base y un formulario para reintentar—.
+  Si el enlace de la consulta previa falla, la pantalla ya no bloquea el
+  botón: la regla vive en la base y la página explica el resultado. Además la
+  lista de Caja **marca los movimientos anulados** («Anulada · motivo») leyendo
+  `finance_voids_recent` y deja de ofrecer «Anular» en ellos; antes se veían
+  igual que antes de anular, y eso empujaba a reintentar. También se corrigió
+  un defecto real de validación: un comprobante ya guardado se rechazaba al
+  volver a validarlo porque el esquema exigía `id`. Cubierto por
+  `tests/void-result-page.test.mjs` (6 casos, incluidos el error de lectura, el
+  «no se sabe» sin afirmar nada y el id inválido), `tests/void-button.test.mjs` (formulario, marca de anulada
+  y consulta previa caída) y `tests/finance-read.test.mjs` (`getRecentVoids`).
+  **Sigue abierto, y es de negocio:** anular el cobro no da de baja el plan
+  que ese cobro activó (membresías de C$560 del 28/10 y del 27/12 siguen
+  activas). Se decidirá aparte, porque puede haber devoluciones que no
+  cancelan la vigencia.
 
 ## 4. Personal, roles y sesiones
 

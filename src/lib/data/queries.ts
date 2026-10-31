@@ -991,6 +991,48 @@ export async function getCashSummary(): Promise<CashSummary> {
  * La base devuelve todo activado para administración y, para caja, el valor
  * de cada interruptor. Un error nunca se interpreta como permiso concedido.
  */
+/** Una anulación ya registrada, para marcarla en la lista de Caja. */
+export interface VoidMark {
+  originalId: string;
+  reversalId: string;
+  reason: string;
+  actorName: string | null;
+  createdAt: string;
+}
+
+/**
+ * Anulaciones ya guardadas (FIN-01), leídas por la RPC de siempre.
+ *
+ * Sirve para que la lista de Caja marque lo anulado: sin esto, después de
+ * anular el movimiento se veía igual que antes y parecía que no había pasado
+ * nada. Un fallo de lectura no se convierte en «no hay anulaciones»: se corta
+ * la pantalla con el aviso de siempre.
+ */
+export async function getRecentVoids(limit = 200): Promise<VoidMark[]> {
+  if (DEMO_MODE) return [];
+  const supabase = await getSupabaseServerClient();
+  if (!supabase) throw new FinanceReadError("VOIDS", "UNAVAILABLE");
+  const { data, error } = await supabase
+    .rpc("finance_voids_recent", { p_limit: limit })
+    .abortSignal(AbortSignal.timeout(15000));
+  if (error) throw new FinanceReadError("VOIDS", error.code);
+  if (data === null || data === undefined) return [];
+  if (!Array.isArray(data)) throw new FinanceReadError("VOIDS", "INVALID");
+  return data.flatMap((row) => {
+    const item = row as Record<string, unknown>;
+    const originalId = typeof item.originalId === "string" ? item.originalId : null;
+    const reversalId = typeof item.reversalId === "string" ? item.reversalId : null;
+    if (!originalId || !reversalId) return [];
+    return [{
+      originalId,
+      reversalId,
+      reason: typeof item.reason === "string" ? item.reason : "",
+      actorName: typeof item.actorName === "string" ? item.actorName : null,
+      createdAt: typeof item.createdAt === "string" ? item.createdAt : "",
+    }];
+  });
+}
+
 export async function getCashierPermissions(): Promise<CashierPermissions> {
   if (DEMO_MODE) return CASHIER_PERMISSIONS_ALL;
   const supabase = await getSupabaseServerClient();

@@ -82,7 +82,7 @@ const summary = {
   openRegister: null,
 };
 
-function renderPanel({ permissions = ALL, recent = [movement()] } = {}) {
+function renderPanel({ permissions = ALL, recent = [movement()], voids = [] } = {}) {
   return render(
     React.createElement(CashPanel, {
       summary,
@@ -95,6 +95,7 @@ function renderPanel({ permissions = ALL, recent = [movement()] } = {}) {
       accounts: [],
       isDemo: false,
       permissions,
+      voids,
     }),
   );
 }
@@ -141,82 +142,125 @@ test("caja: un movimiento que no está completado no se anula desde la lista", (
   assert.equal(screen.queryAllByRole("button", { name: /Anular/ }).length, 0);
 });
 
-test("anular: si la respuesta se pierde, la pantalla confirma lo que sí se guardó", async () => {
-  // Caso real del 31 de octubre: la base anuló, el dinero y el stock se
-  // movieron, pero la respuesta no llegó al celular. La pantalla no puede
-  // quedarse en «no se pudo anular»: consulta la base y muestra el comprobante.
-  let posted = false;
-  let gets = 0;
-  const receipt = {
-    id: "c47ef1f9-7582-47b5-91f6-0b0594cd5e9a",
-    originalId: "66701e7b-b7cb-49ed-8ac0-9d2fd81beab1",
-    reversalId: "c47ef1f9-7582-47b5-91f6-0b0594cd5e9a",
-    amount: 560,
-    currency: "NIO",
-    concept: "Anulación: Gimnasio mensual",
-    originalConcept: "Gimnasio mensual",
-    reason: "El cliente se enfermó",
-    accountName: "Caja Fuerte Córdobas",
-    accountBefore: -95824,
-    accountAfter: -96384,
-    actorName: "Carlos Sequeira",
-    occurredAt: "2026-10-31T15:56:08.491891+00:00",
-    stockRestored: [
-      { productId: "f7622a6e-189d-4736-8adb-f24127819856", name: "Agua fuente pura", qty: 2 },
+test("caja: un movimiento ya anulado se marca y no se ofrece anular de nuevo", () => {
+  // El 31 de octubre la anulación se guardaba y la lista seguía igual: parecía
+  // que no había pasado nada y se reintentaba una y otra vez.
+  renderPanel({
+    recent: [movement()],
+    voids: [
+      {
+        originalId: "66701e7b-b7cb-49ed-8ac0-9d2fd81beab1",
+        reversalId: "c47ef1f9-7582-47b5-91f6-0b0594cd5e9a",
+        reason: "El cliente se enfermó",
+        actorName: "Carlos Sequeira",
+        createdAt: "2026-10-31T15:56:08.478064+00:00",
+      },
     ],
-  };
-  const reply = (body, status = 200) => ({
-    ok: status < 400,
-    status,
-    json: async () => body,
   });
-  globalThis.fetch = async (url, init) => {
-    if (init?.method === "POST") {
-      posted = true;
-      return reply(
-        {
-          error: "UNCONFIRMED",
-          stage: "rpc",
-          diagnostic: "ANULACION_RPC_SIN_CODIGO",
-          message:
-            "No pudimos confirmar si la anulación quedó guardada. Reintentá desde acá: el pedido es el mismo, así que no se anula dos veces.",
-        },
-        502,
-      );
-    }
-    gets += 1;
-    // Antes de anular el plan dice que sí; después, que ya está anulada.
-    return reply(
-      posted
-        ? {
-            allowed: false,
-            code: "ALREADY_VOIDED",
-            alreadyVoided: true,
-            concept: "Gimnasio mensual",
-            receipt,
-          }
-        : {
-            allowed: true,
-            code: "ALLOWED",
-            concept: "Gimnasio mensual",
-            amount: 560,
-            currency: "NIO",
-            occurredAt: "2026-10-28T23:52:00-06:00",
-          },
-    );
-  };
+  assert.ok(screen.getAllByText(/Anulada · El cliente se enfermó/).length >= 1);
+  assert.equal(screen.queryAllByRole("button", { name: /Anular/ }).length, 0);
+  // El movimiento sigue visible: no se esconde nada.
+  assert.ok(screen.getAllByText(/Gimnasio mensual/).length >= 1);
+});
+
+test("anular: la confirmación es un formulario del navegador, no una respuesta que se pueda perder", async () => {
+  globalThis.fetch = async () =>
+    ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        allowed: true,
+        code: "ALLOWED",
+        concept: "Gimnasio mensual",
+        type: "income",
+        amount: 560,
+        currency: "NIO",
+        occurredAt: "2026-10-28T23:52:00-06:00",
+        transactionId: "66701e7b-b7cb-49ed-8ac0-9d2fd81beab1",
+        isReversal: false,
+        alreadyVoided: false,
+      }),
+    });
 
   try {
     renderPanel();
     fireEvent.click(screen.getAllByRole("button", { name: /Anular/ })[0]);
     const textarea = await screen.findByLabelText("Motivo de la anulación");
+
+    const form = textarea.closest("form");
+    assert.ok(form, "el motivo tiene que ir dentro de un formulario");
+    assert.equal(form.getAttribute("method"), "post");
+    assert.equal(form.getAttribute("action"), "/api/admin/finance/void");
+    // Los campos que la base necesita viajan en el formulario.
+    const hidden = (name) => form.querySelector(`input[name="${name}"]`);
+    assert.equal(hidden("transactionId")?.value, "66701e7b-b7cb-49ed-8ac0-9d2fd81beab1");
+    assert.match(hidden("requestId")?.value ?? "", /^[0-9a-f-]{36}$/);
+    assert.ok(["es", "en"].includes(hidden("locale")?.value ?? ""));
+    assert.equal(textarea.getAttribute("name"), "reason");
+
+    // Sin motivo suficiente no se puede enviar; con motivo, sí.
+    const submit = screen.getByRole("button", { name: /Anular y generar reversa/ });
+    assert.equal(submit.getAttribute("type"), "submit");
+    assert.equal(submit.disabled, true);
     fireEvent.change(textarea, { target: { value: "El cliente se enfermó" } });
-    fireEvent.click(screen.getByRole("button", { name: /Anular y generar reversa/ }));
-    await waitFor(() => assert.ok(screen.getByText("Anulación registrada")));
-    assert.equal(posted, true);
-    assert.ok(gets >= 2, "tiene que volver a preguntar antes de avisar");
-    // Y muestra lo que de verdad pasó, incluido el stock devuelto.
-    assert.ok(screen.getByText(/Agua fuente pura ×2/));
+    await waitFor(() => assert.equal(submit.disabled, false));
+  } finally {
+    delete globalThis.fetch;
+  }
+});
+
+test("anular: si la consulta previa no llega, igual se puede intentar y la base decide", async () => {
+  // Antes, un fallo de lectura bloqueaba el botón y dejaba a la persona sin
+  // salida. La regla vive en la base: la pantalla no puede ser el candado.
+  globalThis.fetch = async () => {
+    throw new Error("sin red");
+  };
+  try {
+    renderPanel();
+    fireEvent.click(screen.getAllByRole("button", { name: /Anular/ })[0]);
+    const textarea = await screen.findByLabelText("Motivo de la anulación");
+    assert.ok(screen.getByText(/No pudimos leer el estado de este movimiento/));
+    fireEvent.change(textarea, { target: { value: "El cliente se enfermó" } });
+    await waitFor(() =>
+      assert.equal(
+        screen.getByRole("button", { name: /Anular y generar reversa/ }).disabled,
+        false,
+      ),
+    );
+  } finally {
+    delete globalThis.fetch;
+  }
+});
+
+test("anular: si la base ya dijo que no, la pantalla lo explica y no deja enviar", async () => {
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      allowed: false,
+      code: "NOT_TODAY",
+      concept: "Gimnasio mensual",
+      type: "income",
+      amount: 560,
+      currency: "NIO",
+      occurredAt: "2026-10-28T23:52:00-06:00",
+      transactionId: "66701e7b-b7cb-49ed-8ac0-9d2fd81beab1",
+      isReversal: false,
+      alreadyVoided: false,
+    }),
+  });
+  try {
+    renderPanel();
+    fireEvent.click(screen.getAllByRole("button", { name: /Anular/ })[0]);
+    const textarea = await screen.findByLabelText("Motivo de la anulación");
+    assert.ok(screen.getByText(/Desde caja solo se anulan movimientos del día de hoy/));
+    fireEvent.change(textarea, { target: { value: "El cliente se enfermó" } });
+    await waitFor(() =>
+      assert.equal(
+        screen.getByRole("button", { name: /Anular y generar reversa/ }).disabled,
+        true,
+      ),
+    );
   } finally {
     delete globalThis.fetch;
   }

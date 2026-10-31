@@ -16,6 +16,7 @@ import {
   getPaymentMethods,
   getPaymentMethodsBreakdown,
   getRecentTransactions,
+  getRecentVoids,
 } from "@/lib/data/queries";
 import { DEMO_MODE } from "@/lib/supabase/env";
 
@@ -67,6 +68,9 @@ export default async function CajaPage({
       permissions.charts ? getPaymentMethodsBreakdown() : Promise.resolve([]),
       getPaymentMethods(),
       getAccounts(),
+      // Marcar lo ya anulado: sin esto, después de anular el movimiento se
+      // veía igual y parecía que no había pasado nada.
+      getRecentVoids(),
     ]),
   );
   if (!result.ok)
@@ -77,8 +81,16 @@ export default async function CajaPage({
         message={result.message}
       />
     );
-  const [summary, recent, daily, monthly, methods, paymentMethods, accounts] =
-    result.data;
+  const [
+    summary,
+    recent,
+    daily,
+    monthly,
+    methods,
+    paymentMethods,
+    accounts,
+    voids,
+  ] = result.data;
   const visibleRecent = permissions.expenses
     ? recent
     : recent.filter((transaction) => transaction.direction !== "expense");
@@ -110,6 +122,7 @@ export default async function CajaPage({
       accounts={visibleAccounts}
       isDemo={isDemo}
       permissions={permissions}
+      voids={voids}
     />
   );
 }

@@ -1,34 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { ShieldAlert, Undo2, X } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/finance/format-money";
 import type { Currency } from "@/lib/data/queries";
 import {
   VOID_REASON_MAX,
   VOID_REASON_MIN,
-  parseVoidReceipt,
+  parseVoidPlan,
   voidMessage,
-  type VoidReceipt,
+  type VoidPlan,
 } from "@/lib/finance/voids";
-
-/** Lo que devuelve `finance_void_plan` para un movimiento concreto. */
-interface VoidPlan {
-  transactionId: string;
-  concept: string;
-  type: string;
-  amount: number;
-  currency: string;
-  occurredAt: string;
-  accountId: string;
-  isReversal: boolean;
-  alreadyVoided: boolean;
-  voidedAt: string | null;
-  allowed: boolean;
-  code: string;
-}
 
 function newRequestId(): string {
   try {
@@ -36,6 +18,12 @@ function newRequestId(): string {
   } catch {
     return "00000000-0000-4000-8000-000000000000";
   }
+}
+
+function currentLocale(): string {
+  if (typeof window === "undefined") return "es";
+  const first = window.location.pathname.split("/").filter(Boolean)[0];
+  return first === "en" || first === "es" ? first : "es";
 }
 
 function localDateTime(value: string): string {
@@ -54,8 +42,13 @@ function localDateTime(value: string): string {
  *
  * El botón solo se muestra cuando el servidor dice que el rol puede anular.
  * La decisión final (rol, MFA, interruptor, dueño y día) la vuelve a tomar la
- * base en `finance_void_movement`; esta pantalla solo pide el motivo y muestra
- * el comprobante de la reversa.
+ * base en `finance_void_movement`.
+ *
+ * La confirmación es un **formulario del navegador**, no una llamada que
+ * espera un JSON: al enviarlo, el servidor anula y redirige a la página de
+ * resultado, que lee la base. Así el resultado no se pierde cuando la
+ * respuesta de datos no llega completa en el celular — que es exactamente lo
+ * que pasaba antes: la anulación se guardaba y la pantalla mostraba un error.
  */
 export function VoidMovementButton({
   transactionId,
@@ -108,18 +101,11 @@ function VoidDialog({
   currency: Currency;
   onClose: () => void;
 }) {
-  const router = useRouter();
   const [plan, setPlan] = useState<VoidPlan | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reason, setReason] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [receipt, setReceipt] = useState<VoidReceipt | null>(null);
-  // El pedido no se cambia al reintentar: la base reconoce el mismo `requestId`
-  // y devuelve el comprobante guardado en vez de anular dos veces.
   const [requestId] = useState(newRequestId);
-  const [unconfirmed, setUnconfirmed] = useState(false);
-  const [diagnostic, setDiagnostic] = useState<string | null>(null);
+  const [locale] = useState(currentLocale);
 
   useEffect(() => {
     let cancelled = false;
@@ -130,16 +116,21 @@ function VoidDialog({
           { cache: "no-store" },
         );
         const json = (await res.json().catch(() => null)) as
-          | (VoidPlan & { error?: string; message?: string })
+          | (Record<string, unknown> & { error?: string; message?: string })
           | null;
         if (cancelled) return;
         if (!res.ok || !json || "error" in json) {
+          // Sin la consulta previa no se bloquea nada: la base decide y la
+          // página de resultado explica el motivo si no se puede anular.
           setLoadError(json?.message ?? voidMessage(json?.error ?? "UNKNOWN"));
           return;
         }
-        setPlan(json);
+        setPlan(parseVoidPlan(json));
       } catch {
-        if (!cancelled) setLoadError("No hay conexión. Cerrá y volvé a intentar.");
+        if (!cancelled)
+          setLoadError(
+            "No pudimos leer el estado de este movimiento. Podés intentar la anulación igual: la base decide y te cuenta el resultado en la pantalla siguiente.",
+          );
       }
     })();
     return () => {
@@ -156,97 +147,10 @@ function VoidDialog({
   }, [onClose]);
 
   const trimmed = reason.trim();
-  const reasonOk = trimmed.length >= VOID_REASON_MIN && trimmed.length <= VOID_REASON_MAX;
-  const blocked = busy || !plan?.allowed || !reasonOk;
-
-  /**
-   * Antes de avisar de un problema, se pregunta a la base si la anulación ya
-   * está hecha. Una respuesta perdida en el celular no significa que el
-   * dinero y el stock no se hayan movido.
-   */
-  async function verifyVoided(): Promise<boolean> {
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const res = await fetch(
-          `/api/admin/finance/void?transaction=${encodeURIComponent(transactionId)}`,
-          { cache: "no-store" },
-        );
-        const json = (await res.json().catch(() => null)) as
-          | (VoidPlan & { receipt?: unknown })
-          | null;
-        if (json?.alreadyVoided) {
-          const stored = parseVoidReceipt(json.receipt);
-          if (stored) {
-            setReceipt(stored);
-            setError(null);
-            setUnconfirmed(false);
-            setDiagnostic(null);
-            router.refresh();
-            return true;
-          }
-        }
-        // La base respondió y el movimiento sigue sin anular: no hay nada
-        // guardado que mostrar, no tiene sentido seguir esperando.
-        if (json && json.allowed) return false;
-      } catch {
-        // Sin respuesta: se reintenta abajo.
-      }
-      if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 800));
-    }
-    return false;
-  }
-
-  async function confirm() {
-    if (blocked) return;
-    setBusy(true);
-    setError(null);
-    setUnconfirmed(false);
-    setDiagnostic(null);
-    try {
-      const res = await fetch("/api/admin/finance/void", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transactionId, reason: trimmed, requestId }),
-      });
-      const json = (await res.json().catch(() => null)) as
-        | {
-            ok?: boolean;
-            receipt?: unknown;
-            error?: string;
-            message?: string;
-            diagnostic?: string;
-          }
-        | null;
-      if (!res.ok || !json?.ok) {
-        if (await verifyVoided()) return;
-        const code = json?.error;
-        // Sin código claro, o con un código que no explica el motivo, no se
-        // sabe si quedó guardada: se dice así y se ofrece reintentar.
-        const unknown = !code || code === "UNKNOWN" || code === "UNCONFIRMED";
-        setUnconfirmed(unknown);
-        setDiagnostic(json?.diagnostic ?? null);
-        setError(json?.message ?? voidMessage(code ?? "UNCONFIRMED"));
-        return;
-      }
-      const parsed = parseVoidReceipt(json.receipt);
-      if (!parsed) {
-        if (await verifyVoided()) return;
-        setUnconfirmed(true);
-        setError(voidMessage("UNCONFIRMED"));
-        return;
-      }
-      setReceipt(parsed);
-      router.refresh();
-    } catch {
-      if (await verifyVoided()) return;
-      setUnconfirmed(true);
-      setError(
-        "No hay conexión y no sabemos si la anulación quedó guardada. Reintentá desde acá: el pedido es el mismo, así que no se anula dos veces.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
+  const reasonOk =
+    trimmed.length >= VOID_REASON_MIN && trimmed.length <= VOID_REASON_MAX;
+  // Solo se bloquea cuando la base ya dijo que no se puede anular.
+  const blocked = !reasonOk || Boolean(plan && !plan.allowed);
 
   return (
     <div
@@ -262,7 +166,7 @@ function VoidDialog({
               Caja · Anulación
             </p>
             <h2 id="void-title" className="display-xl mt-1 text-[1.375rem]">
-              {receipt ? "Anulación registrada" : "Anular este movimiento"}
+              Anular este movimiento
             </h2>
           </div>
           <button
@@ -275,161 +179,89 @@ function VoidDialog({
           </button>
         </div>
 
-        {receipt ? (
-          <div className="mt-4 space-y-3">
-            <p className="rounded-2xl border border-brand/40 bg-brand-soft p-3 text-[0.8125rem] text-brand-300">
-              No se borró nada: se registró una reversa por el mismo importe en la
-              misma cuenta. El movimiento original queda en el historial.
-            </p>
-            <dl className="space-y-1.5 rounded-2xl border border-line bg-card p-4 text-[0.8125rem]">
-              <Row label="Movimiento original" value={receipt.originalConcept} />
-              <Row
-                label="Reversa"
-                value={`${formatMoney(receipt.amount, receipt.currency as Currency)} · ${receipt.reversalId.slice(0, 8)}`}
-              />
-              <Row label="Cuenta" value={receipt.accountName} />
-              <Row
-                label="Saldo de la cuenta"
-                value={`${formatMoney(receipt.accountBefore, receipt.currency as Currency)} → ${formatMoney(receipt.accountAfter, receipt.currency as Currency)}`}
-              />
-              {receipt.stockRestored && receipt.stockRestored.length > 0 && (
-                <Row
-                  label="Stock devuelto"
-                  value={receipt.stockRestored
-                    .map((item) => `${item.name} ×${item.qty}`)
-                    .join(" · ")}
-                />
-              )}
-              <Row label="Motivo" value={receipt.reason} />
-              <Row label="Quién" value={receipt.actorName} />
-              <Row label="Cuándo" value={localDateTime(receipt.occurredAt)} />
-            </dl>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-onbrand"
-              >
-                Volver a Caja
-              </button>
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink"
-              >
-                Imprimir comprobante
-              </button>
+        <div className="mt-4 rounded-2xl border border-line bg-card p-4">
+          <p className="font-medium text-ink">{plan?.concept ?? concept}</p>
+          <p className="mt-1 font-mono text-[0.9375rem] font-semibold tabular-nums text-mist">
+            {plan?.type === "expense" ? "−" : "+"}
+            {formatMoney(plan?.amount ?? amount, (plan?.currency ?? currency) as Currency)}
+          </p>
+          {plan?.occurredAt && (
+            <p className="mt-1 text-[0.75rem] text-fog">{localDateTime(plan.occurredAt)}</p>
+          )}
+        </div>
+
+        {loadError && (
+          <p className="mt-3 rounded-2xl border border-alert/40 bg-night-3 p-3 text-[0.8125rem] text-alert">
+            {loadError}
+          </p>
+        )}
+
+        {plan && !plan.allowed && (
+          <p className="mt-3 flex items-start gap-2 rounded-2xl border border-alert/40 bg-night-3 p-3 text-[0.8125rem] text-alert">
+            <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <span>{voidMessage(plan.code)}</span>
+          </p>
+        )}
+
+        <form
+          method="post"
+          action="/api/admin/finance/void"
+          className="mt-4 space-y-3"
+        >
+          <input type="hidden" name="transactionId" value={transactionId} />
+          <input type="hidden" name="requestId" value={requestId} />
+          <input type="hidden" name="locale" value={locale} />
+          <div>
+            <label htmlFor="void-reason" className="text-sm font-semibold text-ink">
+              Motivo de la anulación
+            </label>
+            <textarea
+              id="void-reason"
+              name="reason"
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              rows={3}
+              maxLength={VOID_REASON_MAX}
+              minLength={VOID_REASON_MIN}
+              required
+              placeholder="Ejemplo: el cobro se cargó a la cuenta equivocada"
+              className="mt-1.5 w-full rounded-2xl border border-line bg-card p-3 text-[0.875rem] text-ink outline-none focus:border-brand"
+            />
+            <div className="mt-1 flex items-center justify-between text-[0.6875rem] text-fog">
+              <span>
+                Mínimo {VOID_REASON_MIN} caracteres; queda guardado con tu
+                nombre y la fecha.
+              </span>
+              <span>
+                {trimmed.length}/{VOID_REASON_MAX}
+              </span>
             </div>
           </div>
-        ) : (
-          <>
-            <div className="mt-4 rounded-2xl border border-line bg-card p-4">
-              <p className="font-medium text-ink">{plan?.concept ?? concept}</p>
-              <p className="mt-1 font-mono text-[0.9375rem] font-semibold tabular-nums text-mist">
-                {plan?.type === "expense" ? "−" : "+"}
-                {formatMoney(plan?.amount ?? amount, (plan?.currency ?? currency) as Currency)}
-              </p>
-              {plan?.occurredAt && (
-                <p className="mt-1 text-[0.75rem] text-fog">{localDateTime(plan.occurredAt)}</p>
-              )}
-            </div>
 
-            {loadError && (
-              <p className="mt-3 rounded-2xl border border-alert/40 bg-night-3 p-3 text-[0.8125rem] text-alert">
-                {loadError}
-              </p>
-            )}
+          <p className="rounded-2xl border border-line bg-card p-3 text-[0.75rem] text-fog">
+            Al confirmar, la base registra la reversa y te muestra el resultado
+            en su propia pantalla. Nada se borra: el movimiento original queda
+            en el historial.
+          </p>
 
-            {plan && !plan.allowed && (
-              <p className="mt-3 flex items-start gap-2 rounded-2xl border border-alert/40 bg-night-3 p-3 text-[0.8125rem] text-alert">
-                <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                <span>{voidMessage(plan.code)}</span>
-              </p>
-            )}
-
-            {plan?.allowed && (
-              <div className="mt-4">
-                <label
-                  htmlFor="void-reason"
-                  className="text-sm font-semibold text-ink"
-                >
-                  Motivo de la anulación
-                </label>
-                <textarea
-                  id="void-reason"
-                  value={reason}
-                  onChange={(event) => setReason(event.target.value)}
-                  rows={3}
-                  maxLength={VOID_REASON_MAX}
-                  placeholder="Ejemplo: el cobro se cargó a la cuenta equivocada"
-                  className="mt-1.5 w-full rounded-2xl border border-line bg-card p-3 text-[0.875rem] text-ink outline-none focus:border-brand"
-                />
-                <div className="mt-1 flex items-center justify-between text-[0.6875rem] text-fog">
-                  <span>
-                    Mínimo {VOID_REASON_MIN} caracteres; queda guardado con tu
-                    nombre y la fecha.
-                  </span>
-                  <span>{trimmed.length}/{VOID_REASON_MAX}</span>
-                </div>
-              </div>
-            )}
-
-            {error && (
-              <div className="mt-3 rounded-2xl border border-alert/40 bg-night-3 p-3 text-[0.8125rem] text-alert">
-                <p>{error}</p>
-                {diagnostic && (
-                  <p className="mt-2 font-mono text-[0.6875rem] text-fog">
-                    Código: {diagnostic}
-                  </p>
-                )}
-                {unconfirmed && (
-                  <p className="mt-2 text-mist">
-                    Antes de reintentar podés mirar Caja: si la reversa ya está
-                    en el historial, la anulación se hizo y no hace falta
-                    repetirla.
-                  </p>
-                )}
-              </div>
-            )}
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={confirm}
-                disabled={blocked}
-                className={cn(
-                  "rounded-full px-4 py-2 text-sm font-semibold",
-                  blocked
-                    ? "cursor-not-allowed bg-night-3 text-fog"
-                    : "bg-alert text-white",
-                )}
-              >
-                {busy
-                  ? "Anulando…"
-                  : unconfirmed
-                    ? "Reintentar la anulación"
-                    : "Anular y generar reversa"}
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink"
-              >
-                Cancelar
-              </button>
-            </div>
-          </>
-        )}
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="submit"
+              disabled={blocked}
+              className="rounded-full bg-alert px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-night-3 disabled:text-fog"
+            >
+              Anular y generar reversa
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
       </div>
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-wrap justify-between gap-2">
-      <dt className="text-fog">{label}</dt>
-      <dd className="text-right font-medium break-words text-ink">{value}</dd>
     </div>
   );
 }

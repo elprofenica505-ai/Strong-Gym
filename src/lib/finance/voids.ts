@@ -45,7 +45,10 @@ export interface VoidReceipt {
 }
 
 const receiptSchema = z.object({
-  id: z.string(),
+  // El `id` del comprobante es el de la transacción y no se muestra; además,
+  // al releer una fila guardada ya viene validado sin él. Si fuera
+  // obligatorio, un comprobante válido se rechazaría en la segunda vuelta.
+  id: z.string().optional(),
   originalId: z.string(),
   reversalId: z.string(),
   amount: z.number(),
@@ -109,6 +112,84 @@ export function voidDiagnostic(stage: string, databaseCode?: string): string {
 
 export function voidMessage(code: string | undefined): string {
   return (code && VOID_MESSAGES[code]) || VOID_MESSAGES.UNKNOWN;
+}
+
+/** Lo que devuelve `finance_void_plan` para un movimiento concreto. */
+export const voidPlanSchema = z.object({
+  transactionId: z.string(),
+  concept: z.string(),
+  type: z.string(),
+  amount: z.number(),
+  currency: z.string(),
+  occurredAt: z.string(),
+  accountId: z.string().nullable().optional(),
+  isReversal: z.boolean(),
+  alreadyVoided: z.boolean(),
+  voidedAt: z.string().nullable().optional(),
+  allowed: z.boolean(),
+  code: z.string(),
+});
+
+export type VoidPlan = z.infer<typeof voidPlanSchema>;
+
+export function parseVoidPlan(value: unknown): VoidPlan | null {
+  const parsed = voidPlanSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
+
+/**
+ * Dónde se cuenta el resultado de una anulación.
+ *
+ * Es una página, no una respuesta de datos: la arma el servidor leyendo la
+ * base, así que el resultado no se pierde si el cuerpo de una respuesta no
+ * llega completo en el celular. Ver `panel/caja/anulacion/[id]`.
+ */
+export function voidResultPath(locale: string, transactionId: string): string {
+  const safeLocale = /^[a-z]{2}$/.test(locale) ? locale : "es";
+  return `/${safeLocale}/panel/caja/anulacion/${transactionId}`;
+}
+
+/**
+ * Qué mostrar después de pedir una anulación, sin depender de que la respuesta
+ * haya llegado: la verdad es lo que quedó guardado en la base.
+ */
+export type VoidOutcome =
+  | { kind: "done"; receipt: VoidReceipt }
+  | { kind: "not_done"; code: string; message: string; canRetry: boolean }
+  | { kind: "unknown"; message: string };
+
+export function voidOutcome(plan: unknown, receipt: unknown): VoidOutcome {
+  const stored = parseVoidReceipt(receipt);
+  if (stored) return { kind: "done", receipt: stored };
+
+  const parsedPlan = parseVoidPlan(plan);
+  if (!parsedPlan) {
+    // No se pudo leer ni el estado: se dice la verdad, sin afirmar que no pasó
+    // nada. Lo que sí es cierto: anular dos veces está bloqueado por la base.
+    return {
+      kind: "unknown",
+      message:
+        "No pudimos leer el estado de esta anulación ahora mismo. Volvé a entrar a esta pantalla en unos segundos: si la reversa se guardó, aparece acá con su comprobante y no hace falta repetirla.",
+    };
+  }
+
+  if (parsedPlan.allowed) {
+    return {
+      kind: "not_done",
+      code: parsedPlan.code,
+      message:
+        "Esta anulación no quedó guardada: el movimiento original sigue tal como estaba. Podés intentarla otra vez desde acá.",
+      canRetry: true,
+    };
+  }
+
+  // La base ya decidió que no se puede anular. El motivo viene del servidor.
+  return {
+    kind: "not_done",
+    code: parsedPlan.code,
+    message: voidMessage(parsedPlan.code),
+    canRetry: false,
+  };
 }
 
 /**

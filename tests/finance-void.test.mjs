@@ -8,6 +8,9 @@ import {
   parseVoidReceipt,
   voidDiagnostic,
   voidMessage,
+  voidOutcome,
+  voidResultPath,
+  parseVoidPlan,
   voidRequestSchema,
 } from "../src/lib/finance/voids.ts";
 import {
@@ -82,6 +85,59 @@ test("anular: el comprobante se valida antes de mostrarse", () => {
   assert.equal(parseVoidReceipt(null), null);
 });
 
+const planBase = {
+  transactionId: valid.transactionId,
+  concept: "Gimnasio mensual",
+  type: "income",
+  amount: 560,
+  currency: "NIO",
+  occurredAt: "2026-10-28T23:52:00-06:00",
+  accountId: "caja_fuerte_nio",
+  isReversal: false,
+  alreadyVoided: false,
+  voidedAt: null,
+  allowed: true,
+  code: "ALLOWED",
+};
+
+test("resultado de la anulación: manda lo que quedó guardado, no lo que trajo la respuesta", () => {
+  // El 31 de octubre la base anuló cuatro veces y la pantalla mostró un error
+  // las cuatro veces. La verdad la tiene la base: si hay comprobante, se anuló.
+  const done = voidOutcome(planBase, storedReceipt);
+  assert.equal(done.kind, "done");
+  assert.equal(done.kind === "done" && done.receipt.reversalId, storedReceipt.reversalId);
+
+  // Si el plan sigue diciendo «se puede anular», no se guardó: se ofrece.
+  const pending = voidOutcome(planBase, null);
+  assert.equal(pending.kind, "not_done");
+  assert.equal(pending.kind === "not_done" && pending.canRetry, true);
+  assert.match(pending.kind === "not_done" ? pending.message : "", /sigue tal como estaba/);
+
+  // Si la base ya dijo que no, se usa su motivo y no se ofrece reintentar.
+  const off = voidOutcome({ ...planBase, allowed: false, code: "NOT_TODAY", alreadyVoided: false }, null);
+  assert.equal(off.kind, "not_done");
+  assert.equal(off.kind === "not_done" && off.canRetry, false);
+  assert.equal(off.kind === "not_done" ? off.code : "", "NOT_TODAY");
+  assert.match(off.kind === "not_done" ? off.message : "", /del día de hoy/);
+
+  // Sin poder leer nada, no se afirma ni una cosa ni la otra.
+  const unknown = voidOutcome(null, null);
+  assert.equal(unknown.kind, "unknown");
+  assert.doesNotMatch(unknown.kind === "unknown" ? unknown.message : "", /no se modificó nada/i);
+});
+
+test("resultado de la anulación: la página no deja de existir por un idioma raro", () => {
+  assert.equal(voidResultPath("es", valid.transactionId), `/es/panel/caja/anulacion/${valid.transactionId}`);
+  assert.equal(voidResultPath("en", valid.transactionId), `/en/panel/caja/anulacion/${valid.transactionId}`);
+  assert.ok(voidResultPath("../x", valid.transactionId).startsWith("/es/"));
+});
+
+test("la consulta previa se valida antes de usarla", () => {
+  assert.equal(parseVoidPlan(planBase)?.code, "ALLOWED");
+  assert.equal(parseVoidPlan({ ...planBase, allowed: "sí" }), null);
+  assert.equal(parseVoidPlan(null), null);
+});
+
 test("un resultado sin confirmar nunca dice que no se modificó nada", () => {
   // La anulación puede haberse guardado y la respuesta perderse en el camino.
   // El texto viejo afirmaba «no se modificó nada» y mentía.
@@ -91,6 +147,19 @@ test("un resultado sin confirmar nunca dice que no se modificó nada", () => {
   assert.match(VOID_MESSAGES.UNCONFIRMED, /no se anula dos veces/);
   assert.equal(voidMessage("UNCONFIRMED"), VOID_MESSAGES.UNCONFIRMED);
   assert.equal(voidMessage("CODIGO_QUE_NO_EXISTE"), VOID_MESSAGES.UNKNOWN);
+});
+
+test("un comprobante guardado se puede volver a validar sin perder el resultado", () => {
+  // Regresión real: al releer la anulación desde la bitácora, el comprobante ya
+  // venía validado y sin `id`; exigirlo hacía que la pantalla dijera «no se
+  // hizo» aunque la reversa estaba guardada.
+  const once = parseVoidReceipt(storedReceipt);
+  assert.ok(once);
+  const twice = parseVoidReceipt(once);
+  assert.deepEqual(twice, once);
+  assert.deepEqual(twice?.stockRestored, storedReceipt.stockRestored);
+  // Un stock vacío no inventa la fila al volver a leer.
+  assert.equal(parseVoidReceipt({ ...once, stockRestored: [] })?.stockRestored, undefined);
 });
 
 test("cuando no se puede confirmar, el código dice la etapa sin filtrar detalles", () => {

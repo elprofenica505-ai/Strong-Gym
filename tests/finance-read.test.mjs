@@ -22,7 +22,13 @@ function mockDb(respond, debtReport = null) {
       if (rpc === "finance_debt_report") return Promise.resolve(debtReport ? debtReport(args) : {data:null,error:{code:"PGRST202"}});
       const call = { rpc, args };
       calls.push(call);
-      return Promise.resolve().then(() => respond(call, calls));
+      const result = Promise.resolve().then(() => respond(call, calls));
+      // Igual que el cliente real: se puede esperar directo o pedir timeout.
+      return {
+        abortSignal: () => result,
+        then: (ok, fail) => result.then(ok, fail),
+        catch: (fail) => result.catch(fail),
+      };
     },
     from(table) {
       const call = { table, fields: null, single: false };
@@ -210,7 +216,12 @@ test("permisos de caja: solo booleanos verdaderos conceden acceso y un error no 
   );
 });
 
-const queryNames = [...functions, "getCashierPermissions", "getCurrentUser"];
+const queryNames = [
+  ...functions,
+  "getCashierPermissions",
+  "getRecentVoids",
+  "getCurrentUser",
+];
 function pageLoader(role) {
   const code = queryNames
     .map((fn) =>
@@ -402,6 +413,47 @@ for (const [i, fn] of functions.entries()) {
     }
   });
 }
+test("anulaciones de Caja: un fallo de lectura no se convierte en «no hay anulaciones»", async () => {
+  mockDb(() => ({ data: null, error: { code: "42501" } }));
+  await assert.rejects(
+    queries.getRecentVoids(),
+    (e) => e instanceof FinanceReadError && e.code === "FIN_VOIDS_42501",
+  );
+  // Una respuesta con forma inesperada tampoco se toma como lista vacía.
+  mockDb(() => ({ data: { nope: true }, error: null }));
+  await assert.rejects(
+    queries.getRecentVoids(),
+    (e) => e instanceof FinanceReadError && e.code === "FIN_VOIDS_INVALID",
+  );
+});
+
+test("anulaciones de Caja: se leen de la RPC y se descartan las filas incompletas", async () => {
+  const calls = mockDb(() => ({
+    data: [
+      {
+        originalId: "e0e448a0",
+        reversalId: "4c1bd45b",
+        reason: "Devolución",
+        actorName: "Carlos Sequeira",
+        createdAt: "2026-10-31T17:04:46Z",
+      },
+      { originalId: "sin-reversa" },
+    ],
+    error: null,
+  }));
+  const marks = await queries.getRecentVoids(50);
+  assert.deepEqual(marks, [
+    {
+      originalId: "e0e448a0",
+      reversalId: "4c1bd45b",
+      reason: "Devolución",
+      actorName: "Carlos Sequeira",
+      createdAt: "2026-10-31T17:04:46Z",
+    },
+  ]);
+  assert.equal(calls.filter((c) => c.rpc === "finance_voids_recent").length, 1);
+});
+
 test("resumen mixto: un error de permisos prevalece sobre otro de esquema", async () => {
   const calls = mockDb((c) => ({
     data: null,

@@ -8,6 +8,7 @@ import {
   voidDiagnostic,
   voidMessage,
   voidRequestSchema,
+  voidResultPath,
 } from "@/lib/finance/voids";
 import { sameOrigin } from "@/lib/security/same-origin";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
@@ -47,6 +48,41 @@ const reply = (body: unknown, status = 200) =>
     status,
     headers: { "Cache-Control": "private, no-store" },
   });
+
+/**
+ * Origen público del pedido, para redirigir al mismo dominio que ve la persona.
+ *
+ * Detrás del proxy del despliegue, `request.url` puede apuntar a la dirección
+ * interna o a la URL de una versión concreta; redirigir ahí perdería la
+ * sesión (las cookies son por dominio). Se prefiere el `origin` del navegador,
+ * que ya pasó por `sameOrigin`.
+ */
+function publicBase(request: Request): string {
+  const origin = request.headers.get("origin");
+  if (origin) {
+    try {
+      return new URL(origin).origin;
+    } catch {
+      // Sigue abajo con el host.
+    }
+  }
+  const host = request.headers.get("host");
+  if (host) {
+    const proto =
+      request.headers.get("x-forwarded-proto") ??
+      (host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https");
+    return `${proto}://${host}`;
+  }
+  return new URL(request.url).origin;
+}
+
+const isFormRequest = (request: Request) => {
+  const type = request.headers.get("content-type") ?? "";
+  return (
+    type.includes("application/x-www-form-urlencoded") ||
+    type.includes("multipart/form-data")
+  );
+};
 
 /**
  * Consulta previa: qué pasaría si se anula ese movimiento.
@@ -93,33 +129,74 @@ export async function GET(request: Request) {
  * La ruta no decide nada: valida la forma del pedido y llama a
  * `finance_void_movement`, que comprueba rol, MFA, interruptor, dueño del
  * movimiento y día en curso, e inserta la reversa en la misma transacción.
+ *
+ * Acepta dos formas de pedido:
+ *   * **Formulario del navegador** (la que usa Caja): responde con un redirect
+ *     a la pantalla de resultado, que arma el servidor leyendo la base. Así el
+ *     resultado no depende de que el celular reciba un cuerpo JSON completo:
+ *     es una página, y si algo se cortó, la página siguiente muestra la
+ *     verdad guardada.
+ *   * **JSON** (integraciones y pruebas): responde el comprobante o el código
+ *     de error, como antes.
  */
 export async function POST(request: Request) {
-  if (!sameOrigin(request))
-    return reply({ error: "ORIGIN" }, 403);
+  if (!sameOrigin(request)) return reply({ error: "ORIGIN" }, 403);
 
-  if (!isSupabaseConfigured)
+  const asForm = isFormRequest(request);
+  const base = publicBase(request);
+  const form = asForm ? await request.formData().catch(() => null) : null;
+  const formLocale = String(form?.get("locale") ?? "es");
+  const formTransaction = String(form?.get("transactionId") ?? "");
+  // Con formulario, cualquier desenlace termina en la página de resultado: es
+  // la que sabe leer la verdad (incluidos los motivos que da la base).
+  const formRedirect = () =>
+    NextResponse.redirect(
+      new URL(voidResultPath(formLocale, formTransaction || "00000000-0000-4000-8000-000000000000"), base),
+      { status: 303, headers: { "Cache-Control": "private, no-store" } },
+    );
+
+  if (!isSupabaseConfigured) {
+    if (asForm) return formRedirect();
     return reply({ error: "DEMO", message: "La anulación solo aplica con Supabase conectado." }, 503);
+  }
 
   const user = await getCurrentUser();
   if (!user || !canManageFinance(user)) {
+    if (asForm)
+      return NextResponse.redirect(
+        new URL(`/${/^[a-z]{2}$/.test(formLocale) ? formLocale : "es"}/ingresar`, base),
+        { status: 303 },
+      );
     return reply({ error: "AUTH", message: voidMessage("AUTH") }, 403);
   }
 
-  const parsed = voidRequestSchema.safeParse(await request.json().catch(() => null));
+  const raw = asForm
+    ? {
+        transactionId: form?.get("transactionId"),
+        reason: form?.get("reason"),
+        requestId: form?.get("requestId"),
+      }
+    : await request.json().catch(() => null);
+  const parsed = voidRequestSchema.safeParse(raw);
   if (!parsed.success) {
+    if (asForm) return formRedirect();
     const issue = parsed.error.issues[0]?.message ?? voidMessage("INVALID_REQUEST");
     return reply({ error: "INVALID", message: issue }, 422);
   }
 
   const supabase = await getSupabaseServerClient();
-  if (!supabase)
+  if (!supabase) {
+    if (asForm) return formRedirect();
     return reply({ error: "DEMO", message: "La anulación solo aplica con Supabase conectado." }, 503);
+  }
 
   // Reintento después de una respuesta perdida: si la anulación ya existe, se
   // devuelve esa misma. No se llama dos veces a la base.
   const already = await readStoredVoid(supabase, parsed.data.transactionId, 1);
-  if (already) return reply({ ok: true, receipt: already, recovered: true });
+  if (already) {
+    if (asForm) return formRedirect();
+    return reply({ ok: true, receipt: already, recovered: true });
+  }
 
   let data: unknown = null;
   let error: { message?: string; code?: string } | null = null;
@@ -156,6 +233,9 @@ export async function POST(request: Request) {
     ];
     const match = known.find((item) => code.startsWith(item));
     if (match) {
+      // Con formulario, el motivo lo explica la página de resultado leyendo
+      // `finance_void_plan`: un solo lugar para las reglas.
+      if (asForm) return formRedirect();
       const status =
         match === "AUTH"
           ? 403
@@ -177,7 +257,11 @@ export async function POST(request: Request) {
     // El error puede haber llegado después de anular: si la bitácora ya tiene
     // la reversa, se responde con ella en vez de asustar con un fallo falso.
     const stored = await readStoredVoid(supabase, parsed.data.transactionId);
-    if (stored) return reply({ ok: true, receipt: stored, recovered: true });
+    if (stored) {
+      if (asForm) return formRedirect();
+      return reply({ ok: true, receipt: stored, recovered: true });
+    }
+    if (asForm) return formRedirect();
     return reply(
       {
         error: "UNCONFIRMED",
@@ -193,7 +277,11 @@ export async function POST(request: Request) {
   if (!receipt) {
     // Mismo criterio: antes de decir que no hay comprobante, se mira la base.
     const stored = await readStoredVoid(supabase, parsed.data.transactionId);
-    if (stored) return reply({ ok: true, receipt: stored, recovered: true });
+    if (stored) {
+      if (asForm) return formRedirect();
+      return reply({ ok: true, receipt: stored, recovered: true });
+    }
+    if (asForm) return formRedirect();
     return reply(
       {
         error: "UNCONFIRMED",
@@ -205,5 +293,6 @@ export async function POST(request: Request) {
     );
   }
 
+  if (asForm) return formRedirect();
   return reply({ ok: true, receipt });
 }
