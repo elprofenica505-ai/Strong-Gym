@@ -39,13 +39,15 @@ Según el caso, debe cumplir:
 
 ## Foto actual comprobada
 
-- Producción: `main` con FIN-05 (PR #104) y la baja de vigencia al anular
-  (PR #105); CI en verde en ambos. La 00085 ya está aplicada en producción y
+- Producción: `main` con FIN-05 (PR #104), la baja de vigencia al anular
+  (PR #105) y el uso e historial de precios de los planes (PR #108); CI en
+  verde en los tres. La 00085 ya está aplicada en producción y
   los datos de vigencias quedaron alineados.
 - Supabase: proyecto ACTIVE_HEALTHY. Las migraciones aplicadas y registradas
-  llegan a la **00086** (`planes_uso_y_precio`): la 00085 da de baja la
-  vigencia del cobro anulado y la 00086 agrega el uso y el historial de
-  precios de cada plan. El siguiente número libre es **00087**.
+  llegan a la **00086** (`planes_uso_y_precio`, registrada como
+  `20261031204934`): la 00085 da de baja la vigencia del cobro anulado y la
+  00086 agrega el uso y el historial de precios de cada plan. El siguiente
+  número libre es **00087**.
 - Datos productivos al 31 de octubre, comprobados con consulta directa:
   **9 disciplinas** (activas: Pesas y máquinas, Boxeo y Zumba), **6 planes**
   activos, **89 sesiones** (88 programadas y 1 anulada), **2 reservas**,
