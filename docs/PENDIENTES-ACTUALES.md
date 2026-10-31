@@ -574,8 +574,9 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   cliente de la sesión (el navegador nunca manda un `client_id`), importación
   sólo administración con segundo factor. Carga idempotente: dos corridas
   seguidas dejan 701 filas, no 1402. Evidencia: 37 comprobaciones SQL por rol en
-  PGlite, 20 pruebas nuevas de etiquetas, importación y atribución, `typecheck`,
-  `lint` y `test:auth` (981) limpios. Reversión: `drop table
+  PGlite, 32 pruebas nuevas de etiquetas, importación, atribución y las dos
+  rutas de la API (imagen y rutina), `typecheck`, `lint` y `test:auth` (981)
+  limpios. Reversión: `drop table
   public.client_exercise_routine, public.exercises cascade;` y las funciones; no
   toca ninguna tabla existente. Queda como decisión del dueño, sin bloquear:
   favoritos, si la biblioteca se abre sin sesión y quién más puede importar.
