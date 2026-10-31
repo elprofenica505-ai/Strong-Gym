@@ -228,6 +228,7 @@ export async function POST(request: Request) {
       "PERMISSION_OFF",
       "NOT_YOURS",
       "NOT_TODAY",
+      "CASH_SESSION_CLOSED",
       "NOT_ALLOWED",
       "INVALID_REASON",
       "REQUEST_CONFLICT",
@@ -253,7 +254,8 @@ export async function POST(request: Request) {
                 : match === "NOT_ALLOWED" ||
                     match === "PERMISSION_OFF" ||
                     match === "NOT_YOURS" ||
-                    match === "NOT_TODAY"
+                    match === "NOT_TODAY" ||
+                    match === "CASH_SESSION_CLOSED"
                   ? 403
                   : 409;
       return reply({ error: match, message: voidMessage(match) }, status);

@@ -51,6 +51,7 @@ test("anular: cada código de la base tiene un texto propio y en voseo", () => {
     "PERMISSION_OFF",
     "NOT_YOURS",
     "NOT_TODAY",
+    "CASH_SESSION_CLOSED",
     "INVALID_REASON",
     "REQUEST_CONFLICT",
     "FINANCE_REVIEW_REQUIRED",

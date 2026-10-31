@@ -78,6 +78,9 @@ export const VOID_MESSAGES: Record<string, string> = {
     "La anulación desde caja está apagada. Solo administración puede anular.",
   NOT_YOURS: "Solo podés anular movimientos cargados por vos.",
   NOT_TODAY: "Desde caja solo se anulan movimientos del día de hoy.",
+  // FIN-04: el arqueo firmado no se reescribe desde una anulación.
+  CASH_SESSION_CLOSED:
+    "Ese cobro en efectivo quedó dentro de una caja que ya se cerró con su arqueo, así que no se anula. Registrá un movimiento nuevo que corrija la diferencia, o pedile a administración que revise el turno.",
   NOT_ALLOWED: "Este movimiento no se puede anular con tu rol.",
   INVALID_REASON: "Contá en pocas palabras por qué se anula (entre 5 y 300 caracteres).",
   REQUEST_CONFLICT:
