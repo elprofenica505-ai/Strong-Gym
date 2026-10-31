@@ -186,6 +186,7 @@ test("permisos de caja: solo booleanos verdaderos conceden acceso y un error no 
     accountBalances: false,
     expenses: false,
     receivables: false,
+    void: false,
   });
 
   globalThis.__financeDb = {

@@ -335,6 +335,7 @@ test("la normalización de permisos falla cerrada ante datos incompletos", () =>
     accountBalances: false,
     expenses: false,
     receivables: false,
+    void: false,
   });
   assert.deepEqual(
     normalizeCashierPermissions({ dailyClose: true, charts: "true", expenses: 1 }),
@@ -345,6 +346,7 @@ test("la normalización de permisos falla cerrada ante datos incompletos", () =>
       accountBalances: false,
       expenses: false,
       receivables: false,
+      void: false,
     },
   );
 });
