@@ -53,6 +53,12 @@ const messages: Record<string, string> = {
     "Ese plan no tiene una tarifa publicada. Definí el precio antes de cobrarlo; no se registró el cobro.",
   PLAN_PRICE_MISMATCH:
     "El importe o la moneda no coinciden con la tarifa vigente del plan. Revisá el monto antes de confirmar; no se registró el cobro.",
+  INVALID_CASH_RECEIVED:
+    "Revisá el efectivo recibido: tiene que alcanzar para el total y tener dos decimales. No se registró el cobro.",
+  CASH_ACCOUNT_REQUIRED:
+    "El efectivo recibido solo se registra si la cuenta elegida es una caja activa en la moneda del cobro. No se registró el cobro.",
+  CASH_RECEIPT_UNCONFIRMED:
+    "El cobro quedó sin confirmar el efectivo. Revisá el historial antes de repetir: no se guardó un comprobante completo.",
   PLAN_NOT_COMBINABLE:
     "Boxeo se cobra solo, sin productos, porque su tarifa está en dólares. Quitá los productos; no se registró el cobro.",
 };
@@ -189,6 +195,8 @@ export async function POST(request: Request) {
       );
     const d = parsed.data;
     const planId = d.kind === "service_income" ? d.planId : undefined;
+    // Solo un cobro por servicio puede traer efectivo; un gasto nunca.
+    const cash = d.kind === "service_income" ? d.cashReceived : undefined;
     if (d.kind === "service_income" && d.items.length > 0) {
       const { data, error } = await ctx.db
         .rpc(planId ? "finance_record_checkout_plan" : "finance_record_checkout", {
@@ -233,6 +241,7 @@ export async function POST(request: Request) {
           p_concept: d.concept,
           p_fx: d.fx,
           p_plan: planId,
+          ...(cash !== undefined ? { p_cash_received: cash } : {}),
         })
         .abortSignal(AbortSignal.timeout(25000));
       if (error) return failure(error);
@@ -260,6 +269,7 @@ export async function POST(request: Request) {
         p_concept: d.concept,
         p_fx: d.fx,
         p_category: d.kind === "expense" ? d.category : null,
+        ...(cash !== undefined ? { p_cash_received: cash } : {}),
       })
       .abortSignal(AbortSignal.timeout(25000));
     if (error) return failure(error);

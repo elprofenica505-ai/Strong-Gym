@@ -73,7 +73,8 @@ export default async function ReceiptPage({
     ...(r.cashReceived!==undefined&&r.changeGiven!==undefined?[
       ["Efectivo recibido",formatMoney(r.cashReceived,r.currency)],
       ["Vuelto entregado",formatMoney(r.changeGiven,r.currency)],
-      ["Abono aplicado · ingreso neto en Caja",formatMoney(r.amount,r.currency)],
+      [r.kind === "debt_payment" ? "Abono aplicado · ingreso neto en Caja" : "Cobro aplicado · ingreso neto en Caja",
+        formatMoney(r.amount,r.currency)],
     ]:[]),
     ["Referencia del intento", r.requestId],
   ];
@@ -116,7 +117,7 @@ export default async function ReceiptPage({
         </p>
       )}
       <p className="text-sm text-fog">
-        {r.kind==='debt_payment' ? `Este abono reduce la deuda por el importe aplicado.${r.cashReceived!==undefined?' El efectivo recibido menos el vuelto es el ingreso neto en Caja.':''} No crea crédito ni compensa monedas.` : 'No aplica ni compensa deudas o créditos.'} No renueva planes ni
+        {r.kind==='debt_payment' ? `Este abono reduce la deuda por el importe aplicado.${r.cashReceived!==undefined?' El efectivo recibido menos el vuelto es el ingreso neto en Caja.':''} No crea crédito ni compensa monedas.` : `Este comprobante registra un cobro por servicio.${r.cashReceived!==undefined?' El efectivo recibido menos el vuelto es el ingreso neto en Caja.':''} No aplica ni compensa deudas o créditos.`} No renueva planes ni
         descuenta comisiones automáticamente. Los saldos son informados, no
         saldos iniciales conciliados por el dueño.
       </p>

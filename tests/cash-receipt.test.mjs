@@ -21,9 +21,11 @@ test('comprobante real SSR muestra recibido/vuelto/abono y no niega aplicación 
 test('comprobante histórico no inventa efectivo ni vuelto',async()=>{
   const markup=await html(base);assert.equal(markup.includes('<dt class="text-sm text-fog">Efectivo recibido'),false);assert.equal(markup.includes('Vuelto entregado'),false);assert.ok(markup.includes('Este abono reduce la deuda'));
 });
-test('contrato comprobante rechaza vuelto incoherente o adjunto a servicio',()=>{
+test('contrato comprobante rechaza vuelto incoherente en abonos y en cobros',()=>{
   assert.ok(receiptSchema.safeParse({...base,cashReceived:100,changeGiven:80}).success);
-  for(const r of [{...base,cashReceived:100},{...base,cashReceived:100,changeGiven:79},{...base,cashReceived:10,changeGiven:0},{...base,kind:'service_income',cashReceived:100,changeGiven:80}])assert.equal(receiptSchema.safeParse(r).success,false);
+  // FIN-02: el efectivo y el vuelto también valen para un cobro por servicio.
+  assert.ok(receiptSchema.safeParse({...base,kind:'service_income',cashReceived:100,changeGiven:80}).success);
+  for(const r of [{...base,cashReceived:100},{...base,cashReceived:100,changeGiven:79},{...base,cashReceived:10,changeGiven:0},{...base,kind:'service_income',cashReceived:100,changeGiven:79}])assert.equal(receiptSchema.safeParse(r).success,false);
 });
 test('cálculo en centavos no pierde decimales ni acepta efectivo insuficiente',()=>{
   assert.equal(getCashChange(0.29,1),0.71);assert.equal(getCashChange(60,100),40);assert.equal(getCashChange(20,100),80);assert.equal(getCashChange(20,20),0);

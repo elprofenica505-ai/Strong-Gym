@@ -506,3 +506,61 @@ test("un segundo envío incierto no conserva el enlace del comprobante anterior"
   assert.equal(screen.queryByText(/Movimiento confirmado/), null);
   assert.deepEqual(JSON.parse(sessionStorage.getItem(key)), posts[1]);
 });
+
+async function fillService(cash) {
+  await waitFor(() =>
+    assert.equal(
+      screen.getByRole("button", { name: "Confirmar cobro por servicio" })
+        .disabled,
+      false,
+    ),
+  );
+  for (const [name, value] of [
+    ["Monto", "100"],
+    ["Método", "cash"],
+    ["Cuenta", "nio"],
+    ["Tasa NIO por 1 USD", "36.7244"],
+    ["Concepto", "Gimnasio EJEMPLO"],
+  ])
+    fireEvent.change(screen.getByLabelText(name), { target: { value } });
+  if (cash !== undefined)
+    fireEvent.change(screen.getByLabelText(/Efectivo recibido/), {
+      target: { value: cash },
+    });
+}
+
+test("efectivo recibido: muestra el vuelto y lo envía con el cobro", async () => {
+  const { posts } = mount(undefined, options, {
+    kind: "service_income",
+    clientId: id,
+  });
+  await fillService("150");
+  assert.ok(screen.getByText(/Vuelto a entregar/));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Confirmar cobro por servicio" }),
+  );
+  await waitFor(() => assert.equal(posts.length, 1));
+  assert.equal(posts[0].cashReceived, 150);
+  assert.equal(posts[0].amount, 100);
+});
+
+test("efectivo recibido: si no alcanza no se envía y avisa en pantalla", async () => {
+  const { posts } = mount(undefined, options, {
+    kind: "service_income",
+    clientId: id,
+  });
+  await fillService("50");
+  assert.ok(screen.getByText(/No alcanza/));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Confirmar cobro por servicio" }),
+  );
+  await waitFor(() =>
+    assert.match(screen.getByRole("status").textContent ?? "", /no alcanza/i),
+  );
+  assert.equal(posts.length, 0);
+});
+
+test("un gasto no muestra el campo de efectivo recibido", () => {
+  mount();
+  assert.equal(screen.queryByLabelText(/Efectivo recibido/), null);
+});

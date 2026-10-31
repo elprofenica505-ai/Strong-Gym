@@ -65,14 +65,14 @@ Según el caso, debe cumplir:
 | 1 | **QA-08** (celular) | Cierra Zumba: grilla pública, cobro del plan y horarios del panel. Es lo último que se publicó. |
 | 2 | **QA-03, QA-04 y QA-05** (celular y cuentas reales) | Son aceptaciones de cosas ya desplegadas; sin ellas no se puede decir «terminado». |
 | 3 | **Plan de gestión de planes** | Único hueco de negocio abierto en Administración: hoy se editan las tarifas NIO y se crean planes; falta el resto. |
-| 4 | **OP-06, FIN-02, FIN-08, CAL-01/03, LEG-01 y NEG-01** | Reglas de negocio y entrega; no bloquean la operación diaria de hoy. |
+| 4 | **OP-06, FIN-08, CAL-01/03, LEG-01 y NEG-01** | Reglas de negocio y entrega; no bloquean la operación diaria de hoy. |
 
 ## Resumen de avance al 30 de octubre de 2026
 
-**61 tareas listadas: 14 cerradas y 47 abiertas.** De las 47 abiertas, **7 son
+**61 tareas listadas: 15 cerradas y 46 abiertas.** De las 46 abiertas, **7 son
 aceptaciones** en celular o con cuenta real (QA-03 a QA-09), **5 son de
 entrega** (ENT-01 a ENT-05, aplazadas a propósito) y **8 son opcionales del
-futuro** (FUT-01 a FUT-08). Quedan **27 de producto o negocio** por resolver.
+futuro** (FUT-01 a FUT-08). Quedan **26 de producto o negocio** por resolver.
 
 | Fase o bloque | Estado | Qué falta |
 |---|---|---|
@@ -80,7 +80,7 @@ futuro** (FUT-01 a FUT-08). Quedan **27 de producto o negocio** por resolver.
 | **Etapa 2 — Navegación** | Hecha: Inicio, Clientes, Finanzas, Operación, Administración y Mis clientes | Solo la decisión de OP-09 |
 | **Etapa 3 — Operación diaria** | OP-01 a OP-05 cerradas y desplegadas | OP-06 (cierre de reservas pasadas), OP-07 (cambio de día sin recargar), OP-08 (vincular ficha con cuenta web) y la aceptación QA-09 |
 | **Clientes, vigencias y planes** | CLI-01, CLI-02 y CLI-06 cerradas y desplegadas | Aceptación en celular (QA-09); decisiones CLI-03, CLI-04 y CLI-05 |
-| **Etapa 4 — Finanzas y productos** | En uso real: cobros, gastos, deudas y abonos NIO/USD, vuelto, productos con stock, Caja por módulos, reportes y descargas | FIN-02 (efectivo recibido y vuelto en todos los cobros), FIN-03 a FIN-08 |
+| **Etapa 4 — Finanzas y productos** | En uso real: cobros, gastos, deudas y abonos NIO/USD, vuelto, productos con stock, Caja por módulos, reportes y descargas | FIN-03 a FIN-08 |
 | **Calendario y disciplinas (OP-05)** | Cerrado y desplegado, con grillas, sesiones sueltas, bloqueos, generador con vista previa y entrenadores | Solo la aceptación en celular (QA-09) |
 | **Etapa 5 — Aceptación integral** | Parcial: QA-01 y QA-02 cerradas | QA-03 a QA-08, CAL-03, LEG-01 y NEG-01 |
 | **Etapa 6 — Entrega al dueño** | Sin empezar, a propósito | ENT-01 a ENT-05 y SEG-03 |
@@ -538,10 +538,19 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   motivo obligatorio y comprobante de la reversa. **Fuera de esta tarea, a
   propósito:** una transferencia no se anula con una sola reversa (se rechaza
   y se corrige con otra transferencia) y el día cerrado llegará con FIN-04.
-- [ ] **FIN-02 · Alta · Código — Efectivo recibido y vuelto en cobros por
-  servicio y productos.** Ya existe en abonos de deuda. Falta llevarlo al cobro
-  general y al checkout con productos, en la misma moneda y cuenta habilitada,
-  con comprobante e intento idempotente que conserve el dato ante un reintento.
+- [x] **FIN-02 · Alta · Código — Efectivo recibido y vuelto en cobros por
+  servicio y productos.** Cerrada el 30 de octubre con la migración
+  `00081_efectivo_y_vuelto.sql` aplicada a producción. Los cuatro escritores de
+  cobro (`finance_record_movement`, `finance_record_movement_plan`,
+  `finance_record_checkout` y `finance_record_checkout_plan`) aceptan
+  `p_cash_received`: el vuelto se calcula sobre el total (servicio + productos),
+  exige una caja activa en la misma moneda (`CASH_ACCOUNT_REQUIRED`), dos
+  decimales y que alcance (`INVALID_CASH_RECEIVED`), y queda guardado en el
+  comprobante, en el evento del cliente y en el grupo del checkout. Un gasto no
+  admite efectivo. Reintentar con el mismo pedido devuelve el mismo comprobante;
+  con otro efectivo da `REQUEST_CONFLICT`. La pantalla de cobro muestra el campo
+  opcional, el vuelto a entregar y lo avisa en la confirmación; el comprobante
+  interno lo imprime.
 - [ ] **FIN-03 · Media · Código — Cuentas, catálogos y transferencias.** Falta
   administrar cuentas de caja/banco, métodos y categorías desde la app, y
   registrar transferencias entre cuentas sin contarlas como ingreso o gasto.
