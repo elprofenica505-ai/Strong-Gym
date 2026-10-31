@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { VoidMovementButton } from "@/components/admin/void-movement";
+import { CashSessionPanel } from "@/components/admin/cash-session-panel";
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/finance/format-money";
 import {
@@ -238,11 +239,21 @@ export function MiniBar({
    ============================================================ */
 
 
-type CashModule = "movimientos" | "cuentas" | "metodos" | "graficos" | "ayuda";
+type CashModule =
+  | "cierre"
+  | "movimientos"
+  | "cuentas"
+  | "metodos"
+  | "graficos"
+  | "ayuda";
 type MovementView = "movimientos" | "filtros";
 type AccountView = "cuentas" | "filtros";
 
 const CASH_MODULE_INFO: Record<CashModule, { title: string; hint: string }> = {
+  cierre: {
+    title: "Cierre y arqueo",
+    hint: "Abrir el turno, contar el efectivo y cerrar con la diferencia explicada.",
+  },
   movimientos: {
     title: "Movimientos",
     hint: "Todo el historial, en su moneda original: buscá por texto, tipo, método, moneda o estado.",
@@ -541,9 +552,27 @@ export function CashPanel({
         </div>
         <div className="flex flex-wrap gap-2">
           {summary.sourceModel === "bank_accounts_split" ? (
-            <Badge className="border-line bg-card text-fog">
-              {summary.openRegisterCount ?? 0} sesiones abiertas informadas
-            </Badge>
+            <button
+              type="button"
+              onClick={() => setOpenModule("cierre")}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
+                (summary.openRegisterCount ?? 0) > 0
+                  ? "border-brand/40 bg-brand-soft text-brand-300 hover:border-brand"
+                  : "border-line bg-card text-fog hover:border-brand",
+              )}
+            >
+              <span
+                className={cn(
+                  "inline-block size-1.5 rounded-full",
+                  (summary.openRegisterCount ?? 0) > 0 ? "bg-brand" : "bg-fog",
+                )}
+                aria-hidden="true"
+              />
+              {(summary.openRegisterCount ?? 0) > 0
+                ? "Caja abierta · ir al arqueo"
+                : "Caja cerrada · abrir"}
+            </button>
           ) : summary.openRegister ? (
             <Badge className="border-brand/40 bg-brand-soft text-brand-300">
               <span className="mr-1.5 inline-block size-1.5 rounded-full bg-brand" />
@@ -653,6 +682,16 @@ export function CashPanel({
               Icon={Receipt}
             />
           ) : null}
+          <ModuleAction
+            title="Cierre y arqueo"
+            hint={
+              (summary.openRegisterCount ?? 0) > 0
+                ? "Caja abierta · contar y cerrar"
+                : "Abrir la caja del turno"
+            }
+            Icon={Banknote}
+            onClick={() => setOpenModule("cierre")}
+          />
           <ModuleAction
             title="Movimientos"
             hint="Todo el historial · buscar y filtrar"
@@ -794,6 +833,8 @@ export function CashPanel({
             {CASH_MODULE_INFO[openModule].hint}
           </p>
         </div>
+
+        {openModule === "cierre" && <CashSessionPanel accounts={accounts} />}
 
         {openModule === "movimientos" && (
           <div className="space-y-4">
@@ -1276,17 +1317,13 @@ export function CashPanel({
                   cuentas se muestran en su propia moneda y no se recalculan
                   ni certifican.
                 </p>
-                {summary.openRegister && (
-                  <p>
-                    Última sesión abierta informada: apertura NIO{" "}
-                    {formatMoney(summary.openRegister.openingAmount)} · USD{" "}
-                    {formatMoney(
-                      summary.openRegister.openingAmountUsd ?? 0,
-                      "USD",
-                    )}
-                    . No es un arqueo confirmado.
-                  </p>
-                )}
+                <p>
+                  <strong className="text-ink">Cierre y arqueo:</strong> el
+                  efectivo son las cuentas de caja (caja fuerte). Lo esperado es
+                  la apertura más los ingresos menos los egresos de esas
+                  cuentas, contados desde que se abrió el turno. Un cierre no se
+                  edita: si hay que corregir algo, se abre una caja nueva.
+                </p>
               </>
             ) : (
               <p>
