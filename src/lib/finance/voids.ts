@@ -39,6 +39,8 @@ export interface VoidReceipt {
   accountAfter: number;
   actorName: string;
   occurredAt: string;
+  /** Productos que la venta había descontado y la anulación devolvió (FIN-08). */
+  stockRestored?: { productId: string; name: string; qty: number }[];
 }
 
 const receiptSchema = z.object({
@@ -55,6 +57,9 @@ const receiptSchema = z.object({
   accountAfter: z.number(),
   actorName: z.string(),
   occurredAt: z.string(),
+  stockRestored: z
+    .array(z.object({ productId: z.string(), name: z.string(), qty: z.number() }))
+    .optional(),
 });
 
 /** Motivos legibles para los códigos que devuelve la base. */
@@ -103,5 +108,8 @@ export function parseVoidReceipt(value: unknown): VoidReceipt | null {
     accountAfter: data.accountAfter,
     actorName: data.actorName,
     occurredAt: data.occurredAt,
+    ...(data.stockRestored && data.stockRestored.length
+      ? { stockRestored: data.stockRestored }
+      : {}),
   };
 }

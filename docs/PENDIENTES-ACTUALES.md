@@ -65,14 +65,14 @@ Según el caso, debe cumplir:
 | 1 | **QA-08** (celular) | Cierra Zumba: grilla pública, cobro del plan y horarios del panel. Es lo último que se publicó. |
 | 2 | **QA-03, QA-04 y QA-05** (celular y cuentas reales) | Son aceptaciones de cosas ya desplegadas; sin ellas no se puede decir «terminado». |
 | 3 | **Plan de gestión de planes** | Único hueco de negocio abierto en Administración: hoy se editan las tarifas NIO y se crean planes; falta el resto. |
-| 4 | **OP-06, FIN-08, CAL-01/03, LEG-01 y NEG-01** | Reglas de negocio y entrega; no bloquean la operación diaria de hoy. |
+| 4 | **OP-06, FIN-03 a FIN-07, CAL-01/03, LEG-01 y NEG-01** | Reglas de negocio y entrega; no bloquean la operación diaria de hoy. |
 
-## Resumen de avance al 30 de octubre de 2026
+## Resumen de avance al 31 de octubre de 2026
 
-**61 tareas listadas: 15 cerradas y 46 abiertas.** De las 46 abiertas, **7 son
+**61 tareas listadas: 16 cerradas y 45 abiertas.** De las 45 abiertas, **7 son
 aceptaciones** en celular o con cuenta real (QA-03 a QA-09), **5 son de
 entrega** (ENT-01 a ENT-05, aplazadas a propósito) y **8 son opcionales del
-futuro** (FUT-01 a FUT-08). Quedan **26 de producto o negocio** por resolver.
+futuro** (FUT-01 a FUT-08). Quedan **25 de producto o negocio** por resolver.
 
 | Fase o bloque | Estado | Qué falta |
 |---|---|---|
@@ -80,7 +80,7 @@ futuro** (FUT-01 a FUT-08). Quedan **26 de producto o negocio** por resolver.
 | **Etapa 2 — Navegación** | Hecha: Inicio, Clientes, Finanzas, Operación, Administración y Mis clientes | Solo la decisión de OP-09 |
 | **Etapa 3 — Operación diaria** | OP-01 a OP-05 cerradas y desplegadas | OP-06 (cierre de reservas pasadas), OP-07 (cambio de día sin recargar), OP-08 (vincular ficha con cuenta web) y la aceptación QA-09 |
 | **Clientes, vigencias y planes** | CLI-01, CLI-02 y CLI-06 cerradas y desplegadas | Aceptación en celular (QA-09); decisiones CLI-03, CLI-04 y CLI-05 |
-| **Etapa 4 — Finanzas y productos** | En uso real: cobros, gastos, deudas y abonos NIO/USD, vuelto, productos con stock, Caja por módulos, reportes y descargas | FIN-03 a FIN-08 |
+| **Etapa 4 — Finanzas y productos** | En uso real: cobros, gastos, deudas y abonos NIO/USD, vuelto, productos con stock, Caja por módulos, reportes y descargas | FIN-03 a FIN-07 |
 | **Calendario y disciplinas (OP-05)** | Cerrado y desplegado, con grillas, sesiones sueltas, bloqueos, generador con vista previa y entrenadores | Solo la aceptación en celular (QA-09) |
 | **Etapa 5 — Aceptación integral** | Parcial: QA-01 y QA-02 cerradas | QA-03 a QA-08, CAL-03, LEG-01 y NEG-01 |
 | **Etapa 6 — Entrega al dueño** | Sin empezar, a propósito | ENT-01 a ENT-05 y SEG-03 |
@@ -576,11 +576,23 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   y completar una cobertura uniforme para dinero, reservas, configuración y
   anulaciones, con lectura solo autorizada y sin guardar valores sensibles
   innecesarios.
-- [ ] **FIN-08 · Media · Código — Devolver stock al anular una venta con
-  productos.** Hoy la reversa devuelve el dinero pero no el stock; si el cobro
-  incluyó productos, la venta anulada los deja descontados. Cierre: reponer las
-  cantidades vendidas en la misma transacción, con tope en el stock actual y
-  sin borrar el movimiento de stock anterior.
+- [x] **FIN-08 · Media · Código — Devolver stock al anular una venta con
+  productos.** Cerrada el 31 de octubre con la migración
+  `00082_anulacion_devuelve_stock.sql` aplicada a producción. La anulación ya
+  no deja la venta descontada: `finance_void_stock_restore` repone, dentro de la
+  misma transacción, una entrada por cada movimiento `venta` de la transacción
+  original, con `note = 'Anulación de venta'`, el precio unitario de la venta y
+  el vínculo a la reversa. No se borra ni se edita ningún movimiento de stock
+  anterior: se agrega el nuevo. Un solo tope: si la reversa ya tiene su entrada,
+  la función devuelve lo registrado y no repone dos veces. Si el cobro no tenía
+  productos, no toca nada y el comprobante no cambia. El comprobante de la
+  anulación suma `stockRestored` (`{productId, name, qty}`) y el diálogo de Caja
+  muestra «Stock devuelto» con los productos y cantidades; un comprobante con
+  cantidades rotas se rechaza entero. Probado por rol con `rollback`: venta de 3
+  unidades (stock 11 → 8) → anulación → 11 y una sola entrada; doble anulación
+  rechazada sin reponer dos veces; cobro de plan con productos (el `+` del
+  servicio no devuelve stock y la línea del producto sí); cobro sin productos
+  devuelve `[]`. Cubierto por `tests/finance-void.test.mjs`.
 
 ## 4. Personal, roles y sesiones
 
