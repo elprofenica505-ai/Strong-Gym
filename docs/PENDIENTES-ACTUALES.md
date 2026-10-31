@@ -630,8 +630,10 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   sesión de personal, marca sin borrado, adelanto encadenado, hueco respetado,
   segunda pasada sin mover nada, ficha con un solo segmento vivo, renovación
   encadenada a lo vivo y baja de un producto sin efecto),
-  `tests/void-plan-impact.test.mjs` (9 casos del aviso y del resultado) y
-  `tests/void-result-page.test.mjs` (8). Suite completa **909/909**.
+  `tests/void-plan-impact.test.mjs` (9 casos del aviso y del resultado),
+  `tests/void-result-page.test.mjs` (8) y `tests/void-button.test.mjs`
+  (2 nuevos: el aviso aparece antes de confirmar y no aparece cuando el cobro
+  no activó ninguna vigencia). Suite completa **911/911**.
   Prueba en producción, con `rollback`: llamar a la anulación real como
   administración dejó el segmento marcado como anulado, sin tocar los datos
   guardados.

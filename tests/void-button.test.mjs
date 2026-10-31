@@ -209,6 +209,84 @@ test("anular: la confirmación es un formulario del navegador, no una respuesta 
   }
 });
 
+test("anular: antes de confirmar avisa que la vigencia de ese cobro se da de baja", async () => {
+  // Anular devuelve el dinero y da de baja la membresía: lo decide la base
+  // (00085), pero la pantalla tiene que decirlo antes de que la persona
+  // confirme, no después.
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      allowed: true,
+      code: "ALLOWED",
+      concept: "Gimnasio mensual",
+      type: "income",
+      amount: 560,
+      currency: "NIO",
+      occurredAt: "2026-10-28T23:52:00-06:00",
+      transactionId: "66701e7b-b7cb-49ed-8ac0-9d2fd81beab1",
+      isReversal: false,
+      alreadyVoided: false,
+      planSegments: [
+        {
+          id: "dbe127e2-cc04-4fd0-9b97-8652e98eda09",
+          planId: "pln_gimnasio",
+          planName: "Gimnasio mensual",
+          access: "gym",
+          startedOn: "2026-12-27",
+          expiresOn: "2027-01-25",
+          pricePaid: 560,
+          currency: "NIO",
+          voided: false,
+          state: "upcoming",
+        },
+      ],
+    }),
+  });
+
+  try {
+    renderPanel();
+    fireEvent.click(screen.getAllByRole("button", { name: /Anular/ })[0]);
+    await screen.findByLabelText("Motivo de la anulación");
+    const aviso = await screen.findByText(
+      /Este cobro activó la vigencia de Gimnasio: del 27 de diciembre de 2026 al 25 de enero de 2027/,
+    );
+    assert.match(aviso.textContent ?? "", /se da de baja/);
+    assert.match(aviso.textContent ?? "", /se adelantan/);
+  } finally {
+    delete globalThis.fetch;
+  }
+});
+
+test("anular: un cobro sin vigencia no muestra el aviso de membresía", async () => {
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      allowed: true,
+      code: "ALLOWED",
+      concept: "Agua fuente pura",
+      type: "income",
+      amount: 40,
+      currency: "NIO",
+      occurredAt: "2026-10-28T23:52:00-06:00",
+      transactionId: "66701e7b-b7cb-49ed-8ac0-9d2fd81beab1",
+      isReversal: false,
+      alreadyVoided: false,
+      planSegments: [],
+    }),
+  });
+
+  try {
+    renderPanel();
+    fireEvent.click(screen.getAllByRole("button", { name: /Anular/ })[0]);
+    await screen.findByLabelText("Motivo de la anulación");
+    assert.equal(screen.queryByText(/Este cobro activó/), null);
+  } finally {
+    delete globalThis.fetch;
+  }
+});
+
 test("anular: si la consulta previa no llega, igual se puede intentar y la base decide", async () => {
   // Antes, un fallo de lectura bloqueaba el botón y dejaba a la persona sin
   // salida. La regla vive en la base: la pantalla no puede ser el candado.
