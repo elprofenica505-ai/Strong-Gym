@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/data/queries";
 import {
   findStoredVoidReceipt,
   parseVoidReceipt,
+  voidDiagnostic,
   voidMessage,
   voidRequestSchema,
 } from "@/lib/finance/voids";
@@ -13,6 +14,33 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 export const dynamic = "force-dynamic";
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Lee la anulación ya guardada, con reintentos cortos.
+ *
+ * Se usa para no confundir «no llegó la respuesta» con «no se guardó»: la
+ * escritura puede haber quedado hecha aunque el celular no reciba el
+ * comprobante. Nunca lanza: si no se puede leer, devuelve null.
+ */
+async function readStoredVoid(
+  supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
+  transactionId: string,
+  attempts = 3,
+): Promise<Awaited<ReturnType<typeof findStoredVoidReceipt>>> {
+  if (!supabase) return null;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    try {
+      const stored = await findStoredVoidReceipt(supabase, transactionId);
+      if (stored) return stored;
+    } catch {
+      // Se reintenta abajo; un fallo de lectura no cambia el resultado.
+    }
+    if (attempt < attempts - 1) await sleep(300);
+  }
+  return null;
+}
 
 const reply = (body: unknown, status = 200) =>
   NextResponse.json(body, {
@@ -49,6 +77,13 @@ export async function GET(request: Request) {
     const known = code.startsWith("AUTH") ? "AUTH" : "NOT_FOUND";
     return reply({ error: known, message: voidMessage(known) }, known === "AUTH" ? 403 : 404);
   }
+  // Si ya está anulada, la consulta devuelve también el comprobante guardado:
+  // así la pantalla puede mostrar el resultado real en vez de solo un aviso.
+  const plan = data as { allowed?: boolean; code?: string } | null;
+  if (plan?.allowed === false && plan.code === "ALREADY_VOIDED") {
+    const stored = await readStoredVoid(supabase, parsed.data, 1);
+    if (stored) return reply({ ...plan, receipt: stored });
+  }
   return reply(data);
 }
 
@@ -81,11 +116,25 @@ export async function POST(request: Request) {
   if (!supabase)
     return reply({ error: "DEMO", message: "La anulación solo aplica con Supabase conectado." }, 503);
 
-  const { data, error } = await supabase.rpc("finance_void_movement", {
-    p_request: parsed.data.requestId,
-    p_transaction: parsed.data.transactionId,
-    p_reason: parsed.data.reason,
-  });
+  // Reintento después de una respuesta perdida: si la anulación ya existe, se
+  // devuelve esa misma. No se llama dos veces a la base.
+  const already = await readStoredVoid(supabase, parsed.data.transactionId, 1);
+  if (already) return reply({ ok: true, receipt: already, recovered: true });
+
+  let data: unknown = null;
+  let error: { message?: string; code?: string } | null = null;
+  try {
+    const rpc = await supabase.rpc("finance_void_movement", {
+      p_request: parsed.data.requestId,
+      p_transaction: parsed.data.transactionId,
+      p_reason: parsed.data.reason,
+    });
+    data = rpc.data;
+    error = rpc.error;
+  } catch (thrown) {
+    // La llamada puede cortarse después de anular: se verifica antes de avisar.
+    error = { code: "FETCH", message: thrown instanceof Error ? thrown.name : "FETCH" };
+  }
 
   if (error) {
     const code = (error.message ?? "").trim().toUpperCase();
@@ -124,20 +173,36 @@ export async function POST(request: Request) {
                   : 409;
       return reply({ error: match, message: voidMessage(match) }, status);
     }
-    console.error("[finance] anulación", { code: error.code });
+    console.error("[finance] anulación", { code: error.code, stage: "rpc" });
     // El error puede haber llegado después de anular: si la bitácora ya tiene
     // la reversa, se responde con ella en vez de asustar con un fallo falso.
-    const stored = await findStoredVoidReceipt(supabase, parsed.data.transactionId);
+    const stored = await readStoredVoid(supabase, parsed.data.transactionId);
     if (stored) return reply({ ok: true, receipt: stored, recovered: true });
-    return reply({ error: "UNCONFIRMED", message: voidMessage("UNCONFIRMED") }, 502);
+    return reply(
+      {
+        error: "UNCONFIRMED",
+        stage: "rpc",
+        diagnostic: voidDiagnostic("RPC", error.code),
+        message: voidMessage("UNCONFIRMED"),
+      },
+      502,
+    );
   }
 
   const receipt = parseVoidReceipt(data);
   if (!receipt) {
     // Mismo criterio: antes de decir que no hay comprobante, se mira la base.
-    const stored = await findStoredVoidReceipt(supabase, parsed.data.transactionId);
+    const stored = await readStoredVoid(supabase, parsed.data.transactionId);
     if (stored) return reply({ ok: true, receipt: stored, recovered: true });
-    return reply({ error: "UNCONFIRMED", message: voidMessage("UNCONFIRMED") }, 503);
+    return reply(
+      {
+        error: "UNCONFIRMED",
+        stage: "receipt",
+        diagnostic: voidDiagnostic("COMPROBANTE"),
+        message: voidMessage("UNCONFIRMED"),
+      },
+      503,
+    );
   }
 
   return reply({ ok: true, receipt });

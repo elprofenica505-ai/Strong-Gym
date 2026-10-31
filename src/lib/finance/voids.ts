@@ -93,6 +93,20 @@ export const VOID_MESSAGES: Record<string, string> = {
     "No se pudo confirmar la anulación. Reintentá desde acá: el pedido es el mismo y no se anula dos veces. Si la reversa ya aparece en Caja, no la repitas.",
 };
 
+/**
+ * Código corto y seguro para pegar en un mensaje, cuando la anulación no se
+ * pudo confirmar. No expone detalles internos: solo la etapa y el tipo de
+ * error de la base, con el mismo formato que ya usan los avisos de lectura
+ * (`FIN_…`). Sirve para saber dónde se cortó sin adivinar.
+ */
+export function voidDiagnostic(stage: string, databaseCode?: string): string {
+  const safeStage = /^[A-Z_]{2,14}$/.test(stage) ? stage : "ETAPA";
+  const safeCode = /^[A-Z0-9]{2,12}$/.test((databaseCode ?? "").toUpperCase())
+    ? (databaseCode as string).toUpperCase()
+    : "SIN_CODIGO";
+  return `ANULACION_${safeStage}_${safeCode}`;
+}
+
 export function voidMessage(code: string | undefined): string {
   return (code && VOID_MESSAGES[code]) || VOID_MESSAGES.UNKNOWN;
 }
