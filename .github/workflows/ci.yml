@@ -95,6 +95,11 @@ jobs:
       - name: Probar el uso de cada plan y su historial de precios (PGlite)
         run: npm run test:planes:uso
 
+      # Abrir, contar y cerrar la caja: si el arqueo se rompe, el dinero deja
+      # de cuadrar y nadie se entera hasta que falta en el bolsillo.
+      - name: Probar apertura, arqueo y cierre de caja (PGlite)
+        run: npm run test:caja:arqueo
+
       - name: Probar roles, entrenadores y cierre de caja (PGlite)
         run: npm run test:roles
 
