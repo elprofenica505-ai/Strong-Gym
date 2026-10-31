@@ -4,11 +4,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScheduleBlocks, type ScheduleBlock } from "@/components/admin/schedule-blocks";
 import { AdminStep } from "@/components/admin/step";
+import { ScheduleSessions } from "@/components/admin/schedule-sessions";
 import {
-  ScheduleSessions,
   sessionsBoardFrom,
   type SessionsBoard,
-} from "@/components/admin/schedule-sessions";
+} from "@/lib/admin/schedule-range";
 
 /** Fila de `class_schedule_slots` tal como la devuelve `admin_schedule_board()`. */
 export type ScheduleSlot = {

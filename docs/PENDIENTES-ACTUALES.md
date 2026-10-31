@@ -306,6 +306,19 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
     de bitácora y asignación del entrenador a las 4 clases de un horario; después
     del `rollback` quedó todo igual (3 entrenadores, 79 sesiones, 0 con
     entrenador, 9 horarios, 0 bloqueos).
+    **Corregido el 30 de octubre (misma tanda):** la pantalla de Horarios y
+    clases se caía al abrirla en producción desde la etapa 5. Causa exacta, tal
+    como la mostró el registro de Vercel (digest `3768277961`): la página
+    llamaba en el servidor a `sessionsBoardFrom()`, una función que vivía en un
+    archivo marcado `"use client"`, y React prohíbe ejecutar funciones sueltas
+    de un archivo de navegador desde el servidor. Ahora ese cálculo y sus tipos
+    viven en `src/lib/admin/schedule-range.ts`, que usan la página y el
+    componente por igual. Se sumó `tests/schedule-range.test.mjs`, que además
+    de probar el cálculo revisa **todo el árbol** y falla si alguna página del
+    servidor importa una función suelta desde un archivo `"use client"` (se
+    comprobó que la prueba falla con el error puesto a propósito). Verificado
+    en local con el servidor de desarrollo: con el defecto la página responde
+    500 y con el arreglo 200.
     **Sigue faltando acá:** que el socio vea quién dicta cada clase en la web
     pública (la vista `coaches_public` existe, pero la grilla pública todavía no
     muestra el nombre) y completar la gestión de planes más allá de las cuatro

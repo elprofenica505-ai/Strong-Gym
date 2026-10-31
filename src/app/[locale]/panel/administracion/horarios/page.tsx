@@ -11,7 +11,7 @@ import { type ScheduleBlock } from "@/components/admin/schedule-blocks";
 import {
   sessionsBoardFrom,
   type SessionsBoard,
-} from "@/components/admin/schedule-sessions";
+} from "@/lib/admin/schedule-range";
 import { DataUnavailable } from "@/components/ui/data-unavailable";
 import { getCurrentUser } from "@/lib/data/queries";
 import { isLocale } from "@/i18n/config";
