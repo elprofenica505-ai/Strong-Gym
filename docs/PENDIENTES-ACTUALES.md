@@ -40,13 +40,16 @@ Según el caso, debe cumplir:
 
 ## Foto actual comprobada
 
-- Producción: PR #56 fusionado; Vercel `dpl_HHuLnBJAnvhEzqxSPpahdxkXPtbj`
-  READY/PROMOTED.
-- GitHub al auditar: sin PR ni issues abiertos. No se encontró trabajo de una
-  fase esperando en un PR sin fusionar.
+- Producción: `main` en **`9d08e0d`** (PR #93 fusionado), desplegado y sin PR
+  abierto. La rama de trabajo de esta sesión se abre desde ahí.
 - Supabase: proyecto ACTIVE_HEALTHY. La última migración del repositorio y del
-  historial remoto es la **00066** (`coaches_specialties_generador`, versión
-  remota `20261028011737`). El siguiente número libre es **00067**.
+  historial remoto es la **00079** (`entrenadores_admin`). El siguiente número
+  libre es **00080**.
+- Datos productivos al 30 de octubre (noche), comprobados con consulta directa:
+  **9 disciplinas** (activas: Pesas y máquinas, Boxeo y Zumba), **6 planes**
+  activos, **89 sesiones** (88 programadas y 1 anulada), **2 reservas**,
+  **12 horarios fijos** y **3 entrenadores**. De las **45 clases futuras**,
+  **45 tienen entrenador**.
 - Nota permanente de la 00049: sus tablas y funciones principales existen en
   producción, pero su nombre no aparece en el historial remoto de migraciones.
   **No volver a ejecutarla sin investigar.**
@@ -60,10 +63,10 @@ Según el caso, debe cumplir:
 
 | Orden | Trabajo | Motivo |
 |---:|---|---|
-| 1 | **CLI-06** | Cualquier plan o modalidad nueva se cobra con vigencia sin tocar código. |
-| 2 | **CLI-01** | Las vigencias ordenan planes, categorías y operación diaria. |
-| 3 | **FIN-01 y FIN-02** | Anulaciones y vuelto son los huecos financieros más visibles. |
-| 4 | **CAL-01, CAL-03, LEG-01 y NEG-01** | Preparan una entrega segura cuando el dueño entregue datos y decisiones. |
+| 1 | **QA-08** (celular) | Cierra Zumba: grilla pública, cobro del plan y horarios del panel. Es lo último que se publicó. |
+| 2 | **QA-03, QA-04 y QA-05** (celular y cuentas reales) | Son aceptaciones de cosas ya desplegadas; sin ellas no se puede decir «terminado». |
+| 3 | **Plan de gestión de planes** | Único hueco de negocio abierto en Administración: hoy se editan las tarifas NIO y se crean planes; falta el resto. |
+| 4 | **OP-06, FIN-01, FIN-02, CAL-01/03, LEG-01 y NEG-01** | Reglas de negocio y entrega; no bloquean la operación diaria de hoy. |
 
 ---
 
@@ -219,24 +222,40 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
     —ni con una fila sembrada a propósito— y que las funciones no tienen
     permiso para el rol anónimo. Dato de hoy: la base productiva tiene **9
     disciplinas**, de las
-    cuales solo Pesas y máquinas y Boxeo están activas; **Zumba y bailoterapia
-    existe pero está apagada, sin horarios y sin plan**, y desde esta pantalla
-    ya se puede prender y completar.
-  - **Estado de Zumba al 30 de octubre.** Todo el mecanismo está probado de
-    punta a punta en producción, dentro de una transacción revertida: prender
-    la disciplina, crear el plan `pln_zumba` (clase `cls_zumba`, 30 días, NIO
-    400 de prueba), guardar un horario de martes 18:00 con María Rodríguez
-    como entrenadora, generar 3 sesiones, cobrar el plan en Caja con
+    cuales en ese momento solo Pesas y máquinas y Boxeo estaban activas; **Zumba
+    y bailoterapia existía apagada, sin horarios y sin plan**. **Actualizado el
+    30 de octubre:** Zumba ya está prendida, con plan y horarios (ver «Zumba
+    publicada» más abajo).
+  - **Zumba publicada el 30 de octubre (noche) — hecho, no pendiente.** El
+    dueño decidió: plan **C$300 al mes (30 días)** y clases **lunes, miércoles
+    y viernes a las 7:00 p. m.**; prender la disciplina ahora. Cargado en
+    producción: `cls_zumba` activa; plan `pln_zumba` (atado a `cls_zumba`,
+    30 días, NIO 300, `access_kind = class`) —cobrable en Caja sin código
+    nuevo—; 3 horarios fijos de 60 minutos, cupo 30, Salón de baile, con
+    **María Rodríguez** (`coa_mr`); **9 clases futuras** generadas del 2 al 20
+    de noviembre con `admin_apply_schedule` y la entrenadora puesta. La clase
+    del sábado 31 de octubre que había salido mal fechada quedó **anulada con
+    motivo**, no borrada. Verificado en la API pública (`/api/sessions`) y en
+    `/es/horarios`: la clase del lunes 2/11 a las 19:00 sale «con María
+    Rodríguez». Antes, la misma carga se había probado entera dentro de una
+    transacción revertida: prender, cobrar el plan con
     `finance_record_movement_plan` (crea el segmento «class cls_zumba» con
-    vencimiento a 30 días) y **reservar la clase como socia: la reserva quedó
-    `confirmed`**. Después del `rollback` todo quedó igual (5 planes, 0
-    vencimientos, 0 horarios de Zumba, 0 sesiones de Zumba). Conclusión: **no
-    falta código**; falta la decisión del negocio. Para publicar Zumba hay que
-    definir tres datos y cargarlos desde el panel: **(1)** el precio del plan
-    de Zumba y sus días de vigencia; **(2)** los días y horarios reales de las
-    clases; **(3)** si se prende la disciplina ahora o queda apagada hasta que
-    estén los horarios. Los tres están preguntados al dueño y **sin respuesta
-    todavía**; no se inventó ningún precio ni horario.
+    vencimiento a 30 días) y reservar como socia (`confirmed`).
+  - **Convención de días, para no repetir el error:** en los horarios fijos el
+    **0 es lunes** y el **6 es domingo**, igual en el panel (columna «Lunes»
+    primero) y en el generador (`(extract(dow) + 6) % 7` en `00074`). Cargar
+    «1, 3, 5» creyendo que es lunes/miércoles/viernes produce **martes, jueves
+    y sábado**. Boxeo usa 1, 2 y 3 porque son martes, miércoles y jueves:
+    coincide con el texto de su disciplina, no es un desfase.
+  - **Pendiente de operación (sin código):** las clases concretas se generan
+    de 1 a 8 semanas por vez (por defecto 4) y **no hay tarea automática**.
+    Hoy están creadas hasta el 20 de noviembre; si nadie aprieta «Generar» otra
+    vez, la grilla pública se queda sin fechas aunque los horarios fijos sigan
+    existiendo. Conviene regenerar cada 2 o 3 semanas.
+  - **Por confirmar con el dueño:** el texto público de Zumba todavía dice
+    «Consultá el horario vigente por WhatsApp». Se puede cambiar por «Lunes,
+    miércoles y viernes a las 7:00 p. m.», como ya hace Boxeo, pero es texto
+    de marketing y no se tocó sin su palabra.
   - **Hecho el 29 de octubre (migración `00074`, aplicada en producción como
     `generar_sesiones_preview`):** generar sesiones para una fecha de inicio y
     1 a 8 semanas, mirando primero qué se crearía. `admin_preview_schedule()`
@@ -336,12 +355,19 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
     500 y con el arreglo 200.
     **Aclarado el 30 de octubre:** dije que la grilla pública no mostraba el
     entrenador y **era falso**. `src/components/schedule/schedule-board.tsx` ya
-    pinta «con {nombre}» cuando la clase tiene entrenador; lo que falta es el
-    **dato**, no la pantalla: las 79 sesiones productivas tienen `coach_id`
-    nulo. Lo que hay que hacer es del panel, en dos pasos: elegir el entrenador
-    en cada horario y apretar «Pasar a las clases ya creadas». Se sumó
-    `tests/public-schedule-coach.test.mjs` (2 casos) para que ese renglón no se
-    pierda: muestra el nombre cuando existe y no inventa nada cuando no.
+    pinta «con {nombre}» cuando la clase tiene entrenador; lo que faltaba era el
+    **dato**, no la pantalla: las 79 sesiones productivas tenían `coach_id`
+    nulo. Lo que había que hacer era del panel, en dos pasos: elegir el
+    entrenador en cada horario y apretar «Pasar a las clases ya creadas». Se
+    sumó `tests/public-schedule-coach.test.mjs` (2 casos) para que ese renglón
+    no se pierda: muestra el nombre cuando existe y no inventa nada cuando no.
+    **Cargado el 30 de octubre (noche):** María Rodríguez quedó en los 3
+    horarios de Zumba y **José Luis Pérez** en los 9 de Boxeo, con «Pasar a las
+    clases ya creadas» aplicado: **36 clases futuras de Boxeo** y **9 de Zumba**
+    quedaron con entrenador, **0 sin entrenador**. Las clases ya dictadas se
+    dejaron como estaban para no reescribir el historial. Comprobado en
+    `/api/sessions`: cada clase futura devuelve su `coach` con nombre y
+    especialidad.
     **Sigue faltando acá:** completar la gestión de planes más allá de las
     cuatro tarifas NIO ya editables.
   Todo el CRUD debe estar autorizado en pantalla, servidor y RLS/RPC, con
@@ -643,6 +669,13 @@ crear operaciones ficticias en producción sin coordinarlo.
 - [ ] **QA-07 · Media · Prueba coordinada — Deuda en USD.** Recorrer cargo,
   abono parcial, efectivo/vuelto y saldo en USD sin alterar NIO, en un entorno
   o con datos de prueba coordinados. No repetir el simple cobro USD1 ya probado.
+- [ ] **QA-08 · Media · Celular — Zumba publicada y entrenadores.** Tres
+  comprobaciones: **(1)** en `/es/horarios`, Zumba aparece lunes, miércoles y
+  viernes a las 19:00 con «María Rodríguez», y las clases de Boxeo con «José
+  Luis Pérez»; **(2)** en Caja, el plan «Zumba» se cobra a C$300 y da 30 días
+  de vigencia de la disciplina `cls_zumba`; **(3)** en Administración →
+  Horarios, Zumba figura en las columnas lunes, miércoles y viernes. Si algún
+  día no cuadra, revisar la convención `0 = lunes` antes de tocar los datos.
 
 ## 9. Entrega al dueño — no ejecutar todavía
 
