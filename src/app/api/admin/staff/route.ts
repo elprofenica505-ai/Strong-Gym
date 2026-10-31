@@ -4,6 +4,7 @@ import { isAdminRole } from "@/lib/auth/current-user";
 import { getCurrentUser } from "@/lib/data/queries";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { STAFF_ERROR_MESSAGES, STAFF_ROLES, staffErrorMessage } from "@/lib/admin/staff";
+import { sameOrigin } from "@/lib/security/same-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,8 @@ const bodySchema = z.discriminatedUnion("action", [
  * sobre la propia ficha, valida cada campo y deja bitácora sin valores sensibles.
  */
 export async function POST(request: Request) {
+  if (!sameOrigin(request))
+    return NextResponse.json({ error: "ORIGIN" }, { status: 403, headers });
   const user = await getCurrentUser();
   if (!user || !isAdminRole(user.role) || user.mfa !== "ok") {
     return NextResponse.json(

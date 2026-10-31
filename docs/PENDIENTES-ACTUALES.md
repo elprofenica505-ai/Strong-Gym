@@ -39,8 +39,8 @@ Según el caso, debe cumplir:
 
 ## Foto actual comprobada
 
-- Producción: `main` en **`7228c04`** (PR #94 fusionado; antes #93), CI verde
-  y sin PR abierto.
+- Producción: `main` en **`a9d07c9`** (PR #95 fusionado) y este PR es el
+  **#96**, con CI verde antes de fusionar.
 - Supabase: proyecto ACTIVE_HEALTHY. La última migración del repositorio y del
   historial remoto es la **00079** (`entrenadores_admin`). El siguiente número
   libre es **00080**.
@@ -69,14 +69,14 @@ Según el caso, debe cumplir:
 
 ## Resumen de avance al 30 de octubre de 2026
 
-**59 tareas listadas: 12 cerradas y 47 abiertas.** De las 47 abiertas, **7 son
+**60 tareas listadas: 13 cerradas y 47 abiertas.** De las 47 abiertas, **7 son
 aceptaciones** en celular o con cuenta real (QA-03 a QA-09), **5 son de
 entrega** (ENT-01 a ENT-05, aplazadas a propósito) y **8 son opcionales del
 futuro** (FUT-01 a FUT-08). Quedan **27 de producto o negocio** por resolver.
 
 | Fase o bloque | Estado | Qué falta |
 |---|---|---|
-| **Etapa 1 — Proteger lo construido** | Código cerrado y desplegado | SEG-02 (correo propio y recuperación real), SEG-03 (segundo administrador y respaldo MFA), SEG-04 a SEG-06 (revisión de escrituras, monitoreo, grants) |
+| **Etapa 1 — Proteger lo construido** | Código cerrado y desplegado | SEG-02 (correo propio y recuperación real), SEG-03 (segundo administrador y respaldo MFA), SEG-05 y SEG-06 (monitoreo y grants) y SEG-07 (límites de abuso) |
 | **Etapa 2 — Navegación** | Hecha: Inicio, Clientes, Finanzas, Operación, Administración y Mis clientes | Solo la decisión de OP-09 |
 | **Etapa 3 — Operación diaria** | OP-01 a OP-05 cerradas y desplegadas | OP-06 (cierre de reservas pasadas), OP-07 (cambio de día sin recargar), OP-08 (vincular ficha con cuenta web) y la aceptación QA-09 |
 | **Clientes, vigencias y planes** | CLI-01, CLI-02 y CLI-06 cerradas y desplegadas | Aceptación en celular (QA-09); decisiones CLI-03, CLI-04 y CLI-05 |
@@ -596,19 +596,31 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   temporal, el dueño debe quedar como administrador con su propio MFA y acceso
   comprobado, usando su correo y autorización. Nunca se piden contraseñas,
   semillas ni códigos por chat.
-- [ ] **SEG-04 · Media · Revisión de código — CSRF y abuso de forma uniforme.**
-  Auditado el 30 de octubre de 2026: **11 rutas** ya rechazan origen cruzado
-  (`bookings`, `categories`, `classes`, `classes/catalog`, `coaches`, `debts`,
-  `finance`, `messages`, `plans`, `schedule`, `sessions/generate`), pero cada
-  una tiene su propia copia de `sameOrigin`; **15 rutas que escriben siguen sin
-  ese control** (socios, personal, roles, tarifas, productos, progreso,
-  nutrición, reservas del socio, cuenta, accesos de entrenador, importación de
-  socios, boletín, contacto y el endpoint de reinicio ya retirado con 410).
-  Cierre: **un solo guardia compartido** —no 15 copias más— y una política
-  común de límites. El antispam actual de formularios públicos es por IP y en
-  memoria.
-  No se usa Supabase Storage hoy; si se introduce, sus políticas entran en esta
-  revisión antes de publicar archivos.
+- [x] **SEG-04 · Media · Revisión de código — CSRF uniforme.** **Cerrado el 30
+  de octubre de 2026 (PR #96).** Había **cuatro copias** de la misma
+  comprobación de origen —once rutas con una función `sameOrigin` repetida y
+  cuatro con la lógica escrita a mano dentro del `POST`— y **nueve rutas que
+  escriben no la tenían**. Ahora hay **un solo guardia** en
+  `src/lib/security/same-origin.ts` que usan **las 26 rutas con métodos que
+  escriben**; la única excepción es el endpoint retirado que solo responde 410.
+  El guardia rechaza `sec-fetch-site: cross-site`, exige que `origin` coincida
+  con la URL o con el encabezado `host` (por el proxy del despliegue) y deja
+  pasar los pedidos sin `origin`, que son los que no vienen de un navegador.
+  Al reemplazar el chequeo de socios se corrigió además un defecto real: un
+  `origin` inválido hacía fallar la ruta en vez de responder «origen no
+  permitido». Pruebas: `tests/same-origin.test.mjs` con **8 casos**, seis de la
+  función y dos guardianes que fallan si alguna ruta que escribe queda sin el
+  guardia o si alguien vuelve a escribir una copia local; suite **846 en
+  verde**; `typecheck`, `lint` y `build` limpios. Comprobado con el servidor de
+  desarrollo: pedido cruzado `403` en contacto, boletín, socios, finanzas,
+  deudas, reservas, progreso y cuenta; mismo sitio entra al camino normal
+  (401/503/422 según el caso) y las páginas siguen respondiendo 200.
+  **Queda abierto con ID propio:** SEG-07.
+- [ ] **SEG-07 · Media · Código/operación — Límites de abuso y Storage.** El
+  antispam de los formularios públicos es por IP y en memoria: no se comparte
+  entre instancias ni sobrevive a un despliegue. Cierre: un límite común para
+  las rutas que escriben, con respuesta clara al usuario legítimo, y políticas
+  revisadas si algún día se usa Supabase Storage.
 - [ ] **SEG-05 · Media · Código/operación — Registro de errores y alertas.**
   Hoy hay mensajes seguros en consola/logs de plataforma, sin un servicio de
   monitoreo con alertas. Cierre: errores de servidor/cliente agrupados, sin
@@ -798,6 +810,10 @@ Esta sección es un resumen, no otra lista de tareas.
   AAL2, MFA TOTP del personal, rechazo de valores no escalares en MFA/PKCE,
   demo imposible en producción, recuperación PKCE y contraseñas de la app de
   12–128 caracteres.
+- Origen de los pedidos (SEG-04, PR #96): un único guardia
+  `sameOrigin` en `src/lib/security/same-origin.ts`, usado por las **26 rutas**
+  con métodos que escriben, con `tests/same-origin.test.mjs` como guardián
+  contra una copia nueva o una ruta sin proteger.
 - CSP obligatoria y JSON-LD serializado de forma segura en el PR #56, con
   confirmación visual en celular de que ningún recurso queda bloqueado
   (QA-01).

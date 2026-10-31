@@ -3,6 +3,7 @@ import { z } from "zod";
 import { isAdminRole, isStaffRole } from "@/lib/auth/current-user";
 import { getCurrentUser } from "@/lib/data/queries";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { sameOrigin } from "@/lib/security/same-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -134,19 +135,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const origin = request.headers.get("origin");
-  if (request.headers.get("sec-fetch-site") === "cross-site")
+  if (!sameOrigin(request))
     return NextResponse.json({ error: "ORIGIN" }, { status: 403, headers });
-  if (origin) {
-    let allowed = false;
-    try {
-      const url = new URL(origin);
-      allowed =
-        url.origin === new URL(request.url).origin ||
-        url.host === request.headers.get("host");
-    } catch {}
-    if (!allowed) return NextResponse.json({ error: "ORIGIN" }, { status: 403, headers });
-  }
 
   const user = await getCurrentUser();
   if (!user || !isAdminRole(user.role) || user.mfa !== "ok")

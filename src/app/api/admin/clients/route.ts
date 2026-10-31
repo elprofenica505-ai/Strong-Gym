@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/data/queries";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { crmActionSchema } from "@/lib/crm/schemas";
 import { z } from "zod";
+import { sameOrigin } from "@/lib/security/same-origin";
 export const dynamic = "force-dynamic";
 const headers = { "Cache-Control": "private, no-store" };
 const reply = (data: unknown, status = 200) =>
@@ -211,13 +212,7 @@ export async function GET(request: Request) {
 }
 export async function POST(request: Request) {
   try {
-    const origin = request.headers.get("origin");
-    if (
-      origin &&
-      new URL(origin).host !== request.headers.get("host") &&
-      new URL(origin).origin !== new URL(request.url).origin
-    )
-      return reply({ error: "Origen no permitido." }, 403);
+    if (!sameOrigin(request)) return reply({ error: "Origen no permitido." }, 403);
     const ctx = await context();
     if (!ctx.db) return ctx.response;
     const body: unknown = await request.json().catch(() => null);

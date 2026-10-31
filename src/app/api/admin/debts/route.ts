@@ -5,6 +5,7 @@ import { canManageFinance } from "@/lib/auth/current-user";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { debtDetailSchema,debtIntentSchema,debtReceiptSchema,matchesDebtReceipt } from "@/lib/finance/debts";
+import { sameOrigin } from "@/lib/security/same-origin";
 export const dynamic='force-dynamic';
 const reply=(body:unknown,status=200)=>NextResponse.json(body,{status,headers:{'Cache-Control':'private, no-store'}});
 const errors:Record<string,string>={
@@ -44,10 +45,7 @@ export async function GET(request:Request) {
 }
 export async function POST(request:Request) {
   try {
-    const origin=request.headers.get('origin');
-    let allowed=request.headers.get('sec-fetch-site')!=='cross-site';
-    if(origin) { try { const url=new URL(origin); allowed=allowed&&(url.origin===new URL(request.url).origin||url.host===request.headers.get('host')); } catch { allowed=false; } }
-    if(!allowed)return reply({error:'Origen no permitido.'},403);
+    if(!sameOrigin(request))return reply({error:'Origen no permitido.'},403);
     const ctx=await context();if(!ctx.db)return ctx.response;
     const parsed=debtIntentSchema.safeParse(await request.json().catch(()=>null));
     if(!parsed.success)return reply({error:'Datos incompletos o inválidos. No se enviaron a la base.'},422);

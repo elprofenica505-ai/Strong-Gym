@@ -3,6 +3,7 @@ import { z } from "zod";
 import { isAdminRole } from "@/lib/auth/current-user";
 import { getCurrentUser } from "@/lib/data/queries";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { sameOrigin } from "@/lib/security/same-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -91,19 +92,6 @@ function failure(error: { code?: string; message?: string }) {
   );
 }
 
-function sameOrigin(request: Request): boolean {
-  if (request.headers.get("sec-fetch-site") === "cross-site") return false;
-  const origin = request.headers.get("origin");
-  if (!origin) return true;
-  try {
-    const url = new URL(origin);
-    return (
-      url.origin === new URL(request.url).origin || url.host === request.headers.get("host")
-    );
-  } catch {
-    return false;
-  }
-}
 
 async function requireAdmin() {
   const user = await getCurrentUser();

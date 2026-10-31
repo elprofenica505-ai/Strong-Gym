@@ -10,6 +10,7 @@ import {
   movementSchema,
   receiptSchema,
 } from "@/lib/finance/movements";
+import { sameOrigin } from "@/lib/security/same-origin";
 export const dynamic = "force-dynamic";
 const reply = (body: unknown, status = 200) =>
   NextResponse.json(body, {
@@ -172,19 +173,7 @@ export async function GET(request: Request) {
 }
 export async function POST(request: Request) {
   try {
-    const origin = request.headers.get("origin");
-    if (request.headers.get("sec-fetch-site") === "cross-site")
-      return reply({ error: "Origen no permitido." }, 403);
-    if (origin) {
-      let allowed = false;
-      try {
-        const url = new URL(origin);
-        allowed =
-          url.origin === new URL(request.url).origin ||
-          url.host === request.headers.get("host");
-      } catch {}
-      if (!allowed) return reply({ error: "Origen no permitido." }, 403);
-    }
+    if (!sameOrigin(request)) return reply({ error: "Origen no permitido." }, 403);
     const ctx = await context();
     if (!ctx.db) return ctx.response;
     const parsed = movementSchema.safeParse(

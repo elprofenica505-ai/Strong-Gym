@@ -7,6 +7,7 @@ import {
   CASHIER_PERMISSION_FIELDS,
   CASHIER_PERMISSION_KEYS,
 } from "@/lib/finance/cashier-permissions";
+import { sameOrigin } from "@/lib/security/same-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +56,8 @@ const messages: Record<string, [string, number]> = {
  * corto permitido y esta ruta lo traduce a una clave conocida.
  */
 export async function POST(request: Request) {
+  if (!sameOrigin(request))
+    return NextResponse.json({ error: "ORIGIN" }, { status: 403, headers });
   const user = await getCurrentUser();
   if (!user || !isAdminRole(user.role) || user.mfa !== "ok") {
     return NextResponse.json({ error: "AUTH", message: messages.AUTH[0] }, { status: 403, headers });

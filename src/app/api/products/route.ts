@@ -12,6 +12,7 @@ import {
   saleCatalogSchema,
   type ProductAction,
 } from "@/lib/products/rules";
+import { sameOrigin } from "@/lib/security/same-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -150,6 +151,7 @@ async function run(db: NonNullable<Awaited<ReturnType<typeof getSupabaseServerCl
 }
 
 export async function POST(request: Request) {
+  if (!sameOrigin(request)) return reply({ error: "Origen no permitido." }, 403);
   try {
     const ctx = await context();
     if (!ctx.db) return ctx.response;

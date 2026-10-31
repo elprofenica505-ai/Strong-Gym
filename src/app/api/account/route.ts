@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/data/queries";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { sameOrigin } from "@/lib/security/same-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,8 @@ const schema = z.object({
 
 /** PATCH /api/account → actualiza los datos del perfil. */
 export async function PATCH(request: Request) {
+  if (!sameOrigin(request))
+    return NextResponse.json({ error: "ORIGIN" }, { status: 403 });
   if (!isSupabaseConfigured) {
     return NextResponse.json(
       {

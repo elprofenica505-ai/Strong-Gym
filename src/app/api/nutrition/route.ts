@@ -13,6 +13,7 @@ import {
   inputsSchema,
   type PlanInputs,
 } from "@/lib/nutrition/plan";
+import { sameOrigin } from "@/lib/security/same-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -173,6 +174,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!sameOrigin(request)) return reply({ error: "Origen no permitido." }, 403);
   try {
     const ctx = await context();
     if (!ctx.db) return ctx.response;

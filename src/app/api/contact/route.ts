@@ -3,6 +3,7 @@ import { z } from "zod";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { allowRequest, clientIp, FORM_RULE, isHoneypotFilled } from "@/lib/antispam";
+import { sameOrigin } from "@/lib/security/same-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,8 @@ const contactSchema = z.object({
 
 /** POST /api/contact → guarda la consulta del formulario. */
 export async function POST(request: Request) {
+  if (!sameOrigin(request))
+    return NextResponse.json({ error: "ORIGIN" }, { status: 403 });
   let payload: unknown;
   try {
     payload = await request.json();

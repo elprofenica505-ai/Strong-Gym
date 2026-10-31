@@ -4,6 +4,7 @@ import { isStaffRole } from "@/lib/auth/current-user";
 import { getCurrentUser } from "@/lib/data/queries";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { parseGoalForm, parseMeasurementForm, parseRoutineExercises, DAY_KEYS } from "@/lib/progress/forms";
+import { sameOrigin } from "@/lib/security/same-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +51,8 @@ const messages: Record<string, [string, number]> = {
  * Caja registra medidas; metas y rutinas las cambia el administrador o el entrenador asignado.
  */
 export async function POST(request: Request) {
+  if (!sameOrigin(request))
+    return NextResponse.json({ error: "ORIGIN" }, { status: 403, headers });
   const user = await getCurrentUser();
   if (!user || !isStaffRole(user.role) || user.mfa !== "ok") {
     return NextResponse.json({ error: "AUTH", message: messages.AUTH[0] }, { status: 403, headers });
