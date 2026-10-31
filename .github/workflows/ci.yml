@@ -92,6 +92,9 @@ jobs:
       - name: Probar que anular da de baja la vigencia (PGlite)
         run: npm run test:planes:anulacion
 
+      - name: Probar el uso de cada plan y su historial de precios (PGlite)
+        run: npm run test:planes:uso
+
       - name: Probar roles, entrenadores y cierre de caja (PGlite)
         run: npm run test:roles
 

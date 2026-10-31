@@ -16,6 +16,7 @@
     "test:auth": "node --experimental-strip-types --test tests/*.test.mjs",
     "test:finance:movements": "node scripts/test-finance-movements-sql.mjs",
     "test:planes:anulacion": "node scripts/test-plan-void-sql.mjs",
+    "test:planes:uso": "node scripts/test-plan-usage-sql.mjs",
     "test:roles": "node scripts/test-roles-fase-a-sql.mjs && node scripts/test-roles-fase-b-sql.mjs && node scripts/test-trainer-access-sql.mjs && node scripts/test-cashier-close-sql.mjs",
     "test:medidas": "node --experimental-strip-types --test tests/progress-rules.test.mjs tests/my-progress.test.mjs tests/progress-forms.test.mjs tests/attendance-summary.test.mjs tests/attendance-table.test.mjs && node scripts/test-progress-sql.mjs && node scripts/test-attendance-sql.mjs",
     "test:layout": "node scripts/test-shell-layout.mjs",

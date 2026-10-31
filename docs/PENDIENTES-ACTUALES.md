@@ -43,9 +43,9 @@ Según el caso, debe cumplir:
   (PR #105); CI en verde en ambos. La 00085 ya está aplicada en producción y
   los datos de vigencias quedaron alineados.
 - Supabase: proyecto ACTIVE_HEALTHY. Las migraciones aplicadas y registradas
-  llegan a la **00085** (`anular_da_de_baja_la_vigencia`, registrada como
-  `20261031194426`): da de baja la vigencia del cobro anulado y alineó los
-  datos que ya estaban anulados. El siguiente número libre es **00086**.
+  llegan a la **00086** (`planes_uso_y_precio`): la 00085 da de baja la
+  vigencia del cobro anulado y la 00086 agrega el uso y el historial de
+  precios de cada plan. El siguiente número libre es **00087**.
 - Datos productivos al 31 de octubre, comprobados con consulta directa:
   **9 disciplinas** (activas: Pesas y máquinas, Boxeo y Zumba), **6 planes**
   activos, **89 sesiones** (88 programadas y 1 anulada), **2 reservas**,
@@ -68,15 +68,16 @@ Según el caso, debe cumplir:
 |---:|---|---|
 | 1 | **QA-08** (celular) | Cierra Zumba: grilla pública, cobro del plan y horarios del panel. Es lo último que se publicó. |
 | 2 | **QA-03, QA-04 y QA-05** (celular y cuentas reales) | Son aceptaciones de cosas ya desplegadas; sin ellas no se puede decir «terminado». |
-| 3 | **Plan de gestión de planes** | Único hueco de negocio abierto en Administración: hoy se editan las tarifas NIO y se crean planes; falta el resto. La anulación ya da de baja la vigencia (FIN-09). |
+| 3 | **QA-09 y QA-06** (celular) | Aceptar lo que ya está desplegado: vigencias, categorías, calendario y ahora el uso y el historial de precios de los planes (CLI-07). |
 | 4 | **OP-06, FIN-03 a FIN-07, CAL-01/03, LEG-01 y NEG-01** | Reglas de negocio y entrega; no bloquean la operación diaria de hoy. |
 
 ## Resumen de avance al 31 de octubre de 2026
 
-**62 tareas listadas: 18 cerradas y 44 abiertas.** De las 44 abiertas, **7 son
+**63 tareas listadas: 19 cerradas y 44 abiertas.** De las 44 abiertas, **7 son
 aceptaciones** en celular o con cuenta real (QA-03 a QA-09), **5 son de
 entrega** (ENT-01 a ENT-05, aplazadas a propósito) y **8 son opcionales del
-futuro** (FUT-01 a FUT-08). Quedan **24 de producto o negocio** por resolver.
+futuro** (FUT-01 a FUT-08). Quedan **24 de producto o negocio** por resolver,
+**ninguna** en Administración → Planes.
 
 | Fase o bloque | Estado | Qué falta |
 |---|---|---|
@@ -392,8 +393,8 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
     dejaron como estaban para no reescribir el historial. Comprobado en
     `/api/sessions`: cada clase futura devuelve su `coach` con nombre y
     especialidad.
-    **Sigue faltando acá:** completar la gestión de planes más allá de las
-    cuatro tarifas NIO ya editables.
+    **Cerrado el 31 de octubre (00086):** la gestión de planes ya incluye
+    cuánta gente tiene cada plan, quiénes son y qué precios tuvo antes (CLI-07).
   Todo el CRUD debe estar autorizado en pantalla, servidor y RLS/RPC, con
   bitácora, control de concurrencia e idempotencia, fechas en
   `America/Managua`, sin crear sesiones pasadas por error y sin borrar
@@ -480,6 +481,31 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   equivocado al aplicarla. La aceptación en celular va con **QA-09**.
   Reversión: dejar de enviar `planId`; las
   columnas pueden quedar vacías sin afectar cobros ni vigencias ya creadas.
+- [x] **CLI-07 · Alta · Código — Uso de cada plan y su historial de precios.**
+  Cerrada el 31 de octubre (migración `00086_planes_uso_y_precio`, aplicada en
+  producción). En Administración → Planes cada plan decía «Mes · 30 días ·
+  C$560» y nada más: para contestar «¿cuánta gente tiene el Mes?» había que ir
+  ficha por ficha, y al cambiar un precio el anterior se perdía sin rastro, así
+  que un cobro de ayer a C$560 no se podía explicar. Ahora cada plan muestra
+  **cuántas personas lo tienen vigente, cuántas lo tienen por empezar y cuántos
+  cobros hubo este mes**, y el botón «Ver quiénes» abre la lista de esas
+  personas con su vencimiento, los días que les quedan y lo que pagaron, sin
+  salir de la pantalla. Debajo se lee el precio con su fecha: «C$600 desde el 2
+  de noviembre (antes C$560)», con el historial de cambios en el mismo panel.
+  El historial lo llena un **disparador en `plans`**, así cubre las dos puertas
+  que tocan precios (el editor de tarifas rápidas y el catálogo) sin repetir la
+  regla; solo escribe cuando el precio cambió de verdad, y los planes que ya
+  existían **no** reciben una fecha inventada. Los conteos y la lista ignoran
+  las vigencias anuladas (00085). Reglas por rol: `is_admin()` en las tres
+  piezas, la tabla de precios no se entrega a `anon` ni a `authenticated`, y un
+  fallo de lectura **no** se muestra como «nadie tiene el plan» sino con su
+  aviso. Probado con `scripts/test-plan-usage-sql.mjs` (**23 casos** por rol en
+  PGlite), `tests/plan-usage.test.mjs` (18 del texto y la validación),
+  `tests/plans-catalog.test.mjs` (8 de la pantalla, incluidos error y respuesta
+  rara) y `tests/plans-api.test.mjs` (6 de la ruta). Suite completa **943/943**.
+  Comprobado en producción con `rollback`: el catálogo devuelve los 6 planes con
+  sus conteos, `admin_plan_usage` responde y cambiar el precio de 560 a 570
+  dejó su renglón con «antes 560 / después 570», sin escribir nada.
 - [x] **CLI-02 · Media · Código — Categoría automática por vigencia real.**
   Hecho y aplicado en producción (migración `00070`, versión
   `20261029051354 categorias_automaticas`). La categoría deja de mirar el «plan
@@ -1020,6 +1046,10 @@ Esta sección es un resumen, no otra lista de tareas.
   devuelto, o el motivo por el que no se pudo. Si no se puede leer el estado,
   el título no afirma que no se hizo. La lista de Caja marca los movimientos
   anulados con su motivo y deja de ofrecer «Anular» en ellos.
+- Uso e historial de precios de los planes (CLI-07, migración 00086): cada plan
+  dice cuánta gente lo tiene y cuántos cobros hubo este mes, «Ver quiénes» abre
+  la lista con vencimientos, y cada cambio de precio queda con su valor anterior,
+  quién y cuándo.
 - Baja de vigencia al anular (FIN-09, migración 00085): anular un cobro deja
   el segmento marcado como anulado —nunca borrado—, adelanta los meses
   encadenados sin perder ni ganar días, respeta los huecos reales y deja

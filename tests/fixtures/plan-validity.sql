@@ -14,8 +14,15 @@ create table if not exists public.gym_clients (
   full_name text
 );
 
+create table if not exists public.profiles (
+  id uuid primary key,
+  full_name text,
+  role text
+);
+
 create table if not exists public.classes (
   id text primary key,
+  slug text,
   name_es text not null,
   is_active boolean not null default true,
   sort_order integer not null default 0
@@ -23,11 +30,20 @@ create table if not exists public.classes (
 
 create table if not exists public.plans (
   id text primary key,
+  slug text,
   name_es text not null,
+  name_en text,
+  period text default 'month',
+  price numeric(10, 2),
+  price_nio numeric(12, 2),
   is_active boolean not null default true,
   access_kind text default 'gym',
   class_id text,
-  duration_days integer
+  duration_days integer,
+  validity_currency text,
+  validity_amount numeric(12, 2),
+  sort_order integer not null default 100,
+  updated_at timestamptz not null default now()
 );
 
 create table if not exists public.category_rules (
@@ -93,6 +109,11 @@ create table if not exists public.finance_voids (
   receipt jsonb,
   created_at timestamptz not null default now()
 );
+
+create or replace function public.is_admin() returns boolean
+language sql stable security definer as $$
+  select exists(select 1 from auth.current_user)
+$$;
 
 create or replace function public.crm_is_staff() returns boolean
 language sql stable security definer as $$

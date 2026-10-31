@@ -1,8 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ChevronDown, ChevronUp, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/finance/format-money";
+import {
+  describePriceChange,
+  formatChangeMoment,
+  parsePlanUsage,
+  personValidityText,
+  planMainPrice,
+  priceHistoryLine,
+  usageSummary,
+  type PlanPriceChange,
+  type PlanUsage,
+} from "@/lib/plans/usage";
 
 /** Forma que devuelve `admin_plans_catalog()`. */
 export type AdminPlan = {
@@ -22,6 +34,11 @@ export type AdminPlan = {
   is_active: boolean;
   sort_order: number;
   updated_at: string;
+  /** Cuánta gente lo tiene (00086). */
+  holders_active?: number;
+  holders_upcoming?: number;
+  sold_this_month?: number;
+  last_price_change?: PlanPriceChange | null;
 };
 type AdminClass = { id: string; slug: string; name_es: string; is_active: boolean };
 type Catalog = { plans: AdminPlan[]; classes: AdminClass[] };
@@ -70,6 +87,12 @@ export function PlansCatalog({ initial }: { initial: Catalog }) {
   const [draft, setDraft] = useState<Draft>(() => emptyDraft(initial.classes));
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
+  // Plan abierto para ver quiénes lo tienen. Se pide a la base al abrirlo y no
+  // se guarda entre planes: la lista tiene que ser la de ahora.
+  const [openPlan, setOpenPlan] = useState<string | null>(null);
+  const [usage, setUsage] = useState<PlanUsage | null>(null);
+  const [usageBusy, setUsageBusy] = useState(false);
+  const [usageError, setUsageError] = useState<string | null>(null);
 
   const activeClasses = useMemo(
     () => catalog.classes.filter((c) => c.is_active),
@@ -104,6 +127,44 @@ export function PlansCatalog({ initial }: { initial: Catalog }) {
     if (!res.ok) return;
     const data = (await res.json()) as Catalog;
     setCatalog({ plans: data.plans ?? [], classes: data.classes ?? [] });
+  }
+
+  async function toggleUsage(plan: AdminPlan) {
+    if (openPlan === plan.id) {
+      setOpenPlan(null);
+      setUsage(null);
+      setUsageError(null);
+      return;
+    }
+    setOpenPlan(plan.id);
+    setUsage(null);
+    setUsageError(null);
+    setUsageBusy(true);
+    try {
+      const res = await fetch(`/api/admin/plans?plan=${encodeURIComponent(plan.id)}`, {
+        cache: "no-store",
+      });
+      const json = (await res.json().catch(() => null)) as
+        | { ok?: boolean; usage?: unknown; message?: string }
+        | null;
+      if (!res.ok || !json?.ok) {
+        setUsageError(
+          json?.message ??
+            "No pudimos leer quiénes tienen este plan. Probá de nuevo: no se muestra una lista vacía.",
+        );
+        return;
+      }
+      const parsed = parsePlanUsage(json.usage);
+      if (!parsed) {
+        setUsageError("Lo que llegó no coincide con la lista esperada. No se muestra nada para no confundir.");
+        return;
+      }
+      setUsage(parsed);
+    } catch {
+      setUsageError("No se pudo consultar la base. Revisá la conexión y volvé a tocar el botón.");
+    } finally {
+      setUsageBusy(false);
+    }
   }
 
   async function save() {
@@ -349,10 +410,133 @@ export function PlansCatalog({ initial }: { initial: Catalog }) {
                     {amount !== null && ` · ${formatMoney(amount, currency)}`}
                     {plan.price_nio !== null && ` · tarifa ${formatMoney(Number(plan.price_nio), "NIO")}`}
                   </p>
+                  <p className="mt-1 text-sm text-mist">
+                    {usageSummary({
+                      holders_active: plan.holders_active ?? 0,
+                      holders_upcoming: plan.holders_upcoming ?? 0,
+                      sold_this_month: plan.sold_this_month ?? 0,
+                      last_price_change: plan.last_price_change ?? null,
+                    })}
+                  </p>
+                  {priceHistoryLine(plan.last_price_change ?? null) && (
+                    <p className="mt-1 text-[0.8125rem] text-fog">
+                      {priceHistoryLine(plan.last_price_change ?? null)}
+                    </p>
+                  )}
                 </div>
-                <Button type="button" variant="outline" size="sm" onClick={() => edit(plan)}>
-                  Editar
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    aria-expanded={openPlan === plan.id}
+                    aria-controls={`plan-uso-${plan.id}`}
+                    onClick={() => void toggleUsage(plan)}
+                  >
+                    <Users className="size-4" aria-hidden="true" />
+                    {openPlan === plan.id ? "Ocultar" : "Ver quiénes"}
+                    {openPlan === plan.id ? (
+                      <ChevronUp className="size-4" aria-hidden="true" />
+                    ) : (
+                      <ChevronDown className="size-4" aria-hidden="true" />
+                    )}
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => edit(plan)}>
+                    Editar
+                  </Button>
+                </div>
+
+                {openPlan === plan.id && (
+                  <div
+                    id={`plan-uso-${plan.id}`}
+                    className="w-full space-y-4 border-t border-line pt-3"
+                  >
+                    {usageBusy && (
+                      <p className="text-[0.8125rem] text-fog">Leyendo quiénes tienen este plan…</p>
+                    )}
+                    {usageError && (
+                      <p
+                        role="alert"
+                        className="rounded-xl border border-alert/50 bg-alert/10 px-3 py-2 text-[0.8125rem] text-alert"
+                      >
+                        {usageError}
+                      </p>
+                    )}
+                    {usage && !usageBusy && (
+                      <>
+                        <div>
+                          <h3 className="text-[0.8125rem] font-semibold text-ink">
+                            {usage.people.length === 0
+                              ? "Quiénes lo tienen"
+                              : `Quiénes lo tienen ahora (${usage.people.length})`}
+                          </h3>
+                          {usage.people.length === 0 ? (
+                            <p className="mt-1 text-[0.8125rem] text-fog">
+                              Nadie tiene este plan vigente ni por empezar. Cuando se cobre, la
+                              persona aparece acá con la fecha hasta la que tiene acceso.
+                            </p>
+                          ) : (
+                            <ul className="mt-2 divide-y divide-line">
+                              {usage.people.map((person) => (
+                                <li
+                                  key={`${person.clientId}-${person.startedOn}`}
+                                  className="flex flex-wrap items-baseline justify-between gap-2 py-2"
+                                >
+                                  <span className="text-[0.875rem] font-medium text-ink">
+                                    {person.name}
+                                    {person.state === "upcoming" && (
+                                      <span className="ml-2 rounded-full border border-line px-2 py-0.5 text-[0.65rem] text-fog">
+                                        por empezar
+                                      </span>
+                                    )}
+                                  </span>
+                                  <span className="text-[0.8125rem] text-fog">
+                                    {personValidityText(person)}
+                                    {person.pricePaid !== null &&
+                                      ` · pagó ${formatMoney(
+                                        person.pricePaid,
+                                        person.currency === "USD" ? "USD" : "NIO",
+                                      )}`}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+
+                        <div>
+                          <h3 className="text-[0.8125rem] font-semibold text-ink">
+                            Cambios de precio
+                          </h3>
+                          {usage.history.length === 0 ? (
+                            <p className="mt-1 text-[0.8125rem] text-fog">
+                              Sin cambios registrados: el plan sigue con el precio de arriba. El
+                              historial empieza a contarse con esta versión; los cambios anteriores
+                              a ella no quedaron guardados.
+                            </p>
+                          ) : (
+                            <ul className="mt-2 divide-y divide-line">
+                              {usage.history.map((change, index) => (
+                                <li
+                                  key={`${change.changedAt}-${index}`}
+                                  className="flex flex-wrap items-baseline justify-between gap-2 py-2"
+                                >
+                                  <span className="text-[0.875rem] text-ink">
+                                    {describePriceChange(change)}
+                                  </span>
+                                  <span className="text-[0.8125rem] text-fog">
+                                    {formatChangeMoment(change.changedAt)}
+                                    {change.changedByName ? ` · ${change.changedByName}` : ""}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
               </li>
             );
           })}

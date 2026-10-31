@@ -4,6 +4,7 @@ import { isAdminRole } from "@/lib/auth/current-user";
 import { getCurrentUser } from "@/lib/data/queries";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { sameOrigin } from "@/lib/security/same-origin";
+import { parsePlanUsage } from "@/lib/plans/usage";
 
 export const dynamic = "force-dynamic";
 
@@ -84,7 +85,15 @@ function failure(
   return NextResponse.json({ error: "UNKNOWN", message: fallback }, { status: 503, headers });
 }
 
-export async function GET() {
+/**
+ * GET: catálogo completo, o el uso de un plan concreto.
+ *
+ * `?plan=<id>` devuelve quiénes tienen ese plan y qué precios tuvo antes; sin
+ * parámetro, el catálogo. Es la misma ruta a propósito: es la misma pantalla y
+ * el mismo permiso, así que no hace falta una segunda puerta que se pueda
+ * quedar sin proteger.
+ */
+export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user || !isAdminRole(user.role) || user.mfa !== "ok") {
     return NextResponse.json({ error: "AUTH", message: messages.AUTH[0] }, { status: 403, headers });
@@ -96,6 +105,33 @@ export async function GET() {
       { status: 503, headers },
     );
   }
+
+  const plan = new URL(request.url).searchParams.get("plan");
+  if (plan) {
+    if (plan.length > 64) {
+      return NextResponse.json(
+        { error: "NOT_FOUND", message: "No encontramos ese plan. Recargá la lista." },
+        { status: 404, headers },
+      );
+    }
+    const { data, error } = await supabase
+      .rpc("admin_plan_usage", { p_plan: plan })
+      .abortSignal(AbortSignal.timeout(15000));
+    if (error) return failure(error, "No pudimos leer quiénes tienen este plan. Probá de nuevo.");
+    const usage = parsePlanUsage(data);
+    if (!usage) {
+      // Nunca una lista vacía como si nadie tuviera el plan.
+      return NextResponse.json(
+        {
+          error: "UNCONFIRMED",
+          message: "No pudimos confirmar quiénes tienen este plan. No se muestra una lista vacía.",
+        },
+        { status: 503, headers },
+      );
+    }
+    return NextResponse.json({ ok: true, usage }, { headers });
+  }
+
   const { data, error } = await supabase
     .rpc("admin_plans_catalog")
     .abortSignal(AbortSignal.timeout(15000));
