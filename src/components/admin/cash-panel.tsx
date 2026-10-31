@@ -28,6 +28,7 @@ import {
   type MonthlyPnlRow,
   type PaymentMethodBreakdown,
   type Transaction,
+  type VoidMark,
 } from "@/lib/data/queries";
 import {
   CASHIER_PERMISSIONS_ALL,
@@ -292,6 +293,8 @@ interface Props {
   }[];
   isDemo: boolean;
   permissions?: CashierPermissions;
+  /** Anulaciones ya guardadas: la lista marca lo anulado (FIN-01). */
+  voids?: VoidMark[];
 }
 
 export function CashPanel({
@@ -305,6 +308,7 @@ export function CashPanel({
   accounts,
   isDemo,
   permissions = CASHIER_PERMISSIONS_ALL,
+  voids = [],
 }: Props) {
   const [filter, setFilter] = useState<"all" | "income" | "expense">("all");
   const [openModule, setOpenModule] = useState<CashModule | null>(null);
@@ -324,6 +328,12 @@ export function CashPanel({
   );
   const moduleScreenRef = useRef<HTMLElement>(null);
   const locale = readLocale();
+  // Un movimiento anulado no se vuelve a anular y la lista lo tiene que decir.
+  const voidedById = useMemo(() => {
+    const map: Record<string, VoidMark> = {};
+    for (const mark of voids) map[mark.originalId] = mark;
+    return map;
+  }, [voids]);
 
   // Al abrir una tarjeta, su tema funciona como pantalla aparte: empieza
   // arriba, recibe el foco y la página de Caja detrás no se mueve.
@@ -665,6 +675,7 @@ export function CashPanel({
                 t={t}
                 methodName={methodNameFor(t)}
                 canVoid={permissions.void}
+                voided={voidedById[t.id]}
               />
             ))}
           </ul>
@@ -895,6 +906,7 @@ export function CashPanel({
                           t={t}
                           methodName={methodNameFor(t)}
                           canVoid={permissions.void}
+                          voided={voidedById[t.id]}
                         />
                       ))}
                     </ul>
@@ -1271,11 +1283,14 @@ function MovementItem({
   t,
   methodName,
   canVoid,
+  voided,
 }: {
   t: Transaction;
   methodName: string;
   /** El servidor ya decidió el interruptor; acá solo se muestra el botón. */
   canVoid?: boolean;
+  /** Si ya está anulado, se marca y no se ofrece anular otra vez. */
+  voided?: VoidMark;
 }) {
   return (
     <li className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-3 rounded-xl border border-line bg-card p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
@@ -1318,6 +1333,11 @@ function MovementItem({
           {t.direction === "transfer" ? "Transferencia · " : ""}
           {transactionStatusLabel(t.status)}
         </p>
+        {voided && (
+          <p className="mt-1 text-[0.6875rem] font-semibold text-alert">
+            Anulada{voided.reason ? ` · ${voided.reason}` : ""}
+          </p>
+        )}
       </div>
       <div className="col-span-2 flex items-center justify-end gap-2 sm:col-span-1 sm:flex-col sm:items-end sm:gap-1">
         <p
@@ -1337,7 +1357,7 @@ function MovementItem({
               : "⇄"}
           {formatMoney(t.amount, t.currency)}
         </p>
-        {canVoid && t.status === "completed" && t.direction !== "transfer" && (
+        {canVoid && !voided && t.status === "completed" && t.direction !== "transfer" && (
           <VoidMovementButton
             transactionId={t.id}
             concept={t.concept}
