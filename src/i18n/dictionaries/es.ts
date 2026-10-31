@@ -110,7 +110,7 @@ const es = {
       },
       {
         title: "Zumba y bailoterapia",
-        text: "Cardio bailando, en grupo y sin aburrirte. Consultá el horario vigente por WhatsApp.",
+        text: "Cardio bailando, en grupo y sin aburrirte. Los días y horarios publicados están en la agenda de clases.",
       },
       {
         title: "Suplementos",
@@ -223,7 +223,7 @@ const es = {
   schedule: {
     title: "Horarios y reservas",
     subtitle:
-      "Las clases de boxeo son martes, miércoles y jueves, con tres horarios al día. Elegí el tuyo y reservá tu lugar.",
+      "Mirá los días y horarios publicados de cada disciplina y reservá tu lugar. Si no hay clase a la hora que buscás, la sala de pesas abre en el horario de atención.",
     subtitleGeneral: "Elegí una clase dirigida publicada y reservá tu lugar.",
     week: "Semana",
     today: "Hoy",

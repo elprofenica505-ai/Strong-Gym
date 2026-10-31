@@ -40,11 +40,12 @@ Según el caso, debe cumplir:
 ## Foto actual comprobada
 
 - Producción: `main` con FIN-05 (PR #104) y la baja de vigencia al anular
-  (PR #105); CI en verde en ambos.
+  (PR #105); CI en verde en ambos. La 00085 ya está aplicada en producción y
+  los datos de vigencias quedaron alineados.
 - Supabase: proyecto ACTIVE_HEALTHY. Las migraciones aplicadas y registradas
-  llegan a la **00085** (`anular_da_de_baja_la_vigencia`): da de baja la
-  vigencia del cobro anulado y alineó los datos que ya estaban anulados. El
-  siguiente número libre es **00086** (marca `20261031185635`).
+  llegan a la **00085** (`anular_da_de_baja_la_vigencia`, registrada como
+  `20261031194426`): da de baja la vigencia del cobro anulado y alineó los
+  datos que ya estaban anulados. El siguiente número libre es **00086**.
 - Datos productivos al 31 de octubre, comprobados con consulta directa:
   **9 disciplinas** (activas: Pesas y máquinas, Boxeo y Zumba), **6 planes**
   activos, **89 sesiones** (88 programadas y 1 anulada), **2 reservas**,
@@ -636,7 +637,9 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   no activó ninguna vigencia). Suite completa **911/911**.
   Prueba en producción, con `rollback`: llamar a la anulación real como
   administración dejó el segmento marcado como anulado, sin tocar los datos
-  guardados.
+  guardados. **Las reservas ya hechas no se tocan**: si hay que liberar un
+  lugar, se cancela desde Operación como cualquier reserva (OP-01). Se decidió
+  así porque una devolución no siempre significa que la persona deje de venir.
 - [ ] **FIN-06 · Media · Decisión y código — Importación de saldos e
   históricos.** El importador actual crea fichas de clientes desde CSV con
   mapeo, vista previa y avisos. No importa saldos, deudas, personal ni reservas,
@@ -1026,6 +1029,12 @@ Esta sección es un resumen, no otra lista de tareas.
   historial desde el servidor, con el total real, sin comodines accidentales,
   con el interruptor de gastos aplicado en el servidor y sin convertir un
   fallo de lectura en una lista vacía.
+- Horarios públicos sin datos fijos (31 de octubre): el subtítulo de
+  `/horarios` ya no afirma «las clases de boxeo son martes, miércoles y jueves»
+  —con Zumba publicada eso era falso— y la tarjeta de Zumba dejó de mandar a
+  preguntar el horario por WhatsApp. Los dos textos remiten a la agenda, que es
+  la que manda y se edita desde el panel, así no quedan viejos cada vez que se
+  cambia un día u hora.
 - Progreso: medidas, altura única corregible solo por admin, asistencia por
   día/semana/mes, calculadora con consentimiento/aprobación, menores bloqueados
   en herramientas de salud y personal sin botón de reservar.
