@@ -39,8 +39,8 @@ Según el caso, debe cumplir:
 
 ## Foto actual comprobada
 
-- Producción: `main` en **`a9d07c9`** (PR #95 fusionado) y este PR es el
-  **#96**, con CI verde antes de fusionar.
+- Producción: `main` en **`5c4f67a`** (PR #96 fusionado: guardia de origen
+  único), CI verde y sin PR abierto.
 - Supabase: proyecto ACTIVE_HEALTHY. La última migración del repositorio y del
   historial remoto es la **00079** (`entrenadores_admin`). El siguiente número
   libre es **00080**.
