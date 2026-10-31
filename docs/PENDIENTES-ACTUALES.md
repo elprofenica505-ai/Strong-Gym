@@ -40,15 +40,19 @@ Según el caso, debe cumplir:
 ## Foto actual comprobada
 
 - Producción: `main` con FIN-05 (PR #104), la baja de vigencia al anular
-  (PR #105), el uso e historial de precios de los planes (PR #108) y **FIN-04**
+  (PR #105), el uso e historial de precios de los planes (PR #108), **FIN-04**
   completo: apertura, arqueo y cierre de caja (PR #110) más el bloqueo de
-  anulaciones de una caja cerrada (PR #111); CI en verde en todos. La 00085 ya
+  anulaciones de una caja cerrada (PR #111), y **EX-01**, la biblioteca de
+  ejercicios con «Mi rutina» y su catálogo de 701 ejercicios; CI en verde en
+  todos. La 00085 ya
   está aplicada en producción y los datos de vigencias quedaron alineados.
 - Supabase: proyecto ACTIVE_HEALTHY. Las migraciones aplicadas y registradas
-  llegan a la **00088** (`anular_caja_cerrada`, registrada como
-  `20261031214856`): la 00087 (`cierre_y_arqueo_de_caja`, `20261031213955`)
-  agrega abrir, arqueo y cierre, y la 00088 impide anular el efectivo de una
-  caja ya cerrada. El siguiente número libre es **00089**.
+  llegan a la **00090** (`catalogo_peso_corporal`, registrada como
+  `20261031225315`): la 00087 (`cierre_y_arqueo_de_caja`, `20261031213955`)
+  agrega abrir, arqueo y cierre, la 00088 impide anular el efectivo de una caja
+  ya cerrada, la 00089 (`biblioteca_de_ejercicios`, `20261031225118`) crea el
+  catálogo y «Mi rutina», y la 00090 arregla el filtro «Peso corporal». El
+  siguiente número libre es **00091**.
 - Datos productivos al 31 de octubre, comprobados con consulta directa:
   **9 disciplinas** (activas: Pesas y máquinas, Boxeo y Zumba), **6 planes**
   activos, **89 sesiones** (88 programadas y 1 anulada), **2 reservas**,
@@ -76,7 +80,7 @@ Según el caso, debe cumplir:
 
 ## Resumen de avance al 31 de octubre de 2026
 
-**63 tareas listadas: 20 cerradas y 43 abiertas.** De las 43 abiertas, **7 son
+**64 tareas listadas: 21 cerradas y 43 abiertas.** De las 43 abiertas, **7 son
 aceptaciones** en celular o con cuenta real (QA-03 a QA-09), **5 son de
 entrega** (ENT-01 a ENT-05, aplazadas a propósito) y **8 son opcionales del
 futuro** (FUT-01 a FUT-08). Quedan **23 de producto o negocio** por resolver,
@@ -88,6 +92,7 @@ futuro** (FUT-01 a FUT-08). Quedan **23 de producto o negocio** por resolver,
 | **Etapa 2 — Navegación** | Hecha: Inicio, Clientes, Finanzas, Operación, Administración y Mis clientes | Solo la decisión de OP-09 |
 | **Etapa 3 — Operación diaria** | OP-01 a OP-05 cerradas y desplegadas | OP-06 (cierre de reservas pasadas), OP-07 (cambio de día sin recargar), OP-08 (vincular ficha con cuenta web) y la aceptación QA-09 |
 | **Clientes, vigencias y planes** | CLI-01, CLI-02 y CLI-06 cerradas y desplegadas | Aceptación en celular (QA-09); decisiones CLI-03, CLI-04 y CLI-05 |
+| **Biblioteca de ejercicios (EX-01)** | Cerrada y desplegada: 701 ejercicios, ficha, cronómetro y «Mi rutina» | Aceptación en celular; decisiones del dueño sobre favoritos y acceso sin sesión |
 | **Etapa 4 — Finanzas y productos** | En uso real: cobros, gastos, deudas y abonos NIO/USD, vuelto, productos con stock, Caja por módulos con historial paginado, **apertura y cierre con arqueo**, reportes y descargas | FIN-03, FIN-06 y FIN-07 |
 | **Calendario y disciplinas (OP-05)** | Cerrado y desplegado, con grillas, sesiones sueltas, bloqueos, generador con vista previa y entrenadores | Solo la aceptación en celular (QA-09) |
 | **Etapa 5 — Aceptación integral** | Parcial: QA-01 y QA-02 cerradas | QA-03 a QA-08, CAL-03, LEG-01 y NEG-01 |
@@ -541,6 +546,39 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   redirige a Ingresar. La **aceptación en celular** va con **QA-09**.
   Reversión: dejar de llamar `client_category_apply`; las columnas nuevas
   pueden quedar vacías sin afectar cobros ni vigencias y no se borra nada.
+- [x] **EX-01 · Alta · Código — Biblioteca de ejercicios y «Mi rutina».**
+  Cerrada el 31 de octubre. El cliente ya puede buscar cómo se hace un ejercicio,
+  ver qué músculos trabaja, con qué máquina, cuántas series y repeticiones y
+  cuánto descansar, y guardar su propia lista de la sesión. Migraciones `00089`
+  (`20261031225118 biblioteca_de_ejercicios`) y `00090`
+  (`20261031225315 catalogo_peso_corporal`), aplicadas en producción.
+  Catálogo real de **701 ejercicios** cargado desde el dataset público RepDB
+  (repdb.co), con nombres, descripción, pasos y consejos **en español**; el
+  archivo y las imágenes **no** se copian al repositorio, se importan a la base
+  y las imágenes se sirven por `/api/exercises/image` (proxy con sesión y ruta
+  validada). Licencia: uso comercial dentro de la app con **atribución visible**
+  («Exercise data by RepDB (repdb.co)»), que las tres pantallas muestran y una
+  prueba impide quitar.
+  Pantallas en Mi cuenta: catálogo con búsqueda sin acentos y chips por zona del
+  cuerpo (9), con qué se hace (máquinas, poleas, peso libre, accesorios, cardio,
+  peso corporal), nivel y 24 por página; ficha con imágenes, paso a paso,
+  músculos, dosis sugerida y **cronómetro** de descanso (45/60/90/120 s, con
+  vibración); y «Mi rutina», separada de la rutina que asigna el entrenador,
+  con series, repeticiones, descanso, duración estimada y quitar.
+  Búsqueda arreglada en serio: «glúteo» encuentra los 276 ejercicios que lo
+  trabajan aunque la base diga `gluteus_maximus` — la web manda las etiquetas en
+  español (`search_extra`) al importar, con **un solo** mapa de etiquetas que
+  una prueba cuida contra slugs crudos. La 00090 corrigió el chip «Peso
+  corporal» (216 ejercicios), que antes mostraba todo el catálogo.
+  Seguridad: lectura sólo con sesión, escritura sólo por funciones que sacan el
+  cliente de la sesión (el navegador nunca manda un `client_id`), importación
+  sólo administración con segundo factor. Carga idempotente: dos corridas
+  seguidas dejan 701 filas, no 1402. Evidencia: 37 comprobaciones SQL por rol en
+  PGlite, 20 pruebas nuevas de etiquetas, importación y atribución, `typecheck`,
+  `lint` y `test:auth` (981) limpios. Reversión: `drop table
+  public.client_exercise_routine, public.exercises cascade;` y las funciones; no
+  toca ninguna tabla existente. Queda como decisión del dueño, sin bloquear:
+  favoritos, si la biblioteca se abre sin sesión y quién más puede importar.
 - [ ] **CLI-03 · Media · Revisión profesional — Calculadora, dieta y rutinas.**
   La herramienta, el consentimiento, la aprobación del personal y el bloqueo de
   menores ya existen. Falta que un profesional revise fórmulas, mínimos de
