@@ -87,6 +87,11 @@ jobs:
       - name: Probar el historial paginado de Caja (PGlite)
         run: npm run test:finance:movements
 
+      # Anular un cobro tiene que dar de baja la vigencia: si esto se rompe,
+      # alguien entra gratis y nadie se entera.
+      - name: Probar que anular da de baja la vigencia (PGlite)
+        run: npm run test:planes:anulacion
+
       - name: Probar roles, entrenadores y cierre de caja (PGlite)
         run: npm run test:roles
 

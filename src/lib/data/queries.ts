@@ -18,6 +18,10 @@ import {
   readDebtReport,
 } from "@/lib/finance/legacy-reader";
 import {
+  parseVoidPlanImpact,
+  type VoidPlanImpact,
+} from "@/lib/finance/voids";
+import {
   MOVEMENTS_PAGE_SIZE,
   parseMovementsPagePayload,
   type MovementFilters,
@@ -1085,6 +1089,28 @@ export async function getMovementsPage(
     page: safePage,
     pageSize: MOVEMENTS_PAGE_SIZE,
   };
+}
+
+/**
+ * Vigencias que activó un cobro (FIN-01).
+ *
+ * Sirve para no dejar creer que anular una mensualidad la da de baja: el
+ * dinero vuelve, la membresía sigue. Se lee antes de confirmar y se vuelve a
+ * contar en el resultado. Un fallo de lectura devuelve lista vacía **solo**
+ * porque la advertencia es informativa: la anulación no depende de esto y el
+ * resultado nunca la usa para afirmar nada.
+ */
+export async function getVoidPlanImpact(
+  transactionId: string,
+): Promise<VoidPlanImpact[]> {
+  if (DEMO_MODE) return [];
+  const supabase = await getSupabaseServerClient();
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .rpc("finance_void_plan_impact", { p_transaction: transactionId })
+    .abortSignal(AbortSignal.timeout(15000));
+  if (error) return [];
+  return parseVoidPlanImpact(data);
 }
 
 export async function getCashierPermissions(): Promise<CashierPermissions> {

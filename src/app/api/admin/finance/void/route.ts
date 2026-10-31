@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { canManageFinance } from "@/lib/auth/current-user";
-import { getCurrentUser } from "@/lib/data/queries";
+import { getCurrentUser, getVoidPlanImpact } from "@/lib/data/queries";
 import {
   findStoredVoidReceipt,
   parseVoidReceipt,
@@ -113,14 +113,19 @@ export async function GET(request: Request) {
     const known = code.startsWith("AUTH") ? "AUTH" : "NOT_FOUND";
     return reply({ error: known, message: voidMessage(known) }, known === "AUTH" ? 403 : 404);
   }
+  // Qué vigencia activó este cobro: la pantalla lo avisa antes de confirmar.
+  // Es informativo: si la lectura falla, la anulación sigue igual y el diálogo
+  // simplemente no muestra el aviso.
+  const planSegments = await getVoidPlanImpact(parsed.data);
+
   // Si ya está anulada, la consulta devuelve también el comprobante guardado:
   // así la pantalla puede mostrar el resultado real en vez de solo un aviso.
   const plan = data as { allowed?: boolean; code?: string } | null;
   if (plan?.allowed === false && plan.code === "ALREADY_VOIDED") {
     const stored = await readStoredVoid(supabase, parsed.data, 1);
-    if (stored) return reply({ ...plan, receipt: stored });
+    if (stored) return reply({ ...plan, receipt: stored, planSegments });
   }
-  return reply(data);
+  return reply({ ...(data as Record<string, unknown>), planSegments });
 }
 
 /**

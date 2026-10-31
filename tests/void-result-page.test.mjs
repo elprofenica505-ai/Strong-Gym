@@ -83,7 +83,7 @@ async function render(db) {
       "export const isSupabaseConfigured=true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;",
     "@/lib/supabase/server": `export const getSupabaseServerClient=async()=>globalThis.__voidDb;`,
     "@/lib/data/queries":
-      "export const getCurrentUser=async()=>({id:'10be1244-4fd5-459b-9995-1d195e9e8ec1',role:'admin',mfa:'ok'});",
+      "export const getCurrentUser=async()=>({id:'10be1244-4fd5-459b-9995-1d195e9e8ec1',role:'admin',mfa:'ok'});export const getVoidPlanImpact=async()=>globalThis.__voidImpact ?? [];",
     "next/navigation": "export function redirect(path){throw new Error('REDIRECT:'+path);}export function notFound(){throw new Error('NOT_FOUND');}",
   });
   globalThis.__voidDb = db;
@@ -158,10 +158,63 @@ test("un id que no es un movimiento no se inventa", async () => {
         "export const isSupabaseConfigured=true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;",
       "@/lib/supabase/server": `export const getSupabaseServerClient=async()=>null;`,
       "@/lib/data/queries":
-        "export const getCurrentUser=async()=>({id:'x',role:'admin',mfa:'ok'});",
+        "export const getCurrentUser=async()=>({id:'x',role:'admin',mfa:'ok'});export const getVoidPlanImpact=async()=>[];",
       "next/navigation": "export function redirect(){throw new Error('REDIRECT');}export function notFound(){throw new Error('NOT_FOUND');}",
     });
     const { default: Page } = await loader("app/[locale]/panel/caja/anulacion/[id]/page.tsx");
     await Page({ params: Promise.resolve({ locale: "es", id: "no-es-uuid" }) });
   }, /NOT_FOUND/);
+});
+
+test("con una vigencia anulada, el resultado lo cuenta", async () => {
+  globalThis.__voidImpact = [
+    {
+      id: "5acb745b-65ee-4e42-a736-b1a8479dccae",
+      planId: "pln_gimnasio",
+      planName: "Gimnasio",
+      access: "gym",
+      startedOn: "2026-12-27",
+      expiresOn: "2027-01-25",
+      pricePaid: 560,
+      currency: "NIO",
+      state: "active",
+      voided: true,
+    },
+  ];
+  try {
+    const html = await render(
+      fakeDb({ plan: PLAN, receipt: RECEIPT }),
+    );
+    assert.match(html, /La anulación quedó guardada/);
+    assert.match(html, /quedó anulada/);
+    assert.match(html, /Gimnasio: del 27 de diciembre de 2026 al 25 de enero de 2027/);
+    assert.match(html, /sin perder días/);
+  } finally {
+    globalThis.__voidImpact = [];
+  }
+});
+
+test("sin vigencias vivas, el resultado no mete advertencias de más", async () => {
+  globalThis.__voidImpact = [
+    {
+      id: "x1",
+      planId: "pln_gimnasio",
+      planName: "Gimnasio",
+      access: "gym",
+      startedOn: "2026-01-01",
+      expiresOn: "2026-01-30",
+      pricePaid: 560,
+      currency: "NIO",
+      state: "expired",
+      voided: false,
+    },
+  ];
+  try {
+    const html = await render(fakeDb({ plan: PLAN, receipt: RECEIPT }));
+    assert.match(html, /La anulación quedó guardada/);
+    assert.doesNotMatch(html, /quedó anulada/);
+    assert.doesNotMatch(html, /se da de baja/);
+  } finally {
+    globalThis.__voidImpact = [];
+  }
 });
