@@ -24,7 +24,7 @@ for (const key of ["window", "document", "navigator", "HTMLElement", "Node"])
   });
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 globalThis.self = dom.window;
-const { render: renderPanel, screen, fireEvent, cleanup } =
+const { render: renderPanel, screen, fireEvent, cleanup, waitFor } =
   await import("@testing-library/react");
 afterEach(() => cleanup());
 const render = (data) =>
@@ -168,74 +168,129 @@ const permissionSummary = {
   openRegister: null,
 };
 
-test("Caja por módulos: movimientos paginados, búsqueda y saldos por cuenta", () => {
-  const recent = Array.from({ length: 27 }, (_, index) => ({
+test("Caja por módulos: el historial se busca y se pagina en el servidor", async () => {
+  // La pantalla ya no filtra ni pagina en el navegador: pide al servidor la
+  // página que necesita. Se simula ese endpoint para comprobar qué se le pide
+  // y qué se dibuja con cada respuesta (FIN-05).
+  const history = Array.from({ length: 27 }, (_, index) => ({
     id: `movimiento-${index + 1}`,
     occurredAt: "2026-10-26T18:00:00.000Z",
     direction: "income",
+    status: "completed",
     amount: 10,
     currency: "NIO",
-    concept:
-      index === 26
-        ? "Movimiento especial"
-        : `Movimiento EJEMPLO ${index + 1}`,
+    fxRate: 1,
+    baseAmount: 10,
     paymentMethodId: "metodo-1",
-    status: "completed",
+    accountId: "cuenta-1",
+    memberId: null,
+    memberName: null,
+    invoiceId: null,
+    expenseCategoryId: null,
+    concept:
+      index === 26 ? "Movimiento especial" : `Movimiento EJEMPLO ${index + 1}`,
+    notes: null,
+    createdBy: null,
+    voidedReason: null,
   }));
-  renderPanel(
-    React.createElement(CashPanel, {
-      summary: permissionSummary,
-      recent,
-      daily: [],
-      monthly: [],
-      methods: [],
-      paymentMethodNames: { "metodo-1": "Efectivo" },
-      paymentMethodIcons: {},
-      accounts: [
-        {
-          id: "cuenta-1",
-          name: "Caja principal",
-          currency: "NIO",
-          kind: "caja_fuerte",
-          balance: 12345,
-        },
-        {
-          id: "cuenta-2",
-          name: "Banco Dólares",
-          currency: "USD",
-          kind: "bank",
-          balance: 50,
-        },
-      ],
-      isDemo: false,
-    }),
-  );
+  const asked = [];
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = new URL(String(input), "https://strong.test");
+    const params = url.searchParams;
+    asked.push(Object.fromEntries(params));
+    const query = (params.get("q") ?? "").toLocaleLowerCase("es-NI");
+    const page = Number(params.get("page") ?? 0);
+    const filtered = query
+      ? history.filter((row) => row.concept.toLocaleLowerCase("es-NI").includes(query))
+      : history;
+    return {
+      ok: true,
+      json: async () => ({
+        ok: true,
+        rows: filtered.slice(page * 25, page * 25 + 25),
+        total: filtered.length,
+        page,
+        pageSize: 25,
+      }),
+    };
+  };
+  try {
+    renderPanel(
+      React.createElement(CashPanel, {
+        summary: permissionSummary,
+        // La tarjeta de arriba sigue mostrando los últimos tres.
+        recent: history.slice(0, 3),
+        daily: [],
+        monthly: [],
+        methods: [],
+        paymentMethodNames: { "metodo-1": "Efectivo" },
+        paymentMethodIcons: {},
+        accounts: [
+          {
+            id: "cuenta-1",
+            name: "Caja principal",
+            currency: "NIO",
+            kind: "caja_fuerte",
+            balance: 12345,
+          },
+          {
+            id: "cuenta-2",
+            name: "Banco Dólares",
+            currency: "USD",
+            kind: "bank",
+            balance: 50,
+          },
+        ],
+        isDemo: false,
+      }),
+    );
 
-  fireEvent.click(screen.getByRole("button", { name: /^Movimientos/ }));
-  assert.equal(document.body.style.overflow, "hidden");
-  assert.match(document.body.textContent, /Página 1 de 2/);
-  assert.ok(screen.getByText("Movimiento EJEMPLO 25"));
-  assert.equal(screen.queryByText("Movimiento EJEMPLO 26"), null);
-  fireEvent.click(screen.getByRole("button", { name: "Siguiente" }));
-  assert.ok(screen.getByText("Movimiento EJEMPLO 26"));
-  assert.ok(screen.getByText("Movimiento especial"));
-  fireEvent.change(screen.getByLabelText("Buscar movimiento"), {
-    target: { value: "especial" },
-  });
-  assert.ok(screen.getByText("Movimiento especial"));
-  assert.equal(screen.queryByText("Movimiento EJEMPLO 26"), null);
-  fireEvent.click(screen.getByRole("button", { name: /Volver a Caja/ }));
-  assert.equal(document.body.style.overflow, "");
+    fireEvent.click(screen.getByRole("button", { name: /^Movimientos/ }));
+    assert.equal(document.body.style.overflow, "hidden");
+    // Pide la primera página sin filtros, no los 30 de antes.
+    assert.equal(asked.length, 1);
+    assert.equal(asked[0].q, undefined);
+    assert.ok(await screen.findByText("Movimiento EJEMPLO 25"));
+    assert.match(document.body.textContent, /27 movimientos en total/);
+    assert.equal(screen.queryByText("Movimiento EJEMPLO 26"), null);
+    assert.match(document.body.textContent, /Página 1 de 2/);
+    assert.match(document.body.textContent, /Mostrando 1–25 de 27/);
 
-  fireEvent.click(screen.getByRole("button", { name: /^Cuentas y saldos/ }));
-  assert.ok(screen.getByText("Caja principal"));
-  assert.ok(screen.getAllByText("Saldo informado").length > 0);
-  assert.match(document.body.textContent, /12[,.]345/);
-  fireEvent.click(screen.getByRole("button", { name: "Filtros" }));
-  fireEvent.click(screen.getByRole("button", { name: "USD" }));
-  fireEvent.click(screen.getByRole("button", { name: "Ver cuentas" }));
-  assert.ok(screen.getByText("Banco Dólares"));
-  assert.equal(screen.queryByText("Caja principal"), null);
+    fireEvent.click(screen.getByRole("button", { name: "Siguiente" }));
+    assert.ok(await screen.findByText("Movimiento EJEMPLO 26"));
+    assert.ok(screen.getByText("Movimiento especial"));
+    assert.equal(asked.at(-1).page, "1");
+    assert.equal(screen.queryByText("Movimiento EJEMPLO 25"), null);
+
+    // La búsqueda también va al servidor y vuelve a la página 1.
+    fireEvent.change(screen.getByLabelText("Buscar movimiento"), {
+      target: { value: "especial" },
+    });
+    // La búsqueda espera una pausa corta antes de consultar.
+    await waitFor(() => assert.equal(asked.at(-1).q, "especial"));
+    assert.equal(asked.at(-1).page, undefined);
+    await waitFor(() =>
+      assert.equal(screen.queryByText("Movimiento EJEMPLO 26"), null),
+    );
+    assert.equal(screen.queryByText("Movimiento EJEMPLO 26"), null);
+    assert.match(document.body.textContent, /1 movimiento con estos filtros/);
+
+    fireEvent.click(screen.getByRole("button", { name: /Volver a Caja/ }));
+    assert.equal(document.body.style.overflow, "");
+
+    fireEvent.click(screen.getByRole("button", { name: /^Cuentas y saldos/ }));
+    assert.ok(screen.getByText("Caja principal"));
+    assert.ok(screen.getAllByText("Saldo informado").length > 0);
+    assert.match(document.body.textContent, /12[,.]345/);
+    fireEvent.click(screen.getByRole("button", { name: "Filtros" }));
+    fireEvent.click(screen.getByRole("button", { name: "USD" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ver cuentas" }));
+    assert.ok(screen.getByText("Banco Dólares"));
+    assert.equal(screen.queryByText("Caja principal"), null);
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
 });
 
 test("permisos de caja apagados: Caja conserva el día y oculta informes, saldos y accesos delegados", () => {

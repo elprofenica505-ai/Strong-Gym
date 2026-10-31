@@ -34,6 +34,16 @@ import {
   CASHIER_PERMISSIONS_ALL,
   type CashierPermissions,
 } from "@/lib/finance/cashier-permissions";
+import {
+  MOVEMENTS_PAGE_SIZE,
+  movementsPageCount,
+  movementsPageQuery,
+  parseMovementsResponse,
+  type MovementRow,
+  type MovementsPage,
+  type MovementDirection,
+  type MovementStatus,
+} from "@/lib/finance/movements-page";
 
 /* ============================================================
    Tarjeta de KPI
@@ -227,7 +237,6 @@ export function MiniBar({
    Componente principal
    ============================================================ */
 
-const MOVEMENT_PAGE_SIZE = 25;
 
 type CashModule = "movimientos" | "cuentas" | "metodos" | "graficos" | "ayuda";
 type MovementView = "movimientos" | "filtros";
@@ -236,7 +245,7 @@ type AccountView = "cuentas" | "filtros";
 const CASH_MODULE_INFO: Record<CashModule, { title: string; hint: string }> = {
   movimientos: {
     title: "Movimientos",
-    hint: "Últimos 30 movimientos cargados, en su moneda original.",
+    hint: "Todo el historial, en su moneda original: buscá por texto, tipo, método, moneda o estado.",
   },
   cuentas: {
     title: "Cuentas y saldos",
@@ -315,12 +324,24 @@ export function CashPanel({
   const [movementView, setMovementView] =
     useState<MovementView>("movimientos");
   const [movementSearch, setMovementSearch] = useState("");
+  // Lo que se le pide al servidor: se actualiza con una pausa para no mandar
+  // una consulta por cada tecla.
+  const [appliedSearch, setAppliedSearch] = useState("");
   const [movementMethod, setMovementMethod] = useState("all");
   const [movementCurrency, setMovementCurrency] = useState<"all" | Currency>(
     "all",
   );
   const [movementStatus, setMovementStatus] = useState("all");
   const [movementPage, setMovementPage] = useState(0);
+  // El historial lo resuelve el servidor: acá solo se guarda la página que
+  // llegó, y se distingue «leyendo» de «no se pudo leer» de «no hay nada».
+  const [movementData, setMovementData] = useState<MovementsPage | null>(null);
+  const [movementLoad, setMovementLoad] = useState<"loading" | "ready" | "error">(
+    "loading",
+  );
+  const [movementCode, setMovementCode] = useState<string | null>(null);
+  const [movementReload, setMovementReload] = useState(0);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [accountView, setAccountView] = useState<AccountView>("cuentas");
   const [accountKind, setAccountKind] = useState("all");
   const [accountCurrency, setAccountCurrency] = useState<"all" | Currency>(
@@ -334,6 +355,66 @@ export function CashPanel({
     for (const mark of voids) map[mark.originalId] = mark;
     return map;
   }, [voids]);
+
+  // Historial: una consulta al servidor por página y por filtro. El navegador
+  // ya no filtra ni pagina nada por su cuenta (FIN-05).
+  useEffect(() => {
+    if (openModule !== "movimientos") return;
+    const controller = new AbortController();
+    const params = movementsPageQuery(
+      {
+        search: appliedSearch,
+        direction: filter as MovementDirection,
+        status: movementStatus as MovementStatus,
+        currency: movementCurrency,
+        method: movementMethod,
+      },
+      movementPage,
+    );
+    fetch(`/api/admin/finance/movements?${params.toString()}`, {
+      signal: controller.signal,
+      headers: { accept: "application/json" },
+      cache: "no-store",
+    })
+      .then((response) => response.json().catch(() => null))
+      .then((body: unknown) => {
+        const page = parseMovementsResponse(body);
+        if (!page) {
+          const code =
+            body && typeof body === "object" && typeof (body as { code?: unknown }).code === "string"
+              ? (body as { code: string }).code
+              : "MOVIMIENTOS";
+          setMovementCode(code);
+          setMovementLoad("error");
+          return;
+        }
+        setMovementData(page);
+        setMovementCode(null);
+        setMovementLoad("ready");
+      })
+      .catch((error: unknown) => {
+        if ((error as { name?: string } | null)?.name === "AbortError") return;
+        setMovementCode("SIN_RESPUESTA");
+        setMovementLoad("error");
+      });
+    return () => controller.abort();
+  }, [
+    openModule,
+    appliedSearch,
+    filter,
+    movementCurrency,
+    movementMethod,
+    movementStatus,
+    movementPage,
+    movementReload,
+  ]);
+
+  useEffect(
+    () => () => {
+      if (searchTimer.current) clearTimeout(searchTimer.current);
+    },
+    [],
+  );
 
   // Al abrir una tarjeta, su tema funciona como pantalla aparte: empieza
   // arriba, recibe el foco y la página de Caja detrás no se mueve.
@@ -358,55 +439,48 @@ export function CashPanel({
       "Sin método informado",
     [paymentMethodNames],
   );
-  const movementMethodOptions = useMemo(() => {
-    const options = new Map<string, string>();
-    for (const t of recent) {
-      const value = t.paymentMethodId ?? "none";
-      if (!options.has(value)) options.set(value, methodNameFor(t));
-    }
-    return Array.from(options, ([value, label]) => ({ value, label })).sort(
-      (a, b) => a.label.localeCompare(b.label, "es-NI"),
-    );
-  }, [methodNameFor, recent]);
+  // Los métodos salen del catálogo completo que ya trajo la página, no de la
+  // última página de movimientos: así un método viejo sigue siendo elegible.
+  const movementMethodOptions = useMemo(
+    () =>
+      Object.entries(paymentMethodNames)
+        .map(([value, label]) => ({ value, label }))
+        .sort((a, b) => a.label.localeCompare(b.label, "es-NI")),
+    [paymentMethodNames],
+  );
 
-  const filtered = useMemo(() => {
-    const query = movementSearch.trim().toLocaleLowerCase("es-NI");
-    return recent.filter((t) => {
-      if (filter !== "all" && t.direction !== filter) return false;
-      if (
-        movementMethod !== "all" &&
-        (t.paymentMethodId ?? "none") !== movementMethod
-      )
-        return false;
-      if (movementCurrency !== "all" && t.currency !== movementCurrency)
-        return false;
-      if (movementStatus !== "all" && t.status !== movementStatus)
-        return false;
-      if (!query) return true;
-      return [t.concept, t.memberName ?? "", methodNameFor(t)]
-        .join(" ")
-        .toLocaleLowerCase("es-NI")
-        .includes(query);
-    });
-  }, [
-    filter,
-    methodNameFor,
-    movementCurrency,
-    movementMethod,
-    movementSearch,
-    movementStatus,
-    recent,
-  ]);
-  const movementPageCount = Math.max(
-    1,
-    Math.ceil(filtered.length / MOVEMENT_PAGE_SIZE),
+  const movements = movementData?.rows ?? [];
+  const movementTotal = movementData?.total ?? 0;
+  const movementPageCount = movementsPageCount(
+    movementTotal,
+    movementData?.pageSize ?? MOVEMENTS_PAGE_SIZE,
   );
   const safeMovementPage = Math.min(movementPage, movementPageCount - 1);
-  const visibleMovements = filtered.slice(
-    safeMovementPage * MOVEMENT_PAGE_SIZE,
-    safeMovementPage * MOVEMENT_PAGE_SIZE + MOVEMENT_PAGE_SIZE,
-  );
-  const resetMovementPage = () => setMovementPage(0);
+  const pageLabel = `${
+    safeMovementPage * MOVEMENTS_PAGE_SIZE + (movements.length ? 1 : 0)
+  }–${safeMovementPage * MOVEMENTS_PAGE_SIZE + movements.length}`;
+  const hasMovementFilters =
+    appliedSearch.trim() !== "" ||
+    filter !== "all" ||
+    movementMethod !== "all" ||
+    movementCurrency !== "all" ||
+    movementStatus !== "all";
+  const resetMovementPage = () => {
+    setMovementPage(0);
+    setMovementLoad("loading");
+  };
+  /** Busca con una pausa corta: no se manda una consulta por cada tecla. */
+  const searchMovements = (value: string) => {
+    setMovementSearch(value);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      setMovementPage(0);
+      setAppliedSearch(value.trim());
+    }, 400);
+  };
+  /** Un movimiento anulado no se vuelve a anular y la lista lo tiene que decir. */
+  const voidedOf = (t: MovementRow) =>
+    voidedById[t.id] ?? (t.voidedReason ? { reason: t.voidedReason } : undefined);
 
   const accountKindOptions = useMemo(
     () =>
@@ -581,7 +655,7 @@ export function CashPanel({
           ) : null}
           <ModuleAction
             title="Movimientos"
-            hint={`${recent.length} cargados · buscar y filtrar`}
+            hint="Todo el historial · buscar y filtrar"
             Icon={Wallet}
             onClick={() => setOpenModule("movimientos")}
           />
@@ -814,6 +888,7 @@ export function CashPanel({
                   onClick={() => {
                     setFilter("all");
                     setMovementSearch("");
+                    setAppliedSearch("");
                     setMovementMethod("all");
                     setMovementCurrency("all");
                     setMovementStatus("all");
@@ -837,10 +912,7 @@ export function CashPanel({
                       className="w-full min-w-0 rounded-lg border border-line bg-card py-2.5 pr-3 pl-9 text-ink"
                       type="search"
                       value={movementSearch}
-                      onChange={(event) => {
-                        setMovementSearch(event.target.value);
-                        resetMovementPage();
-                      }}
+                      onChange={(event) => searchMovements(event.target.value)}
                       placeholder="Ej.: pase del día, nombre del cliente, efectivo"
                     />
                   </span>
@@ -877,36 +949,67 @@ export function CashPanel({
 
                 <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-fog">
                   <p>
-                    {filtered.length}{" "}
-                    {filtered.length === 1 ? "movimiento" : "movimientos"} de{" "}
-                    {recent.length} cargados
+                    {movementTotal}{" "}
+                    {movementTotal === 1 ? "movimiento" : "movimientos"}
+                    {hasMovementFilters ? " con estos filtros" : " en total"}
                   </p>
-                  {filtered.length > 0 && (
+                  {movements.length > 0 && (
                     <p>
-                      Mostrando {safeMovementPage * MOVEMENT_PAGE_SIZE + 1}–
-                      {safeMovementPage * MOVEMENT_PAGE_SIZE +
-                        visibleMovements.length}{" "}
-                      de {filtered.length}
+                      Mostrando {pageLabel} de {movementTotal}
                     </p>
                   )}
                 </div>
 
-                {filtered.length === 0 ? (
+                {movementLoad === "error" ? (
+                  <div className="space-y-2 rounded-2xl border border-line bg-card p-5 text-center">
+                    <p className="text-[0.875rem] font-semibold text-ink">
+                      No pudimos leer el historial de movimientos
+                    </p>
+                    <p className="text-[0.75rem] text-fog">
+                      No es que no haya movimientos: es que no se pudo leer.
+                      Probá otra vez en unos segundos.
+                    </p>
+                    {movementCode && (
+                      <p className="font-mono text-[0.6875rem] text-fog">
+                        Código: {movementCode}
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-brand"
+                      onClick={() => {
+                        setMovementLoad("loading");
+                        setMovementReload((count) => count + 1);
+                      }}
+                    >
+                      Reintentar
+                    </button>
+                  </div>
+                ) : movementLoad === "loading" && !movementData ? (
+                  <p
+                    role="status"
+                    className="rounded-2xl border border-line bg-card py-8 text-center text-[0.875rem] text-fog"
+                  >
+                    Buscando movimientos…
+                  </p>
+                ) : movements.length === 0 ? (
                   <p className="rounded-2xl border border-line bg-card py-8 text-center text-[0.875rem] text-fog">
                     {isDemo
                       ? "Conectá Supabase para ver los movimientos reales del gimnasio."
-                      : "Sin movimientos con esa búsqueda o esos filtros."}
+                      : hasMovementFilters
+                        ? "Sin movimientos con esa búsqueda o esos filtros."
+                        : "Todavía no hay movimientos cargados."}
                   </p>
                 ) : (
                   <>
                     <ul className="grid gap-2 xl:grid-cols-2">
-                      {visibleMovements.map((t) => (
+                      {movements.map((t) => (
                         <MovementItem
                           key={t.id}
                           t={t}
                           methodName={methodNameFor(t)}
                           canVoid={permissions.void}
-                          voided={voidedById[t.id]}
+                          voided={voidedOf(t)}
                         />
                       ))}
                     </ul>
@@ -916,9 +1019,10 @@ export function CashPanel({
                           type="button"
                           className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink disabled:opacity-40"
                           disabled={safeMovementPage === 0}
-                          onClick={() =>
-                            setMovementPage(safeMovementPage - 1)
-                          }
+                          onClick={() => {
+                            setMovementLoad("loading");
+                            setMovementPage(Math.max(0, safeMovementPage - 1));
+                          }}
                         >
                           Anterior
                         </button>
@@ -928,12 +1032,16 @@ export function CashPanel({
                         <button
                           type="button"
                           className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink disabled:opacity-40"
-                          disabled={
-                            safeMovementPage >= movementPageCount - 1
-                          }
-                          onClick={() =>
-                            setMovementPage(safeMovementPage + 1)
-                          }
+                          disabled={safeMovementPage >= movementPageCount - 1}
+                          onClick={() => {
+                            setMovementLoad("loading");
+                            setMovementPage(
+                              Math.min(
+                                movementPageCount - 1,
+                                safeMovementPage + 1,
+                              ),
+                            );
+                          }}
                         >
                           Siguiente
                         </button>
@@ -1290,7 +1398,7 @@ function MovementItem({
   /** El servidor ya decidió el interruptor; acá solo se muestra el botón. */
   canVoid?: boolean;
   /** Si ya está anulado, se marca y no se ofrece anular otra vez. */
-  voided?: VoidMark;
+  voided?: Pick<VoidMark, "reason">;
 }) {
   return (
     <li className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-3 rounded-xl border border-line bg-card p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto]">

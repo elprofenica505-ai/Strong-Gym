@@ -39,11 +39,12 @@ Según el caso, debe cumplir:
 
 ## Foto actual comprobada
 
-- Producción: `main` en **`3cea99b`** (PR #100, FIN-08) y el arreglo de
-  permisos de caja de este PR, CI verde.
+- Producción: `main` con el cierre de la anulación (PR #103) y FIN-05 en
+  revisión; CI verde en ambos.
 - Supabase: proyecto ACTIVE_HEALTHY. Las migraciones aplicadas y registradas
-  llegan a la **00083** (`permiso_de_caja_ejecutable`). El siguiente número
-  libre es **00084**.
+  llegan a la **00084** (`movimientos_paginados`, registrada como
+  `20261031185633`). El siguiente número libre es **00085** (marca
+  `20261031185634`).
 - Datos productivos al 31 de octubre, comprobados con consulta directa:
   **9 disciplinas** (activas: Pesas y máquinas, Boxeo y Zumba), **6 planes**
   activos, **89 sesiones** (88 programadas y 1 anulada), **2 reservas**,
@@ -71,10 +72,10 @@ Según el caso, debe cumplir:
 
 ## Resumen de avance al 31 de octubre de 2026
 
-**61 tareas listadas: 16 cerradas y 45 abiertas.** De las 45 abiertas, **7 son
+**61 tareas listadas: 17 cerradas y 44 abiertas.** De las 44 abiertas, **7 son
 aceptaciones** en celular o con cuenta real (QA-03 a QA-09), **5 son de
 entrega** (ENT-01 a ENT-05, aplazadas a propósito) y **8 son opcionales del
-futuro** (FUT-01 a FUT-08). Quedan **25 de producto o negocio** por resolver.
+futuro** (FUT-01 a FUT-08). Quedan **24 de producto o negocio** por resolver.
 
 | Fase o bloque | Estado | Qué falta |
 |---|---|---|
@@ -82,7 +83,7 @@ futuro** (FUT-01 a FUT-08). Quedan **25 de producto o negocio** por resolver.
 | **Etapa 2 — Navegación** | Hecha: Inicio, Clientes, Finanzas, Operación, Administración y Mis clientes | Solo la decisión de OP-09 |
 | **Etapa 3 — Operación diaria** | OP-01 a OP-05 cerradas y desplegadas | OP-06 (cierre de reservas pasadas), OP-07 (cambio de día sin recargar), OP-08 (vincular ficha con cuenta web) y la aceptación QA-09 |
 | **Clientes, vigencias y planes** | CLI-01, CLI-02 y CLI-06 cerradas y desplegadas | Aceptación en celular (QA-09); decisiones CLI-03, CLI-04 y CLI-05 |
-| **Etapa 4 — Finanzas y productos** | En uso real: cobros, gastos, deudas y abonos NIO/USD, vuelto, productos con stock, Caja por módulos, reportes y descargas | FIN-03 a FIN-07 |
+| **Etapa 4 — Finanzas y productos** | En uso real: cobros, gastos, deudas y abonos NIO/USD, vuelto, productos con stock, Caja por módulos con historial paginado, reportes y descargas | FIN-03, FIN-04, FIN-06 y FIN-07 |
 | **Calendario y disciplinas (OP-05)** | Cerrado y desplegado, con grillas, sesiones sueltas, bloqueos, generador con vista previa y entrenadores | Solo la aceptación en celular (QA-09) |
 | **Etapa 5 — Aceptación integral** | Parcial: QA-01 y QA-02 cerradas | QA-03 a QA-08, CAL-03, LEG-01 y NEG-01 |
 | **Etapa 6 — Entrega al dueño** | Sin empezar, a propósito | ENT-01 a ENT-05 y SEG-03 |
@@ -574,10 +575,32 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   pero no un flujo único de abrir, contar efectivo, cerrar, registrar
   diferencias y conciliar por cuenta/responsable. Cierre: un solo modelo, sin
   duplicar tablas, y bloqueo o aviso claro para movimientos de un día cerrado.
-- [ ] **FIN-05 · Media · Código — Historial completo de Movimientos en Caja.**
-  La pantalla reutiliza los últimos 30 y los pagina de 25 en 25. Falta buscar y
-  paginar todo el historial desde el servidor, respetando los permisos de caja.
-  Reportes y exportaciones ya leen por páginas; no hay que duplicar esa lógica.
+- [x] **FIN-05 · Media · Código — Historial completo de Movimientos en Caja.**
+  Cerrada el 31 de octubre. La pantalla usaba los últimos 30 movimientos y
+  filtraba en el navegador: un cobro viejo existía y no había forma de
+  encontrarlo. Ahora el servidor resuelve la consulta: `finance_movements_page`
+  (migración `00084_movimientos_paginados`, aplicada en producción) devuelve en
+  una sola pasada **el total que cumple los filtros y solo la página pedida**
+  (25 filas), ordenada siempre por `occurred_at desc, id desc` para que la
+  paginación no repita ni saltee filas. Filtra por texto (concepto, notas,
+  nombre del cliente y del socio), tipo, estado, moneda y método —incluido «sin
+  método informado»—, y **escapa `%`, `_` y `\`**, así que escribir un comodín
+  no trae todo el historial. La pantalla pide la página a
+  `/api/admin/finance/movements`; ya no filtra ni pagina nada por su cuenta, y
+  la búsqueda espera 400 ms antes de consultar para no mandar una petición por
+  tecla. Reglas por rol: la ruta exige administración o caja con segundo
+  factor y la función vuelve a exigir `crm_is_staff()`; sin sesión no hay
+  `execute`. El interruptor de gastos lo aplica el **servidor**
+  (`p_hide_expenses`): con egresos apagados no se devuelven ni se cuentan. Un
+  fallo de lectura responde 503 y la pantalla dice «no pudimos leer», nunca una
+  lista vacía. Los movimientos anulados siguen marcándose con su motivo dentro
+  de cualquier página. Reportes y exportaciones no se tocaron: ya leían por
+  páginas. Probado con `scripts/test-finance-movements-sql.mjs` (28 casos por
+  rol con PGlite, incluidos el comodín, el total, la segunda página, el
+  interruptor y la idempotencia de la migración),
+  `tests/finance-movements-page.test.mjs` (8),
+  `tests/finance-movements-api.test.mjs` (5) y la prueba de la pantalla en
+  `tests/finance-charts.test.mjs`. Suite completa **898/898**.
 - [ ] **FIN-06 · Media · Decisión y código — Importación de saldos e
   históricos.** El importador actual crea fichas de clientes desde CSV con
   mapeo, vista previa y avisos. No importa saldos, deudas, personal ni reservas,
@@ -943,6 +966,19 @@ Esta sección es un resumen, no otra lista de tareas.
   automático. La prueba móvil por rol fue aprobada por el usuario.
 - Finanzas ya construidas: cobros, gastos, deudas/abonos NIO y USD, vuelto en
   abonos, comprobantes internos, reportes y exportaciones con filtros.
+- Anulación de movimientos (FIN-01, PR #101, #102 y #103): el resultado ya no
+  depende de que llegue el cuerpo de una respuesta. «Anular» en Caja envía un
+  formulario del navegador y la ruta responde 303 a
+  `/{idioma}/panel/caja/anulacion/{id}`, una página armada en el servidor que
+  **lee la base** (`finance_void_plan` más el comprobante guardado) y cuenta lo
+  que pasó: cuenta, saldo antes y después, motivo, quién, cuándo y stock
+  devuelto, o el motivo por el que no se pudo. Si no se puede leer el estado,
+  el título no afirma que no se hizo. La lista de Caja marca los movimientos
+  anulados con su motivo y deja de ofrecer «Anular» en ellos.
+- Historial de Caja (FIN-05, migración 00084): buscar y paginar todo el
+  historial desde el servidor, con el total real, sin comodines accidentales,
+  con el interruptor de gastos aplicado en el servidor y sin convertir un
+  fallo de lectura en una lista vacía.
 - Progreso: medidas, altura única corregible solo por admin, asistencia por
   día/semana/mes, calculadora con consentimiento/aprobación, menores bloqueados
   en herramientas de salud y personal sin botón de reservar.

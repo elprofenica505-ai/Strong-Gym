@@ -18,6 +18,13 @@ import {
   readDebtReport,
 } from "@/lib/finance/legacy-reader";
 import {
+  MOVEMENTS_PAGE_SIZE,
+  parseMovementsPagePayload,
+  type MovementFilters,
+  type MovementsPage,
+  type MovementRow,
+} from "@/lib/finance/movements-page";
+import {
   CASHIER_PERMISSION_FIELDS,
   CASHIER_PERMISSION_KEYS,
   CASHIER_PERMISSIONS_ALL,
@@ -587,6 +594,8 @@ export interface Transaction {
   concept: string;
   notes: string | null;
   createdBy: string | null;
+  /** Motivo de la anulación, si este movimiento ya se anuló (FIN-01). */
+  voidedReason?: string | null;
 }
 
 export interface DailyCashRow {
@@ -1033,6 +1042,51 @@ export async function getRecentVoids(limit = 200): Promise<VoidMark[]> {
   });
 }
 
+/**
+ * Una página del historial completo de movimientos (FIN-05).
+ *
+ * La búsqueda, los filtros, el orden y el total los resuelve la base en una
+ * sola consulta (`finance_movements_page`): así la pantalla puede mostrar un
+ * cobro viejo y no solo los últimos 30. `hideExpenses` lo decide el servidor
+ * con el interruptor de gastos, y la base no los cuenta en el total.
+ */
+export async function getMovementsPage(
+  filters: MovementFilters,
+  page: number,
+): Promise<MovementsPage> {
+  const empty: MovementsPage = {
+    rows: [],
+    total: 0,
+    page: 0,
+    pageSize: MOVEMENTS_PAGE_SIZE,
+  };
+  if (DEMO_MODE) return empty;
+  const supabase = await getSupabaseServerClient();
+  if (!supabase) throw new FinanceReadError("MOVEMENTS", "UNAVAILABLE");
+  const safePage = Number.isFinite(page) && page > 0 ? Math.trunc(page) : 0;
+  const { data, error } = await supabase
+    .rpc("finance_movements_page", {
+      p_search: filters.search,
+      p_direction: filters.direction === "all" ? "" : filters.direction,
+      p_status: filters.status === "all" ? "" : filters.status,
+      p_currency: filters.currency === "all" ? "" : filters.currency,
+      p_method: filters.method,
+      p_hide_expenses: filters.hideExpenses === true,
+      p_limit: MOVEMENTS_PAGE_SIZE,
+      p_offset: safePage * MOVEMENTS_PAGE_SIZE,
+    })
+    .abortSignal(AbortSignal.timeout(15000));
+  if (error) throw new FinanceReadError("MOVEMENTS", error.code);
+  const parsed = parseMovementsPagePayload(data);
+  if (!parsed) throw new FinanceReadError("MOVEMENTS", "INVALID");
+  return {
+    rows: parsed.rows.map((row) => mapTransaction(row) as MovementRow),
+    total: parsed.total,
+    page: safePage,
+    pageSize: MOVEMENTS_PAGE_SIZE,
+  };
+}
+
 export async function getCashierPermissions(): Promise<CashierPermissions> {
   if (DEMO_MODE) return CASHIER_PERMISSIONS_ALL;
   const supabase = await getSupabaseServerClient();
@@ -1116,6 +1170,7 @@ function mapTransaction(r: Record<string, unknown>): Transaction {
     concept: r.concept as string,
     notes: (r.notes as string) ?? null,
     createdBy: (r.created_by as string) ?? null,
+    voidedReason: (r.voided_reason as string) ?? null,
   };
 }
 
