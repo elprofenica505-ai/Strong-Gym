@@ -84,6 +84,9 @@ jobs:
       # Estas suites existían pero no corrían en CI y se fueron quedando
       # atrás (una fecha fija venció sin que nadie lo notara). Deben correr
       # siempre: si una prueba no se ejecuta, no protege nada.
+      - name: Probar el historial paginado de Caja (PGlite)
+        run: npm run test:finance:movements
+
       - name: Probar roles, entrenadores y cierre de caja (PGlite)
         run: npm run test:roles
 
