@@ -615,6 +615,20 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   afirmar que no se modificó nada. Una anulación real hecha así en
   producción (venta de 2 aguas, 31 de octubre 09:21) sí quedó guardada:
   dinero, stock y bitácora correctos; lo que falló fue el aviso.
+  **Segunda tanda del 31 de octubre (mismo día, 09:56):** volvió a pasar con
+  «Gimnasio mensual» de C$560, y otra vez la base sí lo anuló (reversa,
+  saldo, bitácora y comprobante correctos, sin stock porque el plan no lleva
+  productos). El detalle medido: la función tarda 33 ms y responde bien a una
+  sesión de administración, así que el problema está en llevar la respuesta
+  hasta el celular, no en la anulación. Ahora la ruta **vuelve a preguntar
+  antes de avisar nada**: si el movimiento ya está anulado devuelve ese
+  comprobante (sin llamar dos veces a la base), reintenta la lectura tres
+  veces y, si aún así no confirma, muestra un código corto
+  (`ANULACION_<etapa>_<código>`) para ubicar dónde se cortó. La pantalla
+  hace lo mismo: ante una respuesta perdida consulta la base hasta tres veces
+  y, si la anulación existe, muestra el comprobante real en vez del error.
+  Probado con `tests/void-button.test.mjs` (respuesta perdida → aparece
+  «Anulación registrada» con el stock devuelto).
 
 ## 4. Personal, roles y sesiones
 

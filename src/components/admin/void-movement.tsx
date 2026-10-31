@@ -119,6 +119,7 @@ function VoidDialog({
   // y devuelve el comprobante guardado en vez de anular dos veces.
   const [requestId] = useState(newRequestId);
   const [unconfirmed, setUnconfirmed] = useState(false);
+  const [diagnostic, setDiagnostic] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -158,11 +159,49 @@ function VoidDialog({
   const reasonOk = trimmed.length >= VOID_REASON_MIN && trimmed.length <= VOID_REASON_MAX;
   const blocked = busy || !plan?.allowed || !reasonOk;
 
+  /**
+   * Antes de avisar de un problema, se pregunta a la base si la anulación ya
+   * está hecha. Una respuesta perdida en el celular no significa que el
+   * dinero y el stock no se hayan movido.
+   */
+  async function verifyVoided(): Promise<boolean> {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await fetch(
+          `/api/admin/finance/void?transaction=${encodeURIComponent(transactionId)}`,
+          { cache: "no-store" },
+        );
+        const json = (await res.json().catch(() => null)) as
+          | (VoidPlan & { receipt?: unknown })
+          | null;
+        if (json?.alreadyVoided) {
+          const stored = parseVoidReceipt(json.receipt);
+          if (stored) {
+            setReceipt(stored);
+            setError(null);
+            setUnconfirmed(false);
+            setDiagnostic(null);
+            router.refresh();
+            return true;
+          }
+        }
+        // La base respondió y el movimiento sigue sin anular: no hay nada
+        // guardado que mostrar, no tiene sentido seguir esperando.
+        if (json && json.allowed) return false;
+      } catch {
+        // Sin respuesta: se reintenta abajo.
+      }
+      if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 800));
+    }
+    return false;
+  }
+
   async function confirm() {
     if (blocked) return;
     setBusy(true);
     setError(null);
     setUnconfirmed(false);
+    setDiagnostic(null);
     try {
       const res = await fetch("/api/admin/finance/void", {
         method: "POST",
@@ -170,19 +209,28 @@ function VoidDialog({
         body: JSON.stringify({ transactionId, reason: trimmed, requestId }),
       });
       const json = (await res.json().catch(() => null)) as
-        | { ok?: boolean; receipt?: unknown; error?: string; message?: string }
+        | {
+            ok?: boolean;
+            receipt?: unknown;
+            error?: string;
+            message?: string;
+            diagnostic?: string;
+          }
         | null;
       if (!res.ok || !json?.ok) {
+        if (await verifyVoided()) return;
         const code = json?.error;
         // Sin código claro, o con un código que no explica el motivo, no se
         // sabe si quedó guardada: se dice así y se ofrece reintentar.
         const unknown = !code || code === "UNKNOWN" || code === "UNCONFIRMED";
         setUnconfirmed(unknown);
+        setDiagnostic(json?.diagnostic ?? null);
         setError(json?.message ?? voidMessage(code ?? "UNCONFIRMED"));
         return;
       }
       const parsed = parseVoidReceipt(json.receipt);
       if (!parsed) {
+        if (await verifyVoided()) return;
         setUnconfirmed(true);
         setError(voidMessage("UNCONFIRMED"));
         return;
@@ -190,7 +238,11 @@ function VoidDialog({
       setReceipt(parsed);
       router.refresh();
     } catch {
-      setError("No hay conexión. No se anuló nada; volvé a intentar.");
+      if (await verifyVoided()) return;
+      setUnconfirmed(true);
+      setError(
+        "No hay conexión y no sabemos si la anulación quedó guardada. Reintentá desde acá: el pedido es el mismo, así que no se anula dos veces.",
+      );
     } finally {
       setBusy(false);
     }
@@ -325,6 +377,11 @@ function VoidDialog({
             {error && (
               <div className="mt-3 rounded-2xl border border-alert/40 bg-night-3 p-3 text-[0.8125rem] text-alert">
                 <p>{error}</p>
+                {diagnostic && (
+                  <p className="mt-2 font-mono text-[0.6875rem] text-fog">
+                    Código: {diagnostic}
+                  </p>
+                )}
                 {unconfirmed && (
                   <p className="mt-2 text-mist">
                     Antes de reintentar podés mirar Caja: si la reversa ya está

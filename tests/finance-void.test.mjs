@@ -6,6 +6,7 @@ import {
   VOID_REASON_MIN,
   findStoredVoidReceipt,
   parseVoidReceipt,
+  voidDiagnostic,
   voidMessage,
   voidRequestSchema,
 } from "../src/lib/finance/voids.ts";
@@ -90,6 +91,14 @@ test("un resultado sin confirmar nunca dice que no se modificó nada", () => {
   assert.match(VOID_MESSAGES.UNCONFIRMED, /no se anula dos veces/);
   assert.equal(voidMessage("UNCONFIRMED"), VOID_MESSAGES.UNCONFIRMED);
   assert.equal(voidMessage("CODIGO_QUE_NO_EXISTE"), VOID_MESSAGES.UNKNOWN);
+});
+
+test("cuando no se puede confirmar, el código dice la etapa sin filtrar detalles", () => {
+  assert.equal(voidDiagnostic("RPC", "PGRST301"), "ANULACION_RPC_PGRST301");
+  assert.equal(voidDiagnostic("COMPROBANTE"), "ANULACION_COMPROBANTE_SIN_CODIGO");
+  // Nada de mensajes de la base ni rutas internas: solo mayúsculas seguras.
+  assert.equal(voidDiagnostic("rpc fatal: /x", "boom!"), "ANULACION_ETAPA_SIN_CODIGO");
+  assert.match(voidDiagnostic("RPC", "42501"), /^ANULACION_RPC_42501$/);
 });
 
 const storedReceipt = {
