@@ -7,9 +7,8 @@ interpreta como una nota histórica y **manda esta lista**. Los demás documento
 pueden explicar decisiones, guías de uso o cómo se construyó una parte, pero no
 crean tareas nuevas.
 
-Última auditoría completa: **26 de octubre de 2026**, sobre producción
-`main@3bede94525cbfb0b958ebb7275189a4affa97f6e` (PR #56) y Supabase
-`hcnuepdxmbsmlzdmvwhx`.
+Última auditoría completa: **30 de octubre de 2026**, sobre producción
+`main@7228c04` (PR #94) y Supabase `hcnuepdxmbsmlzdmvwhx`.
 
 ## Cómo mantener esta lista
 
@@ -40,8 +39,8 @@ Según el caso, debe cumplir:
 
 ## Foto actual comprobada
 
-- Producción: `main` en **`9d08e0d`** (PR #93 fusionado), desplegado y sin PR
-  abierto. La rama de trabajo de esta sesión se abre desde ahí.
+- Producción: `main` en **`7228c04`** (PR #94 fusionado; antes #93), CI verde
+  y sin PR abierto.
 - Supabase: proyecto ACTIVE_HEALTHY. La última migración del repositorio y del
   historial remoto es la **00079** (`entrenadores_admin`). El siguiente número
   libre es **00080**.
@@ -67,6 +66,25 @@ Según el caso, debe cumplir:
 | 2 | **QA-03, QA-04 y QA-05** (celular y cuentas reales) | Son aceptaciones de cosas ya desplegadas; sin ellas no se puede decir «terminado». |
 | 3 | **Plan de gestión de planes** | Único hueco de negocio abierto en Administración: hoy se editan las tarifas NIO y se crean planes; falta el resto. |
 | 4 | **OP-06, FIN-01, FIN-02, CAL-01/03, LEG-01 y NEG-01** | Reglas de negocio y entrega; no bloquean la operación diaria de hoy. |
+
+## Resumen de avance al 30 de octubre de 2026
+
+**59 tareas listadas: 12 cerradas y 47 abiertas.** De las 47 abiertas, **7 son
+aceptaciones** en celular o con cuenta real (QA-03 a QA-09), **5 son de
+entrega** (ENT-01 a ENT-05, aplazadas a propósito) y **8 son opcionales del
+futuro** (FUT-01 a FUT-08). Quedan **27 de producto o negocio** por resolver.
+
+| Fase o bloque | Estado | Qué falta |
+|---|---|---|
+| **Etapa 1 — Proteger lo construido** | Código cerrado y desplegado | SEG-02 (correo propio y recuperación real), SEG-03 (segundo administrador y respaldo MFA), SEG-04 a SEG-06 (revisión de escrituras, monitoreo, grants) |
+| **Etapa 2 — Navegación** | Hecha: Inicio, Clientes, Finanzas, Operación, Administración y Mis clientes | Solo la decisión de OP-09 |
+| **Etapa 3 — Operación diaria** | OP-01 a OP-05 cerradas y desplegadas | OP-06 (cierre de reservas pasadas), OP-07 (cambio de día sin recargar), OP-08 (vincular ficha con cuenta web) y la aceptación QA-09 |
+| **Clientes, vigencias y planes** | CLI-01, CLI-02 y CLI-06 cerradas y desplegadas | Aceptación en celular (QA-09); decisiones CLI-03, CLI-04 y CLI-05 |
+| **Etapa 4 — Finanzas y productos** | En uso real: cobros, gastos, deudas y abonos NIO/USD, vuelto, productos con stock, Caja por módulos, reportes y descargas | FIN-01 (anulación controlada), FIN-02 (efectivo recibido y vuelto en todos los cobros), FIN-03 a FIN-07 |
+| **Calendario y disciplinas (OP-05)** | Cerrado y desplegado, con grillas, sesiones sueltas, bloqueos, generador con vista previa y entrenadores | Solo la aceptación en celular (QA-09) |
+| **Etapa 5 — Aceptación integral** | Parcial: QA-01 y QA-02 cerradas | QA-03 a QA-08, CAL-03, LEG-01 y NEG-01 |
+| **Etapa 6 — Entrega al dueño** | Sin empezar, a propósito | ENT-01 a ENT-05 y SEG-03 |
+| **Futuro opcional** | No bloquea nada | FUT-01 a FUT-08 |
 
 ---
 
@@ -136,9 +154,11 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   comprobaciones SQL por rol/divergencia productiva y 10 pruebas de
   contrato/API/UI/migración; la aceptación integral sigue en CAL-03. La
   administración avanzada de grillas y excepciones queda en OP-05.
-- [ ] **OP-05 · Media · Código — Administrar disciplinas, grillas, sesiones y
-  excepciones del calendario.** Alcance ampliado el 27 de octubre de 2026 a
-  petición del usuario, después de aprobar OP-04.
+- [x] **OP-05 · Media · Código — Administrar disciplinas, grillas, sesiones y
+  excepciones del calendario.** **Código cerrado, aplicado y desplegado**
+  (00072–00079, PR #80 a #90 y el arreglo del incidente en #92). Falta solo el
+  recorrido en celular, que está en **QA-09**. Alcance ampliado el 27 de
+  octubre de 2026 a petición del usuario, después de aprobar OP-04.
   **Primera etapa hecha (migración 00072):** la grilla semanal dejó de ser una
   plantilla fija escrita en SQL y pasó a ser datos en
   `class_schedule_slots` (disciplina, día, hora, duración, cupo, sala,
@@ -376,8 +396,9 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   sesiones o reservas para corregirlas. Cierre: probar el esquema productivo
   divergente y, desde el celular, crear una disciplina de ejemplo, definir
   su grilla, generar sus sesiones, agregar un día suelto, bloquear un rango
-  y comprobar el resultado en Horarios y en las reservas afectadas. Sin esos
-  casos, OP-05 no se considera terminada.
+  y comprobar el resultado en Horarios y en las reservas afectadas. Esos casos
+  son los de **QA-09**: hasta que se recorran en el celular, OP-05 no se
+  considera aceptada (aunque el código ya esté cerrado).
 - [ ] **OP-06 · Media · Decisión y código — Cierre de reservas pasadas.**
   Existe `close_past_sessions()`, pero no se ejecuta automáticamente. Primero
   hay que decidir cuándo una reserva confirmada pasa a asistida o ausente; no
@@ -400,9 +421,9 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
 
 ## 2. Clientes, planes, categorías y progreso
 
-- [ ] **CLI-01 · Alta · Código — Vigencias de planes.** Decisión cerrada y
-  código aplicado el 28 de octubre de 2026; **falta la aceptación en celular
-  con un usuario de cada rol**. Duraciones aprobadas contando el pago como día
+- [x] **CLI-01 · Alta · Código — Vigencias de planes.** **Código cerrado,
+  aplicado y desplegado**; la aceptación en celular con un usuario de cada rol
+  está en **QA-09**. Duraciones aprobadas contando el pago como día
   1: Día 1, Semana 7, Quincena 15, Mes 30 y Boxeo 30. Renovar o cambiar antes de
   vencer encadena desde el día siguiente al vencimiento; después de vencer
   empieza el día del pago. Gimnasio y Boxeo son accesos separados y
@@ -423,8 +444,9 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   encadenamiento, 768 pruebas de reglas/UI, `typecheck`, `lint` y `build` sin
   errores, más 2 pruebas nuevas del cobro de Boxeo y del panel de vigencias. Reversión: dejar de enviar `planId`, luego retirar las RPC `*_plan`;
   no se borran datos.
-- [ ] **CLI-06 · Alta · Código — Catálogo de planes y modalidades.** Decisión
-  cerrada por el usuario (modelo C + opción 1): cada plan se ata a **una
+- [x] **CLI-06 · Alta · Código — Catálogo de planes y modalidades.** **Código
+  cerrado, aplicado y desplegado**; la aceptación en celular va con **QA-09**.
+  Decisión cerrada por el usuario (modelo C + opción 1): cada plan se ata a **una
   disciplina existente** o a **todo el gimnasio**, y su vigencia sale de los
   datos del plan, no de su slug. Así el dueño crea desde Administración un plan
   nuevo —por ejemplo Zumba mensual— y ese mismo plan aparece para cobrar con
@@ -451,8 +473,8 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   `catalogo_planes@20261029042701`; una corrección posterior
   (`catalogo_planes_plan_class_state`) reparó la lectura de vigencias
   «por comenzar» y «vencidas», que se había transcrito con un nombre de columna
-  equivocado al aplicarla. Pendiente: aceptación en celular con un usuario de
-  cada rol. Reversión: dejar de enviar `planId`; las
+  equivocado al aplicarla. La aceptación en celular va con **QA-09**.
+  Reversión: dejar de enviar `planId`; las
   columnas pueden quedar vacías sin afectar cobros ni vigencias ya creadas.
 - [x] **CLI-02 · Media · Código — Categoría automática por vigencia real.**
   Hecho y aplicado en producción (migración `00070`, versión
@@ -483,8 +505,7 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   su hash de producción también coincide con el local. Desplegado en producción con
   `dpl_F3oHWLBBhNdEQeHN2PXMWkjsmVSx` (commit `86952ca`); `/api/admin/categories`
   responde 403 AUTH sin sesión (ya no PGRST202) y la página de Categorías
-  redirige a Ingresar. **Pendiente: aceptación en celular** con un usuario de
-  cada rol.
+  redirige a Ingresar. La **aceptación en celular** va con **QA-09**.
   Reversión: dejar de llamar `client_category_apply`; las columnas nuevas
   pueden quedar vacías sin afectar cobros ni vigencias y no se borra nada.
 - [ ] **CLI-03 · Media · Revisión profesional — Calculadora, dieta y rutinas.**
@@ -576,9 +597,16 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   comprobado, usando su correo y autorización. Nunca se piden contraseñas,
   semillas ni códigos por chat.
 - [ ] **SEG-04 · Media · Revisión de código — CSRF y abuso de forma uniforme.**
-  Finanzas, clientes y deudas ya revisan origen/`sec-fetch-site`; falta una
-  pasada sistemática por todas las rutas que escriben y una política común de
-  límites. El antispam actual de formularios públicos es por IP y en memoria.
+  Auditado el 30 de octubre de 2026: **11 rutas** ya rechazan origen cruzado
+  (`bookings`, `categories`, `classes`, `classes/catalog`, `coaches`, `debts`,
+  `finance`, `messages`, `plans`, `schedule`, `sessions/generate`), pero cada
+  una tiene su propia copia de `sameOrigin`; **15 rutas que escriben siguen sin
+  ese control** (socios, personal, roles, tarifas, productos, progreso,
+  nutrición, reservas del socio, cuenta, accesos de entrenador, importación de
+  socios, boletín, contacto y el endpoint de reinicio ya retirado con 410).
+  Cierre: **un solo guardia compartido** —no 15 copias más— y una política
+  común de límites. El antispam actual de formularios públicos es por IP y en
+  memoria.
   No se usa Supabase Storage hoy; si se introduce, sus políticas entran en esta
   revisión antes de publicar archivos.
 - [ ] **SEG-05 · Media · Código/operación — Registro de errores y alertas.**
@@ -676,6 +704,16 @@ crear operaciones ficticias en producción sin coordinarlo.
   de vigencia de la disciplina `cls_zumba`; **(3)** en Administración →
   Horarios, Zumba figura en las columnas lunes, miércoles y viernes. Si algún
   día no cuadra, revisar la convención `0 = lunes` antes de tocar los datos.
+- [ ] **QA-09 · Alta · Celular — Aceptación conjunta de vigencias, categorías y
+  administración del calendario.** Es lo que falta para dar por aceptadas
+  **CLI-01, CLI-02, CLI-06 y OP-05**, cuyo código ya está cerrado y desplegado.
+  Con un usuario de cada rol: **(1)** cobrar un plan y ver la vigencia en la
+  ficha, Mi Cuenta y el recibo; renovar antes de vencer y comprobar que
+  encadena días; **(2)** ver la categoría cambiar sola tras el cobro y editar
+  umbrales en Administración → Categorías; **(3)** crear una disciplina de
+  ejemplo, definir su grilla, generar sus sesiones, agregar un día suelto,
+  bloquear un rango y comprobar el resultado en Horarios y en las reservas.
+  Al terminar, borrar la disciplina de ejemplo (apagarla, no borrarla).
 
 ## 9. Entrega al dueño — no ejecutar todavía
 
@@ -735,27 +773,22 @@ orden nueva.**
 
 ## Mapa de fases contra esta lista
 
-| Fase o etapa | Estado al 26 oct 2026 | Lo abierto vive en |
+Se mantiene como referencia histórica del plan; el estado vivo está en
+**Resumen de avance al 30 de octubre de 2026**, arriba. No duplicar números acá:
+si cambia un estado, se cambia en el resumen.
+
+| Fase o etapa | Plan original | Dónde está el detalle |
 |---|---|---|
-| Etapa 1 — Proteger lo construido | Muy avanzada | SEG-01 a SEG-06, CAL-03, QA-01, QA-02 |
-| Etapa 2 — Ordenar navegación | Hecha con módulos actuales | OP-09 |
-| Etapa 3 — Operación diaria | Parcial | OP-04 a OP-08, CLI-01, PER-01, QA-03, QA-06 |
-| Etapa 4 — Gestión y finanzas | Parcial | FIN-01 a FIN-07, CLI-02 |
-| Etapa 5 — Aceptación integral | Sin cerrar | CAL-01 a CAL-04, QA-01 a QA-07, LEG-01, NEG-01 |
-| Etapa 6 — Entrega | No empezada, a propósito | ENT-01 a ENT-05, SEG-03 |
-| Roles A/B | Cerradas y aplicadas | — |
-| Roles C — Anulación | Sin empezar | FIN-01 |
-| Calculadora A — Asistencia | Cerrada | — |
-| Calculadora B — Categoría | Construida y aplicada | Aceptación en celular |
-| Calculadora C — Plan/rutina | Construida | CLI-03, QA-04 |
-| Calculadora D — Interruptor | Construida para entrenador | CLI-05 solo si se piden permisos más finos |
-| Calculadora E — Productos | Cerrada | — |
-| Seguridad 1A/1B/1C | Código cerrado | SEG-02 para la aceptación con correo real |
-| B.1 lecturas / B04/B05/B07 | Cerrada | — |
-| B.2 acciones persistentes | Cerrada | — |
-| Demo/entrega 1 | Aplazada | ENT-01 |
-| Demo/entrega 2 | Aplazada | ENT-02 a ENT-04 |
-| Demo/entrega 3 | Aplazada | ENT-05 |
+| Etapa 1 — Proteger lo construido | Seguridad, Auth y calidad | Sección 5 y QA-01/QA-02 |
+| Etapa 2 — Ordenar navegación | Módulos del panel | OP-09 |
+| Etapa 3 — Operación diaria | Clases, horarios, reservas, personal | Sección 1 y PER-01 |
+| Etapa 4 — Gestión y finanzas | Cobros, planes, gastos, reportes | Secciones 2 y 3 |
+| Etapa 5 — Aceptación integral | Pruebas por rol en celular | Sección 8 y CAL-03 |
+| Etapa 6 — Entrega | Datos reales, limpieza y manual | Sección 9 |
+| Roles A/B y Calculadoras A/B/D/E | Cerradas y aplicadas | «Cerrado y comprobado» |
+| Calculadora C — Plan y rutina | Construida | CLI-03 y QA-04 |
+| Seguridad 1A/1B/1C | Código cerrado | SEG-02 para la prueba con correo real |
+| Demo/entrega | Aplazada por decisión del usuario | ENT-01 a ENT-05 |
 
 ## Cerrado y comprobado — no volver a abrir por documentos viejos
 
