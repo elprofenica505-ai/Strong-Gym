@@ -289,3 +289,59 @@ await assert.rejects(
 ok("el índice impide dos cajas abiertas a la vez", true);
 
 console.log(`\n${checks} comprobaciones de cierre y arqueo (FIN-04) pasaron.`);
+
+// --- 10. Un movimiento de una caja ya cerrada no se anula (00088) ---
+// Se aplica sobre el mismo escenario: la primera caja ya está cerrada y tuvo
+// movimientos de efectivo dentro de su ventana.
+const closedSession = (await state()).history.at(-1);
+const insideCash = (
+  await db.query(
+    "select id from transactions where account_id = 'caja_fuerte_nio' and occurred_at between $1 and $2 order by occurred_at limit 1",
+    [closedSession.openedAt, closedSession.closedAt],
+  )
+).rows[0];
+// Piezas de las que depende el plan de anulación (00080). En producción ya
+// existen; acá se declaran mínimas para probar la regla nueva tal cual.
+await db.exec(`create table if not exists public.finance_voids(
+  id uuid primary key default gen_random_uuid(),
+  original_id uuid not null, reversal_id uuid, created_at timestamptz not null default now()
+);
+create or replace function public.finance_permission_enabled(p_key text) returns boolean
+language sql stable as $$ select true $$;
+create or replace function public.plan_local_today() returns date
+language sql stable as $$ select (now() at time zone 'America/Managua')::date $$;`);
+
+await db.exec(migration("00088_anular_caja_cerrada.sql"));
+await db.exec(migration("00088_anular_caja_cerrada.sql"));
+ok("la migración de caja cerrada se puede aplicar dos veces", true);
+ok(
+  "la función reconoce el movimiento firmado",
+  (await db.query("select public.finance_cash_session_closed($1) as v", [insideCash.id])).rows[0].v === true,
+);
+const afterClose = (
+  await db.query(
+    "select id from transactions where account_id = 'caja_fuerte_nio' and occurred_at > $1 order by occurred_at limit 1",
+    [closedSession.closedAt],
+  )
+).rows[0];
+ok(
+  "lo posterior al cierre no queda dentro del arqueo",
+  (await db.query("select public.finance_cash_session_closed($1) as v", [afterClose.id])).rows[0].v === false,
+);
+const bankTx = (
+  await db.query("select id from transactions where account_id = 'banco_bac_nio' limit 1")
+).rows[0];
+ok(
+  "un movimiento de banco no entra en la regla",
+  (await db.query("select public.finance_cash_session_closed($1) as v", [bankTx.id])).rows[0].v === false,
+);
+
+const plan = async (id, actor = admin) =>
+  (await as(actor, "aal2", "select public.finance_void_plan($1) as value", [id])).at(0).value;
+const closedPlan = await plan(insideCash.id);
+ok("un cobro de una caja cerrada no se anula", closedPlan.allowed === false && closedPlan.code === "CASH_SESSION_CLOSED");
+ok("el plan lo dice con un dato, no solo con el código", closedPlan.closedCashSession === true);
+ok("un movimiento posterior al cierre se sigue anulando", (await plan(afterClose.id)).code === "ALLOWED");
+ok("un movimiento de banco se sigue anulando", (await plan(bankTx.id)).code === "ALLOWED");
+
+console.log(`\nComprobaciones finales de cierre y arqueo: ${checks}.`);
