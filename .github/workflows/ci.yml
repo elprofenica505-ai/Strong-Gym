@@ -109,6 +109,9 @@ jobs:
       - name: Probar productos, nutrición y registro (PGlite)
         run: npm run test:productos
 
+      - name: Probar biblioteca de ejercicios y «Mi rutina» (PGlite + JSX)
+        run: npm run test:ejercicios
+
   finance-concurrency:
     name: Concurrencia PostgreSQL
     runs-on: ubuntu-latest

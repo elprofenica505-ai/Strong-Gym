@@ -16,6 +16,7 @@ import { AttendanceTable } from "@/components/attendance/attendance-table";
 import { MfaSetup } from "@/components/auth/mfa-setup";
 import { isStaffRole } from "@/lib/auth/current-user";
 import { ButtonLink } from "@/components/ui/button";
+import Link from "next/link";
 
 export async function generateMetadata({
   params,
@@ -128,6 +129,29 @@ export default async function AccountPage({
             <div className="container-x">
               <AccountDashboard initialBookings={bookings} plans={plans}
                 accountPlan={user && assignedPlan ? { userId: user.id, ...assignedPlan } : null} />
+            </div>
+          </section>
+          <section className="pb-6">
+            <div className="container-x">
+              <Link
+                href={`/${locale}/mi-cuenta/ejercicios`}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-card p-5 transition-colors hover:border-brand"
+              >
+                <div className="min-w-0">
+                  <p className="text-[0.65rem] font-bold tracking-[0.18em] text-brand-300 uppercase">
+                    Biblioteca
+                  </p>
+                  <h2 className="mt-1 text-xl font-bold text-ink">Ejercicios y rutinas</h2>
+                  <p className="mt-1 text-sm text-fog">
+                    Cómo se hace cada ejercicio, qué músculo trabaja, con qué
+                    máquina y cuántas series y repeticiones. Guardá los tuyos en
+                    «Mi rutina».
+                  </p>
+                </div>
+                <span className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-onbrand">
+                  Abrir biblioteca
+                </span>
+              </Link>
             </div>
           </section>
           <section className="pb-10 sm:pb-12 lg:pb-14">
