@@ -4,36 +4,14 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AdminStep } from "@/components/admin/step";
 import type { ScheduleBoardData } from "@/components/admin/schedule-board";
+import type {
+  ScheduleSession,
+  SessionsBoard,
+} from "@/lib/admin/schedule-range";
 
-/** Fila de `sessions` tal como la devuelve `admin_schedule_sessions()`. */
-export type ScheduleSession = {
-  id: string;
-  class_id: string;
-  class_name: string;
-  class_color: string;
-  class_active: boolean;
-  coach_id: string | null;
-  coach_name: string | null;
-  room: string;
-  starts_at: string;
-  ends_at: string;
-  duration_min: number;
-  capacity: number;
-  booked: number;
-  status: "scheduled" | "cancelled";
-  origin: "grid" | "manual";
-  note: string | null;
-  cancel_reason: string | null;
-  cancelled_at: string | null;
-  is_past: boolean;
-};
-
-export type SessionsBoard = {
-  from: string;
-  to: string;
-  today: string;
-  sessions: ScheduleSession[];
-};
+// Los tipos se vuelven a exportar por comodidad de quien ya los importaba de
+// acá. Son solo tipos: no viajan al navegador ni se pueden ejecutar.
+export type { ScheduleSession, SessionsBoard };
 
 const input =
   "w-full rounded-lg border border-line bg-paper px-3 py-2 text-ink disabled:opacity-60";
@@ -73,15 +51,6 @@ const localParts = (iso: string) => {
     }).format(date),
   };
 };
-
-/** Período con el que arranca el paso 4: hoy y las próximas cuatro semanas. */
-export function sessionsBoardFrom(today: string): SessionsBoard {
-  const [year, month, day] = today.split("-").map(Number);
-  const to = new Date(Date.UTC(year, month - 1, day + 27))
-    .toISOString()
-    .slice(0, 10);
-  return { from: today, to, today, sessions: [] };
-}
 
 type Draft = {
   id: string | null;
