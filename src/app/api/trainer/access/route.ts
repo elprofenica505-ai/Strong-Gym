@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/data/queries";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { sameOrigin } from "@/lib/security/same-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,8 @@ const messages: Record<string, [string, number]> = {
  * administrador) viven en la base: search y request usan sus funciones.
  */
 export async function POST(request: Request) {
+  if (!sameOrigin(request))
+    return NextResponse.json({ error: "ORIGIN" }, { status: 403, headers });
   const user = await getCurrentUser();
   if (!user || user.role !== "trainer" || user.mfa !== "ok") {
     return NextResponse.json({ error: "AUTH", message: messages.AUTH[0] }, { status: 403, headers });

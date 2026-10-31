@@ -7,6 +7,7 @@ import {
 import { getCurrentUser } from "@/lib/data/queries";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { sameOrigin } from "@/lib/security/same-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -36,20 +37,6 @@ function reply(body: unknown, status = 200) {
   return NextResponse.json(body, { status, headers });
 }
 
-function sameOrigin(request: Request): boolean {
-  if (request.headers.get("sec-fetch-site") === "cross-site") return false;
-  const origin = request.headers.get("origin");
-  if (!origin) return true;
-  try {
-    const url = new URL(origin);
-    return (
-      url.origin === new URL(request.url).origin ||
-      url.host === request.headers.get("host")
-    );
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Marca una consulta como leída o no leída. La API exige la misma sesión de

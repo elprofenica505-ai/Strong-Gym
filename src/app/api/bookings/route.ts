@@ -4,6 +4,7 @@ import { siteConfig } from "@/config/site";
 import { getCurrentUser, getMyBookings } from "@/lib/data/queries";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { sameOrigin } from "@/lib/security/same-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,11 @@ export async function GET() {
 
 /** POST /api/bookings  { sessionId } → reserva un lugar en la clase. */
 export async function POST(request: Request) {
+  if (!sameOrigin(request))
+    return NextResponse.json(
+      { error: "ORIGIN" },
+      { status: 403, headers: { "Cache-Control": "private, no-store" } },
+    );
   if (!isSupabaseConfigured) return fail("DEMO", 503);
 
   const user = await getCurrentUser();
@@ -100,6 +106,11 @@ export async function POST(request: Request) {
 
 /** DELETE /api/bookings?id=... → cancela una reserva. */
 export async function DELETE(request: Request) {
+  if (!sameOrigin(request))
+    return NextResponse.json(
+      { error: "ORIGIN" },
+      { status: 403, headers: { "Cache-Control": "private, no-store" } },
+    );
   if (!isSupabaseConfigured) return fail("DEMO", 503);
 
   const user = await getCurrentUser();

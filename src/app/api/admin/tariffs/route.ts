@@ -3,6 +3,7 @@ import { z } from "zod";
 import { isAdminRole } from "@/lib/auth/current-user";
 import { getCurrentUser } from "@/lib/data/queries";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { sameOrigin } from "@/lib/security/same-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -69,6 +70,8 @@ const messages: Record<string, [string, number]> = {
  * siendo el precio histórico en USD, ni permite editar Boxeo desde acá.
  */
 export async function POST(request: Request) {
+  if (!sameOrigin(request))
+    return NextResponse.json({ error: "ORIGIN" }, { status: 403, headers });
   const user = await getCurrentUser();
   if (!user || !isAdminRole(user.role) || user.mfa !== "ok") {
     return NextResponse.json(

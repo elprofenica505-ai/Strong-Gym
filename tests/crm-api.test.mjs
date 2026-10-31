@@ -17,6 +17,10 @@ const modules = {
   ).href,
   "@/lib/crm/schemas": new URL("../src/lib/crm/schemas.ts", import.meta.url)
     .href,
+  "@/lib/security/same-origin": new URL(
+    "../src/lib/security/same-origin.ts",
+    import.meta.url,
+  ).href,
   "next/server": import.meta.resolve("next/server.js"),
   zod: import.meta.resolve("zod"),
 };
