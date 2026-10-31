@@ -637,7 +637,9 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   no activó ninguna vigencia). Suite completa **911/911**.
   Prueba en producción, con `rollback`: llamar a la anulación real como
   administración dejó el segmento marcado como anulado, sin tocar los datos
-  guardados.
+  guardados. **Las reservas ya hechas no se tocan**: si hay que liberar un
+  lugar, se cancela desde Operación como cualquier reserva (OP-01). Se decidió
+  así porque una devolución no siempre significa que la persona deje de venir.
 - [ ] **FIN-06 · Media · Decisión y código — Importación de saldos e
   históricos.** El importador actual crea fichas de clientes desde CSV con
   mapeo, vista previa y avisos. No importa saldos, deudas, personal ni reservas,
