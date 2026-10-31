@@ -39,16 +39,18 @@ Según el caso, debe cumplir:
 
 ## Foto actual comprobada
 
-- Producción: `main` en **`5c4f67a`** (PR #96 fusionado: guardia de origen
-  único), CI verde y sin PR abierto.
-- Supabase: proyecto ACTIVE_HEALTHY. La última migración del repositorio y del
-  historial remoto es la **00079** (`entrenadores_admin`). El siguiente número
-  libre es **00080**.
-- Datos productivos al 30 de octubre (noche), comprobados con consulta directa:
+- Producción: `main` en **`3cea99b`** (PR #100, FIN-08) y el arreglo de
+  permisos de caja de este PR, CI verde.
+- Supabase: proyecto ACTIVE_HEALTHY. Las migraciones aplicadas y registradas
+  llegan a la **00083** (`permiso_de_caja_ejecutable`). El siguiente número
+  libre es **00084**.
+- Datos productivos al 31 de octubre, comprobados con consulta directa:
   **9 disciplinas** (activas: Pesas y máquinas, Boxeo y Zumba), **6 planes**
   activos, **89 sesiones** (88 programadas y 1 anulada), **2 reservas**,
-  **12 horarios fijos** y **3 entrenadores**. De las **45 clases futuras**,
-  **45 tienen entrenador**.
+  **12 horarios fijos** y **3 entrenadores**.
+- **Honestidad de los avisos financieros:** un error de lectura nunca se
+  muestra como cero ni como lista vacía, y una anulación sin respuesta
+  confirmada ya no afirma «no se modificó nada» (ver FIN-01 y FIN-08).
 - Nota permanente de la 00049: sus tablas y funciones principales existen en
   producción, pero su nombre no aparece en el historial remoto de migraciones.
   **No volver a ejecutarla sin investigar.**
@@ -538,6 +540,18 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   motivo obligatorio y comprobante de la reversa. **Fuera de esta tarea, a
   propósito:** una transferencia no se anula con una sola reversa (se rechaza
   y se corrige con otra transferencia) y el día cerrado llegará con FIN-04.
+  **Corrección del 31 de octubre (migración `00083`, aplicada y
+  registrada como `20261031093000`):** la 00080 volvió a crear
+  `finance_permission_enabled` copiando el `revoke all` de la 00056 **sin** el
+  `grant execute ... to authenticated`. Como cuatro políticas RLS la llaman
+  dentro de su condición, cualquier lectura de `client_debt_entries`,
+  `client_debt_balances`, `member_balances` y `bank_accounts` fallaba con
+  `42501` para todo el personal, administración incluida; se veía como
+  «Información financiera no disponible · FIN_REPORT_DEBT_42501» en
+  Reportes. La 00083 devuelve el permiso, deja una auditoría que corta la
+  migración si vuelve a pasar y queda cubierta por
+  `tests/sql-policy-grants.test.mjs`, que lee las migraciones en orden y
+  detecta el mismo error.
 - [x] **FIN-02 · Alta · Código — Efectivo recibido y vuelto en cobros por
   servicio y productos.** Cerrada el 30 de octubre con la migración
   `00081_efectivo_y_vuelto.sql` aplicada a producción. Los cuatro escritores de
@@ -593,6 +607,14 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   rechazada sin reponer dos veces; cobro de plan con productos (el `+` del
   servicio no devuelve stock y la línea del producto sí); cobro sin productos
   devuelve `[]`. Cubierto por `tests/finance-void.test.mjs`.
+  **Ampliado el 31 de octubre:** si la respuesta se pierde después de anular,
+  el resultado no se muestra como fallo. La ruta consulta la bitácora
+  (`findStoredVoidReceipt`) y devuelve el comprobante guardado; si igual no se
+  puede confirmar, el aviso dice que no se sabe, invita a mirar Caja y a
+  reintentar con el mismo `requestId` —que no anula dos veces— en vez de
+  afirmar que no se modificó nada. Una anulación real hecha así en
+  producción (venta de 2 aguas, 31 de octubre 09:21) sí quedó guardada:
+  dinero, stock y bitácora correctos; lo que falló fue el aviso.
 
 ## 4. Personal, roles y sesiones
 

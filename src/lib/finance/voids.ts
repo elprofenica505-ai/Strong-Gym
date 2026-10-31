@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * Anulación controlada de un movimiento (FIN-01).
@@ -83,11 +84,42 @@ export const VOID_MESSAGES: Record<string, string> = {
   INVALID_PAYMENT: "El saldo resultante queda fuera del rango permitido.",
   FINANCE_REVIEW_REQUIRED:
     "La caja está en revisión: no se anula nada hasta revisar la estructura financiera.",
-  UNKNOWN: "No se pudo anular. No se modificó nada; reintentá en unos segundos.",
+  // El resultado no llegó a confirmarse: puede estar guardado o no. Nunca se
+  // afirma que no se modificó nada, porque el dinero y el stock pueden haberse
+  // movido antes de que se cortara la respuesta.
+  UNCONFIRMED:
+    "No pudimos confirmar si la anulación quedó guardada. Reintentá desde acá: el pedido es el mismo, así que no se anula dos veces. Si la reversa ya aparece en Caja, no la repitas.",
+  UNKNOWN:
+    "No se pudo confirmar la anulación. Reintentá desde acá: el pedido es el mismo y no se anula dos veces. Si la reversa ya aparece en Caja, no la repitas.",
 };
 
 export function voidMessage(code: string | undefined): string {
   return (code && VOID_MESSAGES[code]) || VOID_MESSAGES.UNKNOWN;
+}
+
+/**
+ * Recupera la anulación ya guardada de un movimiento.
+ *
+ * Si la base anuló pero la respuesta se perdió en el camino (red del celular,
+ * recarga a mitad de camino), el dinero y el stock quedaron movidos y la
+ * pantalla, sin embargo, diría que falló. Antes de avisar de un error se
+ * consulta la bitácora: si la anulación existe, se devuelve su comprobante y
+ * la pantalla muestra el resultado real.
+ *
+ * La lectura la hace la sesión del usuario, con la política de personal de
+ * `finance_voids`: nadie ve anulaciones que no le correspondan.
+ */
+export async function findStoredVoidReceipt(
+  supabase: SupabaseClient,
+  transactionId: string,
+): Promise<VoidReceipt | null> {
+  const { data, error } = await supabase
+    .from("finance_voids")
+    .select("receipt")
+    .eq("original_id", transactionId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return parseVoidReceipt((data as { receipt?: unknown }).receipt);
 }
 
 /** Valida el comprobante que devuelve la base antes de mostrarlo. */

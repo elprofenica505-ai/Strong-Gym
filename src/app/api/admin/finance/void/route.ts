@@ -3,6 +3,7 @@ import { z } from "zod";
 import { canManageFinance } from "@/lib/auth/current-user";
 import { getCurrentUser } from "@/lib/data/queries";
 import {
+  findStoredVoidReceipt,
   parseVoidReceipt,
   voidMessage,
   voidRequestSchema,
@@ -124,19 +125,19 @@ export async function POST(request: Request) {
       return reply({ error: match, message: voidMessage(match) }, status);
     }
     console.error("[finance] anulación", { code: error.code });
-    return reply({ error: "UNKNOWN", message: voidMessage("UNKNOWN") }, 500);
+    // El error puede haber llegado después de anular: si la bitácora ya tiene
+    // la reversa, se responde con ella en vez de asustar con un fallo falso.
+    const stored = await findStoredVoidReceipt(supabase, parsed.data.transactionId);
+    if (stored) return reply({ ok: true, receipt: stored, recovered: true });
+    return reply({ error: "UNCONFIRMED", message: voidMessage("UNCONFIRMED") }, 502);
   }
 
   const receipt = parseVoidReceipt(data);
   if (!receipt) {
-    return reply(
-      {
-        error: "UNCONFIRMED",
-        message:
-          "La base no devolvió un comprobante completo. Recargá Caja: si la anulación existe, aparece en el historial y no se repite.",
-      },
-      503,
-    );
+    // Mismo criterio: antes de decir que no hay comprobante, se mira la base.
+    const stored = await findStoredVoidReceipt(supabase, parsed.data.transactionId);
+    if (stored) return reply({ ok: true, receipt: stored, recovered: true });
+    return reply({ error: "UNCONFIRMED", message: voidMessage("UNCONFIRMED") }, 503);
   }
 
   return reply({ ok: true, receipt });
