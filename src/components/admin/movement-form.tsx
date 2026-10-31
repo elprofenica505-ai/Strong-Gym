@@ -156,9 +156,17 @@ export function MovementForm({
   const [currencyPresetKey, setCurrencyPresetKey] = useState(
     presetKey ?? "",
   );
+  // El efectivo se limpia cuando cambia la tarifa rápida: no se arrastra de un
+  // cobro al siguiente.
+  const [cashText, setCashText] = useState("");
+  const [cashPresetKey, setCashPresetKey] = useState(presetKey ?? "");
   if ((presetKey ?? "") !== currencyPresetKey) {
     setCurrencyPresetKey(presetKey ?? "");
     if (initialCurrency) setCurrency(initialCurrency);
+  }
+  if ((presetKey ?? "") !== cashPresetKey) {
+    setCashPresetKey(presetKey ?? "");
+    setCashText("");
   }
   const selectedCurrency = pending?.currency ?? currency;
   const [cartItems, setCartItems] = useState<CheckoutItem[]>(() =>
@@ -249,6 +257,22 @@ export function MovementForm({
     ? draftServiceAmount
     : 0;
   const productsTotal = itemsTotal(selectedItems);
+  const cashAmount = cashText.trim() === "" ? undefined : Number(cashText);
+  const checkoutTotal = serviceAmountForTotal + productsTotal;
+  const cashCents = cashAmount === undefined ? null : toCents(cashAmount);
+  const cashTooLow =
+    cashCents !== null && cashCents < toCents(checkoutTotal);
+  const cashInvalid =
+    cashAmount !== undefined &&
+    (!Number.isFinite(cashAmount) ||
+      cashAmount <= 0 ||
+      cashAmount > 99999999 ||
+      Math.abs(cashAmount * 100 - Math.round(cashAmount * 100)) > 0.000001 ||
+      cashTooLow);
+  const changePreview =
+    cashCents !== null && !cashInvalid && cashAmount !== undefined
+      ? Math.max(0, cashAmount - checkoutTotal)
+      : null;
   const staleSelectedItems =
     !pending && saleCatalog.data
       ? selectedItems.filter((item) => {
@@ -374,6 +398,7 @@ export function MovementForm({
       confirmedReceiptId = result.id;
       setReceipt(result.id);
       setReceiptLinks(result.receipts);
+      setCashText("");
       if (body.kind === "service_income" && body.items.length > 0) {
         setCartItems([]);
         setProductSearch("");
@@ -848,6 +873,9 @@ export function MovementForm({
                   clientId,
                   items: selectedItems,
                   ...(validityPlan ? { planId: validityPlan.id } : {}),
+                  ...(cashAmount !== undefined && !cashInvalid
+                    ? { cashReceived: cashAmount }
+                    : {}),
                 }),
           });
           if (!parsed.success) {
@@ -874,8 +902,14 @@ export function MovementForm({
           )?.name;
           const confirmation =
             d.kind === "service_income" && d.items.length > 0
-              ? `¿Registrar este cobro por un total de ${formatMoney(d.amount + itemsTotal(d.items), "NIO")}? Servicio: ${formatMoney(d.amount, "NIO")} (${d.concept}). Productos: ${d.items.map((item) => `${productLabel(item)} x${item.qty} (${formatMoney(item.unitPrice * item.qty, "NIO")})`).join(", ")}. Cuenta: ${accountName}. Tasa NIO/USD ${d.fx}. Bajará el stock y no aplica deuda ni crédito.${validityPlan ? ` Se activará la vigencia de ${validityPlan.name_es} por ${validityPlan.duration_days} días.` : " No aplica vigencia porque el cobro no lleva plan."}`
-              : `¿Registrar ${kind === "expense" ? "gasto" : "cobro por servicio"} de ${d.currency} ${d.amount.toFixed(2)}, tasa NIO/USD ${d.fx}? Cuenta: ${accountName}. Concepto: ${d.concept}. ${kind === "expense" ? "Puede dejar saldo negativo." : validityPlan ? `Se activará o renovará la vigencia de ${validityPlan.name_es} por ${validityPlan.duration_days} días.` : "No aplica deuda, crédito ni vigencia."}`;
+              ? `¿Registrar este cobro por un total de ${formatMoney(d.amount + itemsTotal(d.items), "NIO")}? Servicio: ${formatMoney(d.amount, "NIO")} (${d.concept}). Productos: ${d.items.map((item) => `${productLabel(item)} x${item.qty} (${formatMoney(item.unitPrice * item.qty, "NIO")})`).join(", ")}. Cuenta: ${accountName}. Tasa NIO/USD ${d.fx}.${d.cashReceived !== undefined ? ` Recibís ${formatMoney(d.cashReceived, "NIO")} y entregás ${formatMoney(d.cashReceived - d.amount - itemsTotal(d.items), "NIO")} de vuelto.` : ""} Bajará el stock y no aplica deuda ni crédito.${validityPlan ? ` Se activará la vigencia de ${validityPlan.name_es} por ${validityPlan.duration_days} días.` : " No aplica vigencia porque el cobro no lleva plan."}`
+              : `¿Registrar ${kind === "expense" ? "gasto" : "cobro por servicio"} de ${d.currency} ${d.amount.toFixed(2)}, tasa NIO/USD ${d.fx}? Cuenta: ${accountName}. Concepto: ${d.concept}.${d.kind === "service_income" && d.cashReceived !== undefined ? ` Recibís ${formatMoney(d.cashReceived, d.currency)} y entregás ${formatMoney(d.cashReceived - d.amount, d.currency)} de vuelto.` : ""} ${kind === "expense" ? "Puede dejar saldo negativo." : validityPlan ? `Se activará o renovará la vigencia de ${validityPlan.name_es} por ${validityPlan.duration_days} días.` : "No aplica deuda, crédito ni vigencia."}`;
+          if (cashInvalid) {
+            setMessage(
+              "El efectivo recibido no alcanza para el total del cobro. Corregilo o dejalo vacío si pagó de otra forma. No se envió el movimiento.",
+            );
+            return;
+          }
           if (!window.confirm(confirmation)) return;
           void pay(d);
         }}
@@ -955,6 +989,34 @@ export function MovementForm({
                 ))}
             </select>
           </label>
+          {kind === "service_income" && (
+            <label className="min-w-0 text-sm text-fog sm:col-span-2">
+              Efectivo recibido (opcional)
+              <input
+                className={input}
+                name="cash"
+                type="number"
+                min="0"
+                max="99999999"
+                step="0.01"
+                inputMode="decimal"
+                placeholder="Solo si pagó en efectivo en una caja"
+                value={cashText}
+                onChange={(event) => setCashText(event.target.value)}
+              />
+              <span
+                className={
+                  cashTooLow ? "mt-1 block text-xs text-alert" : "mt-1 block text-xs text-fog"
+                }
+              >
+                {cashTooLow
+                  ? `No alcanza: el total de este cobro es ${formatMoney(checkoutTotal, selectedCurrency)}.`
+                  : changePreview !== null
+                    ? `Vuelto a entregar: ${formatMoney(changePreview, selectedCurrency)}.`
+                    : "Dejalo vacío si pagó con transferencia, tarjeta o si no hace falta registrar el vuelto."}
+              </span>
+            </label>
+          )}
           <label className="min-w-0 text-sm text-fog">
             Tasa NIO por 1 USD
             <input

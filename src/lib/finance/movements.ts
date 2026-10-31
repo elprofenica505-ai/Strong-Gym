@@ -47,6 +47,14 @@ export const movementSchema = z
         // Solo crea vigencia si el servidor reconoce el plan y el importe exacto.
         planId: z.string().min(1).max(64).optional(),
         items: z.array(checkoutItemSchema).max(50).default([]),
+        // Efectivo físico entregado. Solo lo valida la base: acá se comprueba
+        // que alcance para el total y que tenga dos decimales.
+        cashReceived: z
+          .number()
+          .positive()
+          .max(99999999)
+          .multipleOf(0.01)
+          .optional(),
       })
       .strict(),
     z
@@ -86,6 +94,16 @@ export const movementSchema = z
         message: "PRODUCTS_REQUIRE_NIO",
         path: ["currency"],
       });
+    }
+    if (movement.cashReceived !== undefined) {
+      const totalCents = toCents(movement.amount) + productsTotalCents;
+      if (toCents(movement.cashReceived) < totalCents) {
+        ctx.addIssue({
+          code: "custom",
+          message: "CASH_LESS_THAN_TOTAL",
+          path: ["cashReceived"],
+        });
+      }
     }
     if (toCents(movement.amount) + productsTotalCents > 9999999900) {
       ctx.addIssue({
@@ -162,7 +180,9 @@ export const receiptSchema = z.object({
   accountBefore: z.number(),
   accountAfter: z.number(),
 }).superRefine((r,ctx)=>{
-  if((r.cashReceived!==undefined||r.changeGiven!==undefined)&&(r.kind!=='debt_payment'||r.cashReceived===undefined||r.changeGiven===undefined||r.cashReceived<r.amount||Math.abs(r.cashReceived-r.changeGiven-r.amount)>0.000001))ctx.addIssue({code:'custom',message:'INVALID_CASH_RECEIPT'});
+  // Efectivo y vuelto valen para abonos y para cobros: si aparece uno, tienen
+  // que aparecer los dos y la resta tiene que dar exactamente el importe.
+  if((r.cashReceived!==undefined||r.changeGiven!==undefined)&&(r.cashReceived===undefined||r.changeGiven===undefined||r.cashReceived<r.amount||Math.abs(r.cashReceived-r.changeGiven-r.amount)>0.000001))ctx.addIssue({code:'custom',message:'INVALID_CASH_RECEIPT'});
   if(r.kind==='debt_payment'&&(r.debtBefore===undefined||r.debtAfter===undefined||
     Math.abs(r.debtBefore-r.debtAfter-r.amount)>0.000001||Math.abs(r.accountAfter-r.accountBefore-r.amount)>0.000001))
     ctx.addIssue({code:"custom",message:"INVALID_DEBT_PAYMENT_RECEIPT"});
@@ -191,6 +211,8 @@ export const movementResultSchema = z
     productsTotal: resultMoney.optional(),
     total: resultMoney.refine((value) => value > 0).optional(),
     currency: z.enum(["NIO", "USD"]).optional(),
+    cashReceived: z.number().finite().positive().max(99999999).multipleOf(0.01).optional(),
+    changeGiven: z.number().finite().nonnegative().max(99999999).multipleOf(0.01).optional(),
   })
   .superRefine((result, ctx) => {
     if (
@@ -204,6 +226,19 @@ export const movementResultSchema = z
         code: "custom",
         message: "CHECKOUT_RESULT_TOTAL_MISMATCH",
         path: ["total"],
+      });
+    }
+    if (
+      result.cashReceived !== undefined &&
+      result.total !== undefined &&
+      (result.changeGiven === undefined ||
+        result.cashReceived < result.total ||
+        Math.abs(result.cashReceived - result.changeGiven - result.total) > 0.000001)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: "INVALID_CASH_RECEIPT",
+        path: ["cashReceived"],
       });
     }
     if (result.receipts && !result.receipts.some((r) => r.id === result.id)) {
