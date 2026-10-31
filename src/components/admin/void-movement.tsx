@@ -115,7 +115,10 @@ function VoidDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<VoidReceipt | null>(null);
+  // El pedido no se cambia al reintentar: la base reconoce el mismo `requestId`
+  // y devuelve el comprobante guardado en vez de anular dos veces.
   const [requestId] = useState(newRequestId);
+  const [unconfirmed, setUnconfirmed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -159,6 +162,7 @@ function VoidDialog({
     if (blocked) return;
     setBusy(true);
     setError(null);
+    setUnconfirmed(false);
     try {
       const res = await fetch("/api/admin/finance/void", {
         method: "POST",
@@ -169,12 +173,18 @@ function VoidDialog({
         | { ok?: boolean; receipt?: unknown; error?: string; message?: string }
         | null;
       if (!res.ok || !json?.ok) {
-        setError(json?.message ?? voidMessage(json?.error ?? "UNKNOWN"));
+        const code = json?.error;
+        // Sin código claro, o con un código que no explica el motivo, no se
+        // sabe si quedó guardada: se dice así y se ofrece reintentar.
+        const unknown = !code || code === "UNKNOWN" || code === "UNCONFIRMED";
+        setUnconfirmed(unknown);
+        setError(json?.message ?? voidMessage(code ?? "UNCONFIRMED"));
         return;
       }
       const parsed = parseVoidReceipt(json.receipt);
       if (!parsed) {
-        setError(voidMessage("UNKNOWN"));
+        setUnconfirmed(true);
+        setError(voidMessage("UNCONFIRMED"));
         return;
       }
       setReceipt(parsed);
@@ -313,9 +323,16 @@ function VoidDialog({
             )}
 
             {error && (
-              <p className="mt-3 rounded-2xl border border-alert/40 bg-night-3 p-3 text-[0.8125rem] text-alert">
-                {error}
-              </p>
+              <div className="mt-3 rounded-2xl border border-alert/40 bg-night-3 p-3 text-[0.8125rem] text-alert">
+                <p>{error}</p>
+                {unconfirmed && (
+                  <p className="mt-2 text-mist">
+                    Antes de reintentar podés mirar Caja: si la reversa ya está
+                    en el historial, la anulación se hizo y no hace falta
+                    repetirla.
+                  </p>
+                )}
+              </div>
             )}
 
             <div className="mt-4 flex flex-wrap gap-2">
@@ -330,7 +347,11 @@ function VoidDialog({
                     : "bg-alert text-white",
                 )}
               >
-                {busy ? "Anulando…" : "Anular y generar reversa"}
+                {busy
+                  ? "Anulando…"
+                  : unconfirmed
+                    ? "Reintentar la anulación"
+                    : "Anular y generar reversa"}
               </button>
               <button
                 type="button"

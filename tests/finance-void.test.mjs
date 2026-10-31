@@ -4,6 +4,7 @@ import {
   VOID_MESSAGES,
   VOID_REASON_MAX,
   VOID_REASON_MIN,
+  findStoredVoidReceipt,
   parseVoidReceipt,
   voidMessage,
   voidRequestSchema,
@@ -78,6 +79,53 @@ test("anular: el comprobante se valida antes de mostrarse", () => {
   assert.equal(parsed?.accountAfter, 440);
   assert.equal(parseVoidReceipt({ ...receipt, amount: "560" }), null);
   assert.equal(parseVoidReceipt(null), null);
+});
+
+test("un resultado sin confirmar nunca dice que no se modificó nada", () => {
+  // La anulación puede haberse guardado y la respuesta perderse en el camino.
+  // El texto viejo afirmaba «no se modificó nada» y mentía.
+  assert.ok(VOID_MESSAGES.UNCONFIRMED.length > 40);
+  assert.doesNotMatch(VOID_MESSAGES.UNCONFIRMED, /no se modificó nada/i);
+  assert.doesNotMatch(VOID_MESSAGES.UNKNOWN, /no se modificó nada/i);
+  assert.match(VOID_MESSAGES.UNCONFIRMED, /no se anula dos veces/);
+  assert.equal(voidMessage("UNCONFIRMED"), VOID_MESSAGES.UNCONFIRMED);
+  assert.equal(voidMessage("CODIGO_QUE_NO_EXISTE"), VOID_MESSAGES.UNKNOWN);
+});
+
+const storedReceipt = {
+  id: "3e4c774c-558a-4328-8756-fd70c6c8ad7c",
+  originalId: valid.transactionId,
+  reversalId: "3e4c774c-558a-4328-8756-fd70c6c8ad7c",
+  amount: 48,
+  currency: "NIO",
+  concept: "Anulación: Venta: Agua fuente pura x2",
+  originalConcept: "Venta: Agua fuente pura x2",
+  reason: "El cliente olvidó su dinero",
+  accountName: "Caja Fuerte Córdobas",
+  accountBefore: -95776,
+  accountAfter: -95824,
+  actorName: "Carlos Sequeira",
+  occurredAt: "2026-10-31T15:21:05.717037+00:00",
+  stockRestored: [{ productId: "f7622a6e-189d-4736-8adb-f24127819856", name: "Agua fuente pura", qty: 2 }],
+};
+const fakeClient = (result) => ({
+  from: () => ({
+    select: () => ({
+      eq: () => ({ maybeSingle: async () => result }),
+    }),
+  }),
+});
+
+test("si la respuesta se pierde, la anulación guardada se recupera de la bitácora", async () => {
+  const found = await findStoredVoidReceipt(fakeClient({ data: { receipt: storedReceipt }, error: null }), valid.transactionId);
+  assert.equal(found?.reversalId, storedReceipt.reversalId);
+  assert.equal(found?.stockRestored?.[0]?.qty, 2);
+
+  // Sin fila, con error de lectura o con un comprobante incompleto no se
+  // inventa nada: se devuelve null y la pantalla pide confirmar en Caja.
+  assert.equal(await findStoredVoidReceipt(fakeClient({ data: null, error: null }), valid.transactionId), null);
+  assert.equal(await findStoredVoidReceipt(fakeClient({ data: null, error: { code: "42501" } }), valid.transactionId), null);
+  assert.equal(await findStoredVoidReceipt(fakeClient({ data: { receipt: { amount: 48 } }, error: null }), valid.transactionId), null);
 });
 
 test("anular una venta con productos: el comprobante cuenta el stock devuelto", () => {
