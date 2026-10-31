@@ -18,6 +18,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { VoidMovementButton } from "@/components/admin/void-movement";
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/finance/format-money";
 import {
@@ -659,7 +660,12 @@ export function CashPanel({
         ) : (
           <ul className="space-y-2">
             {recent.slice(0, 3).map((t) => (
-              <MovementItem key={t.id} t={t} methodName={methodNameFor(t)} />
+              <MovementItem
+                key={t.id}
+                t={t}
+                methodName={methodNameFor(t)}
+                canVoid={permissions.void}
+              />
             ))}
           </ul>
         )}
@@ -888,6 +894,7 @@ export function CashPanel({
                           key={t.id}
                           t={t}
                           methodName={methodNameFor(t)}
+                          canVoid={permissions.void}
                         />
                       ))}
                     </ul>
@@ -1263,9 +1270,12 @@ function FilterGroup({
 function MovementItem({
   t,
   methodName,
+  canVoid,
 }: {
   t: Transaction;
   methodName: string;
+  /** El servidor ya decidió el interruptor; acá solo se muestra el botón. */
+  canVoid?: boolean;
 }) {
   return (
     <li className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-3 rounded-xl border border-line bg-card p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
@@ -1309,23 +1319,33 @@ function MovementItem({
           {transactionStatusLabel(t.status)}
         </p>
       </div>
-      <p
-        className={cn(
-          "col-span-2 min-w-0 text-right font-mono text-[0.9375rem] font-semibold tabular-nums sm:col-span-1",
-          t.status !== "completed"
-            ? "text-fog"
-            : t.direction === "income"
-              ? "text-brand-300"
-              : "text-ink",
+      <div className="col-span-2 flex items-center justify-end gap-2 sm:col-span-1 sm:flex-col sm:items-end sm:gap-1">
+        <p
+          className={cn(
+            "min-w-0 text-right font-mono text-[0.9375rem] font-semibold tabular-nums",
+            t.status !== "completed"
+              ? "text-fog"
+              : t.direction === "income"
+                ? "text-brand-300"
+                : "text-ink",
+          )}
+        >
+          {t.direction === "income"
+            ? "+"
+            : t.direction === "expense"
+              ? "−"
+              : "⇄"}
+          {formatMoney(t.amount, t.currency)}
+        </p>
+        {canVoid && t.status === "completed" && t.direction !== "transfer" && (
+          <VoidMovementButton
+            transactionId={t.id}
+            concept={t.concept}
+            amount={t.amount}
+            currency={t.currency}
+          />
         )}
-      >
-        {t.direction === "income"
-          ? "+"
-          : t.direction === "expense"
-            ? "−"
-            : "⇄"}
-        {formatMoney(t.amount, t.currency)}
-      </p>
+      </div>
     </li>
   );
 }

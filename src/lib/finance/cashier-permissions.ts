@@ -12,7 +12,8 @@ export type CashierPermissionKey =
   | "charts"
   | "accountBalances"
   | "expenses"
-  | "receivables";
+  | "receivables"
+  | "void";
 
 export interface CashierPermissions {
   dailyClose: boolean;
@@ -21,6 +22,7 @@ export interface CashierPermissions {
   accountBalances: boolean;
   expenses: boolean;
   receivables: boolean;
+  void: boolean;
 }
 
 export const CASHIER_PERMISSION_KEYS: Record<CashierPermissionKey, string> = {
@@ -30,6 +32,7 @@ export const CASHIER_PERMISSION_KEYS: Record<CashierPermissionKey, string> = {
   accountBalances: "cashier_can_view_account_balances",
   expenses: "cashier_can_manage_expenses",
   receivables: "cashier_can_view_receivables",
+  void: "cashier_can_void",
 };
 
 export const CASHIER_PERMISSION_FIELDS = [
@@ -39,6 +42,7 @@ export const CASHIER_PERMISSION_FIELDS = [
   "accountBalances",
   "expenses",
   "receivables",
+  "void",
 ] as const satisfies readonly CashierPermissionKey[];
 
 export const CASHIER_PERMISSIONS_OFF: CashierPermissions = {
@@ -48,6 +52,7 @@ export const CASHIER_PERMISSIONS_OFF: CashierPermissions = {
   accountBalances: false,
   expenses: false,
   receivables: false,
+  void: false,
 };
 
 export const CASHIER_PERMISSIONS_ALL: CashierPermissions = {
@@ -57,6 +62,7 @@ export const CASHIER_PERMISSIONS_ALL: CashierPermissions = {
   accountBalances: true,
   expenses: true,
   receivables: true,
+  void: true,
 };
 
 export interface CashierPermissionDefinition {
@@ -116,6 +122,14 @@ export const CASHIER_PERMISSION_DEFINITIONS: CashierPermissionDefinition[] = [
     enabledMessage: "Caja ya puede ver las cuentas por cobrar.",
     disabledMessage: "Caja ya no ve la lista de cuentas por cobrar.",
   },
+  {
+    field: "void",
+    title: "Anular movimientos",
+    description:
+      "Permite anular un cobro o gasto propio del día. No borra nada: crea un movimiento de reversa y guarda el motivo, quién lo hizo y cuándo. Apagado, solo administración puede anular.",
+    enabledMessage: "Caja ya puede anular sus movimientos del día.",
+    disabledMessage: "Caja ya no puede anular movimientos; los datos siguen guardados.",
+  },
 ];
 
 export function normalizeCashierPermissions(value: unknown): CashierPermissions {
@@ -130,5 +144,6 @@ export function normalizeCashierPermissions(value: unknown): CashierPermissions 
     accountBalances: source.accountBalances === true,
     expenses: source.expenses === true,
     receivables: source.receivables === true,
+    void: source.void === true,
   };
 }
