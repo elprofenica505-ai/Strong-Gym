@@ -1027,6 +1027,12 @@ Esta sección es un resumen, no otra lista de tareas.
   historial desde el servidor, con el total real, sin comodines accidentales,
   con el interruptor de gastos aplicado en el servidor y sin convertir un
   fallo de lectura en una lista vacía.
+- Horarios públicos sin datos fijos (31 de octubre): el subtítulo de
+  `/horarios` ya no afirma «las clases de boxeo son martes, miércoles y jueves»
+  —con Zumba publicada eso era falso— y la tarjeta de Zumba dejó de mandar a
+  preguntar el horario por WhatsApp. Los dos textos remiten a la agenda, que es
+  la que manda y se edita desde el panel, así no quedan viejos cada vez que se
+  cambia un día u hora.
 - Progreso: medidas, altura única corregible solo por admin, asistencia por
   día/semana/mes, calculadora con consentimiento/aprobación, menores bloqueados
   en herramientas de salud y personal sin botón de reservar.

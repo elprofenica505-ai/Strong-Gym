@@ -53,7 +53,7 @@ export const demoClasses: GymClass[] = [
     name_es: "Zumba y bailoterapia",
     name_en: "Zumba & Dance Cardio",
     description_es:
-      "Cardio bailando ritmos latinos. Quemás calorías sin aburrirte y en grupo. Consultá el horario vigente por WhatsApp.",
+      "Cardio bailando ritmos latinos. Quemás calorías sin aburrirte y en grupo. Los días y horarios publicados están en la agenda de clases.",
     description_en:
       "Dance cardio to Latin rhythms. Burn calories without getting bored, in a group. Ask for the current schedule on WhatsApp.",
     intensity: "medium",

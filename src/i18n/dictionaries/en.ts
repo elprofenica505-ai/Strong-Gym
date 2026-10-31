@@ -109,7 +109,7 @@ const en = {
       },
       {
         title: "Zumba and dance cardio",
-        text: "Group cardio that never gets boring. Ask for the current schedule on WhatsApp.",
+        text: "Group cardio that never gets boring. Published days and times are on the class schedule.",
       },
       {
         title: "Supplements",
@@ -219,7 +219,7 @@ const en = {
   schedule: {
     title: "Schedule and bookings",
     subtitle:
-      "Boxing classes run Tuesday, Wednesday and Thursday with three daily slots. Pick yours and book your spot.",
+      "Check each discipline's published days and times and book your spot. If there is no class at the time you want, the weights room is open during business hours.",
     subtitleGeneral: "Choose a published coached class and book your spot.",
     week: "Week",
     today: "Today",
