@@ -96,7 +96,7 @@ futuro** (FUT-01 a FUT-08). Quedan **23 de producto o negocio** por resolver,
 | **Etapa 2 — Navegación** | Hecha: Inicio, Clientes, Finanzas, Operación, Administración y Mis clientes | Solo la decisión de OP-09 |
 | **Etapa 3 — Operación diaria** | OP-01 a OP-05 cerradas y desplegadas | OP-06 (cierre de reservas pasadas), OP-07 (cambio de día sin recargar), OP-08 (vincular ficha con cuenta web) y la aceptación QA-09 |
 | **Clientes, vigencias y planes** | CLI-01, CLI-02 y CLI-06 cerradas y desplegadas | Aceptación en celular (QA-09); decisiones CLI-03, CLI-04 y CLI-05 |
-| **Biblioteca de ejercicios (EX-01 a EX-04)** | Cerrada: **467 ejercicios de sala** de 774 cargados, **151 con fotos reales** (inicio y final) y el resto con dibujo, movimiento con «Pausar movimiento», color por familia de equipo, ficha, cronómetro y «Mi rutina» | Aceptación en celular; decisiones del dueño sobre favoritos y acceso sin sesión |
+| **Biblioteca de ejercicios (EX-01 a EX-04)** | Cerrada: **467 ejercicios de sala** de 774 cargados, **224 con fotos reales** (inicio y final) y 243 con dibujo, movimiento con «Pausar movimiento», color por familia de equipo, ficha, cronómetro y «Mi rutina» | Aceptación en celular; decisiones del dueño sobre favoritos y acceso sin sesión |
 | **Etapa 4 — Finanzas y productos** | En uso real: cobros, gastos, deudas y abonos NIO/USD, vuelto, productos con stock, Caja por módulos con historial paginado, **apertura y cierre con arqueo**, reportes y descargas | FIN-03, FIN-06 y FIN-07 |
 | **Calendario y disciplinas (OP-05)** | Cerrado y desplegado, con grillas, sesiones sueltas, bloqueos, generador con vista previa y entrenadores | Solo la aceptación en celular (QA-09) |
 | **Etapa 5 — Aceptación integral** | Parcial: QA-01 y QA-02 cerradas | QA-03 a QA-08, CAL-03, LEG-01 y NEG-01 |
@@ -670,8 +670,9 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   (posición inicial y final, que la animación de EX-03 alterna cada 900 ms).
   Cada ficha conserva su `id`, su nombre en español, sus pasos y sus consejos;
   **sólo cambian `image_start` y `image_peak`**. No se crea ni se borra ninguna
-  ficha. De los **467 visibles**, 151 pasan a foto real y 316 siguen con dibujo
-  (el segundo origen no publica esas máquinas ni esas variantes).
+  ficha. De los **467 visibles**, **224 ya muestran fotos reales**: 151 que
+  antes eran dibujo y 73 que ya venían del segundo catálogo; quedan **243 con
+  dibujo** (el segundo origen no publica esas máquinas ni esas variantes).
   **Cómo se eligió cada par** (nada de parecido automático: un parecido mal
   resuelto pone la foto de otro ejercicio, que es peor que el dibujo):
   132 salen de nombre normalizado idéntico —sin mayúsculas, acentos, plurales
