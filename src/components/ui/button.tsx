@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/ui/spinner";
 
 type Variant = "primary" | "outline" | "outline-dark" | "ghost" | "dark" | "white";
 type Size = "sm" | "md" | "lg";
@@ -36,6 +37,12 @@ const sizes: Record<Size, string> = {
 export interface ButtonProps extends ComponentPropsWithoutRef<"button"> {
   variant?: Variant;
   size?: Size;
+  /**
+   * Muestra el giro de «Cargando» y bloquea el botón mientras la operación
+   * viaja. Es lo que evita que se toque dos veces el mismo botón cuando la
+   * respuesta tarda en el celular.
+   */
+  loading?: boolean;
   children: ReactNode;
 }
 
@@ -43,11 +50,19 @@ export function Button({
   variant = "primary",
   size = "md",
   className,
+  loading = false,
+  disabled,
   children,
   ...props
 }: ButtonProps) {
   return (
-    <button className={cn(base, variants[variant], sizes[size], className)} {...props}>
+    <button
+      className={cn(base, variants[variant], sizes[size], className)}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
+      {...props}
+    >
+      {loading ? <Spinner size="sm" /> : null}
       {children}
     </button>
   );

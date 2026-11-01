@@ -8,6 +8,7 @@ import { DemoBanner } from "@/components/layout/demo-banner";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteShell } from "@/components/layout/site-shell";
 import { DayBoundary } from "@/components/layout/day-boundary";
+import { NavigationProgress } from "@/components/layout/navigation-progress";
 import { SwRegister } from "@/components/sw-register";
 import { AppProvider } from "@/components/providers/app-provider";
 import { DictionaryProvider } from "@/components/providers/dictionary-provider";
@@ -187,6 +188,9 @@ export default async function LocaleLayout({
               {children}
             </SiteShell>
             <Toaster />
+            {/* Mientras se abre otra pantalla, una barra con «Cargando…» avisa
+                que el toque entró: evita que se toque dos veces lo mismo. */}
+            <NavigationProgress />
             {/* OP-07: cuando cambia el día en Managua, las pantallas abiertas
                 se refrescan solas, sin recargar ni perder lo escrito. */}
             <DayBoundary />

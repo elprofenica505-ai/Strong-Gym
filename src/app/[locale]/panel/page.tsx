@@ -8,6 +8,7 @@ import { FinanceKpis } from "@/components/admin/finance-kpis";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { canAccessPanel } from "@/lib/auth/current-user";
+import { LinkPending } from "@/components/ui/link-pending";
 import { panelAccess, visibleModules, type PanelModule } from "@/lib/admin/modules";
 import { Bell, CalendarCheck, CalendarDays, MessageSquare, ShieldAlert, UserPlus, Users, Wallet, Receipt, Zap } from "lucide-react";
 import { formatMoney } from "@/lib/finance/format-money";
@@ -333,16 +334,18 @@ export default async function PanelHomePage({
 function ModuleCard({ module, locale }: { module: PanelModule; locale: Locale }) {
   return (
     <div className={cn("flex flex-col rounded-2xl border border-line bg-card p-5")}>
-      <Link href={`/${locale}${module.href}`} className="group">
+      <Link href={`/${locale}${module.href}`} className="group flex items-center gap-2">
         <p className="text-[1rem] font-semibold text-ink group-hover:text-brand-300">{module.label} →</p>
+        <LinkPending label={`Abriendo ${module.label}…`} />
       </Link>
       <p className="mt-1 text-[0.8125rem] leading-relaxed text-fog">{module.description}</p>
       {module.children.length > 0 ? (
         <ul className="mt-3 flex flex-col gap-1.5 border-t border-line pt-3">
           {module.children.map((c) => (
             <li key={c.id}>
-              <Link href={`/${locale}${c.href}`} className="text-[0.8125rem] text-mist hover:text-brand-300">
+              <Link href={`/${locale}${c.href}`} className="inline-flex items-center gap-1.5 text-[0.8125rem] text-mist hover:text-brand-300">
                 {c.label}
+                <LinkPending label={`Abriendo ${c.label}…`} />
               </Link>
             </li>
           ))}

@@ -80,7 +80,7 @@ export function RecoveryForm({ mode, expectedUserId, email, invalidLink = false 
         <Input name="confirmPassword" type="password" label={dict.auth.confirmPassword} autoComplete="new-password" required maxLength={NEW_PASSWORD_MAX} disabled={busy} />
         <p className="text-sm text-fog">{copy.sessionNotice}</p>
       </>)}
-      <Button type="submit" disabled={busy}>{busy ? dict.auth.loading : mode === "request" ? copy.send : copy.save}</Button>
+      <Button type="submit" loading={busy}>{busy ? dict.auth.loading : mode === "request" ? copy.send : copy.save}</Button>
       <Link className="text-sm text-brand-300" href={`/${locale}/ingresar`}>{dict.auth.goLogin}</Link>
     </form>
   );

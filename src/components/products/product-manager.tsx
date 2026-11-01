@@ -9,6 +9,7 @@ import {
   productFailureMessage,
 } from "@/lib/products/rules";
 import { cn } from "@/lib/utils";
+import { LoadingBlock, Spinner } from "@/components/ui/spinner";
 import {
   ProductCatalogImage,
   ProductCatalogTabs,
@@ -305,7 +306,13 @@ export function ProductManager() {
         </button>
       </div>
     );
-  if (!data) return <p className="text-fog">Cargando productos…</p>;
+  if (!data)
+    return (
+      <LoadingBlock
+        title="Cargando productos…"
+        hint="Trayendo precios, stock y las cuentas donde entra la plata."
+      />
+    );
 
   const accountOptions = data.options.accounts;
   const methodOptions = data.options.methods;
@@ -744,7 +751,10 @@ export function ProductManager() {
             </>
           )}
           <div className="flex gap-3 sm:col-span-2">
-            <button type="submit" className={primary} disabled={busy}>Confirmar</button>
+            <button type="submit" className={primary} disabled={busy} aria-busy={busy || undefined}>
+              {busy ? <Spinner size="sm" /> : null}
+              {busy ? "Guardando…" : "Confirmar"}
+            </button>
             <button type="button" className={button} onClick={close}>Cancelar</button>
           </div>
         </form>

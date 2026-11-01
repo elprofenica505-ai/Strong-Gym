@@ -1355,6 +1355,22 @@ Esta sección es un resumen, no otra lista de tareas.
   previa de saldos y tasa, se anulan con contra-asiento y motivo, y el arqueo
   las muestra aparte para que el efectivo esperado siga cuadrando. Sólo
   administrador con segundo factor, con bitácora. 57 comprobaciones en PGlite.
+- **Cierre de caja: el veredicto llega al guardar (PR #130):** la pantalla
+  dejó de adelantar la diferencia mientras el cajero escribe. Al tocar «Cerrar
+  caja y guardar arqueo» pasan sólo dos cosas: si el arqueo **cuadra**, se
+  guarda y aparece el mensaje verde «Operación exitosa, gracias por tus
+  servicios, Bendiciones!»; si **no cuadra**, se abre un panel rojo —«El cuadre
+  de caja no cuadró correctamente»— con el campo de motivo obligatorio, y no se
+  guarda nada hasta que se escriba. Si se guarda con diferencia justificada, el
+  aviso es ámbar y dice cuánto faltó o sobró, en su moneda.
+- **Nunca se ve «congelado» (PR #130):** tres capas de «Cargando» — una barra
+  arriba en cuanto se toca cualquier enlace interno (`NavigationProgress`), un
+  giro dentro de la misma tarjeta o módulo tocado (`LinkPending` con
+  `useLinkStatus`) y un esqueleto con «Cargando…» mientras el servidor prepara
+  la pantalla (`panel/loading.tsx` y `[locale]/loading.tsx`). Los botones que
+  esperan respuesta usan `<Button loading>`: giran y se bloquean, así nadie
+  toca dos veces. Cubre también la entrada con correo, contraseña y segundo
+  factor.
 - **Venta particular (PR #129 + migración 00097):** caja puede cobrarle un
   producto a quien entró a comprar sin tener ficha. En «Productos → Vender» hay
   dos botones excluyentes —«Cliente registrado» y «Venta particular»—, y la

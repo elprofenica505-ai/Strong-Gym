@@ -11,6 +11,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { useDictionary } from "@/components/providers/dictionary-provider";
+import { LinkPending } from "@/components/ui/link-pending";
 import { activeModuleId, type PanelModule } from "@/lib/admin/modules";
 import { cn } from "@/lib/utils";
 
@@ -61,6 +62,7 @@ export function PanelNav({ modules }: { modules: PanelModule[] }) {
               >
                 <Icon className="size-5 shrink-0 sm:size-4" aria-hidden="true" />
                 <span className="break-words">{m.label}</span>
+                <LinkPending label={`Abriendo ${m.label}…`} />
               </Link>
             );
           })}
@@ -80,13 +82,14 @@ export function PanelNav({ modules }: { modules: PanelModule[] }) {
                   href={`${localePrefix}${child.href}`}
                   aria-current={isChildActive ? "page" : undefined}
                   className={cn(
-                    "rounded-full border px-3 py-1 text-[0.75rem] font-medium transition-colors",
+                    "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[0.75rem] font-medium transition-colors",
                     isChildActive
                       ? "border-brand bg-brand/10 text-brand-300"
                       : "border-line text-fog hover:border-brand/40 hover:text-ink",
                   )}
                 >
                   {child.label}
+                  <LinkPending label={`Abriendo ${child.label}…`} />
                 </Link>
               );
             })}
