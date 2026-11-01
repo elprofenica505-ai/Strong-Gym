@@ -3,15 +3,16 @@
 import { useState } from "react";
 import { Pause, Play } from "lucide-react";
 import { ExerciseFigure } from "@/components/exercises/exercise-figure";
-import { exerciseFrames, type ExerciseFrames } from "@/lib/exercises/figure";
+import { figureMotion, type ExerciseFrames } from "@/lib/exercises/figure";
 
 /**
  * El movimiento de la ficha (EX-01), con su interruptor.
  *
- * La imagen se mueve sola en todos los dispositivos: el cambio de foto lo hace
- * el componente, no una animación de CSS que dependa de la configuración del
- * teléfono. Este botón sirve para lo contrario que antes: **parar** el
- * movimiento si a alguien le molesta.
+ * La imagen se mueve sola en todos los dispositivos: el movimiento lo hace el
+ * componente, no una animación de CSS que dependa de la configuración del
+ * teléfono. Da igual si la ficha tiene dos fotos para alternar o una sola que
+ * se acerca y se aleja: en los dos casos hay botón. Este botón sirve para lo
+ * contrario que antes: **parar** el movimiento si a alguien le molesta.
  */
 export function ExerciseMotion({
   name,
@@ -29,7 +30,9 @@ export function ExerciseMotion({
   variant?: "card" | "detail";
 }) {
   const [playing, setPlaying] = useState(true);
-  const { animated } = exerciseFrames(frames);
+  // El botón sirve para las dos formas de movimiento: alternar dos fotos y el
+  // acercamiento suave de las fichas que sólo tienen una.
+  const seMueve = figureMotion(frames) !== "none";
 
   return (
     <div className="space-y-2">
@@ -37,7 +40,7 @@ export function ExerciseMotion({
         {tone ? <span aria-hidden="true" className="block h-[3px] w-full" style={{ backgroundColor: tone }} /> : null}
         <ExerciseFigure name={name} frames={frames} className={className} playing={playing} variant={variant} />
       </div>
-      {animated ? (
+      {seMueve ? (
         <button
           type="button"
           onClick={() => setPlaying((value) => !value)}

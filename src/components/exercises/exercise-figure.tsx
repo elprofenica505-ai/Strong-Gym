@@ -5,6 +5,7 @@ import {
   FIGURE_INTERVAL_MS,
   FIGURE_VARIANTS,
   exerciseFrames,
+  figureMotion,
   figureSrcSet,
   figureUrl,
   type ExerciseFrames,
@@ -14,17 +15,27 @@ import {
 /**
  * La imagen de un ejercicio (EX-01).
  *
- * El catálogo publica dos fotos de cada movimiento —posición inicial y final—
- * y acá se alternan **desde JavaScript**, no con una animación de CSS.
+ * Hay dos formas de que se mueva, y las dos las hace **este componente** con un
+ * temporizador, nunca una animación de CSS que dependa de la configuración del
+ * teléfono:
  *
- * Por qué así: la versión anterior animaba con `@keyframes` y sólo cuando el
- * teléfono no pedía «reducir movimiento». En varios aparatos el sistema trae
- * esa opción activada (o el navegador la fuerza), la imagen quedaba quieta y el
- * socio creía que la biblioteca estaba rota. El movimiento tiene que verse en
- * todos los dispositivos, así que el cambio de foto lo hace el componente y no
- * depende de ninguna preferencia del sistema. Quien no lo quiera ver tiene el
- * botón «Pausar movimiento» en la ficha.
+ *   · **Dos fotos** (438 de las 467 visibles): se alterna la posición inicial
+ *     y la final del movimiento.
+ *   · **Una sola foto** (29 fichas: posiciones que se mantienen, paseos con
+ *     peso y máquinas de cardio): la imagen se acerca y se aleja despacio. El
+ *     dueño quiso que también se muevan, y esto no miente: no se cambia la foto
+ *     del ejercicio por la de otro aparato.
+ *
+ * Por qué no con animaciones de CSS condicionadas a la configuración del
+ * aparato: la versión anterior lo hacía así y en los teléfonos con la opción de
+ * reducir movimiento activada (Android la trae en Accesibilidad) la imagen
+ * quedaba quieta y el socio creía que la biblioteca estaba rota. Quien no lo
+ * quiera ver tiene el botón «Pausar movimiento» en la ficha.
  */
+
+/** Cuánto se acerca la imagen cuando sólo hay una foto. */
+const ZOOM = 1.08;
+
 export function ExerciseFigure({
   name,
   frames,
@@ -35,12 +46,13 @@ export function ExerciseFigure({
   name: string;
   frames: ExerciseFrames;
   className?: string;
-  /** Falso lo deja quieto en la posición inicial. */
+  /** Falso lo deja quieto. */
   playing?: boolean;
   /** Tamaño de foto: la tarjeta de la grilla o la imagen grande de la ficha. */
   variant?: FigureVariant;
 }) {
-  const { first, second, animated } = exerciseFrames(frames);
+  const { first, second } = exerciseFrames(frames);
+  const motion = figureMotion(frames);
   const { widths, sizes } = FIGURE_VARIANTS[variant];
   const [tick, setTick] = useState(0);
   const [onScreen, setOnScreen] = useState(true);
@@ -61,8 +73,8 @@ export function ExerciseFigure({
   const [firstFailed, setFirstFailed] = useState(false);
   const [secondFailed, setSecondFailed] = useState(false);
 
-  // El reintento se aplica a la dirección **y** al `srcset`: si no, el
-  // navegador vuelve a elegir la misma candidata que acaba de fallar.
+  // El reintento va en la dirección **y** en el `srcset`: si no, el navegador
+  // vuelve a elegir la misma candidata que acaba de fallar.
   const extra = retry > 0 ? `&r=${retry}` : "";
   const firstUrl = figureUrl(first, widths[0]) ? `${figureUrl(first, widths[0])}${extra}` : null;
   const secondUrl = second ? `${figureUrl(second, widths[0])}${extra}` : null;
@@ -80,8 +92,10 @@ export function ExerciseFigure({
     else setSecondFailed(true);
   };
 
-  // Sin la segunda foto no hay nada que alternar: se queda en la primera.
-  const moves = animated && secondUrl !== null && !secondFailed && !firstFailed;
+  // Sin la segunda foto no hay nada que alternar: se queda con la primera.
+  const alternates = motion === "alternate" && secondUrl !== null && !secondFailed && !firstFailed;
+  const soloUna = motion === "soft" && !firstFailed;
+  const seMueve = alternates || soloUna;
 
   // Sólo se mueve lo que se está viendo: con 25 tarjetas en pantalla nadie
   // gasta batería animando fotos que quedaron abajo.
@@ -94,26 +108,56 @@ export function ExerciseFigure({
     );
     observer.observe(element);
     return () => observer.disconnect();
-  }, [moves]);
+  }, [seMueve]);
 
   useEffect(() => {
-    if (!moves || !playing || !onScreen) return;
+    if (!seMueve || !playing || !onScreen) return;
     const id = setInterval(() => {
       // Con la pestaña en segundo plano tampoco.
       if (typeof document !== "undefined" && document.hidden) return;
       setTick((value) => value + 1);
     }, FIGURE_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [moves, playing, onScreen]);
+  }, [seMueve, playing, onScreen]);
 
-  // En pausa (o fuera de pantalla) queda en la posición inicial.
-  const peak = playing && onScreen && tick % 2 === 1;
+  // En pausa (o fuera de pantalla) queda quieta.
+  const avanza = playing && onScreen && tick % 2 === 1;
 
   if (!firstUrl || firstFailed) {
     return <span className="text-xs text-fog">Sin imagen</span>;
   }
 
-  if (!moves) {
+  // Una sola foto: se acerca y se aleja despacio. La transición va escrita acá
+  // mismo, sin `@media`, para que no la apague ninguna preferencia del sistema.
+  if (soloUna) {
+    return (
+      <div
+        ref={box}
+        className={`exercise-frames overflow-hidden ${className || "size-full"}`}
+        data-motion="soft"
+        data-playing={playing ? "true" : "false"}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- foto del catálogo servida por nuestra propia ruta. */}
+        <img
+          src={firstUrl}
+          srcSet={firstSrcSet ?? undefined}
+          sizes={sizes}
+          alt={name}
+          width={512}
+          height={512}
+          loading="lazy"
+          decoding="async"
+          onError={onFirstError}
+          style={{
+            transform: `scale(${avanza ? ZOOM : 1})`,
+            transition: `transform ${FIGURE_INTERVAL_MS}ms ease-in-out`,
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (!alternates) {
     return (
       // eslint-disable-next-line @next/next/no-img-element -- foto del catálogo servida por nuestra propia ruta.
       <img
@@ -150,7 +194,7 @@ export function ExerciseFigure({
         decoding="async"
         onError={onFirstError}
         className="frame-a"
-        style={{ opacity: peak ? 0 : 1 }}
+        style={{ opacity: avanza ? 0 : 1 }}
       />
       {/* eslint-disable-next-line @next/next/no-img-element -- la segunda foto es la misma escena, así que no necesita texto alternativo. */}
       <img
@@ -165,7 +209,7 @@ export function ExerciseFigure({
         decoding="async"
         onError={onSecondError}
         className="frame-b"
-        style={{ opacity: peak ? 1 : 0 }}
+        style={{ opacity: avanza ? 1 : 0 }}
       />
     </div>
   );

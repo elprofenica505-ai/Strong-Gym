@@ -84,7 +84,7 @@ Según el caso, debe cumplir:
 
 ## Resumen de avance al 1 de noviembre de 2026
 
-**71 tareas listadas: 28 cerradas y 43 abiertas.** De las 43 abiertas, **7 son
+**72 tareas listadas: 29 cerradas y 43 abiertas.** De las 43 abiertas, **7 son
 aceptaciones** en celular o con cuenta real (QA-03 a QA-09), **5 son de
 entrega** (ENT-01 a ENT-05, aplazadas a propósito) y **8 son opcionales del
 futuro** (FUT-01 a FUT-08). Quedan **23 de producto o negocio** por resolver,
@@ -96,7 +96,7 @@ futuro** (FUT-01 a FUT-08). Quedan **23 de producto o negocio** por resolver,
 | **Etapa 2 — Navegación** | Hecha: Inicio, Clientes, Finanzas, Operación, Administración y Mis clientes | Solo la decisión de OP-09 |
 | **Etapa 3 — Operación diaria** | OP-01 a OP-05 cerradas y desplegadas | OP-06 (cierre de reservas pasadas), OP-07 (cambio de día sin recargar), OP-08 (vincular ficha con cuenta web) y la aceptación QA-09 |
 | **Clientes, vigencias y planes** | CLI-01, CLI-02 y CLI-06 cerradas y desplegadas | Aceptación en celular (QA-09); decisiones CLI-03, CLI-04 y CLI-05 |
-| **Biblioteca de ejercicios (EX-01 a EX-07)** | Cerrada: **467 ejercicios de sala** de 774 cargados, **438 con movimiento** y 29 con imagen fija (posiciones que se mantienen y aparatos que el catálogo sólo trae una vez), todas servidas en WebP a la medida de la pantalla —~9,5 KB por foto en la grilla, cacheadas 30 días en el teléfono—, movimiento con «Pausar movimiento», color por familia de equipo, ficha, cronómetro y «Mi rutina» | Aceptación en celular; decisiones del dueño sobre favoritos y acceso sin sesión |
+| **Biblioteca de ejercicios (EX-01 a EX-08)** | Cerrada: **467 ejercicios de sala** de 774 cargados, **todas las fichas con movimiento** (438 alternando dos fotos y 29 con acercamiento suave porque el catálogo sólo trae una imagen), todas servidas en WebP a la medida de la pantalla —~9,5 KB por foto en la grilla, cacheadas 30 días en el teléfono—, movimiento con «Pausar movimiento», color por familia de equipo, ficha, cronómetro y «Mi rutina» | Aceptación en celular; decisiones del dueño sobre favoritos y acceso sin sesión |
 | **Etapa 4 — Finanzas y productos** | En uso real: cobros, gastos, deudas y abonos NIO/USD, vuelto, productos con stock, Caja por módulos con historial paginado, **apertura y cierre con arqueo**, reportes y descargas | FIN-03, FIN-06 y FIN-07 |
 | **Calendario y disciplinas (OP-05)** | Cerrado y desplegado, con grillas, sesiones sueltas, bloqueos, generador con vista previa y entrenadores | Solo la aceptación en celular (QA-09) |
 | **Etapa 5 — Aceptación integral** | Parcial: QA-01 y QA-02 cerradas | QA-03 a QA-08, CAL-03, LEG-01 y NEG-01 |
@@ -760,17 +760,18 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   (`fotos_que_faltaban`) que reusa la tabla y el disparador de la 00093 y suma
   **Caminata en cinta inclinada → `Walking_Treadmill`**, **Escaladora →
   `Stairmaster`** y **Caminata del granjero con mancuernas → `Farmers_Walk`**.
-  Resultado: **438 con movimiento y 29 fijas**. Las otras 29 se dejan a
+  Resultado: **438 con movimiento y 29 fijas** (esas 29 se movieron después con
+  EX-08, sin cambiar de foto). Las otras 29 se dejan con su imagen original a
   propósito: o son posiciones que no se mueven (no hay movimiento que
   mostrar), o el segundo catálogo sólo tiene un aparato parecido pero distinto
   (su «Air Bike» es un abdominal en el piso, no la bicicleta de aire; su
   bicicleta es reclinada, no la fija de la sala). Poner la foto de otro aparato
   sería peor que el dibujo quieto.
   **Arreglo 2 — se explica en la ficha**: `figureNote()` en
-  `src/lib/exercises/figure.ts`. Si hay dos fotos, dice que alternan; si es una
-  posición que se mantiene, dice **que no se mueve porque el ejercicio no se
-  mueve**; si el catálogo trae una sola, lo dice tal cual. Antes decía «Imagen
-  de referencia del movimiento» y parecía un error.
+  `src/lib/exercises/figure.ts`. Si hay dos fotos, dice que alternan; si el
+  catálogo trae una sola, lo dice tal cual. Antes decía «Imagen de referencia
+  del movimiento» y parecía un error. (Después EX-08 les agregó movimiento a
+  esas 29, así que el texto cuenta también que la imagen se mueve despacio.)
   **Arreglo 3 — la foto rota de «Curl con Barra Z»**: la tarjeta mostró el
   icono de imagen rota con el nombre encima. El archivo existe (se comprobó),
   así que fue un tropiezo de red con datos móviles. Ahora la imagen se vuelve a
@@ -792,6 +793,34 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   `/api/`: las fotos viven en la caché normal del navegador y ninguna pantalla
   con datos personales se guarda nunca. Si algún día cambia una foto, cambia la
   dirección y el aparato pide la nueva.
+- [x] **EX-08 · Media · Código — Las 29 fichas que quedaban fijas también se mueven.**
+  Cerrada el 1 de noviembre, por pedido expreso del dueño («sí me gustaría que
+  las 29 se muevan»), después de que se le explicara por qué estaban quietas.
+  **Cómo se resolvió sin mentir**: esas 29 fichas tienen **una sola foto** en el
+  catálogo de dibujos, así que no hay segunda imagen para alternar. En vez de
+  poner la foto de otro aparato —una bicicleta reclinada por la fija, o un
+  abdominal en el piso por la bicicleta de aire—, **la única imagen se acerca y
+  se aleja despacio** (escala 1 → 1,08 cada 900 ms). El ejercicio que se ve es
+  el correcto; lo que se mueve es la cámara.
+  **Cómo está hecho**: `figureMotion(frames)` en `src/lib/exercises/figure.ts`
+  devuelve `alternate` (dos fotos), `soft` (una sola) o `none` (ninguna). El
+  componente aplica la escala con una transición **escrita en línea**, sin
+  `@media`, así que ninguna preferencia del sistema la apaga (el problema de
+  EX-03 otra vez). El botón «Pausar movimiento» de la ficha ahora aparece
+  también en estas: `figureMotion !== "none"`.
+  **Texto de la ficha**: `figureNote()` explica el caso, sin disimular —
+  «Es una posición que se mantiene. El catálogo trae una sola foto, así que la
+  imagen se mueve despacio para que se lea» o «El catálogo trae una sola foto de
+  este ejercicio: la imagen se acerca y se aleja para que se lea en
+  movimiento».
+  Resultado: **las 467 fichas visibles se mueven** (438 alternando dos fotos y
+  29 con el acercamiento suave). Sin cambios en la base: es sólo presentación,
+  así que revertirlo es volver a `figureMotion`.
+  Evidencia: 4 pruebas nuevas de la figura (el caso suave se marca, la
+  transición va en línea sin `@media`, las tres formas se distinguen, la foto
+  suelta también pide dos medidas) y 2 reescritas que antes exigían que se
+  quedara quieta; **86 pruebas de ejercicios, 1047 generales y 67
+  comprobaciones SQL** en verde; `typecheck`, `lint` y `build` limpios.
 - [ ] **CLI-03 · Media · Revisión profesional — Calculadora, dieta y rutinas.**
   La herramienta, el consentimiento, la aprobación del personal y el bloqueo de
   menores ya existen. Falta que un profesional revise fórmulas, mínimos de
