@@ -39,16 +39,20 @@ Según el caso, debe cumplir:
 
 ## Foto actual comprobada
 
-- Producción: `main` con FIN-05 (PR #104), la baja de vigencia al anular
-  (PR #105), el uso e historial de precios de los planes (PR #108), **FIN-04**
-  completo: apertura, arqueo y cierre de caja (PR #110) más el bloqueo de
-  anulaciones de una caja cerrada (PR #111), y **EX-01**, la biblioteca de
-  ejercicios con «Mi rutina» y su catálogo de 701 ejercicios; CI en verde en
-  todos. La 00085 ya
-  está aplicada en producción y los datos de vigencias quedaron alineados.
+- Producción: **`08fc0da`** (PR #125), con **EX-01 a EX-08** cerradas: la
+  biblioteca de ejercicios con «Mi rutina», 467 fichas de sala todas con
+  movimiento, fotos reales en las 185 fichas equivalentes, imágenes servidas en
+  WebP a la medida de la pantalla y «Mi cuenta» en una sola ida y vuelta. Antes:
+  FIN-05 (PR #104), la baja de vigencia al anular (PR #105), el uso e historial
+  de precios de los planes (PR #108), **FIN-04** completo con apertura, arqueo y
+  cierre de caja (PR #110) y el bloqueo de anulaciones de una caja cerrada
+  (PR #111). CI en verde en todos. La 00085 ya está aplicada en producción y los
+  datos de vigencias quedaron alineados.
 - Supabase: proyecto ACTIVE_HEALTHY. Las migraciones aplicadas y registradas
-  llegan a la **00093** (`fotos_reales_del_segundo_catalogo`), que pone fotos
-  reales en las 185 fichas con equivalente y guarda las rutas anteriores para
+  llegan a la **00094** (`fotos_que_faltaban`, registrada como
+  `20261101051537`), que suma tres fichas de cardio y paseo al mapa de fotos.
+  Antes: **00093** (`fotos_reales_del_segundo_catalogo`), que pone fotos reales
+  en las 185 fichas con equivalente y guarda las rutas anteriores para
   revertir. Antes: **00092** (`biblioteca_solo_de_gimnasio`, registrada como
   `20261101010752`), que deja a la vista sólo lo que es de sala; **00091**
   (`orden_de_gimnasio`, registrada como
@@ -56,7 +60,7 @@ Según el caso, debe cumplir:
   agrega abrir, arqueo y cierre, la 00088 impide anular el efectivo de una caja
   ya cerrada, la 00089 (`biblioteca_de_ejercicios`, `20261031225118`) crea el
   catálogo y «Mi rutina», la 00090 arregla el filtro «Peso corporal» y la 00091
-  ordena el catálogo como un gimnasio. El siguiente número libre es **00094**.
+  ordena el catálogo como un gimnasio. El siguiente número libre es **00095**.
 - Datos productivos al 31 de octubre, comprobados con consulta directa:
   **9 disciplinas** (activas: Pesas y máquinas, Boxeo y Zumba), **6 planes**
   activos, **89 sesiones** (88 programadas y 1 anulada), **2 reservas**,
