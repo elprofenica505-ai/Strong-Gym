@@ -110,29 +110,12 @@ export const DUMBBELL_ES: Record<string, SecondTranslation> = {
       "Bajá despacio.",
     ],
   },
-  "Hammer_Curls": {
-    name: "Curl martillo",
-    steps: [
-      "De pie con las mancuernas a los costados y las palmas mirándose.",
-      "Doblá los codos subiendo las mancuernas sin girar las muñecas.",
-      "Bajá controlando.",
-    ],
-    tip: "Trabaja el braquial, el músculo que hace que el brazo se vea más grueso.",
-  },
   "Dumbbell_Alternate_Bicep_Curl": {
     name: "Curl alternado con mancuernas",
     steps: [
       "De pie o sentado con las mancuernas a los costados.",
       "Subí una girando la palma hacia arriba y bajá mientras subís la otra.",
       "No te ayudés con el torso.",
-    ],
-  },
-  "Concentration_Curls": {
-    name: "Curl concentrado",
-    steps: [
-      "Sentate y apoyá el codo en la cara interna del muslo con la mancuerna colgando.",
-      "Subí doblando el codo sin mover el hombro.",
-      "Bajá despacio.",
     ],
   },
   "Two-Arm_Dumbbell_Preacher_Curl": {
@@ -282,15 +265,6 @@ export const MACHINE_ES: Record<string, SecondTranslation> = {
       "Tirá de la barra hacia el abdomen juntando los omóplatos.",
       "Bajá controlando.",
     ],
-  },
-  "Calf_Press_On_The_Leg_Press_Machine": {
-    name: "Gemelo en prensa de piernas",
-    steps: [
-      "Poné las puntas de los pies en el borde de la plataforma y las piernas casi estiradas.",
-      "Empujá la plataforma con los talones lo más lejos que puedas.",
-      "Volvé despacio hasta estirar el gemelo.",
-    ],
-    tip: "No trabes las rodillas: mantené una flexión mínima para proteger la articulación.",
   },
   "Narrow_Stance_Hack_Squats": {
     name: "Hack squat con pies juntos",
@@ -448,15 +422,6 @@ export const CABLE_ES: Record<string, SecondTranslation> = {
       "Volvé controlando sin que el cable te lleve.",
     ],
   },
-  "Seated_Cable_Rows": {
-    name: "Remo sentado en polea",
-    steps: [
-      "Sentate con los pies en la plataforma y el torso recto.",
-      "Tirá la manija hacia el abdomen juntando los omóplatos.",
-      "Volvé controlando hasta estirar los brazos.",
-    ],
-    tip: "No te eches atrás para tirar: el torso se mueve poco y el trabajo lo hace la espalda.",
-  },
   "Wide-Grip_Lat_Pulldown": {
     name: "Jalón al pecho agarre amplio",
     steps: [
@@ -520,14 +485,6 @@ export const CABLE_ES: Record<string, SecondTranslation> = {
       "De pie frente a la polea baja con la barra tomada y los brazos estirados.",
       "Subí los hombros hacia las orejas.",
       "Bajá controlando.",
-    ],
-  },
-  "Triceps_Pushdown": {
-    name: "Extensión de tríceps en polea",
-    steps: [
-      "De pie frente a la polea alta con la barra tomada a la altura del pecho.",
-      "Estirá los codos empujando la barra hacia abajo, sin mover los hombros.",
-      "Volvé controlando.",
     ],
   },
   "Triceps_Pushdown_-_Rope_Attachment": {
@@ -610,14 +567,6 @@ export const CABLE_ES: Record<string, SecondTranslation> = {
       "Volvé controlando. Se hace liviano: es para el manguito rotador.",
     ],
   },
-  "External_Rotation_with_Cable": {
-    name: "Rotación externa en polea",
-    steps: [
-      "De costado a la polea, con el codo pegado al torso y el antebrazo apuntando al centro.",
-      "Girá el antebrazo hacia afuera sin mover el codo.",
-      "Volvé controlando.",
-    ],
-  },
   "One-Legged_Cable_Kickback": {
     name: "Patada de glúteo en polea",
     steps: [
@@ -645,15 +594,6 @@ export const CABLE_ES: Record<string, SecondTranslation> = {
 };
 
 export const KETTLEBELL_ES: Record<string, SecondTranslation> = {
-  "One-Arm_Kettlebell_Swings": {
-    name: "Swing con pesa rusa a una mano",
-    steps: [
-      "Con la pesa en el piso y los pies al ancho de los hombros, tomala con una mano.",
-      "Llevá la cadera atrás y después extendela con fuerza para que la pesa suba al pecho.",
-      "Dejá que baje entre las piernas y repetí sin usar el brazo para levantar.",
-    ],
-    tip: "La fuerza sale de la cadera; el brazo solo guía. Si sentís la espalda baja, está mal.",
-  },
   "Two-Arm_Kettlebell_Clean": {
     name: "Cargada con pesa rusa a dos manos",
     steps: [
