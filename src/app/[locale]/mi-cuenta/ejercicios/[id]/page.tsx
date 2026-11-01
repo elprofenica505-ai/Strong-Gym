@@ -17,7 +17,7 @@ import {
 } from "@/lib/exercises/terms";
 import { doseLabel, restLabel, suggestDose } from "@/lib/exercises/prescription";
 import { ExerciseAttribution } from "@/components/exercises/attribution";
-import { exerciseFrames } from "@/lib/exercises/figure";
+import { figureNote } from "@/lib/exercises/figure";
 import { ExerciseMotion } from "@/components/exercises/exercise-motion";
 import { ExerciseTimer } from "@/components/exercises/exercise-timer";
 import { BackLink } from "@/components/ui/back-link";
@@ -97,7 +97,6 @@ export default async function ExerciseDetailPage({
     isBodyweight: exercise.isBodyweight,
     met: exercise.met,
   });
-  const { animated } = exerciseFrames(exercise);
 
   return (
     <div className="container-x space-y-6 py-6">
@@ -143,11 +142,7 @@ export default async function ExerciseDetailPage({
               tone={equipmentTone(exercise.equipment)}
               className="aspect-square w-full sm:aspect-[4/3]"
             />
-            <p className="text-[0.6875rem] text-fog">
-              {animated
-                ? "La imagen alterna la posición inicial y la final del movimiento."
-                : "Imagen de referencia del movimiento."}
-            </p>
+            <p className="text-[0.6875rem] text-fog">{figureNote(exercise, exercise.nameEs)}</p>
           </section>
 
           {exercise.descriptionEs ? (
