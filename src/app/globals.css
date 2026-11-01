@@ -353,6 +353,17 @@
       animation: exercise-frame-b 1.9s steps(1, end) infinite;
     }
   }
+
+  /* El botón «Ver movimiento» de la ficha fuerza la animación aunque el
+     teléfono tenga activada la opción de reducir movimiento: el socio lo pide
+     a propósito, así que manda su elección. */
+  .exercise-frames[data-animate="true"][data-force="true"] > img.frame-a {
+    animation: exercise-frame-a 1.9s steps(1, end) infinite;
+  }
+
+  .exercise-frames[data-animate="true"][data-force="true"] > img.frame-b {
+    animation: exercise-frame-b 1.9s steps(1, end) infinite;
+  }
   .reveal {
     opacity: 0;
     transform: translateY(22px);

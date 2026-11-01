@@ -7,8 +7,8 @@ interpreta como una nota histórica y **manda esta lista**. Los demás documento
 pueden explicar decisiones, guías de uso o cómo se construyó una parte, pero no
 crean tareas nuevas.
 
-Última auditoría completa: **31 de octubre de 2026**, sobre producción
-`main@05dbca8` (PR #111) y Supabase `hcnuepdxmbsmlzdmvwhx`.
+Última auditoría completa: **1 de noviembre de 2026**, sobre producción
+`main@d4e1548` (PR #115) y Supabase `hcnuepdxmbsmlzdmvwhx`.
 
 ## Cómo mantener esta lista
 
@@ -47,12 +47,14 @@ Según el caso, debe cumplir:
   todos. La 00085 ya
   está aplicada en producción y los datos de vigencias quedaron alineados.
 - Supabase: proyecto ACTIVE_HEALTHY. Las migraciones aplicadas y registradas
-  llegan a la **00091** (`orden_de_gimnasio`, registrada como
+  llegan a la **00092** (`biblioteca_solo_de_gimnasio`, registrada como
+  `20261101010752`), que deja a la vista sólo lo que es de sala. Antes: **00091**
+  (`orden_de_gimnasio`, registrada como
   `20261031234712`): la 00087 (`cierre_y_arqueo_de_caja`, `20261031213955`)
   agrega abrir, arqueo y cierre, la 00088 impide anular el efectivo de una caja
   ya cerrada, la 00089 (`biblioteca_de_ejercicios`, `20261031225118`) crea el
   catálogo y «Mi rutina», la 00090 arregla el filtro «Peso corporal» y la 00091
-  ordena el catálogo como un gimnasio. El siguiente número libre es **00092**.
+  ordena el catálogo como un gimnasio. El siguiente número libre es **00093**.
 - Datos productivos al 31 de octubre, comprobados con consulta directa:
   **9 disciplinas** (activas: Pesas y máquinas, Boxeo y Zumba), **6 planes**
   activos, **89 sesiones** (88 programadas y 1 anulada), **2 reservas**,
@@ -92,7 +94,7 @@ futuro** (FUT-01 a FUT-08). Quedan **23 de producto o negocio** por resolver,
 | **Etapa 2 — Navegación** | Hecha: Inicio, Clientes, Finanzas, Operación, Administración y Mis clientes | Solo la decisión de OP-09 |
 | **Etapa 3 — Operación diaria** | OP-01 a OP-05 cerradas y desplegadas | OP-06 (cierre de reservas pasadas), OP-07 (cambio de día sin recargar), OP-08 (vincular ficha con cuenta web) y la aceptación QA-09 |
 | **Clientes, vigencias y planes** | CLI-01, CLI-02 y CLI-06 cerradas y desplegadas | Aceptación en celular (QA-09); decisiones CLI-03, CLI-04 y CLI-05 |
-| **Biblioteca de ejercicios (EX-01)** | Cerrada y desplegada: 701 ejercicios, ficha, cronómetro y «Mi rutina» | Aceptación en celular; decisiones del dueño sobre favoritos y acceso sin sesión |
+| **Biblioteca de ejercicios (EX-01 y EX-02)** | Cerrada: **520 ejercicios de sala** de 827 cargados, movimiento con botón «Ver movimiento», color por familia de equipo, ficha, cronómetro y «Mi rutina» | Aceptación en celular; decisiones del dueño sobre favoritos y acceso sin sesión |
 | **Etapa 4 — Finanzas y productos** | En uso real: cobros, gastos, deudas y abonos NIO/USD, vuelto, productos con stock, Caja por módulos con historial paginado, **apertura y cierre con arqueo**, reportes y descargas | FIN-03, FIN-06 y FIN-07 |
 | **Calendario y disciplinas (OP-05)** | Cerrado y desplegado, con grillas, sesiones sueltas, bloqueos, generador con vista previa y entrenadores | Solo la aceptación en celular (QA-09) |
 | **Etapa 5 — Aceptación integral** | Parcial: QA-01 y QA-02 cerradas | QA-03 a QA-08, CAL-03, LEG-01 y NEG-01 |
@@ -592,6 +594,49 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   public.client_exercise_routine, public.exercises cascade;` y las funciones; no
   toca ninguna tabla existente. Queda como decisión del dueño, sin bloquear:
   favoritos, si la biblioteca se abre sin sesión y quién más puede importar.
+- [x] **EX-02 · Alta · Código — Segunda ola del catálogo y biblioteca sólo de sala.**
+  Cerrada el 1 de noviembre. El dueño miró la biblioteca y dijo que «casi todo
+  se pudiera realizar en casa, eso es lo contrario de un gym»: se sumó un
+  segundo origen y se dejó a la vista únicamente lo que usa equipo de gimnasio.
+  **Migración `00092`** (`20261101010752 biblioteca_solo_de_gimnasio`): agrega
+  `exercises.visible`, la regla `exercise_is_gym(equipment, category)` y dos
+  funciones de administración (`admin_reset_library_visibility`,
+  `admin_set_exercise_visible`); el catálogo y las facetas cuentan **sólo lo
+  visible**, así los chips dicen la verdad. **No borra nada**: los 307
+  ejercicios de casa siguen en la tabla y se pueden volver a mostrar uno por uno.
+  Quedan **520 visibles** (337 de peso libre, 84 de máquina, 62 de polea, 29 de
+  apoyo, 8 de cardio) y **307 ocultos** (peso corporal, bandas, balones,
+  estiramientos y «otros»). Entran barra, banco plano, Smith, discos y pesas
+  rusas, como pidió el dueño.
+  **Segundo catálogo**: `yuhonas/free-exercise-db` (**dominio público,
+  Unlicense**), del que se cargaron **126 ejercicios** nuevos con traducción
+  escrita a mano (`src/lib/exercises/catalog-barbell.ts`,
+  `catalog-equipment.ts`, `second-catalog-data.ts`), cada uno con nombre, tres
+  pasos y un consejo en español. Filtro de duplicados en tres pasos: nombre en
+  inglés normalizado, después mismo movimiento con el mismo implemento, y
+  finalmente revisión a ojo de los 59 pares que quedaban; se descartaron 18
+  repetidos exactos (por ejemplo el «cable crunch», el «Pallof press» y el
+  «front squat», que ya estaban). Dos corridas de la importación dejan 827
+  filas, no más.
+  **Movimiento**: el segundo origen también publica dos fotos por ejercicio
+  (posición inicial y final) y el proxy `/api/exercises/image` ahora sirve esos
+  JPG además de los dibujos WebP, con la misma ruta validada y la misma caché de
+  30 días. La ficha tiene el botón **«Ver movimiento»**, que fuerza la animación
+  aunque el teléfono pida reducir movimiento, porque el socio lo pide a
+  propósito.
+  **Tema**: la grilla y la ficha llevan un hilo de 3 px con el color de la
+  familia de equipo (rojo de la marca para el peso libre, azul acero para las
+  máquinas, ámbar para las poleas, verde para los aparatos de peso corporal) y
+  los chips sin ejercicios ya no se muestran. La atribución suma la línea del
+  segundo origen.
+  Evidencia: 49 pruebas de la biblioteca (9 nuevas del segundo catálogo y 2 del
+  proxy de fotos) y **53 comprobaciones SQL** por rol en PGlite (15 nuevas de
+  visibilidad, incluidas «lo oculto no se lista», «la faceta no cuenta lo
+  oculto» y «administración puede volver a mostrarlo»), `typecheck` y `lint`
+  limpios. Reversión: `alter table public.exercises drop column visible;` y las
+  funciones de la `00092`; los 126 nuevos se reconocen por
+  `source = 'free-exercise-db'`. Queda como decisión del dueño, sin bloquear:
+  qué más quiere ver de su sala y si algún ejercicio oculto debe volver.
 - [ ] **CLI-03 · Media · Revisión profesional — Calculadora, dieta y rutinas.**
   La herramienta, el consentimiento, la aprobación del personal y el bloqueo de
   menores ya existen. Falta que un profesional revise fórmulas, mínimos de

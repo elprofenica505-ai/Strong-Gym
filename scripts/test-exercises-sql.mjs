@@ -48,12 +48,15 @@ await db.exec(`create schema auth; create role anon nologin; create role authent
 const migration = sql("supabase/migrations/00089_biblioteca_de_ejercicios.sql");
 const extra = sql("supabase/migrations/00090_catalogo_peso_corporal.sql");
 const orden = sql("supabase/migrations/00091_orden_de_gimnasio.sql");
+const soloSala = sql("supabase/migrations/00092_biblioteca_solo_de_gimnasio.sql");
 await db.exec(migration);
 await db.exec(migration);
 await db.exec(extra);
 await db.exec(extra);
 await db.exec(orden);
 await db.exec(orden);
+await db.exec(soloSala);
+await db.exec(soloSala);
 ok("las migraciones se pueden aplicar dos veces", true);
 
 const newUser = async (email, role) => {
@@ -299,5 +302,45 @@ const tables = (await db.query(
 )).rows.map((row) => row.table_name);
 ok("convive con client_routines sin tocarla", !tables.includes("client_routines") || true);
 ok("la tabla de rutina personal existe aparte", tables.includes("client_exercise_routine"));
+
+
+// --- 8. Sólo lo de sala (00092) ---
+// El criterio: sale lo que usa equipo de gimnasio, entra lo que se resuelve con
+// el cuerpo, una banda o un balón. Nada se borra: se deja de listar.
+const isGym = async (equipment, category) =>
+  (await db.query("select public.exercise_is_gym($1,$2) as v", [equipment, category])).rows[0].v;
+ok("una barra es de sala", (await isGym("barbell", "strength")) === true);
+ok("un banco plano es de sala", (await isGym("flat_bench", "strength")) === true);
+ok("la máquina genérica del segundo catálogo es de sala", (await isGym("machine", "strength")) === true);
+ok("una mancuerna es de sala", (await isGym("dumbbell", "strength")) === true);
+ok("una banda elástica no es de sala", (await isGym("resistance_band", "strength")) === false);
+ok("un estiramiento no es de sala, ni con equipo", (await isGym("barbell", "stretching")) === false);
+ok("sin equipo no es de sala", (await isGym("body only", "strength")) === false);
+
+await db.query("insert into public.exercises (id, name_es, name_en, equipment, category) values ('sala-barra','Sentadilla','Squat','barbell','strength'), ('casa-banda','Sentadilla con banda','Band Squat','resistance_band','strength')");
+await as(admin, "aal2", "select public.admin_reset_library_visibility()");
+const visibles = (await db.query("select id from public.exercises where visible order by id")).rows.map((r) => r.id);
+ok("el reset deja visible lo de sala", visibles.includes("sala-barra"));
+ok("el reset oculta lo de casa", !visibles.includes("casa-banda"));
+
+const catalogo = (await as(ana, "aal2", "select public.exercise_catalog(p_limit => 60) as r")).at(0).r;
+ok("el catálogo no lista lo oculto", !catalogo.rows.some((row) => row.id === "casa-banda"));
+ok("el catálogo sí lista lo de sala", catalogo.rows.some((row) => row.id === "sala-barra"));
+
+const facetas = (await as(ana, "aal2", "select public.exercise_facets() as f")).at(0).f;
+const equipos = Object.keys(facetas.equipment ?? {});
+ok("las facetas no cuentan lo oculto", !equipos.includes("resistance_band"));
+
+// Ocultar es reversible y no borra: el ejercicio sigue en la tabla.
+await as(admin, "aal2", "select public.admin_set_exercise_visible('casa-banda', true)");
+const despues = (await db.query("select visible from public.exercises where id = 'casa-banda'")).rows[0].visible;
+ok("administración puede volver a mostrarlo", despues === true);
+ok("el ejercicio oculto nunca se borró", (await db.query("select count(*)::int as n from public.exercises where id = 'casa-banda'")).rows[0].n === 1);
+
+await assert.rejects(
+  as(ana, "aal2", "select public.admin_set_exercise_visible('casa-banda', false)"),
+  /AUTH|permission denied/i,
+);
+ok("un cliente no puede cambiar la visibilidad", true);
 
 console.log(`\n${checks} comprobaciones de la biblioteca de ejercicios (EX-01) pasaron.`);

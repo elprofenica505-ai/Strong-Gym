@@ -38,10 +38,13 @@ export function ExerciseFigure({
   name,
   frames,
   className = "",
+  force = false,
 }: {
   name: string;
   frames: ExerciseFrames;
   className?: string;
+  /** Anima aunque el sistema pida reducir movimiento (lo pide el socio). */
+  force?: boolean;
 }) {
   const { first, second, animated } = exerciseFrames(frames);
   const firstUrl = url(first);
@@ -69,6 +72,7 @@ export function ExerciseFigure({
     <div
       className={`exercise-frames ${className || "size-full"}`}
       data-animate="true"
+      data-force={force ? "true" : "false"}
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- WebP del catálogo servido por nuestra propia ruta. */}
       <img

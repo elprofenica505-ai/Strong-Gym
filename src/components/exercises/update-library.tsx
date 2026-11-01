@@ -35,9 +35,11 @@ export function UpdateLibrary() {
         return;
       }
       const imported = (body as { imported?: number }).imported ?? 0;
-      const total = (body as { total?: number }).total ?? 0;
+      const fromSecond = (body as { fromSecond?: number }).fromSecond ?? 0;
+      const visible = (body as { visible?: number | null }).visible ?? null;
       setMessage(
-        `Catálogo al día: ${imported} ${imported === 1 ? "ejercicio" : "ejercicios"} procesados, ${total} en total.`,
+        `Biblioteca al día: ${imported} procesados (${fromSecond} nuevos de mancuerna, barra y máquina)` +
+          (visible === null ? "." : `, ${visible} se muestran en el gimnasio.`),
       );
     } catch {
       setError("No pudimos completar la actualización. Lo cargado sigue igual; probá de nuevo.");

@@ -127,6 +127,40 @@ test("si ningún origen tiene la imagen, o viene vacía, la pantalla no se rompe
   }
 });
 
+
+test("las fotos del segundo catálogo se sirven como JPEG desde su origen", async () => {
+  const pedidas = [];
+  const response = await withImage({
+    path: "Barbell_Squat/1.jpg",
+    fetchImpl: async (url) => {
+      pedidas.push(url);
+      return new Response(new Uint8Array(64), { status: 200 });
+    },
+  });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("content-type"), "image/jpeg");
+  assert.match(pedidas[0], /free-exercise-db.*exercises\/Barbell_Squat\/1\.jpg$/);
+});
+
+test("una foto con forma rara no se pide al origen", async () => {
+  for (const path of [
+    "Barbell_Squat/2.jpg",
+    "Barbell_Squat/0.png",
+    "../Barbell_Squat/0.jpg",
+    "Barbell_Squat/../0.jpg",
+    "exercises/Barbell_Squat/0.jpg",
+    "/etc/passwd/0.jpg",
+  ]) {
+    const response = await withImage({
+      path,
+      fetchImpl: async () => {
+        throw new Error(`no debería pedir ${path}`);
+      },
+    });
+    assert.equal(response.status, 404, `la ruta aceptó «${path}»`);
+  }
+});
+
 // ------------------------------------------------------------------ rutina
 const routineCalls = [];
 const routineModules = {

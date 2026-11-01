@@ -3,6 +3,8 @@ import { canAccessPanel, isAdminRole } from "@/lib/auth/current-user";
 import { getCurrentUser } from "@/lib/data/queries";
 import { importExercises } from "@/lib/exercises/queries";
 import { toImportRows } from "@/lib/exercises/import";
+import { toSecondCatalogRows } from "@/lib/exercises/second-catalog";
+import { applyLibraryVisibility } from "@/lib/exercises/queries";
 import { sameOrigin } from "@/lib/security/same-origin";
 
 export const dynamic = "force-dynamic";
@@ -33,13 +35,24 @@ const DATASET_URLS = [
   "https://api.github.com/repos/RepDB/exercise-dataset/contents/exercises.json",
 ];
 
+/**
+ * Segundo origen: `yuhonas/free-exercise-db`, **dominio público (Unlicense)**.
+ * Aporta barra, mancuerna, máquina y polea que a RepDB le faltan. Sus textos
+ * vienen en inglés; lo que se carga es la traducción curada que vive en
+ * `src/lib/exercises/catalog-*.ts`.
+ */
+const SECOND_DATASET_URLS = [
+  "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/dist/exercises.json",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json",
+];
+
 interface DatasetShape {
   count?: number;
   exercises?: unknown[];
 }
 
-async function downloadDataset(): Promise<DatasetShape | null> {
-  for (const url of DATASET_URLS) {
+async function downloadDataset(urls: string[] = DATASET_URLS): Promise<DatasetShape | null> {
+  for (const url of urls) {
     try {
       const response = await fetch(url, {
         cache: "no-store",
@@ -48,8 +61,11 @@ async function downloadDataset(): Promise<DatasetShape | null> {
           : undefined,
       });
       if (!response.ok) continue;
-      const parsed = (await response.json()) as DatasetShape;
-      if (Array.isArray(parsed?.exercises) && parsed.exercises.length > 0) return parsed;
+      const parsed = (await response.json()) as unknown;
+      // El segundo origen entrega un arreglo suelto; el primero, `{ exercises }`.
+      if (Array.isArray(parsed) && parsed.length > 0) return { exercises: parsed };
+      const wrapped = parsed as DatasetShape | null;
+      if (Array.isArray(wrapped?.exercises) && wrapped.exercises.length > 0) return wrapped;
     } catch {
       // Se prueba la siguiente dirección.
     }
@@ -76,7 +92,19 @@ export async function POST(request: Request) {
     );
 
   // Se traduce acá: el español de las etiquetas vive en la web, no en la base.
-  const { rows, skipped } = toImportRows(dataset);
+  const primary = toImportRows(dataset);
+
+  // El segundo catálogo se suma a la misma carga: una sola escritura y, si
+  // algo falla, no queda media biblioteca actualizada y media vieja. Si el
+  // origen no responde, la carga sigue con el primero: nunca se pierde lo que
+  // ya andaba.
+  const second = await downloadDataset(SECOND_DATASET_URLS);
+  const secondary = second?.exercises?.length
+    ? toSecondCatalogRows(second.exercises)
+    : { rows: [], skipped: 0 };
+  const rows = [...primary.rows, ...secondary.rows];
+  const skipped = primary.skipped + secondary.skipped;
+
   if (rows.length === 0)
     return reply(
       {
@@ -101,11 +129,20 @@ export async function POST(request: Request) {
     );
   }
 
+  // Después de cargar se vuelve a aplicar el criterio de «esto es de gimnasio»:
+  // así lo nuevo entra ya filtrado y nadie tiene que tocar un interruptor.
+  const visibility = await applyLibraryVisibility();
+
   return reply({
     ok: true,
     imported: result.imported,
     total: result.total,
+    /** Cuántos ejercicios nuevos entraron de cada origen. */
+    fromRepdb: primary.rows.length,
+    fromSecond: secondary.rows.length,
     skipped,
-    source: "RepDB (repdb.co)",
+    visible: visibility.ok ? visibility.visible : null,
+    hidden: visibility.ok ? visibility.hidden : null,
+    source: "RepDB (repdb.co) y free-exercise-db (dominio público)",
   });
 }

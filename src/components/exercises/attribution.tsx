@@ -9,15 +9,27 @@ import { EXERCISE_ATTRIBUTION } from "@/lib/exercises/terms";
  */
 export function ExerciseAttribution({ className = "" }: { className?: string }) {
   return (
-    <p className={`text-[0.6875rem] text-fog ${className}`}>
-      <a
-        href={EXERCISE_ATTRIBUTION.href}
-        target="_blank"
-        rel="noopener noreferrer nofollow"
-        className="underline decoration-line underline-offset-2 hover:text-ink"
-      >
-        {EXERCISE_ATTRIBUTION.text}
-      </a>
-    </p>
+    <div className={`space-y-0.5 text-[0.6875rem] text-fog ${className}`}>
+      <p>
+        <a
+          href={EXERCISE_ATTRIBUTION.href}
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          className="underline decoration-line underline-offset-2 hover:text-ink"
+        >
+          {EXERCISE_ATTRIBUTION.text}
+        </a>
+      </p>
+      <p>
+        <a
+          href={EXERCISE_ATTRIBUTION.secondHref}
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          className="underline decoration-line underline-offset-2 hover:text-ink"
+        >
+          {EXERCISE_ATTRIBUTION.secondText}
+        </a>
+      </p>
+    </div>
   );
 }

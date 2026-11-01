@@ -25,7 +25,7 @@
     "test:productos": "node --experimental-strip-types --test tests/products-rules.test.mjs && node scripts/test-productos-sql.mjs",
     "test:nutricion": "node --experimental-strip-types --test tests/nutrition-plan.test.mjs",
     "postinstall": "patch-package",
-    "test:ejercicios": "node --experimental-strip-types --test tests/exercises-terms.test.mjs tests/exercises-import.test.mjs tests/exercises-attribution.test.mjs tests/exercises-figure.test.mjs tests/exercises-api.test.mjs && node scripts/test-exercises-sql.mjs"
+    "test:ejercicios": "node --experimental-strip-types --test tests/exercises-terms.test.mjs tests/exercises-import.test.mjs tests/exercises-attribution.test.mjs tests/exercises-figure.test.mjs tests/exercises-second-catalog.test.mjs tests/exercises-api.test.mjs && node scripts/test-exercises-sql.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",

@@ -42,7 +42,7 @@ const EQUIPMENT = [
   "dumbbell", "elliptical", "ez_bar", "flat_bench", "glute_ham_developer",
   "hack_squat", "hip_abduction_machine", "hip_adduction_machine",
   "hip_thrust_machine", "jump_rope", "kettlebell", "lat_pulldown_machine",
-  "leg_curl", "leg_extension", "leg_press", "loop_band", "medicine_ball",
+  "leg_curl", "leg_extension", "leg_press", "loop_band", "machine", "medicine_ball",
   "pec_deck", "plate_loaded_dip_machine", "plate_loaded_lateral_raise_machine",
   "plates", "plyo_box", "preacher_curl_machine", "pull_up_bar",
   "resistance_band", "reverse_fly_machine", "rings", "rower", "sandbag",

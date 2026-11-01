@@ -1,0 +1,730 @@
+import type { SecondTranslation } from "./second-catalog.ts";
+
+/**
+ * Contenido en español del segundo catálogo: **mancuernas, máquinas, poleas y
+ * pesas rusas**.
+ *
+ * Igual que en `catalog-barbell.ts`, acá sólo entra lo que un gimnasio usa de
+ * verdad. Las variantes raras —agarres repetidos, ejercicios de competencia,
+ * movimientos que necesitan equipo que no hay en la sala— se dejan afuera.
+ */
+export const DUMBBELL_ES: Record<string, SecondTranslation> = {
+  "Dumbbell_Bench_Press_with_Neutral_Grip": {
+    name: "Press de banca con mancuernas (agarre neutro)",
+    steps: [
+      "Acostate en el banco con una mancuerna en cada mano a la altura del pecho y las palmas mirándose.",
+      "Empujá hacia arriba hasta estirar los brazos, sin chocar las mancuernas.",
+      "Bajá controlando hasta sentir el estiramiento en el pecho.",
+    ],
+    tip: "El agarre neutro es más amable con el hombro que la barra.",
+  },
+  "Dumbbell_Flyes": {
+    name: "Aperturas con mancuernas",
+    steps: [
+      "Acostate en el banco con las mancuernas arriba y los codos apenas flexionados.",
+      "Abrí los brazos en arco hasta sentir el estiramiento en el pecho.",
+      "Cerrá como si abrazaras un tronco, sin juntar las mancuernas de golpe.",
+    ],
+    tip: "Con poco peso alcanza: las aperturas estiran el pecho, no lo cargan.",
+  },
+  "Incline_Dumbbell_Flyes": {
+    name: "Aperturas inclinadas con mancuernas",
+    steps: [
+      "Banco a unos 30 grados, mancuernas arriba con los codos algo flexionados.",
+      "Abrí los brazos hasta la altura del pecho.",
+      "Cerrá controlando. Trabaja la parte alta del pecho.",
+    ],
+  },
+  "Around_The_Worlds": {
+    name: "Aperturas en círculo (around the worlds)",
+    steps: [
+      "Acostate con las mancuernas arriba y los codos apenas flexionados.",
+      "Bajá los brazos en arco hacia los costados hasta quedar a la altura del pecho.",
+      "Volvé dibujando el mismo círculo, sin cambiar el ángulo de los codos.",
+    ],
+  },
+  "One_Arm_Dumbbell_Bench_Press": {
+    name: "Press de banca a una mano",
+    steps: [
+      "Acostate con una mancuerna sobre el pecho y la otra mano libre apoyada.",
+      "Empujá hasta estirar el brazo.",
+      "Bajá controlando; el abdomen y el costado trabajan para no girar.",
+    ],
+    tip: "Empezá liviano: lo difícil no es empujar, es no torcerte.",
+  },
+  "Dumbbell_Incline_Row": {
+    name: "Remo inclinado con mancuernas",
+    steps: [
+      "Apoyá el pecho en un banco inclinado con una mancuerna en cada mano colgando.",
+      "Tirá las mancuernas hacia la cadera juntando los omóplatos.",
+      "Bajá controlando.",
+    ],
+  },
+  "Bent_Over_Two-Dumbbell_Row": {
+    name: "Remo inclinado con dos mancuernas",
+    steps: [
+      "Inclinate con la espalda recta y una mancuerna en cada mano.",
+      "Tirá hacia el abdomen bajo, con los codos cerca del cuerpo.",
+      "Bajá hasta estirar los brazos.",
+    ],
+  },
+  "One-Arm_Dumbbell_Row": {
+    name: "Remo a una mano con mancuerna",
+    steps: [
+      "Apoyá una rodilla y una mano en el banco y dejá la mancuerna colgando.",
+      "Tirá hacia la cadera con la espalda recta.",
+      "Bajá controlando y cambiá de lado.",
+    ],
+    tip: "El hombro no sube: si se levanta, estás tirando con la espalda alta.",
+  },
+  "Seated_Dumbbell_Press": {
+    name: "Press de hombro sentado con mancuernas",
+    steps: [
+      "Sentate con la espalda apoyada y las mancuernas a la altura de los hombros.",
+      "Empujá arriba hasta estirar los brazos.",
+      "Bajá controlando hasta la altura de las orejas.",
+    ],
+  },
+  "Side_Lateral_Raise": {
+    name: "Elevación lateral con mancuernas",
+    steps: [
+      "De pie con una mancuerna en cada mano a los costados.",
+      "Subí los brazos a los lados hasta la altura de los hombros, con los codos apenas flexionados.",
+      "Bajá controlando, sin dejar caer el peso.",
+    ],
+    tip: "Guiá con los codos, no con las manos: si subís el hombro hacia la oreja, es peso de más.",
+  },
+  "Seated_Bent-Over_Rear_Delt_Raise": {
+    name: "Elevación posterior sentado (deltoide posterior)",
+    steps: [
+      "Sentate al borde del banco e incliná el torso hasta casi tocar las rodillas con el pecho.",
+      "Abrí los brazos a los lados con los codos apenas flexionados.",
+      "Bajá controlando.",
+    ],
+  },
+  "Reverse_Flyes": {
+    name: "Aperturas posteriores con mancuernas",
+    steps: [
+      "Inclinate con la espalda recta y las mancuernas colgando.",
+      "Abrí los brazos hacia los lados hasta la altura de los hombros.",
+      "Bajá despacio.",
+    ],
+  },
+  "Hammer_Curls": {
+    name: "Curl martillo",
+    steps: [
+      "De pie con las mancuernas a los costados y las palmas mirándose.",
+      "Doblá los codos subiendo las mancuernas sin girar las muñecas.",
+      "Bajá controlando.",
+    ],
+    tip: "Trabaja el braquial, el músculo que hace que el brazo se vea más grueso.",
+  },
+  "Dumbbell_Alternate_Bicep_Curl": {
+    name: "Curl alternado con mancuernas",
+    steps: [
+      "De pie o sentado con las mancuernas a los costados.",
+      "Subí una girando la palma hacia arriba y bajá mientras subís la otra.",
+      "No te ayudés con el torso.",
+    ],
+  },
+  "Concentration_Curls": {
+    name: "Curl concentrado",
+    steps: [
+      "Sentate y apoyá el codo en la cara interna del muslo con la mancuerna colgando.",
+      "Subí doblando el codo sin mover el hombro.",
+      "Bajá despacio.",
+    ],
+  },
+  "Two-Arm_Dumbbell_Preacher_Curl": {
+    name: "Curl predicador con mancuernas",
+    steps: [
+      "Apoyá los brazos en el banco predicador con las palmas hacia arriba.",
+      "Subí las mancuernas doblando los codos.",
+      "Bajá controlando hasta estirar casi del todo.",
+    ],
+  },
+  "Seated_Triceps_Press": {
+    name: "Press de tríceps sentado con mancuerna",
+    steps: [
+      "Sentate con una mancuerna tomada con las dos manos arriba de la cabeza.",
+      "Bajá la mancuerna detrás de la cabeza doblando los codos.",
+      "Estirá los codos sin abrir los brazos.",
+    ],
+  },
+  "Dumbbell_Lunges": {
+    name: "Zancadas con mancuernas",
+    steps: [
+      "De pie con una mancuerna en cada mano y los brazos estirados.",
+      "Dá un paso y bajá la rodilla de atrás casi hasta el piso.",
+      "Empujá con la pierna de adelante y volvé.",
+    ],
+  },
+  "Split_Squat_with_Dumbbells": {
+    name: "Sentadilla dividida con mancuernas",
+    steps: [
+      "Poné un pie adelante y otro atrás, con las mancuernas a los costados.",
+      "Bajá la rodilla de atrás hacia el piso manteniendo el torso vertical.",
+      "Subí sin mover los pies.",
+    ],
+  },
+  "Stiff-Legged_Dumbbell_Deadlift": {
+    name: "Peso muerto piernas rígidas con mancuernas",
+    steps: [
+      "De pie con las mancuernas frente a los muslos y las rodillas apenas flexionadas.",
+      "Bajá llevando la cadera atrás y las mancuernas pegadas a las piernas.",
+      "Subí apretando el glúteo sin arquear la espalda baja.",
+    ],
+  },
+  "Plie_Dumbbell_Squat": {
+    name: "Sentadilla plié con mancuerna",
+    steps: [
+      "Pies bien abiertos y puntas hacia afuera, con una mancuerna tomada con las dos manos.",
+      "Bajá derecho con las rodillas abriéndose hacia los lados.",
+      "Subí apretando el glúteo.",
+    ],
+  },
+  "Straight-Arm_Dumbbell_Pullover": {
+    name: "Pullover con mancuerna",
+    steps: [
+      "Acostate en el banco con una mancuerna tomada con las dos manos arriba del pecho.",
+      "Llevá la mancuerna atrás de la cabeza con los brazos casi estirados.",
+      "Volvé controlando, sintiendo el estiramiento en el pecho y el dorsal.",
+    ],
+  },
+  "Standing_Dumbbell_Calf_Raise": {
+    name: "Gemelo de pie con mancuernas",
+    steps: [
+      "De pie con una mancuerna en cada mano, puntas sobre un escalón.",
+      "Subí los talones lo más alto posible.",
+      "Bajá despacio hasta estirar.",
+    ],
+  },
+};
+
+export const MACHINE_ES: Record<string, SecondTranslation> = {
+  "Leverage_Chest_Press": {
+    name: "Press de pecho en máquina de palanca",
+    steps: [
+      "Ajustá el asiento para que las manijas queden a la altura del pecho.",
+      "Empujá hacia adelante hasta estirar los brazos sin trabar los codos.",
+      "Volvé controlando.",
+    ],
+  },
+  "Leverage_Incline_Chest_Press": {
+    name: "Press inclinado en máquina de palanca",
+    steps: [
+      "Ajustá el asiento para que las manijas queden a la altura de la parte alta del pecho.",
+      "Empujá hacia adelante y arriba.",
+      "Volvé controlando.",
+    ],
+  },
+  "Leverage_Shoulder_Press": {
+    name: "Press de hombro en máquina de palanca",
+    steps: [
+      "Ajustá el asiento para que las manijas queden a la altura de los hombros.",
+      "Empujá hacia arriba hasta estirar los brazos.",
+      "Bajá controlando.",
+    ],
+  },
+  "Leverage_High_Row": {
+    name: "Remo alto en máquina de palanca",
+    steps: [
+      "Sentate con el pecho apoyado y tomá las manijas altas.",
+      "Tirá hacia el pecho juntando los omóplatos.",
+      "Volvé controlando.",
+    ],
+  },
+  "Leverage_Iso_Row": {
+    name: "Remo unilateral en máquina de palanca",
+    steps: [
+      "Sentate con el pecho apoyado y tomá la manija con un brazo.",
+      "Tirá hacia la cadera llevando el codo atrás.",
+      "Volvé controlando y cambiá de lado.",
+    ],
+  },
+  "Leverage_Shrug": {
+    name: "Encogimientos en máquina de palanca",
+    steps: [
+      "Ponete de pie en la máquina con los brazos estirados y las manijas a los costados.",
+      "Subí los hombros hacia las orejas.",
+      "Bajá controlando.",
+    ],
+  },
+  "Leverage_Deadlift": {
+    name: "Peso muerto en máquina de palanca",
+    steps: [
+      "Poné los pies en la plataforma y tomá las manijas con la espalda recta.",
+      "Empujá con las piernas extendiendo la cadera.",
+      "Volvé controlando sin redondear la espalda.",
+    ],
+  },
+  "Lying_Machine_Squat": {
+    name: "Sentadilla en máquina inclinada",
+    steps: [
+      "Apoyá la espalda en el respaldo y los hombros bajo las almohadillas.",
+      "Bajá flexionando las rodillas hasta donde llegues cómodo.",
+      "Empujá con los talones hasta estirar sin trabar.",
+    ],
+  },
+  "Reverse_Hyperextension": {
+    name: "Hiperextensión inversa",
+    steps: [
+      "Apoyá el torso en la máquina y sujetate de las manijas, con las piernas colgando.",
+      "Subí las piernas extendiendo la cadera hasta que queden en línea con el torso.",
+      "Bajá controlando.",
+    ],
+    tip: "Trabaja glúteo e isquiotibiales sin cargar la espalda baja.",
+  },
+  "Lying_T-Bar_Row": {
+    name: "Remo en T acostado",
+    steps: [
+      "Apoyá el pecho en el banco con la barra colgando debajo.",
+      "Tirá de la barra hacia el abdomen juntando los omóplatos.",
+      "Bajá controlando.",
+    ],
+  },
+  "Calf_Press_On_The_Leg_Press_Machine": {
+    name: "Gemelo en prensa de piernas",
+    steps: [
+      "Poné las puntas de los pies en el borde de la plataforma y las piernas casi estiradas.",
+      "Empujá la plataforma con los talones lo más lejos que puedas.",
+      "Volvé despacio hasta estirar el gemelo.",
+    ],
+    tip: "No trabes las rodillas: mantené una flexión mínima para proteger la articulación.",
+  },
+  "Narrow_Stance_Hack_Squats": {
+    name: "Hack squat con pies juntos",
+    steps: [
+      "Poné los pies juntos en la plataforma del hack squat.",
+      "Bajá controlando con la espalda apoyada.",
+      "Empujá con los talones sin que las rodillas se junten.",
+    ],
+  },
+  "Narrow_Stance_Leg_Press": {
+    name: "Prensa de piernas con pies juntos",
+    steps: [
+      "Poné los pies juntos en el centro de la plataforma.",
+      "Bajá la plataforma flexionando las rodillas hasta donde llegues cómodo.",
+      "Empujá con los talones sin trabar las rodillas.",
+    ],
+  },
+  "Smith_Machine_Close-Grip_Bench_Press": {
+    name: "Press cerrado en máquina Smith",
+    steps: [
+      "Acostate en el banco bajo la barra guiada y tomala con las manos al ancho de los hombros.",
+      "Bajá al pecho con los codos cerca del torso.",
+      "Empujá hasta estirar los brazos.",
+    ],
+  },
+  "Smith_Machine_Overhead_Shoulder_Press": {
+    name: "Press de hombro en máquina Smith",
+    steps: [
+      "Sentate con la espalda apoyada y la barra guiada frente a las clavículas.",
+      "Empujá arriba hasta estirar los brazos.",
+      "Bajá controlando.",
+    ],
+  },
+  "Smith_Machine_Hip_Raise": {
+    name: "Empuje de cadera en máquina Smith",
+    steps: [
+      "Apoyá la espalda alta en un banco con la barra sobre la cadera y los pies firmes.",
+      "Subí la cadera apretando el glúteo hasta que el cuerpo quede en línea.",
+      "Bajá controlando.",
+    ],
+  },
+  "Smith_Machine_Reverse_Calf_Raises": {
+    name: "Gemelo invertido en máquina Smith",
+    steps: [
+      "Poné los talones en un escalón y la barra sobre los hombros.",
+      "Subí las puntas de los pies, llevando los talones hacia abajo.",
+      "Volvé controlando. Trabaja el tibial, la parte de adelante de la pierna.",
+    ],
+  },
+  "Smith_Machine_Pistol_Squat": {
+    name: "Sentadilla a una pierna en máquina Smith",
+    steps: [
+      "Poné un pie adelante bajo la barra y el otro atrás, sostenido apenas con la punta.",
+      "Bajá con el peso en la pierna de adelante.",
+      "Subí sin apoyarte en la barra.",
+    ],
+  },
+  "Smith_Single-Leg_Split_Squat": {
+    name: "Sentadilla dividida a una pierna en Smith",
+    steps: [
+      "Con la barra en la espalda, poné un pie adelante y el otro bien atrás.",
+      "Bajá la rodilla de atrás casi hasta el piso.",
+      "Subí empujando con la pierna de adelante.",
+    ],
+  },
+  "Standing_Leg_Curl": {
+    name: "Curl femoral de pie en máquina",
+    steps: [
+      "Apoyá el torso en la máquina y enganchá un tobillo en el rodillo.",
+      "Doblá la rodilla llevando el talón al glúteo.",
+      "Bajá controlando y cambiá de pierna.",
+    ],
+  },
+  "Thigh_Abductor": {
+    name: "Abductores en máquina",
+    steps: [
+      "Sentate con las piernas en las almohadillas y empujá hacia afuera.",
+      "Abrí las piernas hasta donde llegues cómodo y aguantá un segundo.",
+      "Volvé controlando.",
+    ],
+    tip: "Torso quieto: si te echás atrás, el trabajo se va del glúteo medio.",
+  },
+  "Thigh_Adductor": {
+    name: "Aductores en máquina",
+    steps: [
+      "Sentate con las piernas abiertas en las almohadillas.",
+      "Cerrá las piernas apretando hacia adentro.",
+      "Volvé controlando.",
+    ],
+  },
+  "Calf_Press": {
+    name: "Gemelo en máquina de prensa",
+    steps: [
+      "Poné las puntas de los pies en el borde y empujá con los talones.",
+      "Aguantá arriba un segundo.",
+      "Volvé hasta estirar el gemelo.",
+    ],
+  },
+};
+
+export const CABLE_ES: Record<string, SecondTranslation> = {
+  "Cable_Crossover": {
+    name: "Cruces de polea",
+    steps: [
+      "Poné las poleas arriba, tomá una manija con cada mano y dá un paso adelante.",
+      "Cerrá los brazos en arco frente al pecho, con los codos apenas flexionados.",
+      "Volvé controlando hasta sentir el estiramiento.",
+    ],
+  },
+  "Low_Cable_Crossover": {
+    name: "Cruces de polea baja",
+    steps: [
+      "Poleas abajo, tomá las manijas y subí los brazos en arco hasta juntar las manos al pecho.",
+      "Apretá el pecho arriba.",
+      "Bajá controlando.",
+    ],
+  },
+  "Single-Arm_Cable_Crossover": {
+    name: "Cruce de polea a una mano",
+    steps: [
+      "Tomá una manija con una mano y dá un paso al costado para tensar el cable.",
+      "Cerrá el brazo en arco frente al pecho.",
+      "Volvé controlando y cambiá de lado.",
+    ],
+  },
+  "Flat_Bench_Cable_Flyes": {
+    name: "Aperturas en polea sobre banco plano",
+    steps: [
+      "Acostate en el banco con una manija en cada mano y los brazos abiertos.",
+      "Cerrá los brazos en arco sobre el pecho.",
+      "Volvé controlando.",
+    ],
+  },
+  "Incline_Cable_Flye": {
+    name: "Aperturas inclinadas en polea",
+    steps: [
+      "Banco inclinado entre las poleas bajas, con una manija en cada mano.",
+      "Cerrá los brazos hacia arriba y al centro.",
+      "Volvé controlando.",
+    ],
+  },
+  "Incline_Cable_Chest_Press": {
+    name: "Press inclinado en polea",
+    steps: [
+      "Banco inclinado de espaldas a las poleas, con las manijas a la altura del pecho.",
+      "Empujá hacia arriba y adelante.",
+      "Volvé controlando.",
+    ],
+  },
+  "Standing_Cable_Chest_Press": {
+    name: "Press de pecho de pie en polea",
+    steps: [
+      "De pie de espaldas a la polea, con una manija en cada mano a la altura del pecho.",
+      "Empujá hacia adelante hasta estirar los brazos.",
+      "Volvé controlando sin que el cable te lleve.",
+    ],
+  },
+  "Seated_Cable_Rows": {
+    name: "Remo sentado en polea",
+    steps: [
+      "Sentate con los pies en la plataforma y el torso recto.",
+      "Tirá la manija hacia el abdomen juntando los omóplatos.",
+      "Volvé controlando hasta estirar los brazos.",
+    ],
+    tip: "No te eches atrás para tirar: el torso se mueve poco y el trabajo lo hace la espalda.",
+  },
+  "Wide-Grip_Lat_Pulldown": {
+    name: "Jalón al pecho agarre amplio",
+    steps: [
+      "Sentate con los muslos bajo las almohadillas y tomá la barra bien abierta.",
+      "Tirá hacia la parte alta del pecho llevando los codos abajo.",
+      "Volvé controlando hasta estirar los brazos.",
+    ],
+    tip: "No tires detrás de la nuca: no suma y castiga el hombro.",
+  },
+  "Close-Grip_Front_Lat_Pulldown": {
+    name: "Jalón al pecho agarre cerrado",
+    steps: [
+      "Tomá la barra con las manos al ancho de los hombros.",
+      "Tirá hacia el pecho con los codos pegados al torso.",
+      "Volvé controlando.",
+    ],
+  },
+  "V-Bar_Pulldown": {
+    name: "Jalón con agarre en V",
+    steps: [
+      "Enganchá el agarre en V y sentate con los muslos fijos.",
+      "Tirá hacia el pecho juntando los omóplatos.",
+      "Volvé controlando.",
+    ],
+  },
+  "Underhand_Cable_Pulldowns": {
+    name: "Jalón agarre supino",
+    steps: [
+      "Tomá la barra con las palmas hacia vos y las manos al ancho de los hombros.",
+      "Tirá hacia el pecho con los codos abajo y cerca.",
+      "Volvé controlando.",
+    ],
+  },
+  "Rope_Straight-Arm_Pulldown": {
+    name: "Jalón recto con cuerda",
+    steps: [
+      "De pie frente a la polea alta, tomá la cuerda con los brazos estirados.",
+      "Bajá la cuerda hasta los muslos manteniendo los codos fijos.",
+      "Volvé controlando.",
+    ],
+  },
+  "Cable_Rear_Delt_Fly": {
+    name: "Apertura posterior en polea",
+    steps: [
+      "Poné las poleas cruzadas a la altura del pecho y tomá la manija opuesta con cada mano.",
+      "Abrí los brazos hacia atrás hasta la altura de los hombros.",
+      "Volvé controlando.",
+    ],
+  },
+  "Cable_Seated_Lateral_Raise": {
+    name: "Elevación lateral sentado en polea",
+    steps: [
+      "Sentate de costado a la polea baja y tomá la manija con la mano lejana.",
+      "Subí el brazo a un costado hasta la altura del hombro.",
+      "Bajá controlando y cambiá de lado.",
+    ],
+  },
+  "Cable_Shrugs": {
+    name: "Encogimientos en polea",
+    steps: [
+      "De pie frente a la polea baja con la barra tomada y los brazos estirados.",
+      "Subí los hombros hacia las orejas.",
+      "Bajá controlando.",
+    ],
+  },
+  "Triceps_Pushdown": {
+    name: "Extensión de tríceps en polea",
+    steps: [
+      "De pie frente a la polea alta con la barra tomada a la altura del pecho.",
+      "Estirá los codos empujando la barra hacia abajo, sin mover los hombros.",
+      "Volvé controlando.",
+    ],
+  },
+  "Triceps_Pushdown_-_Rope_Attachment": {
+    name: "Extensión de tríceps en polea con cuerda",
+    steps: [
+      "Tomá la cuerda y pegá los codos al torso.",
+      "Estirá los codos separando las puntas de la cuerda al final.",
+      "Volvé controlando.",
+    ],
+  },
+  "Reverse_Grip_Triceps_Pushdown": {
+    name: "Extensión de tríceps en polea agarre invertido",
+    steps: [
+      "Tomá la barra con las palmas hacia arriba.",
+      "Estirá los codos hacia abajo sin mover los hombros.",
+      "Volvé controlando.",
+    ],
+  },
+  "Cable_Rope_Overhead_Triceps_Extension": {
+    name: "Extensión de tríceps sobre la cabeza en polea",
+    steps: [
+      "De espaldas a la polea, tomá la cuerda con las dos manos detrás de la cabeza.",
+      "Estirá los codos hacia adelante y arriba.",
+      "Volvé controlando.",
+    ],
+  },
+  "Cable_Hammer_Curls_-_Rope_Attachment": {
+    name: "Curl martillo en polea con cuerda",
+    steps: [
+      "Tomá la cuerda con las palmas mirándose y los codos pegados.",
+      "Subí doblando los codos sin mover los hombros.",
+      "Bajá controlando.",
+    ],
+  },
+  "Standing_Biceps_Cable_Curl": {
+    name: "Curl de bíceps de pie en polea",
+    steps: [
+      "De pie frente a la polea baja con la barra tomada con las palmas arriba.",
+      "Subí doblando los codos, sin balancear el torso.",
+      "Bajá controlando.",
+    ],
+  },
+  "Cable_Preacher_Curl": {
+    name: "Curl predicador en polea",
+    steps: [
+      "Apoyá los brazos en el banco predicador frente a la polea baja.",
+      "Subí doblando los codos.",
+      "Bajá controlando hasta casi estirar.",
+    ],
+  },
+  "High_Cable_Curls": {
+    name: "Curl desde polea alta",
+    steps: [
+      "Ponete entre las poleas altas y tomá las manijas con las palmas arriba.",
+      "Doblá los codos llevando las manos hacia la cabeza.",
+      "Volvé controlando.",
+    ],
+  },
+  "Standing_Cable_Wood_Chop": {
+    name: "Leñador en polea",
+    steps: [
+      "Ponete de costado a la polea alta y tomá la manija con las dos manos.",
+      "Bajá la manija en diagonal hacia la cadera opuesta girando el torso.",
+      "Volvé controlando y cambiá de lado.",
+    ],
+  },
+  "Cable_Russian_Twists": {
+    name: "Giros rusos en polea",
+    steps: [
+      "Sentate de costado a la polea a la altura del pecho y tomá la manija.",
+      "Girá el torso llevando las manos al lado opuesto.",
+      "Volvé controlando y cambiá de lado.",
+    ],
+  },
+  "Cable_Internal_Rotation": {
+    name: "Rotación interna en polea",
+    steps: [
+      "Poné la polea a la altura del codo y el brazo pegado al torso, flexionado a 90 grados.",
+      "Girá el antebrazo hacia el abdomen.",
+      "Volvé controlando. Se hace liviano: es para el manguito rotador.",
+    ],
+  },
+  "External_Rotation_with_Cable": {
+    name: "Rotación externa en polea",
+    steps: [
+      "De costado a la polea, con el codo pegado al torso y el antebrazo apuntando al centro.",
+      "Girá el antebrazo hacia afuera sin mover el codo.",
+      "Volvé controlando.",
+    ],
+  },
+  "One-Legged_Cable_Kickback": {
+    name: "Patada de glúteo en polea",
+    steps: [
+      "Enganchá el tobillo al cable bajo y apoyate en la máquina.",
+      "Llevá la pierna atrás sin arquear la espalda baja.",
+      "Volvé controlando y cambiá de pierna.",
+    ],
+  },
+  "Cable_Hip_Adduction": {
+    name: "Aducción de cadera en polea",
+    steps: [
+      "Enganchá el tobillo al cable bajo y ponete de costado a la polea.",
+      "Cruzá la pierna por delante del cuerpo.",
+      "Volvé controlando.",
+    ],
+  },
+  "Standing_Cable_Lift": {
+    name: "Levantamiento diagonal en polea",
+    steps: [
+      "Ponete de costado a la polea baja y tomá la manija con las dos manos.",
+      "Subí la manija en diagonal hasta arriba del hombro contrario girando el torso.",
+      "Volvé controlando.",
+    ],
+  },
+};
+
+export const KETTLEBELL_ES: Record<string, SecondTranslation> = {
+  "One-Arm_Kettlebell_Swings": {
+    name: "Swing con pesa rusa a una mano",
+    steps: [
+      "Con la pesa en el piso y los pies al ancho de los hombros, tomala con una mano.",
+      "Llevá la cadera atrás y después extendela con fuerza para que la pesa suba al pecho.",
+      "Dejá que baje entre las piernas y repetí sin usar el brazo para levantar.",
+    ],
+    tip: "La fuerza sale de la cadera; el brazo solo guía. Si sentís la espalda baja, está mal.",
+  },
+  "Two-Arm_Kettlebell_Clean": {
+    name: "Cargada con pesa rusa a dos manos",
+    steps: [
+      "Con la pesa en el piso, tomala con las dos manos y llevá la cadera atrás.",
+      "Extendé la cadera para que la pesa suba al pecho.",
+      "Recibila en el pecho con los codos abajo y el abdomen firme.",
+    ],
+  },
+  "Two-Arm_Kettlebell_Military_Press": {
+    name: "Press militar con pesa rusa a dos manos",
+    steps: [
+      "Con la pesa a la altura del pecho y las dos manos tomándola por las asas.",
+      "Empujá arriba hasta estirar los brazos.",
+      "Bajá controlando al pecho.",
+    ],
+  },
+  "Two-Arm_Kettlebell_Row": {
+    name: "Remo con pesa rusa a dos manos",
+    steps: [
+      "Inclinate con la espalda recta y la pesa colgando.",
+      "Tirá la pesa hacia el abdomen juntando los omóplatos.",
+      "Bajá controlando.",
+    ],
+  },
+  "Front_Squats_With_Two_Kettlebells": {
+    name: "Sentadilla frontal con dos pesas rusas",
+    steps: [
+      "Apoyá las pesas en los hombros con los codos altos.",
+      "Bajá con el torso vertical.",
+      "Subí empujando con los talones.",
+    ],
+  },
+  "One-Arm_Overhead_Kettlebell_Squats": {
+    name: "Sentadilla con pesa arriba de la cabeza",
+    steps: [
+      "Subí la pesa arriba de la cabeza con un brazo estirado y el hombro firme.",
+      "Bajá en sentadilla manteniendo la pesa estable arriba.",
+      "Subí controlando.",
+    ],
+    tip: "Empezá con una pesa liviana: lo difícil es sostenerla arriba sin que se caiga.",
+  },
+  "Kettlebell_Dead_Clean": {
+    name: "Cargada muerta con pesa rusa",
+    steps: [
+      "Con la pesa en el piso entre los pies, tomala con una mano.",
+      "Subila al hombro en un solo movimiento, con el codo pegado al torso.",
+      "Bajala controlando y repetí.",
+    ],
+  },
+  "Alternating_Kettlebell_Row": {
+    name: "Remo alternado con pesas rusas",
+    steps: [
+      "Inclinate con una pesa en cada mano y la espalda recta.",
+      "Tirá una pesa al abdomen y bajala mientras subís la otra.",
+      "Mantené el torso quieto.",
+    ],
+  },
+  "Kettlebell_Figure_8": {
+    name: "Ocho con pesa rusa",
+    steps: [
+      "Con la pesa en una mano y las piernas algo abiertas, pasala entre las piernas dibujando un ocho.",
+      "Recibila con la otra mano detrás de la pierna.",
+      "Seguí el círculo sin parar, con las rodillas semiflexionadas.",
+    ],
+  },
+  "Two-Arm_Kettlebell_Jerk": {
+    name: "Envión con dos pesas rusas",
+    steps: [
+      "Con las pesas en los hombros, flexioná apenas las rodillas.",
+      "Empujá con las piernas y empujá las pesas arriba hasta estirar los brazos.",
+      "Recibí con las rodillas blandas y volvé al hombro.",
+    ],
+  },
+};

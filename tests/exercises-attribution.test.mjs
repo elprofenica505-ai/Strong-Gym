@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createLoader } from "./helpers/react-loader.mjs";
+import { EXERCISE_ATTRIBUTION } from "../src/lib/exercises/terms.ts";
 
 /**
  * La licencia del catálogo exige atribución visible. No alcanza con que exista
@@ -106,8 +107,23 @@ test("el catálogo muestra la atribución del dataset", async () => {
   assert.ok(html.includes("Press de banca con barra"), "el catálogo no lista el ejercicio");
   // Los chips dicen cuántos hay: así el socio ve de un vistazo qué es de sala.
   assert.ok(html.includes("Peso libre (1)"), "el chip de equipo no muestra el conteo");
-  assert.ok(html.includes("Máquinas (0)"), "el chip de máquinas no muestra el conteo");
+  // Un chip sin ejercicios no se muestra: no se ofrece un filtro que no filtra.
+  assert.ok(!html.includes("Máquinas (0)"), "el chip de máquinas vacío sigue en pantalla");
   assert.ok(html.includes("Fuerza (1)"), "falta el chip de tipo de trabajo");
+});
+
+test("el segundo catálogo también se acredita", async () => {
+  for (const [file, params] of [
+    ["app/[locale]/mi-cuenta/ejercicios/page.tsx", { params: Promise.resolve({ locale: "es" }), searchParams: Promise.resolve({}) }],
+    ["app/[locale]/mi-cuenta/ejercicios/[id]/page.tsx", { params: Promise.resolve({ locale: "es", id: CARD.id }) }],
+  ]) {
+    const html = await render(file, params);
+    assert.ok(
+      html.includes(EXERCISE_ATTRIBUTION.secondText),
+      `${file} no acredita el segundo origen`,
+    );
+    assert.ok(html.includes(EXERCISE_ATTRIBUTION.secondHref), `${file} no enlaza al segundo origen`);
+  }
 });
 
 test("la ficha del ejercicio muestra la atribución", async () => {
