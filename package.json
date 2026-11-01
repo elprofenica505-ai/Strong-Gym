@@ -22,7 +22,7 @@
     "test:medidas": "node --experimental-strip-types --test tests/progress-rules.test.mjs tests/my-progress.test.mjs tests/progress-forms.test.mjs tests/attendance-summary.test.mjs tests/attendance-table.test.mjs && node scripts/test-progress-sql.mjs && node scripts/test-attendance-sql.mjs",
     "test:layout": "node scripts/test-shell-layout.mjs",
     "test:finance:concurrency": "node scripts/test-finance-concurrency.mjs",
-    "test:productos": "node --experimental-strip-types --test tests/products-rules.test.mjs && node scripts/test-productos-sql.mjs",
+    "test:productos": "node --experimental-strip-types --test tests/products-rules.test.mjs tests/venta-particular.test.mjs && node scripts/test-productos-sql.mjs",
     "test:nutricion": "node --experimental-strip-types --test tests/nutrition-plan.test.mjs",
     "postinstall": "patch-package",
     "test:ejercicios": "node --experimental-strip-types --test tests/exercises-terms.test.mjs tests/exercises-import.test.mjs tests/exercises-attribution.test.mjs tests/exercises-figure.test.mjs tests/exercises-second-catalog.test.mjs tests/exercises-api.test.mjs tests/exercises-photo-map.test.mjs tests/exercises-figure-retry.test.mjs tests/back-link.test.mjs && node scripts/test-exercises-sql.mjs",

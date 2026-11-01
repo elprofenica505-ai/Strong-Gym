@@ -75,11 +75,28 @@ export const purchaseSchema = z.object({
   note: z.string().trim().max(200).nullable(),
 });
 
+/** Largo máximo del nombre suelto de una venta particular (igual que la base). */
+export const CUSTOMER_NAME_MAX = 80;
+
+/**
+ * Venta de producto.
+ *
+ * `client: null` es la **venta particular**: alguien que entró a comprar y no
+ * tiene ficha en el gimnasio. En ese caso se puede guardar un nombre suelto
+ * (`customer`), para saber a quién se le vendió, sin crearle una cuenta.
+ */
 export const saleSchema = z.object({
   request: z.string().uuid(),
   product: z.string().uuid(),
   qty: z.number().int().min(1).max(100000),
-  client: z.string().uuid(),
+  client: z.string().uuid().nullable(),
+  customer: z
+    .string()
+    .trim()
+    .min(2, "Si escribís el nombre de quien compra, que tenga al menos 2 letras.")
+    .max(CUSTOMER_NAME_MAX, "El nombre de quien compra no puede pasar de 80 letras.")
+    .nullable()
+    .optional(),
   method: z.string().min(1).max(40),
   account: z.string().min(1).max(60),
 });
@@ -128,8 +145,9 @@ const failures: Record<string, string> = {
   PRODUCT_INACTIVE: "El producto está inactivo. Activalo antes de comprar o vender.",
   SIN_STOCK: "No hay suficiente stock para esa venta.",
   NEGATIVE_STOCK: "El ajuste dejaría el stock en negativo.",
-  CLIENT_REQUIRED: "Elegí un cliente registrado para la venta.",
-  INVALID_CLIENT: "Elegí un cliente registrado para la venta.",
+  CLIENT_REQUIRED: "Elegí un cliente registrado o marcá «Venta particular».",
+  INVALID_CLIENT: "Ese cliente ya no está disponible. Elegí otro o marcá «Venta particular».",
+  INVALID_CUSTOMER: "El nombre de quien compra no puede pasar de 80 letras.",
   INVALID_PAYMENT: "Revisá el monto, el método o la cuenta.",
   INVALID_ACCOUNT: "Elegí una cuenta activa de la misma moneda.",
   INVALID_METHOD: "El método no está habilitado para esta moneda.",

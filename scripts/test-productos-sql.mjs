@@ -51,6 +51,10 @@ await db.exec(sql('supabase/migrations/00040_mi_progreso_cliente.sql'));
 await db.exec(sql('supabase/migrations/00041_asistencia_cliente.sql'));
 await db.exec(sql('supabase/migrations/00042_productos_stock_categorias.sql'));
 ok('00042 se aplica sobre 00041 sin error', true);
+// 00097 (venta particular) reemplaza product_sell: se aplica acá para probarla
+// junto al resto del módulo de productos.
+await db.exec(sql('supabase/migrations/00097_venta_particular.sql'));
+ok('00097 se aplica sobre 00042 sin error', true);
 ok('00041 se aplica sobre 00040 sin error', true);
 ok('00040 se aplica sobre 00039 sin error', true);
 ok('00039 se aplica sobre 00036 sin error', true);
@@ -107,27 +111,55 @@ const r1b = (await buy('11111111-1111-4111-8111-111111111111', 10, 20))[0].r;
 ok('misma compra (mismo request) no duplica dinero ni stock', (await bal()) === b0 - 200 && (await stockOf(prodId)) === 10 && r1b.already === true);
 ok('compra con cantidad cero se rechaza', await denied(buy('22222222-2222-4222-8222-222222222222', 0, 20), /INVALID/));
 
-// Venta: exige cliente; baja stock y suma en finanzas
+// Ventas: a un cliente con ficha y a alguien que sólo vino a comprar
 const sell = (req, q, client) => as(cashier, 'aal2', "select public.product_sell($1,$2,$3,$4,'prueba-nio','prueba-nio') as r", [req, prodId, q, client]);
+const sellParticular = (req, q, name) => as(cashier, 'aal2',
+  "select public.product_sell($1,$2,$3,null,'prueba-nio','prueba-nio',$4) as r", [req, prodId, q, name]);
 const s0 = await bal();
-ok('venta sin cliente se rechaza', await denied(sell('33333333-3333-4333-8333-333333333333', 1, null), /CLIENT_REQUIRED/));
+const clientsBefore = (await db.query('select count(*)::int as n from gym_clients')).rows[0].n;
+
+// Venta particular: no hay ficha, se cobra igual.
+const p1 = (await sellParticular('33333333-3333-4333-8333-333333333333', 1, 'Muchacho de la esquina'))[0].r;
+ok('venta particular suma ingreso (35)', (await bal()) === s0 + 35 && Number(p1.total) === 35);
+ok('venta particular se marca como tal y guarda el nombre', p1.particular === true && p1.customer_name === 'Muchacho de la esquina');
+ok('venta particular baja stock (10 - 1 = 9)', (await stockOf(prodId)) === 9);
+const p1b = (await sellParticular('33333333-3333-4333-8333-333333333333', 1, 'Muchacho de la esquina'))[0].r;
+ok('venta particular repetida no duplica', p1b.already === true && (await stockOf(prodId)) === 9 && (await bal()) === s0 + 35);
+const p2 = (await sellParticular('c2000000-0002-4002-8002-c20000000002', 1, null))[0].r;
+ok('venta particular sin nombre también se registra', p2.particular === true && p2.customer_name === null && (await bal()) === s0 + 70);
+ok('la venta particular no inventa cliente ni toca gym_clients',
+  (await db.query("select count(*)::int as n from stock_movements where kind = 'venta' and client_id is null")).rows[0].n === 2
+  && (await db.query('select count(*)::int as n from gym_clients')).rows[0].n === clientsBefore);
+ok('la venta particular no deja evento en la ficha de nadie',
+  (await db.query("select count(*)::int as n from client_events where action = 'payment'")).rows[0].n === 0);
+ok('el movimiento particular queda con su concepto y su nota',
+  (await db.query("select t.concept, s.note from stock_movements s join transactions t on t.id = s.transaction_id where s.request_id = 'c2000000-0002-4002-8002-c20000000002'")).rows[0].concept.includes('Venta particular'));
+ok('nombre demasiado largo se rechaza', await denied(sellParticular('c3000000-0003-4003-8003-c30000000003', 1, 'x'.repeat(81)), /INVALID_CUSTOMER/));
+ok('cliente inexistente se rechaza', await denied(sell('c4000000-0004-4004-8004-c40000000004', 1, '00000000-0000-4000-8000-000000000000'), /INVALID_CLIENT/));
+ok('venta particular sin método se rechaza', await denied(as(cashier, 'aal2',
+  "select public.product_sell($1,$2,$3,null,null,'prueba-nio',null)", ['c5000000-0005-4005-8005-c50000000005', prodId, 1]), /INVALID_METHOD/));
+ok('entrenador no vende particular', await denied(as(trainer, 'aal2',
+  "select public.product_sell($1,$2,$3,null,'prueba-nio','prueba-nio',null)", ['c6000000-0006-4006-8006-c60000000006', prodId, 1]), /AUTH/));
+
+// Venta con ficha: como siempre.
 const v1 = (await sell('44444444-4444-4444-8444-444444444444', 2, ana))[0].r;
-ok('venta a cliente suma ingreso (2 x 35 = 70)', (await bal()) === s0 + 70 && Number(v1.total) === 70);
-ok('venta baja stock (10 - 2 = 8)', (await stockOf(prodId)) === 8);
+ok('venta a cliente suma ingreso (2 x 35 = 70)', (await bal()) === s0 + 140 && Number(v1.total) === 70);
+ok('venta a cliente no se marca como particular', v1.particular === false);
+ok('venta baja stock (8 + 70) ', (await stockOf(prodId)) === 6);
 const v1b = (await sell('44444444-4444-4444-8444-444444444444', 2, ana))[0].r;
-ok('venta repetida (mismo request) no duplica', v1b.already === true && (await stockOf(prodId)) === 8 && (await bal()) === s0 + 70);
+ok('venta repetida (mismo request) no duplica', v1b.already === true && (await stockOf(prodId)) === 6 && (await bal()) === s0 + 140);
 ok('no vende más de lo que hay (SIN_STOCK)', await denied(sell('55555555-5555-4555-8555-555555555555', 50, ana), /SIN_STOCK/));
-ok('stock no queda negativo tras venta fallida', (await stockOf(prodId)) === 8);
+ok('stock no queda negativo tras venta fallida', (await stockOf(prodId)) === 6);
 
 // Ajuste de inventario
 const adj = (await as(admin, 'aal2', 'select public.product_stock_adjust($1,-1,$2) as s', [prodId, 'conteo']))[0].s;
-ok('ajuste de conteo baja stock sin mover dinero', Number(adj) === 7 && (await bal()) === s0 + 70);
+ok('ajuste de conteo baja stock sin mover dinero', Number(adj) === 5 && (await bal()) === s0 + 140);
 ok('ajuste que dejaría stock negativo se rechaza', await denied(as(admin, 'aal2', 'select public.product_stock_adjust($1,-100,$2)', [prodId, 'x']), /SIN_STOCK/));
 
 // Lista de productos
 const list = (await as(cashier, 'aal2', 'select public.product_list() as l'))[0].l;
 const item = list.find(p => p.id === prodId);
-ok('lista muestra existencia (7) y alerta de stock bajo = no', item.stock === 7 && item.low_stock === false);
+ok('lista muestra existencia (5) y alerta de stock bajo = no', item.stock === 5 && item.low_stock === false);
 ok('entrenador no ve la lista de productos', await denied(as(trainer, 'aal2', 'select public.product_list()'), /AUTH/));
 
 // Categoría de cliente
@@ -468,7 +500,7 @@ const checkoutItems59 = [
   { product: prodId, qty: 1, unit_price: 35 },
   { product: waterId, qty: 2, unit_price: 20 },
 ];
-const checkoutResult59 = (await checkout59(cashier, '66666666-6666-4666-8666-666666666666', 40, checkoutItems59))[0].r;
+const checkoutResult59 = (await checkout59(cashier, 'b1b1b1b1-1111-4111-8111-b1b1b1b1b1b1', 40, checkoutItems59))[0].r;
 ok('cobro combinado suma servicio y productos en la cuenta (40 + 35 + 40 = 115)',
   Number(checkoutResult59.total) === 115 && (await bal()) === balanceBefore59 + 115);
 ok('cobro combinado baja el stock de cada producto una sola vez',
@@ -477,20 +509,20 @@ ok('cobro combinado devuelve comprobante del servicio y de cada producto',
   checkoutResult59.transactionIds.length === 3 && checkoutResult59.receipts.length === 3 &&
   checkoutResult59.serviceTransactionId === checkoutResult59.id);
 
-const checkoutRetry59 = (await checkout59(cashier, '66666666-6666-4666-8666-666666666666', 40, checkoutItems59))[0].r;
+const checkoutRetry59 = (await checkout59(cashier, 'b1b1b1b1-1111-4111-8111-b1b1b1b1b1b1', 40, checkoutItems59))[0].r;
 ok('reintentar el mismo cobro combinado no duplica dinero ni stock',
   JSON.stringify(checkoutRetry59.transactionIds) === JSON.stringify(checkoutResult59.transactionIds) &&
   (await bal()) === balanceBefore59 + 115 &&
   (await stockOf(prodId)) === creatineBefore59 - 1 &&
   (await stockOf(waterId)) === waterBefore59 - 2);
 ok('la misma referencia con otro payload es conflicto',
-  await denied(checkout59(cashier, '66666666-6666-4666-8666-666666666666', 41, checkoutItems59), /REQUEST_CONFLICT/));
+  await denied(checkout59(cashier, 'b1b1b1b1-1111-4111-8111-b1b1b1b1b1b1', 41, checkoutItems59), /REQUEST_CONFLICT/));
 
 const balanceBeforeShort59 = await bal();
 const creatineBeforeShort59 = await stockOf(prodId);
 const waterBeforeShort59 = await stockOf(waterId);
 ok('si falta stock de un producto, tampoco queda registrado el servicio',
-  await denied(checkout59(cashier, '77777777-7777-4777-8777-777777777777', 40, [
+  await denied(checkout59(cashier, 'b2b2b2b2-2222-4222-8222-b2b2b2b2b2b2', 40, [
     { product: prodId, qty: 1, unit_price: 35 },
     { product: waterId, qty: 99, unit_price: 20 },
   ]), /SIN_STOCK/) &&
@@ -498,13 +530,13 @@ ok('si falta stock de un producto, tampoco queda registrado el servicio',
   (await stockOf(prodId)) === creatineBeforeShort59 &&
   (await stockOf(waterId)) === waterBeforeShort59);
 ok('si el precio cambió, el cobro combinado se rechaza sin mover dinero ni stock',
-  await denied(checkout59(cashier, '88888888-8888-4888-8888-888888888888', 0, [
+  await denied(checkout59(cashier, 'b3b3b3b3-3333-4333-8333-b3b3b3b3b3b3', 0, [
     { product: waterId, qty: 1, unit_price: 19 },
   ], 'Venta de productos'), /PRICE_CHANGED/) &&
   (await bal()) === balanceBeforeShort59 &&
   (await stockOf(waterId)) === waterBeforeShort59);
 
-const productOnly59 = (await checkout59(cashier, '99999999-9999-4999-8999-999999999999', 0, [
+const productOnly59 = (await checkout59(cashier, 'b4b4b4b4-4444-4444-8444-b4b4b4b4b4b4', 0, [
   { product: waterId, qty: 1, unit_price: 20 },
 ], 'Venta de productos'))[0].r;
 ok('venta solo de productos no crea movimiento de servicio y sí baja stock',
@@ -512,7 +544,7 @@ ok('venta solo de productos no crea movimiento de servicio y sí baja stock',
   (await bal()) === balanceBeforeShort59 + 20 &&
   (await stockOf(waterId)) === waterBeforeShort59 - 1);
 ok('los productos del cobro combinado solo se cobran en NIO',
-  await denied(checkout59(cashier, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 0, [
+  await denied(checkout59(cashier, 'b5b5b5b5-5555-4555-8555-b5b5b5b5b5b5', 0, [
     { product: waterId, qty: 1, unit_price: 20 },
   ], 'Venta de productos', 'USD'), /INVALID_PAYMENT/));
 ok('entrenador no registra cobros combinados',
