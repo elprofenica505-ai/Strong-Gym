@@ -31,8 +31,9 @@ test("con dos fotos se muestran las dos, listas para alternarse", () => {
   assert.match(html, /class="frame-a"/);
   assert.match(html, /class="frame-b"/);
   assert.equal((html.match(/<img/g) ?? []).length, 2, "tienen que ser dos fotos");
-  assert.ok(html.includes("/api/exercises/image?path=images%2Fflat%2Fleg-press-start.webp"));
-  assert.ok(html.includes("/api/exercises/image?path=images%2Fflat%2Fleg-press-peak.webp"));
+  // `&` sale escapado como `&amp;` en el HTML: es correcto.
+  assert.ok(html.includes("/api/exercises/image?path=images%2Fflat%2Fleg-press-start.webp&amp;w=320"));
+  assert.ok(html.includes("/api/exercises/image?path=images%2Fflat%2Fleg-press-peak.webp&amp;w=320"));
 });
 
 test("arranca en la posición inicial: la primera foto se ve y la segunda no", () => {
@@ -81,7 +82,7 @@ test("con una sola foto se muestra quieta", () => {
 
 test("una foto suelta de inicio sirve como portada", () => {
   const frames = { imageStart: "images/flat/leg-press-start.webp", imagePeak: null, imageMain: null };
-  assert.equal(exerciseImage(frames), "/api/exercises/image?path=images%2Fflat%2Fleg-press-start.webp");
+  assert.equal(exerciseImage(frames), "/api/exercises/image?path=images%2Fflat%2Fleg-press-start.webp&w=320");
   assert.equal(exerciseFrames(frames).animated, false);
   assert.match(render({ name: "Prensa", frames }), /<img/);
 });
@@ -94,5 +95,45 @@ test("sin ninguna foto se dice, no se deja un hueco roto", () => {
 
 test("la ruta de la foto siempre pasa por el proxy", () => {
   assert.equal(figureUrl(null), null);
-  assert.equal(figureUrl("Barbell_Squat/0.jpg"), "/api/exercises/image?path=Barbell_Squat%2F0.jpg");
+  assert.equal(figureUrl("Barbell_Squat/0.jpg"), "/api/exercises/image?path=Barbell_Squat%2F0.jpg&w=320");
+  assert.equal(
+    figureUrl("Barbell_Squat/0.jpg", 640),
+    "/api/exercises/image?path=Barbell_Squat%2F0.jpg&w=640",
+  );
+});
+
+// --- Peso de las imágenes (EX-06) ---
+// La app se sentía lenta al entrar: cada tarjeta bajaba la foto original de
+// 850 px y ~60 KB. Ahora se piden dos medidas y el navegador baja una sola.
+const { FIGURE_VARIANTS, figureSrcSet } = await loader("lib/exercises/figure.ts");
+
+test("la tarjeta ofrece dos medidas y el teléfono baja la chica", () => {
+  const srcset = figureSrcSet("Barbell_Squat/0.jpg", FIGURE_VARIANTS.card.widths);
+  assert.equal(
+    srcset,
+    "/api/exercises/image?path=Barbell_Squat%2F0.jpg&w=320 320w, /api/exercises/image?path=Barbell_Squat%2F0.jpg&w=640 640w",
+  );
+  // Sin `sizes`, el navegador supone 100vw y baja la grande en el teléfono.
+  assert.match(FIGURE_VARIANTS.card.sizes, /vw/);
+});
+
+test("la tarjeta pide la foto chica antes que nada", () => {
+  const html = render({ name: "Sentadilla", frames: PAIR });
+  assert.match(html, /src="\/api\/exercises\/image\?path=[^"]*&amp;w=320"/);
+  assert.match(html, /srcset="[^"]*320w[^"]*640w"/i);
+});
+
+test("la ficha pide la foto grande, que es la que se ve entera", () => {
+  const html = render({ name: "Sentadilla", frames: PAIR, variant: "detail" });
+  assert.match(html, /src="\/api\/exercises\/image\?path=[^"]*&amp;w=640"/);
+  assert.match(html, /srcset="[^"]*640w[^"]*960w"/i);
+});
+
+test("nunca se piden medidas fuera de las tres acordadas", () => {
+  const permitidas = new Set([320, 640, 960]);
+  for (const variant of Object.values(FIGURE_VARIANTS)) {
+    for (const width of variant.widths) {
+      assert.ok(permitidas.has(width), `medida no prevista: ${width}`);
+    }
+  }
 });

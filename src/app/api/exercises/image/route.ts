@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import sharp from "sharp";
 import { getCurrentUser } from "@/lib/data/queries";
+import { FIGURE_WIDTHS } from "@/lib/exercises/figure";
 
 export const runtime = "nodejs";
 
@@ -16,6 +18,14 @@ export const runtime = "nodejs";
  *
  * Sólo se sirven rutas con forma conocida (`images/flat/<slug>-start.webp`) y
  * sólo a quien tiene sesión iniciada. Se cachea en el borde 30 días.
+ *
+ * **Tamaño (EX-06).** El socio se quejó de que la app se sentía lenta. La
+ * causa era esta ruta: entregaba el archivo original del origen —fotos JPG de
+ * ~60 KB a 850 px— para tarjetas que en el teléfono miden ~340 px. Ahora se
+ * pide `?w=320|640|960` y acá se redimensiona y se convierte a WebP. Medido
+ * sobre una foto real: 71 KB → **10 KB** a 320 px (‑86 %) y 24 KB a 640 px.
+ * Si el recorte falla, se devuelve el original: la pantalla nunca se rompe por
+ * una imagen.
  */
 
 /**
@@ -40,35 +50,68 @@ const SAFE_PATH = /^images\/flat\/[a-z0-9][a-z0-9-]{0,60}\.webp$/;
 /** Foto del segundo catálogo: `Nombre_Con_Guiones_Bajos/0.jpg` o `/1.jpg`. */
 const SAFE_PHOTO = /^[A-Za-z0-9][A-Za-z0-9 _().,'&-]{0,90}\/[01]\.jpg$/;
 
+/** Sólo estas medidas: evita que cualquiera pida 5.000 px y caliente el servidor. */
+const ANCHOS = new Set<number>(Object.values(FIGURE_WIDTHS));
+const ANCHO_POR_DEFECTO = FIGURE_WIDTHS.card;
+
 export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user) return new NextResponse(null, { status: 404 });
 
-  const path = new URL(request.url).searchParams.get("path") ?? "";
+  const url = new URL(request.url);
+  const path = url.searchParams.get("path") ?? "";
   const isPhoto = SAFE_PHOTO.test(path);
   if (!SAFE_PATH.test(path) && !isPhoto) return new NextResponse(null, { status: 404 });
+
+  const pedido = Number(url.searchParams.get("w"));
+  const ancho = ANCHOS.has(pedido) ? pedido : ANCHO_POR_DEFECTO;
 
   for (const source of isPhoto ? FREE_DB_SOURCES : REPDB_SOURCES) {
     try {
       const response = await fetch(source(path), {
-        // Cachea la imagen en el servidor: no se vuelve a pedir por cada socio.
+        // Cachea el original en el servidor: no se vuelve a pedir por cada socio.
         next: { revalidate: 2592000 },
       });
       if (!response.ok) continue;
-      const body = await response.arrayBuffer();
+      const body = Buffer.from(await response.arrayBuffer());
       if (body.byteLength === 0 || body.byteLength > 2_000_000) continue;
-      return new NextResponse(body, {
-        status: 200,
-        headers: {
-          "Content-Type": isPhoto ? "image/jpeg" : "image/webp",
-          "Cache-Control": "public, max-age=2592000, immutable",
-          "X-Content-Type-Options": "nosniff",
-        },
-      });
+
+      const reducida = await reducir(body, ancho, isPhoto);
+      if (reducida) return imagen(reducida, "image/webp");
+
+      // Sin recorte posible: se entrega el original, como antes.
+      return imagen(body, isPhoto ? "image/jpeg" : "image/webp");
     } catch {
       // Se prueba la siguiente fuente; nunca se rompe la pantalla por esto.
     }
   }
 
   return new NextResponse(null, { status: 404 });
+}
+
+/**
+ * Redimensiona y convierte a WebP. `withoutEnlargement` deja intactos los
+ * dibujos que ya vienen a 512 px si se pide 640: nunca se inventan píxeles.
+ */
+async function reducir(body: Buffer, ancho: number, isPhoto: boolean) {
+  try {
+    return await sharp(body)
+      .resize({ width: ancho, withoutEnlargement: true })
+      .webp({ quality: isPhoto ? 72 : 78, effort: 4 })
+      .toBuffer();
+  } catch {
+    return null;
+  }
+}
+
+function imagen(body: Buffer, contentType: string) {
+  return new NextResponse(new Uint8Array(body), {
+    status: 200,
+    headers: {
+      "Content-Type": contentType,
+      // La URL lleva la medida, así que cada tamaño se cachea por su cuenta.
+      "Cache-Control": "public, max-age=2592000, immutable",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
 }

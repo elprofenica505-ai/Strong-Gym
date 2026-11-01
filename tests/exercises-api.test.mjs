@@ -32,19 +32,27 @@ const loadRoute = (path, modules) => {
 // ---------------------------------------------------------------- imágenes
 const imageModules = {
   "next/server": import.meta.resolve("next/server.js"),
+  sharp: import.meta.resolve("sharp"),
   "@/lib/data/queries": dataUrl("export const getCurrentUser = async () => globalThis.__img.user;"),
+  // Las medidas viven en `figure.ts`; acá alcanza con los números exactos.
+  "@/lib/exercises/figure": dataUrl(
+    "export const FIGURE_WIDTHS = { card: 320, cardBig: 640, detail: 640, full: 960 };",
+  ),
 };
 const { GET: imageGET } = await loadRoute("image/route.ts", imageModules);
 
-const imageRequest = (path) =>
-  new Request(`https://gym.example/api/exercises/image?path=${encodeURIComponent(path)}`);
+const imageRequest = (path, ancho) =>
+  new Request(
+    `https://gym.example/api/exercises/image?path=${encodeURIComponent(path)}` +
+      (ancho === undefined ? "" : `&w=${ancho}`),
+  );
 
-const withImage = async ({ user = { id: "u1" }, fetchImpl, path }) => {
+const withImage = async ({ user = { id: "u1" }, fetchImpl, path, ancho }) => {
   globalThis.__img = { user };
   const original = globalThis.fetch;
   globalThis.fetch = fetchImpl;
   try {
-    return await imageGET(imageRequest(path));
+    return await imageGET(imageRequest(path, ancho));
   } finally {
     globalThis.fetch = original;
   }
@@ -127,6 +135,66 @@ test("si ningún origen tiene la imagen, o viene vacía, la pantalla no se rompe
   }
 });
 
+
+// ------------------------------------------------- reducción de peso (EX-06)
+// Una foto de verdad, generada acá con el mismo procesador del servidor: se
+// comprueba que el proxy entrega una imagen más chica y en WebP, no el archivo
+// original de 850 px que hacía lenta la biblioteca.
+const { default: sharp } = await import("sharp");
+const fotoGrande = await sharp({
+  create: { width: 850, height: 567, channels: 3, background: { r: 180, g: 30, b: 40 } },
+})
+  .jpeg({ quality: 90 })
+  .toBuffer();
+
+const conFoto = async (ancho) =>
+  withImage({
+    path: "Barbell_Squat/0.jpg",
+    ancho,
+    fetchImpl: async () => new Response(new Uint8Array(fotoGrande), { status: 200 }),
+  });
+
+test("la foto se entrega reducida y en WebP, no el original de 850 px", async () => {
+  const response = await conFoto(320);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("content-type"), "image/webp");
+  const cuerpo = Buffer.from(await response.arrayBuffer());
+  const meta = await sharp(cuerpo).metadata();
+  assert.equal(meta.format, "webp");
+  assert.ok(meta.width <= 320, `salió a ${meta.width} px`);
+  assert.ok(
+    cuerpo.length < fotoGrande.length,
+    `no se achicó: ${cuerpo.length} vs ${fotoGrande.length} bytes`,
+  );
+});
+
+test("cada medida se sirve en su propio ancho y sigue cacheada 30 días", async () => {
+  for (const ancho of [320, 640]) {
+    const response = await conFoto(ancho);
+    const meta = await sharp(Buffer.from(await response.arrayBuffer())).metadata();
+    assert.equal(meta.width, ancho);
+    assert.match(response.headers.get("cache-control") ?? "", /max-age=2592000, immutable/);
+  }
+});
+
+test("una medida inventada no se atiende: cae en la chica", async () => {
+  for (const ancho of [5000, 1, 0, -320, Number.NaN]) {
+    const response = await conFoto(ancho);
+    const meta = await sharp(Buffer.from(await response.arrayBuffer())).metadata();
+    assert.equal(meta.width, 320, `aceptó w=${ancho}`);
+  }
+});
+
+test("si la reducción falla se entrega el original: la pantalla no se rompe", async () => {
+  const response = await withImage({
+    path: "Barbell_Squat/0.jpg",
+    ancho: 320,
+    fetchImpl: async () => new Response(new Uint8Array(64), { status: 200 }), // no es una imagen
+  });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("content-type"), "image/jpeg");
+  assert.equal((await response.arrayBuffer()).byteLength, 64);
+});
 
 test("las fotos del segundo catálogo se sirven como JPEG desde su origen", async () => {
   const pedidas = [];
