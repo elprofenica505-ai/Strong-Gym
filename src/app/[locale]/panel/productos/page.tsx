@@ -50,8 +50,9 @@ export default async function ProductosPage({
       </div>
       <p className="max-w-2xl text-[0.875rem] leading-relaxed text-fog">
         Productos con precio, costo y stock. Las compras suman stock y registran un gasto;
-        las ventas exigen un cliente registrado, bajan el stock y registran un ingreso.
-        Todo en córdobas (NIO). El stock no se borra: se ajusta con una explicación.
+        las ventas bajan el stock y registran un ingreso, sea a un cliente con ficha o a
+        alguien que sólo vino a comprar (venta particular, sin registrar). Todo en córdobas
+        (NIO). El stock no se borra: se ajusta con una explicación.
       </p>
       <ProductManager />
     </div>

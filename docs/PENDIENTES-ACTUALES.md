@@ -49,7 +49,9 @@ Según el caso, debe cumplir:
   (PR #111). CI en verde en todos. La 00085 ya está aplicada en producción y los
   datos de vigencias quedaron alineados.
 - Supabase: proyecto ACTIVE_HEALTHY. Las migraciones aplicadas y registradas
-  llegan a la **00096** (`transferencias_y_arqueo`), que agrega las
+  llegan a la **00097** (`venta_particular`, registrada como `20261101223133`),
+  que permite cobrarle un producto a alguien sin ficha de cliente. Antes la
+  **00096** (`transferencias_y_arqueo`), que agrega las
   transferencias entre cuentas y el arqueo con transferencias; antes la
   **00095** (`cuentas_catalogos_dinero`), que crea la lectura y las altas de
   cuentas, métodos de pago, categorías de gasto y su bitácora (FIN-03).
@@ -64,7 +66,7 @@ Según el caso, debe cumplir:
   agrega abrir, arqueo y cierre, la 00088 impide anular el efectivo de una caja
   ya cerrada, la 00089 (`biblioteca_de_ejercicios`, `20261031225118`) crea el
   catálogo y «Mi rutina», la 00090 arregla el filtro «Peso corporal» y la 00091
-  ordena el catálogo como un gimnasio. El siguiente número libre es **00097**.
+  ordena el catálogo como un gimnasio. El siguiente número libre es **00098**.
 - Datos productivos al 31 de octubre, comprobados con consulta directa:
   **9 disciplinas** (activas: Pesas y máquinas, Boxeo y Zumba), **6 planes**
   activos, **89 sesiones** (88 programadas y 1 anulada), **2 reservas**,
@@ -92,7 +94,7 @@ Según el caso, debe cumplir:
 
 ## Resumen de avance al 1 de noviembre de 2026
 
-**72 tareas listadas: 31 cerradas y 41 abiertas.** De las 41 abiertas, **7 son
+**73 tareas listadas: 32 cerradas y 41 abiertas.** De las 41 abiertas, **7 son
 aceptaciones** en celular o con cuenta real (QA-03 a QA-09), **5 son de
 entrega** (ENT-01 a ENT-05, aplazadas a propósito) y **8 son opcionales del
 futuro** (FUT-01 a FUT-08). Quedan **21 de producto o negocio** por resolver,
@@ -1353,6 +1355,19 @@ Esta sección es un resumen, no otra lista de tareas.
   previa de saldos y tasa, se anulan con contra-asiento y motivo, y el arqueo
   las muestra aparte para que el efectivo esperado siga cuadrando. Sólo
   administrador con segundo factor, con bitácora. 57 comprobaciones en PGlite.
+- **Venta particular (PR #129 + migración 00097):** caja puede cobrarle un
+  producto a quien entró a comprar sin tener ficha. En «Productos → Vender» hay
+  dos botones excluyentes —«Cliente registrado» y «Venta particular»—, y la
+  venta arranca siempre en el primero para que nadie cierre una venta anónima
+  sin querer. En la particular se puede escribir el nombre de quien compra
+  (opcional, se guarda en `stock_movements.customer_name`); no se crea ningún
+  cliente, no se toca `gym_clients` y el ingreso no queda en la categoría de
+  nadie. El dinero entra por el mismo camino de siempre (`service_income`), así
+  que mueve la cuenta, aparece en Caja y cuenta en el arqueo. En la base se
+  retiró `stock_sale_client` (una venta ya no exige ficha) y un ingreso deja de
+  exigir cliente sin abrir un segundo camino de dinero. Pruebas:
+  `tests/venta-particular.test.mjs`, ampliación de `tests/products-rules.test.mjs`
+  y **204 comprobaciones** en `scripts/test-productos-sql.mjs`.
 - **El arqueo no se rellena solo (control de faltantes, PR #128):** «Usar lo
   esperado» —rellenar lo contado con lo que la base calcula— quedó **sólo para
   administración con segundo factor**. El cajero escribe lo que contó y, si

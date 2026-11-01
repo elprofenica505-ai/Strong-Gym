@@ -134,9 +134,11 @@ async function run(db: NonNullable<Awaited<ReturnType<typeof getSupabaseServerCl
         p_request: x.request,
         p_product: x.product,
         p_qty: x.qty,
+        // `null` = venta particular: se cobra igual, sin ficha de cliente.
         p_client: x.client,
         p_method: x.method,
         p_account: x.account,
+        p_customer_name: x.client === null ? (x.customer ?? null) : null,
       });
     }
     case "adjust": {

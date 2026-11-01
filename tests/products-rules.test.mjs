@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseAttributes, profitOf, dataUrlBytes, productSchema, actionSchema, productFailureMessage, saleCatalogSchema, MAX_IMAGE_CHARS } from '../src/lib/products/rules.ts';
+import { parseAttributes, profitOf, dataUrlBytes, productSchema, actionSchema, productFailureMessage, saleCatalogSchema, saleSchema, CUSTOMER_NAME_MAX, MAX_IMAGE_CHARS } from '../src/lib/products/rules.ts';
 
 test('atributos: una línea por dato, ignora líneas sin clave o valor', () => {
   assert.deepEqual(parseAttributes('Sabor: chocolate\n\n: sin clave\nTamaño: 2 lb\nvacío:   \n'), { Sabor: 'chocolate', 'Tamaño': '2 lb' });
@@ -71,4 +71,30 @@ test('mensajes: códigos conocidos en español, desconocidos sin detalle técnic
   assert.match(productFailureMessage('SIN_STOCK'), /stock/);
   assert.match(productFailureMessage('ALGO_RARO'), /No se pudo confirmar/);
   assert.doesNotMatch(productFailureMessage(undefined), /null|undefined|error/i);
+});
+
+test('venta particular: se cobra sin cliente registrado, con nombre opcional', () => {
+  const req = '11111111-1111-4111-8111-111111111111';
+  const pid = '22222222-2222-4222-8222-222222222222';
+  const base = { request: req, product: pid, qty: 1, method: 'efectivo', account: 'caja_fuerte_nio' };
+  // Sin ficha y sin nombre: venta de mostrador pura.
+  assert.ok(saleSchema.safeParse({ ...base, client: null }).success);
+  // Sin ficha, con nombre suelto.
+  const conNombre = saleSchema.parse({ ...base, client: null, customer: '  Muchacho de la esquina  ' });
+  assert.equal(conNombre.customer, 'Muchacho de la esquina');
+  // Con ficha sigue funcionando igual que antes.
+  assert.ok(saleSchema.safeParse({ ...base, client: '33333333-3333-4333-8333-333333333333' }).success);
+  // Una ficha inventada no pasa: tiene que ser UUID.
+  assert.equal(saleSchema.safeParse({ ...base, client: 'particular' }).success, false);
+  assert.equal(saleSchema.safeParse({ ...base, client: '' }).success, false);
+  // El nombre suelto tiene límites: ni una letra ni más de 80.
+  assert.equal(saleSchema.safeParse({ ...base, client: null, customer: 'A' }).success, false);
+  assert.equal(saleSchema.safeParse({ ...base, client: null, customer: 'x'.repeat(CUSTOMER_NAME_MAX + 1) }).success, false);
+  assert.ok(saleSchema.safeParse({ ...base, client: null, customer: 'x'.repeat(CUSTOMER_NAME_MAX) }).success);
+});
+
+test('los errores de venta explican que existe la venta particular', () => {
+  assert.match(productFailureMessage('CLIENT_REQUIRED'), /Venta particular/);
+  assert.match(productFailureMessage('INVALID_CLIENT'), /Venta particular/);
+  assert.match(productFailureMessage('INVALID_CUSTOMER'), /80/);
 });

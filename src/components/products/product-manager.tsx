@@ -1,11 +1,14 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { ShoppingBag, UserRound } from "lucide-react";
 import { compressProductImage } from "@/lib/products/compress";
 import {
+  CUSTOMER_NAME_MAX,
   parseAttributes,
   profitOf,
   productFailureMessage,
 } from "@/lib/products/rules";
+import { cn } from "@/lib/utils";
 import {
   ProductCatalogImage,
   ProductCatalogTabs,
@@ -46,6 +49,8 @@ const button =
   "rounded-full border border-line px-4 py-2 text-[0.875rem] text-ink transition-colors hover:border-brand disabled:opacity-50";
 const primary =
   "rounded-full bg-brand px-5 py-2.5 text-[0.9rem] font-semibold text-ink disabled:opacity-50";
+/** Botón elegido del par «cliente registrado / venta particular». */
+const saleSelected = "border-brand bg-brand-soft font-semibold text-ink";
 const nio = (n: number) =>
   new Intl.NumberFormat("es-NI", { style: "currency", currency: "NIO", maximumFractionDigits: 2 }).format(n);
 
@@ -78,6 +83,9 @@ export function ProductManager() {
     useState<ProductCatalogView>("productos");
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string | null>(null);
+  // Venta particular: cobrar a alguien que no tiene ficha en el gimnasio.
+  // Se elige explícitamente; por defecto sigue mandando el cliente registrado.
+  const [saleKind, setSaleKind] = useState<"registrado" | "particular">("registrado");
   // Referencia de la operación en curso: se conserva si la respuesta se pierde.
   const requestRef = useRef<string | null>(null);
 
@@ -121,6 +129,8 @@ export function ProductManager() {
     setMode(next);
     setSelected(product);
     setMessage(null);
+    // Cada venta arranca en «cliente registrado»: nadie cae en particular sin querer.
+    setSaleKind("registrado");
     requestRef.current = crypto.randomUUID();
     if (next === "form") {
       setImageNote(null);
@@ -231,6 +241,7 @@ export function ProductManager() {
     e.preventDefault();
     if (!selected || !requestRef.current) return;
     const fd = new FormData(e.currentTarget);
+    const particular = mode === "sale" && saleKind === "particular";
     const qty = Number(fd.get("qty"));
     if (mode === "purchase") {
       const ok = await send(
@@ -257,12 +268,16 @@ export function ProductManager() {
             request: requestRef.current,
             product: selected.id,
             qty,
-            client: String(fd.get("client")),
+            // Sin ficha = venta particular. El nombre es opcional.
+            client: particular ? null : String(fd.get("client")),
+            customer: particular ? String(fd.get("customer") ?? "").trim() || null : null,
             method: String(fd.get("method")),
             account: String(fd.get("account")),
           },
         },
-        `Venta registrada: ${qty} x ${selected.name}.`,
+        particular
+          ? `Venta particular registrada: ${qty} x ${selected.name}.`
+          : `Venta registrada: ${qty} x ${selected.name}.`,
       );
       if (ok) close();
     } else if (mode === "adjust") {
@@ -668,15 +683,58 @@ export function ProductManager() {
           )}
           {mode === "sale" && (
             <>
-              <label className="grid gap-1 text-[0.85rem]">
-                Cliente registrado
-                <select name="client" className={input} required defaultValue="">
-                  <option value="" disabled>Elegí un cliente</option>
-                  {data.clients.map((c) => (
-                    <option key={c.id} value={c.id}>{c.full_name}</option>
-                  ))}
-                </select>
-              </label>
+              <div className="grid gap-2 sm:col-span-2">
+                <span className="text-[0.85rem]">¿A quién se le vende?</span>
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Tipo de venta">
+                  <button
+                    type="button"
+                    aria-pressed={saleKind === "registrado"}
+                    onClick={() => setSaleKind("registrado")}
+                    className={cn("inline-flex items-center gap-2", button, saleKind === "registrado" && saleSelected)}
+                  >
+                    <UserRound className="size-4" aria-hidden="true" />
+                    Cliente registrado
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={saleKind === "particular"}
+                    onClick={() => setSaleKind("particular")}
+                    className={cn("inline-flex items-center gap-2", button, saleKind === "particular" && saleSelected)}
+                  >
+                    <ShoppingBag className="size-4" aria-hidden="true" />
+                    Venta particular
+                  </button>
+                </div>
+                <p className="text-[0.8rem] text-fog">
+                  {saleKind === "particular"
+                    ? "Venta particular: se cobra y el stock baja igual, pero no queda a nombre de ningún cliente del gimnasio."
+                    : "La venta queda en la ficha del cliente: cuenta para su categoría y su historial."}
+                </p>
+              </div>
+              {saleKind === "registrado" ? (
+                <label className="grid gap-1 text-[0.85rem]">
+                  Cliente registrado
+                  <select name="client" className={input} required defaultValue="">
+                    <option value="" disabled>Elegí un cliente</option>
+                    {data.clients.map((c) => (
+                      <option key={c.id} value={c.id}>{c.full_name}</option>
+                    ))}
+                  </select>
+                </label>
+              ) : (
+                <label className="grid gap-1 text-[0.85rem]">
+                  Nombre de quien compra (opcional)
+                  <input
+                    name="customer"
+                    className={input}
+                    maxLength={CUSTOMER_NAME_MAX}
+                    placeholder="Ej. muchacho que vino por la camiseta"
+                  />
+                  <span className="text-[0.75rem] text-fog">
+                    Si no lo escribís, queda como «Venta particular» en el movimiento.
+                  </span>
+                </label>
+              )}
               <label className="grid gap-1 text-[0.85rem]">
                 Cantidad
                 <input name="qty" className={input} inputMode="numeric" required placeholder="Ej. 1" />
