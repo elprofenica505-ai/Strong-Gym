@@ -10,6 +10,7 @@ import {
   cashError,
   cashNeedsReason,
   cashNotesProblem,
+  markExpectedFill,
   parseCashAmount,
   parseCashState,
   type CashSession,
@@ -88,7 +89,18 @@ function Figure({
   );
 }
 
-export function CashSessionPanel({ accounts }: { accounts: AccountOption[] }) {
+export function CashSessionPanel({
+  accounts,
+  canPrefillExpected = false,
+}: {
+  accounts: AccountOption[];
+  /**
+   * `true` sólo para administración. «Usar lo esperado» rellena el arqueo con
+   * el número que la base ya calcula, así que un faltante deja de verse y deja
+   * de tener motivo. El cajero escribe lo que contó y justifica la diferencia.
+   */
+  canPrefillExpected?: boolean;
+}) {
   const [state, setState] = useState<CashState | null>(null);
   const [load, setLoad] = useState<"loading" | "ready" | "error">("loading");
   const [errorCode, setErrorCode] = useState<string | null>(null);
@@ -452,18 +464,21 @@ export function CashSessionPanel({ accounts }: { accounts: AccountOption[] }) {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setCountedNio(expectedNio.toFixed(2));
-                  setCountedUsd(expectedUsd.toFixed(2));
-                  setFormError(null);
-                }}
-                className="inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-brand"
-              >
-                <ArrowLeftRight className="size-4" aria-hidden="true" />
-                Usar lo esperado
-              </button>
+              {canPrefillExpected ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCountedNio(expectedNio.toFixed(2));
+                    setCountedUsd(expectedUsd.toFixed(2));
+                    setCloseNotes((current) => markExpectedFill(current));
+                    setFormError(null);
+                  }}
+                  className="inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-brand"
+                >
+                  <ArrowLeftRight className="size-4" aria-hidden="true" />
+                  Usar lo esperado
+                </button>
+              ) : null}
               {bothCounted ? (
                 <p className="text-sm">
                   <span className={differenceTone(liveDifferenceNio ?? 0)}>
@@ -480,6 +495,22 @@ export function CashSessionPanel({ accounts }: { accounts: AccountOption[] }) {
                 </p>
               )}
             </div>
+
+            {canPrefillExpected ? (
+              <p className="rounded-xl border border-line bg-paper/60 px-4 py-3 text-[0.8125rem] text-fog">
+                «Usar lo esperado» rellena lo contado con lo que debería haber
+                —para cuando ya contaste y coincide— y deja la constancia en la
+                nota del cierre. Si la diferencia es real, no lo uses: escribí
+                lo que contaste y el motivo.
+              </p>
+            ) : (
+              <p className="rounded-xl border border-line bg-paper/60 px-4 py-3 text-[0.8125rem] text-fog">
+                Escribí lo que contaste. Si falta o sobra, el motivo es
+                obligatorio y el arqueo queda con la diferencia a la vista en
+                «Últimos cierres»; el faltante no se puede tapar rellenando con
+                lo esperado.
+              </p>
+            )}
 
             <label className={labelClass}>
               {needsReason ? "Motivo del faltante o sobrante (obligatorio)" : "Nota del cierre (opcional)"}

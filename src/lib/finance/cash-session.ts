@@ -336,6 +336,37 @@ export function cashError(code: string | null | undefined): { code: string; mess
   return { code: match, message: CASH_ERRORS[match] };
 }
 
+/**
+ * «Usar lo esperado» (control de faltantes).
+ *
+ * Rellenar lo contado con lo que la base calcula convierte un faltante en un
+ * cierre «que cuadra»: la diferencia desaparece del arqueo y no queda motivo
+ * que explicar. Por eso la pantalla sólo se lo ofrece al administrador; el
+ * cajero escribe lo que contó y, si falta o sobra, lo justifica por escrito.
+ *
+ * La decisión se toma por rol, no por permiso de caja: el cajero puede tener
+ * todos los interruptores de caja encendidos y aun así no debe poder tapar un
+ * faltante con un botón.
+ */
+export function canPrefillExpected(role: unknown): boolean {
+  return role === "admin";
+}
+
+/** Texto que queda anotado en el cierre cuando se usa el relleno. */
+export const EXPECTED_FILL_NOTE =
+  "Cierre con «Usar lo esperado»: el efectivo no se contó billete por billete.";
+
+/**
+ * Deja constancia en la nota del cierre sin pisar lo que ya se escribió.
+ * Devuelve la nota tal cual si no entra en el largo permitido.
+ */
+export function markExpectedFill(notes: string): string {
+  const text = notes.trim();
+  if (text.includes(EXPECTED_FILL_NOTE)) return text;
+  const merged = text === "" ? EXPECTED_FILL_NOTE : `${text} · ${EXPECTED_FILL_NOTE}`;
+  return merged.length > CASH_NOTES_MAX ? text : merged;
+}
+
 /** Motivo de cierre: obligatorio cuando el arqueo no cuadra. */
 export function cashNotesProblem(notes: string, needsReason: boolean): string | null {
   const text = notes.trim();
