@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { isLocale } from "@/i18n/config";
 import { getCurrentUser } from "@/lib/data/queries";
@@ -7,6 +6,7 @@ import { readData } from "@/lib/data/read-result";
 import { getMyRoutine } from "@/lib/exercises/queries";
 import { RoutineView } from "@/components/exercises/routine-view";
 import { ExerciseAttribution } from "@/components/exercises/attribution";
+import { BackLink } from "@/components/ui/back-link";
 
 export async function generateMetadata({
   params,
@@ -34,9 +34,7 @@ export default async function MyRoutinePage({
   return (
     <div className="container-x space-y-6 py-6">
       <header className="space-y-2">
-        <Link href={`/${locale}/mi-cuenta/ejercicios`} className="text-xs font-semibold text-fog hover:text-ink">
-          ← Biblioteca
-        </Link>
+        <BackLink href={`/${locale}/mi-cuenta/ejercicios`} hint="Biblioteca" className="mb-2" />
         <h1 className="display-xl text-[1.75rem] sm:text-[2.25rem]">Mi rutina</h1>
         <p className="max-w-2xl text-sm leading-relaxed text-fog">
           Los ejercicios que guardaste para tu sesión, con sus series y

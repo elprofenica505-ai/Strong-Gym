@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { isLocale } from "@/i18n/config";
 import { getCurrentUser } from "@/lib/data/queries";
@@ -21,6 +20,7 @@ import { ExerciseAttribution } from "@/components/exercises/attribution";
 import { exerciseFrames } from "@/lib/exercises/figure";
 import { ExerciseMotion } from "@/components/exercises/exercise-motion";
 import { ExerciseTimer } from "@/components/exercises/exercise-timer";
+import { BackLink } from "@/components/ui/back-link";
 import { SaveExercise } from "@/components/exercises/save-exercise";
 
 export async function generateMetadata({
@@ -52,9 +52,11 @@ export default async function ExerciseDetailPage({
   );
 
   const back = (
-    <Link href={`/${locale}/mi-cuenta/ejercicios`} className="text-xs font-semibold text-fog hover:text-ink">
-      ← Biblioteca
-    </Link>
+    <BackLink
+      href={`/${locale}/mi-cuenta/ejercicios`}
+      hint="Biblioteca"
+      className="mb-2"
+    />
   );
 
   if (!result.ok) {

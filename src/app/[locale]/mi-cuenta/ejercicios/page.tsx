@@ -18,6 +18,7 @@ import { ExerciseCard } from "@/components/exercises/exercise-card";
 import { ExerciseAttribution } from "@/components/exercises/attribution";
 import { UpdateLibrary } from "@/components/exercises/update-library";
 import { cn } from "@/lib/utils";
+import { BackLink } from "@/components/ui/back-link";
 
 export async function generateMetadata({
   params,
@@ -111,9 +112,7 @@ export default async function ExerciseLibraryPage({
   return (
     <div className="container-x space-y-6 py-6">
       <header className="space-y-2">
-        <Link href={`/${locale}/mi-cuenta`} className="text-xs font-semibold text-fog hover:text-ink">
-          ← Mi cuenta
-        </Link>
+        <BackLink href={`/${locale}/mi-cuenta`} hint="Mi cuenta" className="mb-2" />
         <h1 className="display-xl text-[1.75rem] sm:text-[2.25rem]">Biblioteca de ejercicios</h1>
         <p className="max-w-2xl text-sm leading-relaxed text-fog">
           Cómo se hace cada ejercicio, qué músculos trabaja, con qué máquina y
