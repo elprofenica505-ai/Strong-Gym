@@ -44,12 +44,37 @@ export default async function AccountPage({
   const dict = getDictionary(locale);
 
   const user = await getCurrentUser();
-  const result = await readData(() =>
-    Promise.all([
-      user ? getMyBookings(user.id) : Promise.resolve([]),
-      getPlans(),
-    ]),
-  );
+  const cliente = user ? !isStaffRole(user.role) : false;
+
+  /*
+   * Todo lo de la pantalla se pide **a la vez**, no uno detrás de otro (EX-06).
+   *
+   * Antes eran cinco consultas en fila: reservas y planes, después el plan
+   * asignado, después el progreso, después la asistencia y al final la edad.
+   * Cada una esperaba a la anterior, así que la pantalla tardaba la suma de
+   * las cinco idas y vueltas. Ahora salen juntas y se espera la más lenta: el
+   * cliente ve «Mi cuenta» en una sola ida y vuelta.
+   *
+   * Se mantiene lo que ya estaba bien: cada lectura falla por su cuenta. Un
+   * problema con el plan no borra las reservas ni el progreso, y cada bloque
+   * muestra su propio aviso.
+   */
+  const [result, assignedPlan, myProgress, myAttendance, ageResult] = await Promise.all([
+    readData(() =>
+      Promise.all([
+        user ? getMyBookings(user.id) : Promise.resolve([]),
+        getPlans(),
+      ]),
+    ),
+    // Lectura separada: un fallo de plan no convierte el dato en «sin plan».
+    user ? readData(getMyAssignedPlan) : Promise.resolve(null),
+    // Progreso propio (00040). Si falla, el cliente ve un aviso, no «sin datos».
+    cliente ? readData(getMyProgress) : Promise.resolve(null),
+    cliente ? readData(() => getClientAttendance(null)) : Promise.resolve(null),
+    // Menores de 18: cuenta activa, pero sin pase, reservas, progreso, asistencia ni calculadora (00047).
+    cliente ? readData(getMyAgeStatus) : Promise.resolve(null),
+  ]);
+
   if (!result.ok)
     return (
       <section className="container-x py-12">
@@ -57,14 +82,6 @@ export default async function AccountPage({
       </section>
     );
   const [bookings, plans] = result.data;
-  // Lectura separada: un fallo de plan no convierte el dato en «sin plan»
-  // ni impide consultar reservas. El RPC sólo consulta la identidad de la sesión.
-  const assignedPlan = user ? await readData(getMyAssignedPlan) : null;
-  // Progreso propio (00040). Si la consulta falla, el cliente ve un aviso, no «sin datos».
-  const myProgress = user && !isStaffRole(user.role) ? await readData(getMyProgress) : null;
-  const myAttendance = user && !isStaffRole(user.role) ? await readData(() => getClientAttendance(null)) : null;
-  // Menores de 18: cuenta activa, pero sin pase, reservas, progreso, asistencia ni calculadora (00047).
-  const ageResult = user && !isStaffRole(user.role) ? await readData(getMyAgeStatus) : null;
   const ageError = ageResult && !ageResult.ok ? ageResult.code : null;
   const ageStatus = ageResult && ageResult.ok ? ageResult.data : null;
 

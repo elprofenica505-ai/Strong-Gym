@@ -16,9 +16,47 @@ export type ExerciseFrames = Pick<
   "imageMain" | "imageStart" | "imagePeak"
 >;
 
+/**
+ * Tamaños de la foto (EX-06).
+ *
+ * Por qué: las fotos del origen pesan ~60 KB cada una y vienen a 850 px de
+ * ancho, pero una tarjeta de la grilla mide ~170 px en el teléfono. Se estaba
+ * bajando el triple de píxeles de los que se muestran. Medido sobre una foto
+ * real: 71 KB → **~10 KB** a 320 px (‑86 %) y ~24 KB a 640 px.
+ *
+ * El proxy `/api/exercises/image` recibe `w` y devuelve WebP a ese ancho.
+ * Sólo tres medidas: cuantas más, más cachés distintas que llenar.
+ */
+export const FIGURE_WIDTHS = { card: 320, cardBig: 640, detail: 640, full: 960 } as const;
+
+/** Las dos medidas que se ofrecen al navegador en cada pantalla. */
+export const FIGURE_VARIANTS = {
+  /** Grilla: dos columnas en el teléfono, hasta cinco en pantalla grande. */
+  card: {
+    widths: [FIGURE_WIDTHS.card, FIGURE_WIDTHS.cardBig],
+    sizes: "(min-width: 1280px) 19vw, (min-width: 1024px) 24vw, (min-width: 640px) 32vw, 45vw",
+  },
+  /** Ficha: la imagen ocupa la columna principal. */
+  detail: {
+    widths: [FIGURE_WIDTHS.detail, FIGURE_WIDTHS.full],
+    sizes: "(min-width: 1024px) 60vw, 100vw",
+  },
+} as const;
+
+export type FigureVariant = keyof typeof FIGURE_VARIANTS;
+
 /** Ruta del proxy: la foto nunca se enlaza al origen. */
-export const figureUrl = (path: string | null) =>
-  path ? `/api/exercises/image?path=${encodeURIComponent(path)}` : null;
+export const figureUrl = (path: string | null, width: number = FIGURE_WIDTHS.card) =>
+  path ? `/api/exercises/image?path=${encodeURIComponent(path)}&w=${width}` : null;
+
+/**
+ * La misma foto en dos medidas para que el navegador elija una sola: el
+ * teléfono baja la chica y la pantalla grande la nítida. Nunca las dos.
+ */
+export function figureSrcSet(path: string | null, widths: readonly number[]) {
+  if (!path) return null;
+  return widths.map((width) => `${figureUrl(path, width)} ${width}w`).join(", ");
+}
 
 /** Las dos fotos que se alternan, si las hay; si no, la portada. */
 export function exerciseFrames(frames: ExerciseFrames) {
@@ -29,8 +67,8 @@ export function exerciseFrames(frames: ExerciseFrames) {
 }
 
 /** Portada para listas: la foto principal o la del inicio del movimiento. */
-export function exerciseImage(frames: ExerciseFrames) {
-  return figureUrl(exerciseFrames(frames).first);
+export function exerciseImage(frames: ExerciseFrames, width: number = FIGURE_WIDTHS.card) {
+  return figureUrl(exerciseFrames(frames).first, width);
 }
 
 /** Cada cuánto se cambia de foto. Dos por segundo se lee como un GIF. */

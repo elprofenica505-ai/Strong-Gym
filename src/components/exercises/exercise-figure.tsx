@@ -3,9 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import {
   FIGURE_INTERVAL_MS,
+  FIGURE_VARIANTS,
   exerciseFrames,
+  figureSrcSet,
   figureUrl,
   type ExerciseFrames,
+  type FigureVariant,
 } from "@/lib/exercises/figure";
 
 /**
@@ -27,20 +30,26 @@ export function ExerciseFigure({
   frames,
   className = "",
   playing = true,
+  variant = "card",
 }: {
   name: string;
   frames: ExerciseFrames;
   className?: string;
   /** Falso lo deja quieto en la posición inicial. */
   playing?: boolean;
+  /** Tamaño de foto: la tarjeta de la grilla o la imagen grande de la ficha. */
+  variant?: FigureVariant;
 }) {
   const { first, second, animated } = exerciseFrames(frames);
-  const firstUrl = figureUrl(first);
+  const { widths, sizes } = FIGURE_VARIANTS[variant];
+  const firstUrl = figureUrl(first, widths[0]);
+  const firstSrcSet = figureSrcSet(first, widths);
   const [tick, setTick] = useState(0);
   const [onScreen, setOnScreen] = useState(true);
   const box = useRef<HTMLDivElement | null>(null);
 
-  const secondUrl = second ? figureUrl(second) : null;
+  const secondUrl = second ? figureUrl(second, widths[0]) : null;
+  const secondSrcSet = figureSrcSet(second, widths);
   const moves = animated && secondUrl !== null;
 
   // Sólo se mueve lo que se está viendo: con 25 tarjetas en pantalla nadie
@@ -78,6 +87,8 @@ export function ExerciseFigure({
       // eslint-disable-next-line @next/next/no-img-element -- foto del catálogo servida por nuestra propia ruta.
       <img
         src={firstUrl}
+        srcSet={firstSrcSet ?? undefined}
+        sizes={sizes}
         alt={name}
         width={512}
         height={512}
@@ -98,6 +109,8 @@ export function ExerciseFigure({
       {/* eslint-disable-next-line @next/next/no-img-element -- foto del catálogo servida por nuestra propia ruta. */}
       <img
         src={firstUrl}
+        srcSet={firstSrcSet ?? undefined}
+        sizes={sizes}
         alt={name}
         width={512}
         height={512}
@@ -109,6 +122,8 @@ export function ExerciseFigure({
       {/* eslint-disable-next-line @next/next/no-img-element -- la segunda foto es la misma escena, así que no necesita texto alternativo. */}
       <img
         src={secondUrl}
+        srcSet={secondSrcSet ?? undefined}
+        sizes={sizes}
         alt=""
         aria-hidden="true"
         width={512}

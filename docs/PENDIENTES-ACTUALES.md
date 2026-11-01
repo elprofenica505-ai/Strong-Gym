@@ -84,7 +84,7 @@ Según el caso, debe cumplir:
 
 ## Resumen de avance al 1 de noviembre de 2026
 
-**68 tareas listadas: 25 cerradas y 43 abiertas.** De las 43 abiertas, **7 son
+**69 tareas listadas: 26 cerradas y 43 abiertas.** De las 43 abiertas, **7 son
 aceptaciones** en celular o con cuenta real (QA-03 a QA-09), **5 son de
 entrega** (ENT-01 a ENT-05, aplazadas a propósito) y **8 son opcionales del
 futuro** (FUT-01 a FUT-08). Quedan **23 de producto o negocio** por resolver,
@@ -96,7 +96,7 @@ futuro** (FUT-01 a FUT-08). Quedan **23 de producto o negocio** por resolver,
 | **Etapa 2 — Navegación** | Hecha: Inicio, Clientes, Finanzas, Operación, Administración y Mis clientes | Solo la decisión de OP-09 |
 | **Etapa 3 — Operación diaria** | OP-01 a OP-05 cerradas y desplegadas | OP-06 (cierre de reservas pasadas), OP-07 (cambio de día sin recargar), OP-08 (vincular ficha con cuenta web) y la aceptación QA-09 |
 | **Clientes, vigencias y planes** | CLI-01, CLI-02 y CLI-06 cerradas y desplegadas | Aceptación en celular (QA-09); decisiones CLI-03, CLI-04 y CLI-05 |
-| **Biblioteca de ejercicios (EX-01 a EX-04)** | Cerrada: **467 ejercicios de sala** de 774 cargados, **224 con fotos reales** (inicio y final) y 243 con dibujo, movimiento con «Pausar movimiento», color por familia de equipo, ficha, cronómetro y «Mi rutina» | Aceptación en celular; decisiones del dueño sobre favoritos y acceso sin sesión |
+| **Biblioteca de ejercicios (EX-01 a EX-06)** | Cerrada: **467 ejercicios de sala** de 774 cargados, **224 con fotos reales** (inicio y final) y 243 con dibujo —todas servidas en WebP a la medida de la pantalla, ~9,5 KB por foto en la grilla—, movimiento con «Pausar movimiento», color por familia de equipo, ficha, cronómetro y «Mi rutina» | Aceptación en celular; decisiones del dueño sobre favoritos y acceso sin sesión |
 | **Etapa 4 — Finanzas y productos** | En uso real: cobros, gastos, deudas y abonos NIO/USD, vuelto, productos con stock, Caja por módulos con historial paginado, **apertura y cierre con arqueo**, reportes y descargas | FIN-03, FIN-06 y FIN-07 |
 | **Calendario y disciplinas (OP-05)** | Cerrado y desplegado, con grillas, sesiones sueltas, bloqueos, generador con vista previa y entrenadores | Solo la aceptación en celular (QA-09) |
 | **Etapa 5 — Aceptación integral** | Parcial: QA-01 y QA-02 cerradas | QA-03 a QA-08, CAL-03, LEG-01 y NEG-01 |
@@ -714,6 +714,38 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   Evidencia: 8 pruebas nuevas (`tests/back-link.test.mjs`) que exigen que diga
   Atrás, que la flecha sea un dibujo y no el carácter viejo, y que el área de
   toque llegue a 44 px; `typecheck`, `lint` y `build` limpios.
+- [x] **EX-06 · Alta · Código — La app se siente lenta al entrar.**
+  Cerrada el 1 de noviembre. El dueño preguntó cuánto pesa cada imagen con
+  movimiento porque «al entrar a mi cuenta sentí bastante lento».
+  **Lo medido, con los archivos reales** (no una estimación): una foto del
+  segundo catálogo pesa **~60 KB y viene a 850 px de ancho**; los dibujos de
+  RepDB pesan ~16 KB. Un ejercicio animado bajaba **~120–133 KB** por ficha, y
+  la grilla de 25 tarjetas se llevaba **~3,2 MB** en la primera visita. Y la
+  tarjeta del teléfono mide ~170 px: se estaba bajando el triple de píxeles de
+  los que se muestran.
+  **Arreglo 1 — el proxy redimensiona**: `/api/exercises/image` acepta
+  `?w=320|640|960`, recorta con `sharp` y devuelve **WebP**. Medido sobre cinco
+  fotos reales y un dibujo: 66 KB de promedio → **9,5 KB a 320 px** (tarjeta)
+  y 24 KB a 640 px (ficha). Un ejercicio animado pasa de ~133 KB a **~19 KB**;
+  la grilla de 25 tarjetas, de **3,24 MB a 0,46 MB**; una pantalla de teléfono
+  con 6 tarjetas, de 0,78 MB a 0,11 MB. Sólo se admiten esas tres medidas (una
+  medida inventada cae en la chica) y si el recorte falla se entrega el
+  original: la pantalla nunca se rompe por una imagen.
+  **Arreglo 2 — el navegador elige**: cada `<img>` lleva `srcset` con dos
+  medidas y `sizes`, así el teléfono baja la de 320 y una pantalla grande la
+  de 640, nunca las dos. La ficha usa 640/960, la tarjeta 320/640.
+  **Arreglo 3 — «Mi cuenta» hace una sola ida y vuelta**: la pantalla pedía
+  reservas y planes, después el plan asignado, después el progreso, después la
+  asistencia y al final la edad, **en fila**. Ahora las cinco lecturas salen a
+  la vez con `Promise.all` y se espera la más lenta; se mantiene que cada una
+  falle por su cuenta (un problema con el plan no borra las reservas).
+  `sharp` pasó de `devDependencies` a `dependencies`: la ruta lo necesita en
+  producción.
+  Evidencia: 4 pruebas nuevas de la ruta (entrega WebP más chico, cada medida
+  en su ancho, medida inventada rechazada, fallo de recorte devuelve el
+  original) y 4 de la figura (`srcset`, medida por pantalla, sólo tres medidas);
+  **78 pruebas de ejercicios, 1039 generales y 64 comprobaciones SQL** en verde;
+  `typecheck`, `lint` y `build` limpios.
 - [ ] **CLI-03 · Media · Revisión profesional — Calculadora, dieta y rutinas.**
   La herramienta, el consentimiento, la aprobación del personal y el bloqueo de
   menores ya existen. Falta que un profesional revise fórmulas, mínimos de

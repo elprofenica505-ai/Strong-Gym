@@ -18,12 +18,15 @@ export function ExerciseMotion({
   frames,
   className = "",
   tone,
+  variant = "detail",
 }: {
   name: string;
   frames: ExerciseFrames;
   className?: string;
   /** Color de la familia de equipo: mismo lenguaje que la grilla. */
   tone?: string;
+  /** En la ficha se pide la foto grande; la tarjeta usa la chica. */
+  variant?: "card" | "detail";
 }) {
   const [playing, setPlaying] = useState(true);
   const { animated } = exerciseFrames(frames);
@@ -32,7 +35,7 @@ export function ExerciseMotion({
     <div className="space-y-2">
       <div className="overflow-hidden rounded-2xl border border-line bg-card">
         {tone ? <span aria-hidden="true" className="block h-[3px] w-full" style={{ backgroundColor: tone }} /> : null}
-        <ExerciseFigure name={name} frames={frames} className={className} playing={playing} />
+        <ExerciseFigure name={name} frames={frames} className={className} playing={playing} variant={variant} />
       </div>
       {animated ? (
         <button
