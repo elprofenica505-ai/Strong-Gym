@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ExerciseCard as ExerciseCardData } from "@/lib/exercises/queries";
-import { bodyPartLabel, difficultyLabel, equipmentLabel } from "@/lib/exercises/terms";
+import { bodyPartLabel, difficultyLabel, equipmentLabel, equipmentTone } from "@/lib/exercises/terms";
 import { suggestDose, doseLabel } from "@/lib/exercises/prescription";
 import { ExerciseFigure } from "@/components/exercises/exercise-figure";
 
@@ -30,6 +30,13 @@ export function ExerciseCard({
       href={`/${locale}/mi-cuenta/ejercicios/${encodeURIComponent(exercise.id)}`}
       className="group flex flex-col overflow-hidden rounded-2xl border border-line bg-card transition-colors hover:border-brand focus-visible:border-brand focus-visible:outline-none"
     >
+      {/* Un hilo de color por familia de equipo: la foto viene de dos orígenes
+          distintos y así toda la grilla se lee como una sola biblioteca. */}
+      <span
+        aria-hidden="true"
+        className="h-[3px] w-full"
+        style={{ backgroundColor: equipmentTone(exercise.equipment) }}
+      />
       <div className="flex aspect-square items-center justify-center bg-paper/70">
         {/* Dos fotos alternadas si el ejercicio las tiene: se lee como el GIF del origen. */}
         <ExerciseFigure name={exercise.nameEs} frames={exercise} className="size-full" />

@@ -243,6 +243,26 @@ export async function getMyRoutine(): Promise<MyRoutine> {
   return { items, canSave: true };
 }
 
+/**
+ * Vuelve a aplicar el criterio «esto es de gimnasio» a todo el catálogo.
+ * Se llama después de importar, así lo nuevo entra ya filtrado. No borra nada:
+ * sólo marca qué se muestra.
+ */
+export async function applyLibraryVisibility(): Promise<
+  { ok: true; visible: number; hidden: number } | { ok: false }
+> {
+  const supabase = await getSupabaseServerClient();
+  if (!supabase) return { ok: false };
+  const { data, error } = await supabase.rpc("admin_reset_library_visibility");
+  if (error) return { ok: false };
+  const value = record(data) ?? {};
+  return {
+    ok: true,
+    visible: numberOrNull(value.visible) ?? 0,
+    hidden: numberOrNull(value.hidden) ?? 0,
+  };
+}
+
 /** Guarda un ejercicio en «Mi rutina». Devuelve el código de la base si falla. */
 export async function saveRoutineItem(input: {
   exerciseId: string;

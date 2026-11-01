@@ -102,6 +102,7 @@ export const EQUIPMENT_LABELS: Record<string, string> = {
   leg_extension: "Extensión de cuádriceps",
   leg_press: "Prensa de piernas",
   loop_band: "Banda circular",
+  machine: "Máquina de sala",
   medicine_ball: "Balón medicinal",
   pec_deck: "Pec deck",
   plate_loaded_dip_machine: "Fondos con discos",
@@ -150,6 +151,7 @@ export const EQUIPMENT_GROUPS: Array<{
     label: "Máquinas",
     hint: "Prensa, hack squat, jalón, pec deck, Smith y el resto de la sala",
     slugs: [
+      "machine",
       "leg_press",
       "hack_squat",
       "smith_machine",
@@ -305,10 +307,36 @@ export function equipmentGroupOf(slug: string | null): string {
 }
 
 /**
+ * Color de cada familia de equipo (EX-01).
+ *
+ * La biblioteca tiene dos orígenes con dibujos y fotos muy distintas. Para que
+ * todo se lea como una sola pantalla —y no como dos catálogos pegados— cada
+ * familia lleva un color de la misma paleta oscura del aplicativo: el rojo de la
+ * marca para el peso libre, azul acero para las máquinas, ámbar para las poleas
+ * y verde para los aparatos de peso corporal. Es un detalle de 3 px: tiñe la
+ * tarjeta, no compite con la foto.
+ */
+export const EQUIPMENT_TONES: Record<string, string> = {
+  peso_libre: "#d81a22",
+  maquinas: "#6f8fb8",
+  poleas: "#d9a441",
+  cuerpo: "#6fbf9f",
+  cardio: "#6fbf9f",
+};
+
+/** Color del equipo; gris de línea para lo que no cae en ninguna familia. */
+export function equipmentTone(slug: string | null): string {
+  return EQUIPMENT_TONES[equipmentGroupOf(slug)] ?? "#2b2b31";
+}
+
+/**
  * Atribución obligatoria del dataset. Vive en un solo lugar y la prueba
  * `tests/exercises-attribution.test.mjs` comprueba que la pantalla la muestre.
  */
 export const EXERCISE_ATTRIBUTION = {
   text: "Exercise data by RepDB (repdb.co)",
   href: "https://repdb.co",
+  /** Segundo catálogo: dominio público (Unlicense), se acredita igual. */
+  secondText: "Fotos y datos adicionales de free-exercise-db (dominio público)",
+  secondHref: "https://github.com/yuhonas/free-exercise-db",
 } as const;

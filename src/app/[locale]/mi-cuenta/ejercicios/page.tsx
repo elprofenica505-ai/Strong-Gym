@@ -194,7 +194,7 @@ export default async function ExerciseLibraryPage({
             <div className="space-y-2">
               <h2 className="text-sm font-semibold text-ink">Con qué se hace</h2>
               <div className="flex flex-wrap gap-2">
-                {EQUIPMENT_GROUPS.map((group) => (
+                {EQUIPMENT_GROUPS.filter((group) => groupCount(group.slugs) > 0).map((group) => (
                   <Link
                     key={group.key}
                     href={href({ equipo: equipmentKey === group.key ? null : group.key, pagina: null })}
