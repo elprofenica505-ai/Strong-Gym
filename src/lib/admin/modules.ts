@@ -92,6 +92,12 @@ export const PANEL_MODULES: PanelModule[] = [
       { id: "horarios", label: "Horarios y clases", href: "/panel/administracion/horarios", adminOnly: true },
       { id: "categorias", label: "Categorías", href: "/panel/administracion/categorias", adminOnly: true },
       { id: "tarifas", label: "Tarifas", href: "/panel/administracion/tarifas", adminOnly: true },
+      {
+        id: "dinero",
+        label: "Cuentas y transferencias",
+        href: "/panel/administracion/dinero",
+        adminOnly: true,
+      },
       { id: "importar", label: "Importar clientes", href: "/panel/importar", adminOnly: true },
       { id: "herramientas", label: "Herramientas", href: "/panel/herramientas", adminOnly: true },
       { id: "ayuda", label: "Guía de uso", href: "/panel/ayuda", adminOnly: true },

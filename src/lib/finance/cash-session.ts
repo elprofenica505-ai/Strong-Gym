@@ -29,6 +29,10 @@ export interface CashMovementAccount {
   currency: string;
   income: number;
   expense: number;
+  /** Transferencias que entraron a esta cuenta de caja. */
+  transferIn: number;
+  /** Transferencias que salieron de esta cuenta de caja. */
+  transferOut: number;
 }
 
 export interface CashMovements {
@@ -36,6 +40,14 @@ export interface CashMovements {
   incomeUsd: number;
   expenseNio: number;
   expenseUsd: number;
+  /**
+   * Transferencias con otras cuentas (FIN-03). No son ingresos ni egresos,
+   * pero sí mueven el efectivo: por eso el «debería haber» las suma o resta.
+   */
+  transferInNio: number;
+  transferInUsd: number;
+  transferOutNio: number;
+  transferOutUsd: number;
   count: number;
   accounts: CashMovementAccount[];
 }
@@ -114,6 +126,10 @@ const movementSchema = z.object({
   incomeUsd: money.default(0),
   expenseNio: money.default(0),
   expenseUsd: money.default(0),
+  transferInNio: money.default(0),
+  transferInUsd: money.default(0),
+  transferOutNio: money.default(0),
+  transferOutUsd: money.default(0),
   count: z.number().int().nonnegative().default(0),
   accounts: z
     .array(
@@ -122,6 +138,8 @@ const movementSchema = z.object({
         currency: z.string().min(1),
         income: money.default(0),
         expense: money.default(0),
+        transferIn: money.default(0),
+        transferOut: money.default(0),
       }),
     )
     .default([]),
@@ -151,6 +169,10 @@ export const cashSessionSchema = z.object({
     incomeUsd: 0,
     expenseNio: 0,
     expenseUsd: 0,
+    transferInNio: 0,
+    transferInUsd: 0,
+    transferOutNio: 0,
+    transferOutUsd: 0,
     count: 0,
     accounts: [],
   }),

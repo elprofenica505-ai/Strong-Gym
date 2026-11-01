@@ -343,14 +343,26 @@ export function CashSessionPanel({ accounts }: { accounts: AccountOption[] }) {
                 )}`}
               />
               <Figure
+                label="Transferencias"
+                value={formatMoney(
+                  openSession.movements.transferInNio +
+                    openSession.movements.transferInUsd -
+                    (openSession.movements.transferOutNio +
+                      openSession.movements.transferOutUsd),
+                )}
+                hint={`Entró ${formatMoney(openSession.movements.transferInNio)} · salió ${formatMoney(
+                  openSession.movements.transferOutNio,
+                )}`}
+              />
+              <Figure
                 label="Debería haber NIO"
                 value={formatMoney(openSession.expectedNio)}
-                hint="Apertura + ingresos − egresos"
+                hint="Apertura + ingresos − egresos ± transferencias"
               />
               <Figure
                 label="Debería haber USD"
                 value={formatMoney(openSession.expectedUsd, "USD")}
-                hint="Apertura + ingresos − egresos"
+                hint="Apertura + ingresos − egresos ± transferencias"
               />
               <Figure
                 label="Movimientos de caja"
@@ -376,6 +388,12 @@ export function CashSessionPanel({ accounts }: { accounts: AccountOption[] }) {
                       <span>
                         Entró {formatMoney(row.income, row.currency === "USD" ? "USD" : "NIO")} · Salió{" "}
                         {formatMoney(row.expense, row.currency === "USD" ? "USD" : "NIO")}
+                        {row.transferIn > 0 || row.transferOut > 0
+                          ? ` · Transferencias: entró ${formatMoney(
+                              row.transferIn,
+                              row.currency === "USD" ? "USD" : "NIO",
+                            )}, salió ${formatMoney(row.transferOut, row.currency === "USD" ? "USD" : "NIO")}`
+                          : ""}
                       </span>
                     </li>
                   ))}
