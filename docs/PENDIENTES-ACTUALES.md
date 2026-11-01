@@ -47,12 +47,12 @@ Según el caso, debe cumplir:
   todos. La 00085 ya
   está aplicada en producción y los datos de vigencias quedaron alineados.
 - Supabase: proyecto ACTIVE_HEALTHY. Las migraciones aplicadas y registradas
-  llegan a la **00090** (`catalogo_peso_corporal`, registrada como
-  `20261031225315`): la 00087 (`cierre_y_arqueo_de_caja`, `20261031213955`)
+  llegan a la **00091** (`orden_de_gimnasio`, registrada como
+  `20261031234712`): la 00087 (`cierre_y_arqueo_de_caja`, `20261031213955`)
   agrega abrir, arqueo y cierre, la 00088 impide anular el efectivo de una caja
   ya cerrada, la 00089 (`biblioteca_de_ejercicios`, `20261031225118`) crea el
-  catálogo y «Mi rutina», y la 00090 arregla el filtro «Peso corporal». El
-  siguiente número libre es **00091**.
+  catálogo y «Mi rutina», la 00090 arregla el filtro «Peso corporal» y la 00091
+  ordena el catálogo como un gimnasio. El siguiente número libre es **00092**.
 - Datos productivos al 31 de octubre, comprobados con consulta directa:
   **9 disciplinas** (activas: Pesas y máquinas, Boxeo y Zumba), **6 planes**
   activos, **89 sesiones** (88 programadas y 1 anulada), **2 reservas**,
@@ -561,10 +561,22 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   prueba impide quitar.
   Pantallas en Mi cuenta: catálogo con búsqueda sin acentos y chips por zona del
   cuerpo (9), con qué se hace (máquinas, poleas, peso libre, accesorios, cardio,
-  peso corporal), nivel y 24 por página; ficha con imágenes, paso a paso,
-  músculos, dosis sugerida y **cronómetro** de descanso (45/60/90/120 s, con
-  vibración); y «Mi rutina», separada de la rutina que asigna el entrenador,
-  con series, repeticiones, descanso, duración estimada y quitar.
+  peso corporal) **con su conteo**, tipo de trabajo (fuerza, estiramiento,
+  cardio, halterofilia, pliometría) y nivel, 24 por página; ficha con el
+  movimiento animado, paso a paso, músculos, dosis sugerida y **cronómetro** de
+  descanso (45/60/90/120 s, con vibración); y «Mi rutina», separada de la rutina
+  que asigna el entrenador, con series, repeticiones, descanso, duración
+  estimada y quitar.
+  **El dibujo se mueve**: el origen publica dos fotos de cada movimiento
+  (posición inicial y final) y la pantalla las alterna por CSS, sin JavaScript
+  y sin descargar nada extra; con `prefers-reduced-motion` queda quieta. Son
+  516 ejercicios animados y 185 con una sola foto.
+  **Orden de gimnasio** (migración `00091`, `20261031234712`): la lista abre
+  con los ejercicios de equipo y deja al final el trabajo sin equipo y los
+  estiramientos, porque el dueño vio la primera pantalla y le pareció «casi
+  todo de casa». Composición real del catálogo, contada por la base: 276 de peso
+  libre, 216 de peso corporal, 108 de accesorios, 61 de máquina, 31 de polea y
+  9 de cardio; 485 de 701 usan equipo.
   Búsqueda arreglada en serio: «glúteo» encuentra los 276 ejercicios que lo
   trabajan aunque la base diga `gluteus_maximus` — la web manda las etiquetas en
   español (`search_extra`) al importar, con **un solo** mapa de etiquetas que
@@ -574,8 +586,8 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   cliente de la sesión (el navegador nunca manda un `client_id`), importación
   sólo administración con segundo factor. Carga idempotente: dos corridas
   seguidas dejan 701 filas, no 1402. Evidencia: 37 comprobaciones SQL por rol en
-  PGlite, 32 pruebas nuevas de etiquetas, importación, atribución y las dos
-  rutas de la API (imagen y rutina), `typecheck`, `lint` y `test:auth` (981)
+  PGlite, 38 pruebas nuevas de etiquetas, importación, atribución, imagen
+  animada y las dos rutas de la API, `typecheck`, `lint` y `test:auth` (999)
   limpios. Reversión: `drop table
   public.client_exercise_routine, public.exercises cascade;` y las funciones; no
   toca ninguna tabla existente. Queda como decisión del dueño, sin bloquear:

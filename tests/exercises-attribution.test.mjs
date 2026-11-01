@@ -104,6 +104,10 @@ test("el catálogo muestra la atribución del dataset", async () => {
   });
   assertAttribution(html, "El catálogo");
   assert.ok(html.includes("Press de banca con barra"), "el catálogo no lista el ejercicio");
+  // Los chips dicen cuántos hay: así el socio ve de un vistazo qué es de sala.
+  assert.ok(html.includes("Peso libre (1)"), "el chip de equipo no muestra el conteo");
+  assert.ok(html.includes("Máquinas (0)"), "el chip de máquinas no muestra el conteo");
+  assert.ok(html.includes("Fuerza (1)"), "falta el chip de tipo de trabajo");
 });
 
 test("la ficha del ejercicio muestra la atribución", async () => {

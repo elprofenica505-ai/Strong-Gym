@@ -17,6 +17,7 @@ import {
 } from "@/lib/exercises/terms";
 import { doseLabel, restLabel, suggestDose } from "@/lib/exercises/prescription";
 import { ExerciseAttribution } from "@/components/exercises/attribution";
+import { ExerciseFigure, exerciseFrames } from "@/components/exercises/exercise-figure";
 import { ExerciseTimer } from "@/components/exercises/exercise-timer";
 import { SaveExercise } from "@/components/exercises/save-exercise";
 
@@ -32,9 +33,6 @@ export async function generateMetadata({
     robots: { index: false, follow: false },
   };
 }
-
-const imageUrl = (path: string | null) =>
-  path ? `/api/exercises/image?path=${encodeURIComponent(path)}` : null;
 
 export default async function ExerciseDetailPage({
   params,
@@ -95,9 +93,7 @@ export default async function ExerciseDetailPage({
     isBodyweight: exercise.isBodyweight,
     met: exercise.met,
   });
-  const start = imageUrl(exercise.imageStart);
-  const peak = imageUrl(exercise.imagePeak);
-  const main = imageUrl(exercise.imageMain);
+  const { animated } = exerciseFrames(exercise);
 
   return (
     <div className="container-x space-y-6 py-6">
@@ -129,28 +125,20 @@ export default async function ExerciseDetailPage({
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="space-y-5">
-          {/* Imágenes: inicio y punto alto del movimiento. */}
-          <section className="grid grid-cols-2 gap-2">
-            {(main ?? start) ? (
-              // eslint-disable-next-line @next/next/no-img-element -- WebP del catálogo por nuestra propia ruta.
-              <img
-                src={(main ?? start) as string}
-                alt={`${exercise.nameEs}: posición`}
-                width={512}
-                height={512}
-                className="w-full rounded-2xl border border-line bg-card object-contain"
+          {/* El movimiento: las dos fotos del origen se alternan solas. */}
+          <section className="space-y-1.5">
+            <div className="overflow-hidden rounded-2xl border border-line bg-card">
+              <ExerciseFigure
+                name={exercise.nameEs}
+                frames={exercise}
+                className="aspect-square w-full"
               />
-            ) : null}
-            {!main && (peak ?? start) ? (
-              // eslint-disable-next-line @next/next/no-img-element -- WebP del catálogo por nuestra propia ruta.
-              <img
-                src={(peak ?? start) as string}
-                alt={`${exercise.nameEs}: punto alto del movimiento`}
-                width={512}
-                height={512}
-                className="w-full rounded-2xl border border-line bg-card object-contain"
-              />
-            ) : null}
+            </div>
+            <p className="text-[0.6875rem] text-fog">
+              {animated
+                ? "El dibujo alterna la posición inicial y la final del movimiento."
+                : "Imagen de referencia del movimiento."}
+            </p>
           </section>
 
           {exercise.descriptionEs ? (
