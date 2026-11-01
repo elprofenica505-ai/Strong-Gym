@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import { DemoBanner } from "@/components/layout/demo-banner";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteShell } from "@/components/layout/site-shell";
+import { DayBoundary } from "@/components/layout/day-boundary";
 import { SwRegister } from "@/components/sw-register";
 import { AppProvider } from "@/components/providers/app-provider";
 import { DictionaryProvider } from "@/components/providers/dictionary-provider";
@@ -186,6 +187,9 @@ export default async function LocaleLayout({
               {children}
             </SiteShell>
             <Toaster />
+            {/* OP-07: cuando cambia el día en Managua, las pantallas abiertas
+                se refrescan solas, sin recargar ni perder lo escrito. */}
+            <DayBoundary />
             {/* Registra el service worker. Solo se monta en producción
                 (`process.env.NODE_ENV === "production"`) y si el navegador
                 lo soporta, así que en dev local no interferimos. */}

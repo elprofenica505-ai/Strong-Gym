@@ -8,7 +8,7 @@ pueden explicar decisiones, guías de uso o cómo se construyó una parte, pero 
 crean tareas nuevas.
 
 Última auditoría completa: **1 de noviembre de 2026**, sobre producción
-`main@d4e1548` (PR #115) y Supabase `hcnuepdxmbsmlzdmvwhx`.
+`main@08fc0da` (PR #125) y Supabase `hcnuepdxmbsmlzdmvwhx`.
 
 ## Cómo mantener esta lista
 
@@ -39,16 +39,24 @@ Según el caso, debe cumplir:
 
 ## Foto actual comprobada
 
-- Producción: `main` con FIN-05 (PR #104), la baja de vigencia al anular
-  (PR #105), el uso e historial de precios de los planes (PR #108), **FIN-04**
-  completo: apertura, arqueo y cierre de caja (PR #110) más el bloqueo de
-  anulaciones de una caja cerrada (PR #111), y **EX-01**, la biblioteca de
-  ejercicios con «Mi rutina» y su catálogo de 701 ejercicios; CI en verde en
-  todos. La 00085 ya
-  está aplicada en producción y los datos de vigencias quedaron alineados.
+- Producción: **`08fc0da`** (PR #125), con **EX-01 a EX-08** cerradas: la
+  biblioteca de ejercicios con «Mi rutina», 467 fichas de sala todas con
+  movimiento, fotos reales en las 185 fichas equivalentes, imágenes servidas en
+  WebP a la medida de la pantalla y «Mi cuenta» en una sola ida y vuelta. Antes:
+  FIN-05 (PR #104), la baja de vigencia al anular (PR #105), el uso e historial
+  de precios de los planes (PR #108), **FIN-04** completo con apertura, arqueo y
+  cierre de caja (PR #110) y el bloqueo de anulaciones de una caja cerrada
+  (PR #111). CI en verde en todos. La 00085 ya está aplicada en producción y los
+  datos de vigencias quedaron alineados.
 - Supabase: proyecto ACTIVE_HEALTHY. Las migraciones aplicadas y registradas
-  llegan a la **00093** (`fotos_reales_del_segundo_catalogo`), que pone fotos
-  reales en las 185 fichas con equivalente y guarda las rutas anteriores para
+  llegan a la **00096** (`transferencias_y_arqueo`), que agrega las
+  transferencias entre cuentas y el arqueo con transferencias; antes la
+  **00095** (`cuentas_catalogos_dinero`), que crea la lectura y las altas de
+  cuentas, métodos de pago, categorías de gasto y su bitácora (FIN-03).
+  Antes: **00094** (`fotos_que_faltaban`, registrada como
+  `20261101051537`), que suma tres fichas de cardio y paseo al mapa de fotos.
+  Antes: **00093** (`fotos_reales_del_segundo_catalogo`), que pone fotos reales
+  en las 185 fichas con equivalente y guarda las rutas anteriores para
   revertir. Antes: **00092** (`biblioteca_solo_de_gimnasio`, registrada como
   `20261101010752`), que deja a la vista sólo lo que es de sala; **00091**
   (`orden_de_gimnasio`, registrada como
@@ -56,7 +64,7 @@ Según el caso, debe cumplir:
   agrega abrir, arqueo y cierre, la 00088 impide anular el efectivo de una caja
   ya cerrada, la 00089 (`biblioteca_de_ejercicios`, `20261031225118`) crea el
   catálogo y «Mi rutina», la 00090 arregla el filtro «Peso corporal» y la 00091
-  ordena el catálogo como un gimnasio. El siguiente número libre es **00094**.
+  ordena el catálogo como un gimnasio. El siguiente número libre es **00097**.
 - Datos productivos al 31 de octubre, comprobados con consulta directa:
   **9 disciplinas** (activas: Pesas y máquinas, Boxeo y Zumba), **6 planes**
   activos, **89 sesiones** (88 programadas y 1 anulada), **2 reservas**,
@@ -80,24 +88,24 @@ Según el caso, debe cumplir:
 | 1 | **QA-08** (celular) | Cierra Zumba: grilla pública, cobro del plan y horarios del panel. Es lo último que se publicó. |
 | 2 | **QA-03, QA-04 y QA-05** (celular y cuentas reales) | Son aceptaciones de cosas ya desplegadas; sin ellas no se puede decir «terminado». |
 | 3 | **QA-09 y QA-06** (celular) | Aceptar lo que ya está desplegado: vigencias, categorías, calendario, el uso y el historial de precios de los planes (CLI-07) y **abrir, contar y cerrar la caja** (FIN-04). |
-| 4 | **OP-06, FIN-03 a FIN-07, CAL-01/03, LEG-01 y NEG-01** | Reglas de negocio y entrega; no bloquean la operación diaria de hoy. |
+| 4 | **OP-06, FIN-05 a FIN-07, CAL-01/03, LEG-01 y NEG-01** | Reglas de negocio y entrega; no bloquean la operación diaria de hoy. |
 
 ## Resumen de avance al 1 de noviembre de 2026
 
-**72 tareas listadas: 29 cerradas y 43 abiertas.** De las 43 abiertas, **7 son
+**72 tareas listadas: 31 cerradas y 41 abiertas.** De las 41 abiertas, **7 son
 aceptaciones** en celular o con cuenta real (QA-03 a QA-09), **5 son de
 entrega** (ENT-01 a ENT-05, aplazadas a propósito) y **8 son opcionales del
-futuro** (FUT-01 a FUT-08). Quedan **23 de producto o negocio** por resolver,
-**ninguna** en Administración → Planes.
+futuro** (FUT-01 a FUT-08). Quedan **21 de producto o negocio** por resolver,
+**ninguna** en Administración → Planes ni en Administración → Dinero.
 
 | Fase o bloque | Estado | Qué falta |
 |---|---|---|
 | **Etapa 1 — Proteger lo construido** | Código cerrado y desplegado | SEG-02 (correo propio y recuperación real), SEG-03 (segundo administrador y respaldo MFA), SEG-05 y SEG-06 (monitoreo y grants) y SEG-07 (límites de abuso) |
 | **Etapa 2 — Navegación** | Hecha: Inicio, Clientes, Finanzas, Operación, Administración y Mis clientes | Solo la decisión de OP-09 |
-| **Etapa 3 — Operación diaria** | OP-01 a OP-05 cerradas y desplegadas | OP-06 (cierre de reservas pasadas), OP-07 (cambio de día sin recargar), OP-08 (vincular ficha con cuenta web) y la aceptación QA-09 |
+| **Etapa 3 — Operación diaria** | OP-01 a OP-05 y OP-07 cerradas y desplegadas | OP-06 (cierre de reservas pasadas), OP-08 (vincular ficha con cuenta web) y la aceptación QA-09 |
 | **Clientes, vigencias y planes** | CLI-01, CLI-02 y CLI-06 cerradas y desplegadas | Aceptación en celular (QA-09); decisiones CLI-03, CLI-04 y CLI-05 |
 | **Biblioteca de ejercicios (EX-01 a EX-08)** | Cerrada: **467 ejercicios de sala** de 774 cargados, **todas las fichas con movimiento** (438 alternando dos fotos y 29 con acercamiento suave porque el catálogo sólo trae una imagen), todas servidas en WebP a la medida de la pantalla —~9,5 KB por foto en la grilla, cacheadas 30 días en el teléfono—, movimiento con «Pausar movimiento», color por familia de equipo, ficha, cronómetro y «Mi rutina» | Aceptación en celular; decisiones del dueño sobre favoritos y acceso sin sesión |
-| **Etapa 4 — Finanzas y productos** | En uso real: cobros, gastos, deudas y abonos NIO/USD, vuelto, productos con stock, Caja por módulos con historial paginado, **apertura y cierre con arqueo**, reportes y descargas | FIN-03, FIN-06 y FIN-07 |
+| **Etapa 4 — Finanzas y productos** | En uso real: cobros, gastos, deudas y abonos NIO/USD, vuelto, productos con stock, Caja por módulos con historial paginado, **apertura y cierre con arqueo**, cuentas, métodos, categorías y transferencias, reportes y descargas | FIN-06 y FIN-07 |
 | **Calendario y disciplinas (OP-05)** | Cerrado y desplegado, con grillas, sesiones sueltas, bloqueos, generador con vista previa y entrenadores | Solo la aceptación en celular (QA-09) |
 | **Etapa 5 — Aceptación integral** | Parcial: QA-01 y QA-02 cerradas | QA-03 a QA-08, CAL-03, LEG-01 y NEG-01 |
 | **Etapa 6 — Entrega al dueño** | Sin empezar, a propósito | ENT-01 a ENT-05 y SEG-03 |
@@ -421,10 +429,19 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   hay que decidir cuándo una reserva confirmada pasa a asistida o ausente; no
   convertir automáticamente en ausente a alguien que sí llegó pero no fue
   marcado. Cierre: regla aprobada, ejecución segura y prueba por rol.
-- [ ] **OP-07 · Baja · Código — Cambio de día en páginas abiertas.** Horarios,
-  Panel y Mi cuenta calculan «hoy» al montar; no hay un refresco general al
-  cruzar medianoche en America/Managua. Cierre: la fecha/semana se actualiza
-  sin recargar y sin perder el trabajo en curso.
+- [x] **OP-07 · Baja · Código — Cambio de día en páginas abiertas.** Cerrada el
+  1 de noviembre (PR #126). **Antes:** Horarios, Panel y Mi cuenta calculaban
+  «hoy» al montar y la tablet del gimnasio amanecía mostrando el día anterior.
+  **Ahora:** `src/lib/time/day-boundary.ts` calcula el día de America/Managua
+  (UTC−6 todo el año, sin horario de verano) y
+  `src/components/layout/day-boundary.tsx` refresca los datos del servidor al
+  cruzar la medianoche, con un temporizador que nunca duerme más de 15 minutos,
+  y también cuando la pestaña vuelve a primer plano (`visibilitychange`,
+  `focus`, `pageshow`). Usa `router.refresh()`, no `location.reload()`: no se
+  pierde lo escrito en un cobro, una reserva o una búsqueda. Montado en el
+  layout del panel, así alcanza a todas las pantallas. Pruebas:
+  `tests/day-boundary.test.mjs` (día de Managua, medianoche local, tope del
+  temporizador, refresco suave y montaje en el layout).
 - [ ] **OP-08 · Media · Código — Vincular después una ficha de recepción con
   una cuenta web.** La ficha sin cuenta ya puede operar, cobrar y tener deuda
   propia. Falta el flujo seguro para vincularla cuando la persona crea su
@@ -877,10 +894,35 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   con otro efectivo da `REQUEST_CONFLICT`. La pantalla de cobro muestra el campo
   opcional, el vuelto a entregar y lo avisa en la confirmación; el comprobante
   interno lo imprime.
-- [ ] **FIN-03 · Media · Código — Cuentas, catálogos y transferencias.** Falta
-  administrar cuentas de caja/banco, métodos y categorías desde la app, y
-  registrar transferencias entre cuentas sin contarlas como ingreso o gasto.
-  Cierre: reglas por moneda/FX, permisos, saldos antes/después y auditoría.
+- [x] **FIN-03 · Media · Código — Cuentas, catálogos y transferencias.**
+  Cerrada el 1 de noviembre (PR #126, migraciones `00095` y `00096`).
+  **Antes:** las cuentas de caja/banco, los métodos de pago y las categorías de
+  gasto sólo se tocaban con SQL, y pasar plata de la caja al banco no tenía
+  forma de registrarse: quien lo hacía lo anotaba a mano. **Ahora:**
+  · **Administración → Dinero** (`/panel/administracion/dinero`), una sola
+  pantalla: cuentas (caja fuerte, banco, billetera) con moneda, banco, número,
+  orden y apagado; métodos de pago con comisión y moneda (córdobas, dólares o
+  ambas); categorías de gasto con color y presupuesto mensual; transferencias
+  recientes y bitácora de quién cambió qué.
+  · **Transferencias** con vista previa antes de confirmar: saldo de origen y
+  destino después del movimiento, y tasa NIO/USD editable cuando las cuentas
+  son de distinta moneda. No son ingreso ni gasto: la base las guarda aparte y
+  el arqueo las muestra en su propia fila (entradas y salidas), así el efectivo
+  esperado sigue cuadrando.
+  · **Nada se borra:** una cuenta, un método o una categoría se apaga
+  (`is_active`), y una transferencia se anula con **contra-asiento** y motivo
+  por escrito — la original queda intacta y visible como anulada.
+  · **Permisos:** sólo administrador con segundo factor (`is_admin()` con
+  `aal2`); la base lo vuelve a comprobar en cada llamada y devuelve `AUTH`
+  aunque alguien llegue por URL directa. Cada alta, edición, apagado,
+  transferencia y anulación deja rastro en la bitácora con el nombre de quien
+  lo hizo.
+  · **Reintentos seguros:** cada transferencia lleva un identificador de pedido;
+  repetir el mismo pedido devuelve el mismo comprobante en vez de mover la
+  plata dos veces.
+  · Pruebas: `tests/finance-accounts.test.mjs` (importes, conversión,
+  validaciones, totales y guardas de la ruta) y `scripts/test-cuentas-sql.mjs`
+  (57 comprobaciones en PGlite: saldos, permisos, anulación y arqueo).
 - [x] **FIN-04 · Media · Código — Apertura, cierre y arqueo de caja.**
   Cerrada el 31 de octubre en dos PR (#110 y #111) y dos migraciones.
   **Antes:** `cash_sessions` existía y Caja mostraba «0 sesiones abiertas
@@ -1305,6 +1347,16 @@ si cambia un estado, se cambia en el resumen.
 
 Esta sección es un resumen, no otra lista de tareas.
 
+- **Cuentas y transferencias (FIN-03, PR #126 + migraciones 00095 y 00096):**
+  Administración → Dinero administra cuentas, métodos de pago y categorías de
+  gasto desde la app; las transferencias entre cuentas se registran con vista
+  previa de saldos y tasa, se anulan con contra-asiento y motivo, y el arqueo
+  las muestra aparte para que el efectivo esperado siga cuadrando. Sólo
+  administrador con segundo factor, con bitácora. 57 comprobaciones en PGlite.
+- **La fecha cambia sola (OP-07, PR #126):** al pasar la medianoche de Managua
+  —o al volver la pestaña a primer plano— los datos del servidor se refrescan
+  sin recargar la página, así que Horarios, Panel y Mi cuenta no amanecen con
+  el día anterior y nadie pierde lo que estaba escribiendo.
 - Seguridad de accesos: RLS/RPC endurecidos, `crm_is_staff`/`is_staff` con
   AAL2, MFA TOTP del personal, rechazo de valores no escalares en MFA/PKCE,
   demo imposible en producción, recuperación PKCE y contraseñas de la app de

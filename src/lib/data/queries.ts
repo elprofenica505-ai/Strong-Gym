@@ -29,6 +29,10 @@ import {
   type MovementRow,
 } from "@/lib/finance/movements-page";
 import {
+  parseAccountsState,
+  type AccountsState,
+} from "@/lib/finance/accounts";
+import {
   CASHIER_PERMISSION_FIELDS,
   CASHIER_PERMISSION_KEYS,
   CASHIER_PERMISSIONS_ALL,
@@ -1111,6 +1115,38 @@ export async function getVoidPlanImpact(
     .abortSignal(AbortSignal.timeout(15000));
   if (error) return [];
   return parseVoidPlanImpact(data);
+}
+
+/**
+ * Estado de cuentas, métodos, categorías, transferencias y bitácora (FIN-03).
+ *
+ * Una sola llamada a `finance_accounts_state`: la base decide qué se ve según
+ * el rol y el interruptor de saldos. Si la respuesta no tiene la forma
+ * esperada se lanza el error en vez de devolver listas vacías, porque «no hay
+ * cuentas» y «no pudimos leer» no son lo mismo.
+ */
+export async function getFinanceAccountsState(): Promise<AccountsState> {
+  if (DEMO_MODE) {
+    return {
+      accounts: [],
+      methods: [],
+      categories: [],
+      transfers: [],
+      audit: [],
+      canManage: false,
+      balancesVisible: false,
+      rules: { transferRule: "" },
+    };
+  }
+  const supabase = await getSupabaseServerClient();
+  if (!supabase) throw new FinanceReadError("ACCOUNTS", "UNAVAILABLE");
+  const { data, error } = await supabase
+    .rpc("finance_accounts_state", { p_limit: 20 })
+    .abortSignal(AbortSignal.timeout(15000));
+  if (error) throw new FinanceReadError("ACCOUNTS", error.code);
+  const state = parseAccountsState(data);
+  if (!state) throw new FinanceReadError("ACCOUNTS", "INVALID");
+  return state;
 }
 
 export async function getCashierPermissions(): Promise<CashierPermissions> {
