@@ -84,7 +84,7 @@ Según el caso, debe cumplir:
 
 ## Resumen de avance al 1 de noviembre de 2026
 
-**69 tareas listadas: 26 cerradas y 43 abiertas.** De las 43 abiertas, **7 son
+**71 tareas listadas: 28 cerradas y 43 abiertas.** De las 43 abiertas, **7 son
 aceptaciones** en celular o con cuenta real (QA-03 a QA-09), **5 son de
 entrega** (ENT-01 a ENT-05, aplazadas a propósito) y **8 son opcionales del
 futuro** (FUT-01 a FUT-08). Quedan **23 de producto o negocio** por resolver,
@@ -96,7 +96,7 @@ futuro** (FUT-01 a FUT-08). Quedan **23 de producto o negocio** por resolver,
 | **Etapa 2 — Navegación** | Hecha: Inicio, Clientes, Finanzas, Operación, Administración y Mis clientes | Solo la decisión de OP-09 |
 | **Etapa 3 — Operación diaria** | OP-01 a OP-05 cerradas y desplegadas | OP-06 (cierre de reservas pasadas), OP-07 (cambio de día sin recargar), OP-08 (vincular ficha con cuenta web) y la aceptación QA-09 |
 | **Clientes, vigencias y planes** | CLI-01, CLI-02 y CLI-06 cerradas y desplegadas | Aceptación en celular (QA-09); decisiones CLI-03, CLI-04 y CLI-05 |
-| **Biblioteca de ejercicios (EX-01 a EX-06)** | Cerrada: **467 ejercicios de sala** de 774 cargados, **224 con fotos reales** (inicio y final) y 243 con dibujo —todas servidas en WebP a la medida de la pantalla, ~9,5 KB por foto en la grilla—, movimiento con «Pausar movimiento», color por familia de equipo, ficha, cronómetro y «Mi rutina» | Aceptación en celular; decisiones del dueño sobre favoritos y acceso sin sesión |
+| **Biblioteca de ejercicios (EX-01 a EX-07)** | Cerrada: **467 ejercicios de sala** de 774 cargados, **438 con movimiento** y 29 con imagen fija (posiciones que se mantienen y aparatos que el catálogo sólo trae una vez), todas servidas en WebP a la medida de la pantalla —~9,5 KB por foto en la grilla, cacheadas 30 días en el teléfono—, movimiento con «Pausar movimiento», color por familia de equipo, ficha, cronómetro y «Mi rutina» | Aceptación en celular; decisiones del dueño sobre favoritos y acceso sin sesión |
 | **Etapa 4 — Finanzas y productos** | En uso real: cobros, gastos, deudas y abonos NIO/USD, vuelto, productos con stock, Caja por módulos con historial paginado, **apertura y cierre con arqueo**, reportes y descargas | FIN-03, FIN-06 y FIN-07 |
 | **Calendario y disciplinas (OP-05)** | Cerrado y desplegado, con grillas, sesiones sueltas, bloqueos, generador con vista previa y entrenadores | Solo la aceptación en celular (QA-09) |
 | **Etapa 5 — Aceptación integral** | Parcial: QA-01 y QA-02 cerradas | QA-03 a QA-08, CAL-03, LEG-01 y NEG-01 |
@@ -746,6 +746,52 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   original) y 4 de la figura (`srcset`, medida por pantalla, sólo tres medidas);
   **78 pruebas de ejercicios, 1039 generales y 64 comprobaciones SQL** en verde;
   `typecheck`, `lint` y `build` limpios.
+- [x] **EX-04b · Media · Código — Fichas que no se mueven y una foto que salió rota.**
+  Cerrada el 1 de noviembre. El dueño mandó 20 capturas del teléfono con dos
+  dudas: si las imágenes quedan guardadas en el aparato, y por qué **algunas
+  fichas se mueven y otras no** (con flechas marcando cada una).
+  **Lo que se encontró, contado con la base:** de las 467 visibles, **435 se
+  movían y 32 no**. Las 32 tienen **una sola imagen** en el catálogo de dibujos
+  (RepDB publicó `-main.webp` y nada más): son 21 **posiciones que se
+  mantienen** (planchas, sostenes, L-sit, levers, colgados), 7 **paseos con
+  peso** y 4 **máquinas de cardio** (bici fija, bici de aire, escaladora,
+  cinta). No era un fallo de la app: esas fichas nunca tuvieron segunda foto.
+  **Arreglo 1 — las tres que sí tenían equivalente**: migración **`00094`**
+  (`fotos_que_faltaban`) que reusa la tabla y el disparador de la 00093 y suma
+  **Caminata en cinta inclinada → `Walking_Treadmill`**, **Escaladora →
+  `Stairmaster`** y **Caminata del granjero con mancuernas → `Farmers_Walk`**.
+  Resultado: **438 con movimiento y 29 fijas**. Las otras 29 se dejan a
+  propósito: o son posiciones que no se mueven (no hay movimiento que
+  mostrar), o el segundo catálogo sólo tiene un aparato parecido pero distinto
+  (su «Air Bike» es un abdominal en el piso, no la bicicleta de aire; su
+  bicicleta es reclinada, no la fija de la sala). Poner la foto de otro aparato
+  sería peor que el dibujo quieto.
+  **Arreglo 2 — se explica en la ficha**: `figureNote()` en
+  `src/lib/exercises/figure.ts`. Si hay dos fotos, dice que alternan; si es una
+  posición que se mantiene, dice **que no se mueve porque el ejercicio no se
+  mueve**; si el catálogo trae una sola, lo dice tal cual. Antes decía «Imagen
+  de referencia del movimiento» y parecía un error.
+  **Arreglo 3 — la foto rota de «Curl con Barra Z»**: la tarjeta mostró el
+  icono de imagen rota con el nombre encima. El archivo existe (se comprobó),
+  así que fue un tropiezo de red con datos móviles. Ahora la imagen se vuelve a
+  pedir **hasta dos veces** con una dirección distinta (también en el `srcset`,
+  porque si no el navegador reusa la candidata que falló) y, si aun así no
+  llega, la tarjeta muestra un hueco discreto «Sin imagen», nunca el icono roto.
+  Evidencia: 3 pruebas nuevas de comportamiento (reintento con URL distinta,
+  hueco discreto tras agotar los intentos, mismo caso con una sola foto), 3 de
+  los textos (`figureNote`) y 3 comprobaciones SQL nuevas (**67 en total**);
+  `typecheck`, `lint`, `build` limpios y **1045 pruebas** en verde.
+- [x] **EX-07 · Baja · Respuesta — ¿Las imágenes quedan guardadas en el teléfono?**
+  Cerrada el 1 de noviembre, sin cambios de código: es una consulta del dueño.
+  **Sí quedan guardadas**, y a propósito: cada foto se sirve con
+  `Cache-Control: public, max-age=2592000, immutable`, así que el navegador la
+  guarda **30 días** y no la vuelve a pedir mientras no cambie de dirección.
+  Pesa ~9,5 KB (grilla) o ~24 KB (ficha) por imagen; ver la biblioteca entera
+  una vez son unos **8 MB** como máximo, y el teléfono descarta lo más viejo
+  cuando necesita espacio. El service worker (`public/sw.js`) **no** guarda
+  `/api/`: las fotos viven en la caché normal del navegador y ninguna pantalla
+  con datos personales se guarda nunca. Si algún día cambia una foto, cambia la
+  dirección y el aparato pide la nueva.
 - [ ] **CLI-03 · Media · Revisión profesional — Calculadora, dieta y rutinas.**
   La herramienta, el consentimiento, la aprobación del personal y el bloqueo de
   menores ya existen. Falta que un profesional revise fórmulas, mínimos de

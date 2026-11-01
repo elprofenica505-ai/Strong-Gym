@@ -15,7 +15,7 @@ import { createLoader } from "./helpers/react-loader.mjs";
  */
 const loader = createLoader({ "server-only": "export {};" });
 const { ExerciseFigure } = await loader("components/exercises/exercise-figure.tsx");
-const { exerciseFrames, exerciseImage, figureUrl } = await loader("lib/exercises/figure.ts");
+const { exerciseFrames, exerciseImage, figureUrl, figureNote } = await loader("lib/exercises/figure.ts");
 
 const render = (props) => renderToStaticMarkup(React.createElement(ExerciseFigure, props));
 
@@ -136,4 +136,27 @@ test("nunca se piden medidas fuera de las tres acordadas", () => {
       assert.ok(permitidas.has(width), `medida no prevista: ${width}`);
     }
   }
+});
+
+// --- Qué se dice cuando la imagen no se mueve (EX-04b) ---
+// 32 fichas visibles tienen una sola imagen: posiciones que se mantienen,
+// paseos con peso y máquinas de cardio. Antes la ficha decía «Imagen de
+// referencia del movimiento» y parecía un error. Ahora se explica.
+const FIJA = { imageStart: null, imagePeak: null, imageMain: "images/flat/hold-main.webp" };
+
+test("con dos fotos se dice que alternan", () => {
+  assert.match(figureNote(PAIR, "Sentadilla"), /alterna la posición inicial y la final/);
+});
+
+test("una posición que se mantiene se explica: no se mueve porque el ejercicio no se mueve", () => {
+  const note = figureNote(FIJA, "Sentadilla Zercher Isométrica");
+  assert.match(note, /posición que se mantiene/);
+  const sostén = figureNote(FIJA, "Sostén con Pesa Rusa sobre la Cabeza");
+  assert.match(sostén, /posición que se mantiene/);
+});
+
+test("si el catálogo sólo trae una imagen, se dice sin inventar excusas", () => {
+  const note = figureNote(FIJA, "Bicicleta Estática");
+  assert.match(note, /una sola imagen/);
+  assert.ok(!/mantiene/.test(note), "no debe decir que es una posición si no lo es");
 });

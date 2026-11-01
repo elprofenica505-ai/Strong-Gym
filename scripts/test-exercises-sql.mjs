@@ -50,6 +50,7 @@ const extra = sql("supabase/migrations/00090_catalogo_peso_corporal.sql");
 const orden = sql("supabase/migrations/00091_orden_de_gimnasio.sql");
 const soloSala = sql("supabase/migrations/00092_biblioteca_solo_de_gimnasio.sql");
 const fotos = sql("supabase/migrations/00093_fotos_reales_del_segundo_catalogo.sql");
+const fotosQueFaltaban = sql("supabase/migrations/00094_fotos_que_faltaban.sql");
 await db.exec(migration);
 await db.exec(migration);
 await db.exec(extra);
@@ -351,6 +352,8 @@ ok("un cliente no puede cambiar la visibilidad", true);
 // a aplicar ahora, que es el caso real: la base ya tiene el catálogo.
 await db.exec(fotos);
 await db.exec(fotos);
+await db.exec(fotosQueFaltaban);
+await db.exec(fotosQueFaltaban);
 
 const foto = async (id) =>
   (await db.query("select image_start, image_peak, image_main from public.exercises where id = $1", [id])).rows[0];
@@ -391,5 +394,33 @@ await db.exec(`update public.exercise_photo_map set applied = true;
 ok("volver a encenderlo repone las fotos", (await foto("leg-press")).image_start === "Leg_Press/0.jpg");
 
 ok("el mapa no duplica fichas", (await db.query("select count(*)::int as n from public.exercise_photo_map")).rows[0].n === 2);
+
+// --- 10. Las que se quedaron sin movimiento (00094) ---
+// En la prueba hay una ficha con una sola imagen (`hold-suelo`) y una de cardio
+// con equivalente (`caminata-cinta`): la segunda gana movimiento, la primera no.
+await db.query(
+  `insert into public.exercises (id, name_es, name_en, equipment, image_main)
+   values ('hold-suelo', 'Plancha Isométrica', 'Plank Hold', 'flat_bench', 'images/flat/hold-suelo-main.webp'),
+          ('caminata-cinta', 'Caminata en Cinta Inclinada', 'Walking, Treadmill', 'treadmill', 'images/flat/caminata-cinta-main.webp')
+   on conflict (id) do nothing`,
+);
+// El mapa de la 00094 sólo toca fichas que ya existían en producción; acá se
+// comprueba el efecto con una fila equivalente.
+await db.query(
+  `insert into public.exercise_photo_map (exercise_id, folder, origin_name, old_image_main)
+   values ('caminata-cinta', 'Walking_Treadmill', 'Walking, Treadmill', 'images/flat/caminata-cinta-main.webp')
+   on conflict (exercise_id) do nothing`,
+);
+await db.query(
+  `update public.exercises e set image_start = m.folder || '/0.jpg', image_peak = m.folder || '/1.jpg'
+     from public.exercise_photo_map m where m.exercise_id = e.id and m.applied`,
+);
+const cinta = await foto("caminata-cinta");
+ok("la ficha de cardio que tenía una sola imagen gana sus dos fotos", cinta.image_start === "Walking_Treadmill/0.jpg");
+const plancha = await foto("hold-suelo");
+ok("una posición que se mantiene se queda con su imagen fija", plancha.image_start === null && plancha.image_main !== null);
+ok("la 00094 no toca las fichas de la lista curada", (await db.query(
+  "select count(*)::int as n from public.exercise_photo_map where folder in ('Walking_Treadmill','Stairmaster','Farmers_Walk')",
+)).rows[0].n === 1);
 
 console.log(`\n${checks} comprobaciones de la biblioteca de ejercicios (EX-01) pasaron.`);

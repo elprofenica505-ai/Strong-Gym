@@ -53,9 +53,14 @@ export const figureUrl = (path: string | null, width: number = FIGURE_WIDTHS.car
  * La misma foto en dos medidas para que el navegador elija una sola: el
  * teléfono baja la chica y la pantalla grande la nítida. Nunca las dos.
  */
-export function figureSrcSet(path: string | null, widths: readonly number[]) {
+export function figureSrcSet(
+  path: string | null,
+  widths: readonly number[],
+  /** Se agrega al final de cada dirección (el reintento usa `&r=1`). */
+  extra = "",
+) {
   if (!path) return null;
-  return widths.map((width) => `${figureUrl(path, width)} ${width}w`).join(", ");
+  return widths.map((width) => `${figureUrl(path, width)}${extra} ${width}w`).join(", ");
 }
 
 /** Las dos fotos que se alternan, si las hay; si no, la portada. */
@@ -73,3 +78,24 @@ export function exerciseImage(frames: ExerciseFrames, width: number = FIGURE_WID
 
 /** Cada cuánto se cambia de foto. Dos por segundo se lee como un GIF. */
 export const FIGURE_INTERVAL_MS = 900;
+
+/**
+ * Qué se le dice al socio cuando la imagen no se mueve.
+ *
+ * Por qué: el catálogo de dibujos publicó **una sola imagen** para 32 fichas
+ * visibles (posiciones que se mantienen, paseos con peso y máquinas de cardio),
+ * así que ésas no pueden alternar nada. Antes la ficha decía «Imagen de
+ * referencia del movimiento» sin explicar nada y parecía un error. Ahora se
+ * dice la verdad, en una línea:
+ *   · si hay dos fotos, que alternan;
+ *   · si es una posición que se mantiene, que **no se mueve porque el
+ *     ejercicio no se mueve**;
+ *   · si no hay segunda foto, que el catálogo trae una sola.
+ */
+export function figureNote(frames: ExerciseFrames, nameEs = "") {
+  if (exerciseFrames(frames).animated)
+    return "La imagen alterna la posición inicial y la final del movimiento.";
+  if (/isom[eé]tric|sost[eé]n/i.test(nameEs))
+    return "Es una posición que se mantiene: el ejercicio no se mueve, por eso la imagen es fija.";
+  return "El catálogo trae una sola imagen de este ejercicio, así que no hay dos fotos para alternar.";
+}
