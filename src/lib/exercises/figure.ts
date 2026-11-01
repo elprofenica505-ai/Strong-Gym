@@ -71,6 +71,24 @@ export function exerciseFrames(frames: ExerciseFrames) {
   return { first: single, second: null, animated: false };
 }
 
+/**
+ * Cómo se mueve una ficha.
+ *
+ *   · `alternate` — hay dos fotos (inicio y final) y se alternan.
+ *   · `soft` — el catálogo trae **una sola foto** (29 fichas: posiciones que se
+ *     mantienen, paseos con peso y máquinas de cardio). El dueño pidió que
+ *     también se muevan, así que la imagen se acerca y se aleja despacio. No se
+ *     pone la foto de otro aparato: eso enseñaría mal el ejercicio.
+ *   · `none` — no hay ni una foto.
+ */
+export type FigureMotion = "alternate" | "soft" | "none";
+
+export function figureMotion(frames: ExerciseFrames): FigureMotion {
+  const { first, second } = exerciseFrames(frames);
+  if (!first) return "none";
+  return second ? "alternate" : "soft";
+}
+
 /** Portada para listas: la foto principal o la del inicio del movimiento. */
 export function exerciseImage(frames: ExerciseFrames, width: number = FIGURE_WIDTHS.card) {
   return figureUrl(exerciseFrames(frames).first, width);
@@ -93,9 +111,11 @@ export const FIGURE_INTERVAL_MS = 900;
  *   · si no hay segunda foto, que el catálogo trae una sola.
  */
 export function figureNote(frames: ExerciseFrames, nameEs = "") {
-  if (exerciseFrames(frames).animated)
+  const motion = figureMotion(frames);
+  if (motion === "alternate")
     return "La imagen alterna la posición inicial y la final del movimiento.";
+  if (motion === "none") return "Este ejercicio todavía no tiene imagen en el catálogo.";
   if (/isom[eé]tric|sost[eé]n/i.test(nameEs))
-    return "Es una posición que se mantiene: el ejercicio no se mueve, por eso la imagen es fija.";
-  return "El catálogo trae una sola imagen de este ejercicio, así que no hay dos fotos para alternar.";
+    return "Es una posición que se mantiene. El catálogo trae una sola foto, así que la imagen se mueve despacio para que se lea.";
+  return "El catálogo trae una sola foto de este ejercicio: la imagen se acerca y se aleja para que se lea en movimiento.";
 }

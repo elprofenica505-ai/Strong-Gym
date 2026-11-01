@@ -15,7 +15,8 @@ import { createLoader } from "./helpers/react-loader.mjs";
  */
 const loader = createLoader({ "server-only": "export {};" });
 const { ExerciseFigure } = await loader("components/exercises/exercise-figure.tsx");
-const { exerciseFrames, exerciseImage, figureUrl, figureNote } = await loader("lib/exercises/figure.ts");
+const { exerciseFrames, exerciseImage, figureUrl, figureNote, figureMotion } =
+  await loader("lib/exercises/figure.ts");
 
 const render = (props) => renderToStaticMarkup(React.createElement(ExerciseFigure, props));
 
@@ -70,27 +71,35 @@ test("la primera foto lleva el nombre y la segunda queda oculta para lectores", 
   assert.match(html, /aria-hidden="true"/);
 });
 
-test("con una sola foto se muestra quieta", () => {
+test("con una sola foto igual se mueve: se acerca y se aleja", () => {
   const html = render({
     name: "Lagartijas",
     frames: { imageStart: null, imagePeak: null, imageMain: "images/flat/push-up-main.webp" },
   });
-  assert.doesNotMatch(html, /data-animate/, "no debería animar una sola foto");
-  assert.equal((html.match(/<img/g) ?? []).length, 1);
+  assert.doesNotMatch(html, /data-animate/, "no se alternan dos fotos porque hay una sola");
+  assert.match(html, /data-motion="soft"/, "tiene que marcar el movimiento suave");
+  assert.equal((html.match(/<img/g) ?? []).length, 1, "una sola imagen, sin duplicarla");
   assert.match(html, /alt="Lagartijas"/);
+  // La transición va escrita en línea, sin `@media`: ninguna preferencia del
+  // sistema puede apagarla (fue el problema de EX-03).
+  assert.match(html, /transition:transform \d+ms ease-in-out/);
+  assert.match(html, /scale\(1\)/);
 });
 
 test("una foto suelta de inicio sirve como portada", () => {
   const frames = { imageStart: "images/flat/leg-press-start.webp", imagePeak: null, imageMain: null };
   assert.equal(exerciseImage(frames), "/api/exercises/image?path=images%2Fflat%2Fleg-press-start.webp&w=320");
   assert.equal(exerciseFrames(frames).animated, false);
+  assert.equal(figureMotion(frames), "soft");
   assert.match(render({ name: "Prensa", frames }), /<img/);
 });
 
 test("sin ninguna foto se dice, no se deja un hueco roto", () => {
-  const html = render({ name: "Sin foto", frames: { imageStart: null, imagePeak: null, imageMain: null } });
+  const vacio = { imageStart: null, imagePeak: null, imageMain: null };
+  const html = render({ name: "Sin foto", frames: vacio });
   assert.match(html, /Sin imagen/);
-  assert.equal(exerciseImage({ imageStart: null, imagePeak: null, imageMain: null }), null);
+  assert.equal(exerciseImage(vacio), null);
+  assert.equal(figureMotion(vacio), "none");
 });
 
 test("la ruta de la foto siempre pasa por el proxy", () => {
@@ -148,15 +157,28 @@ test("con dos fotos se dice que alternan", () => {
   assert.match(figureNote(PAIR, "Sentadilla"), /alterna la posición inicial y la final/);
 });
 
-test("una posición que se mantiene se explica: no se mueve porque el ejercicio no se mueve", () => {
+test("una posición que se mantiene explica que la imagen se mueve despacio", () => {
   const note = figureNote(FIJA, "Sentadilla Zercher Isométrica");
   assert.match(note, /posición que se mantiene/);
+  assert.match(note, /se mueve despacio/);
   const sostén = figureNote(FIJA, "Sostén con Pesa Rusa sobre la Cabeza");
   assert.match(sostén, /posición que se mantiene/);
 });
 
-test("si el catálogo sólo trae una imagen, se dice sin inventar excusas", () => {
+test("si el catálogo trae una sola foto, se dice sin inventar excusas", () => {
   const note = figureNote(FIJA, "Bicicleta Estática");
-  assert.match(note, /una sola imagen/);
+  assert.match(note, /una sola foto/);
+  assert.match(note, /se acerca y se aleja/);
   assert.ok(!/mantiene/.test(note), "no debe decir que es una posición si no lo es");
+});
+
+test("las tres formas de movimiento se distinguen", () => {
+  assert.equal(figureMotion(PAIR), "alternate");
+  assert.equal(figureMotion(FIJA), "soft");
+  assert.equal(figureMotion({ imageStart: null, imagePeak: null, imageMain: null }), "none");
+});
+
+test("la foto suelta también pide dos medidas al proxy", () => {
+  const html = render({ name: "Bicicleta", frames: FIJA });
+  assert.match(html, /srcset="[^"]*320w[^"]*640w"/i);
 });
