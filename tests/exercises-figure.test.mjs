@@ -1,20 +1,21 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createLoader } from "./helpers/react-loader.mjs";
 
 /**
- * Imagen de un ejercicio (EX-01).
+ * La imagen de un ejercicio (EX-01) y su movimiento.
  *
- * El origen publica dos fotos por movimiento (inicio y final). Mostrarlas
- * alternadas es lo que hace que la ficha se lea como el GIF del catálogo. Lo
- * que se cuida acá: que se usen las dos cuando existen, que nunca se pida una
- * ruta inventada y que una sola foto no rompa la tarjeta.
+ * El origen publica dos fotos por movimiento (inicio y final). Lo que se cuida
+ * acá: que se usen las dos cuando existen, que el cambio de foto lo haga el
+ * componente —y no una animación de CSS que el teléfono pueda apagar—, que
+ * nunca se pida una ruta inventada y que una sola foto no rompa la tarjeta.
  */
-const { ExerciseFigure, exerciseFrames, exerciseImage } = await createLoader({
-  "server-only": "export {};",
-})("components/exercises/exercise-figure.tsx");
+const loader = createLoader({ "server-only": "export {};" });
+const { ExerciseFigure } = await loader("components/exercises/exercise-figure.tsx");
+const { exerciseFrames, exerciseImage, figureUrl } = await loader("lib/exercises/figure.ts");
 
 const render = (props) => renderToStaticMarkup(React.createElement(ExerciseFigure, props));
 
@@ -24,7 +25,7 @@ const PAIR = {
   imageMain: null,
 };
 
-test("con dos fotos se alternan solas, sin JavaScript", () => {
+test("con dos fotos se muestran las dos, listas para alternarse", () => {
   const html = render({ name: "Prensa de piernas", frames: PAIR });
   assert.match(html, /data-animate="true"/, "no marcó la figura como animada");
   assert.match(html, /class="frame-a"/);
@@ -32,6 +33,34 @@ test("con dos fotos se alternan solas, sin JavaScript", () => {
   assert.equal((html.match(/<img/g) ?? []).length, 2, "tienen que ser dos fotos");
   assert.ok(html.includes("/api/exercises/image?path=images%2Fflat%2Fleg-press-start.webp"));
   assert.ok(html.includes("/api/exercises/image?path=images%2Fflat%2Fleg-press-peak.webp"));
+});
+
+test("arranca en la posición inicial: la primera foto se ve y la segunda no", () => {
+  const html = render({ name: "Prensa de piernas", frames: PAIR });
+  assert.match(html, /class="frame-a" style="opacity:1"/);
+  assert.match(html, /class="frame-b" style="opacity:0"/);
+});
+
+test("el movimiento no depende de una animación de CSS ni de prefers-reduced-motion", () => {
+  const source = readFileSync(
+    new URL("../src/components/exercises/exercise-figure.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /^"use client";/m, "la imagen tiene que ser un componente de cliente");
+  assert.match(source, /setInterval/, "el cambio de foto lo tiene que hacer el componente");
+  assert.doesNotMatch(source, /prefers-reduced-motion/);
+
+  const css = readFileSync(new URL("../src/app/globals.css", import.meta.url), "utf8");
+  assert.doesNotMatch(css, /@keyframes exercise-frame/, "volvió la animación de CSS");
+});
+
+test("con dos fotos se alterna aunque el sistema pida reducir movimiento", () => {
+  const html = render({ name: "Prensa de piernas", frames: PAIR, playing: true });
+  assert.match(html, /data-playing="true"/);
+  // La preferencia del sistema ya no apaga la imagen; sólo la pausa el socio.
+  const paused = render({ name: "Prensa de piernas", frames: PAIR, playing: false });
+  assert.match(paused, /data-playing="false"/);
+  assert.match(paused, /class="frame-a" style="opacity:1"/);
 });
 
 test("la primera foto lleva el nombre y la segunda queda oculta para lectores", () => {
@@ -59,13 +88,11 @@ test("una foto suelta de inicio sirve como portada", () => {
 
 test("sin ninguna foto se dice, no se deja un hueco roto", () => {
   const html = render({ name: "Sin foto", frames: { imageStart: null, imagePeak: null, imageMain: null } });
-  assert.ok(html.includes("Sin imagen"));
-  assert.doesNotMatch(html, /<img/);
+  assert.match(html, /Sin imagen/);
   assert.equal(exerciseImage({ imageStart: null, imagePeak: null, imageMain: null }), null);
 });
 
-test("la ruta de la imagen siempre pasa por el proxy propio", () => {
-  const html = render({ name: "Prensa", frames: PAIR });
-  assert.doesNotMatch(html, /repdb\.co|jsdelivr|raw\.githubusercontent/);
-  assert.equal((html.match(/\/api\/exercises\/image/g) ?? []).length, 2);
+test("la ruta de la foto siempre pasa por el proxy", () => {
+  assert.equal(figureUrl(null), null);
+  assert.equal(figureUrl("Barbell_Squat/0.jpg"), "/api/exercises/image?path=Barbell_Squat%2F0.jpg");
 });

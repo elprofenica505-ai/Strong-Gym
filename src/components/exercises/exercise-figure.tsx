@@ -1,60 +1,81 @@
-import type { ExerciseCard as ExerciseCardData } from "@/lib/exercises/queries";
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import {
+  FIGURE_INTERVAL_MS,
+  exerciseFrames,
+  figureUrl,
+  type ExerciseFrames,
+} from "@/lib/exercises/figure";
 
 /**
- * Imagen de un ejercicio (EX-01).
+ * La imagen de un ejercicio (EX-01).
  *
- * El catálogo trae, para la mayoría de los movimientos, **dos fotos**: la
- * posición inicial y la final. Mostrarlas alternadas es lo que hace que se lea
- * como el GIF del origen, sin descargar un video ni animar nada en JavaScript:
- * son dos `<img>` ya cacheadas que se turnan por CSS.
+ * El catálogo publica dos fotos de cada movimiento —posición inicial y final—
+ * y acá se alternan **desde JavaScript**, no con una animación de CSS.
  *
- * Si el ejercicio sólo tiene una imagen (o una portada), se muestra quieta.
- * Con `prefers-reduced-motion` también queda quieta: la animación vive dentro
- * de `@media (prefers-reduced-motion: no-preference)` en `globals.css`.
+ * Por qué así: la versión anterior animaba con `@keyframes` y sólo cuando el
+ * teléfono no pedía «reducir movimiento». En varios aparatos el sistema trae
+ * esa opción activada (o el navegador la fuerza), la imagen quedaba quieta y el
+ * socio creía que la biblioteca estaba rota. El movimiento tiene que verse en
+ * todos los dispositivos, así que el cambio de foto lo hace el componente y no
+ * depende de ninguna preferencia del sistema. Quien no lo quiera ver tiene el
+ * botón «Pausar movimiento» en la ficha.
  */
-
-const url = (path: string | null) =>
-  path ? `/api/exercises/image?path=${encodeURIComponent(path)}` : null;
-
-export type ExerciseFrames = Pick<
-  ExerciseCardData,
-  "imageMain" | "imageStart" | "imagePeak"
->;
-
-/** Las dos fotos que se turnan, si las hay; si no, la portada. */
-export function exerciseFrames(frames: ExerciseFrames) {
-  if (frames.imageStart && frames.imagePeak)
-    return { first: frames.imageStart, second: frames.imagePeak, animated: true };
-  const single = frames.imageMain ?? frames.imageStart ?? frames.imagePeak;
-  return { first: single, second: null, animated: false };
-}
-
-/** Portada para listas: la foto principal o la del inicio del movimiento. */
-export function exerciseImage(frames: ExerciseFrames) {
-  return url(exerciseFrames(frames).first);
-}
-
 export function ExerciseFigure({
   name,
   frames,
   className = "",
-  force = false,
+  playing = true,
 }: {
   name: string;
   frames: ExerciseFrames;
   className?: string;
-  /** Anima aunque el sistema pida reducir movimiento (lo pide el socio). */
-  force?: boolean;
+  /** Falso lo deja quieto en la posición inicial. */
+  playing?: boolean;
 }) {
   const { first, second, animated } = exerciseFrames(frames);
-  const firstUrl = url(first);
+  const firstUrl = figureUrl(first);
+  const [tick, setTick] = useState(0);
+  const [onScreen, setOnScreen] = useState(true);
+  const box = useRef<HTMLDivElement | null>(null);
+
+  const secondUrl = second ? figureUrl(second) : null;
+  const moves = animated && secondUrl !== null;
+
+  // Sólo se mueve lo que se está viendo: con 25 tarjetas en pantalla nadie
+  // gasta batería animando fotos que quedaron abajo.
+  useEffect(() => {
+    const element = box.current;
+    if (!element || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(
+      (entries) => setOnScreen(entries.some((entry) => entry.isIntersecting)),
+      { threshold: 0.1 },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [moves]);
+
+  useEffect(() => {
+    if (!moves || !playing || !onScreen) return;
+    const id = setInterval(() => {
+      // Con la pestaña en segundo plano tampoco.
+      if (typeof document !== "undefined" && document.hidden) return;
+      setTick((value) => value + 1);
+    }, FIGURE_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [moves, playing, onScreen]);
+
+  // En pausa (o fuera de pantalla) queda en la posición inicial.
+  const peak = playing && onScreen && tick % 2 === 1;
+
   if (!firstUrl) {
     return <span className="text-xs text-fog">Sin imagen</span>;
   }
 
-  if (!animated || !second) {
+  if (!moves) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element -- WebP del catálogo servido por nuestra propia ruta.
+      // eslint-disable-next-line @next/next/no-img-element -- foto del catálogo servida por nuestra propia ruta.
       <img
         src={firstUrl}
         alt={name}
@@ -67,14 +88,14 @@ export function ExerciseFigure({
     );
   }
 
-  const secondUrl = url(second) as string;
   return (
     <div
+      ref={box}
       className={`exercise-frames ${className || "size-full"}`}
       data-animate="true"
-      data-force={force ? "true" : "false"}
+      data-playing={playing ? "true" : "false"}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element -- WebP del catálogo servido por nuestra propia ruta. */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- foto del catálogo servida por nuestra propia ruta. */}
       <img
         src={firstUrl}
         alt={name}
@@ -83,8 +104,9 @@ export function ExerciseFigure({
         loading="lazy"
         decoding="async"
         className="frame-a"
+        style={{ opacity: peak ? 0 : 1 }}
       />
-      {/* eslint-disable-next-line @next/next/no-img-element -- WebP del catálogo servido por nuestra propia ruta. */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- la segunda foto es la misma escena, así que no necesita texto alternativo. */}
       <img
         src={secondUrl}
         alt=""
@@ -94,6 +116,7 @@ export function ExerciseFigure({
         loading="lazy"
         decoding="async"
         className="frame-b"
+        style={{ opacity: peak ? 1 : 0 }}
       />
     </div>
   );

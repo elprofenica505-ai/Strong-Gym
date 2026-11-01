@@ -570,9 +570,9 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   que asigna el entrenador, con series, repeticiones, descanso, duración
   estimada y quitar.
   **El dibujo se mueve**: el origen publica dos fotos de cada movimiento
-  (posición inicial y final) y la pantalla las alterna por CSS, sin JavaScript
-  y sin descargar nada extra; con `prefers-reduced-motion` queda quieta. Son
-  516 ejercicios animados y 185 con una sola foto.
+  (posición inicial y final) y la pantalla las alterna. Son 516 ejercicios
+  animados y 185 con una sola foto. (Cómo se alternan cambió el 1 de noviembre,
+  ver EX-03.)
   **Orden de gimnasio** (migración `00091`, `20261031234712`): la lista abre
   con los ejercicios de equipo y deja al final el trabajo sin equipo y los
   estiramientos, porque el dueño vio la primera pantalla y le pareció «casi
@@ -622,9 +622,7 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   **Movimiento**: el segundo origen también publica dos fotos por ejercicio
   (posición inicial y final) y el proxy `/api/exercises/image` ahora sirve esos
   JPG además de los dibujos WebP, con la misma ruta validada y la misma caché de
-  30 días. La ficha tiene el botón **«Ver movimiento»**, que fuerza la animación
-  aunque el teléfono pida reducir movimiento, porque el socio lo pide a
-  propósito.
+  30 días.
   **Tema**: la grilla y la ficha llevan un hilo de 3 px con el color de la
   familia de equipo (rojo de la marca para el peso libre, azul acero para las
   máquinas, ámbar para las poleas, verde para los aparatos de peso corporal) y
@@ -638,6 +636,40 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   funciones de la `00092`; los 126 nuevos se reconocen por
   `source = 'free-exercise-db'`. Queda como decisión del dueño, sin bloquear:
   qué más quiere ver de su sala y si algún ejercicio oculto debe volver.
+- [x] **EX-03 · Alta · Código — El movimiento tiene que verse en todos los teléfonos.**
+  Cerrada el 1 de noviembre. El dueño probó la ficha en su celular, tocó el
+  botón y la imagen no se movió. La causa: la alternancia de las dos fotos era
+  una animación de CSS metida dentro de `@media (prefers-reduced-motion:
+  no-preference)`, y el teléfono tenía activada la opción de reducir movimiento
+  (Android la trae en Accesibilidad), así que la imagen quedaba quieta. El botón
+  «Ver movimiento» existía, pero dependía de la misma animación y no arreglaba
+  nada en esos aparatos.
+  **Arreglo**: el cambio de foto ya no es una animación de CSS. Ahora lo hace
+  el componente (`src/components/exercises/exercise-figure.tsx`) con un
+  temporizador de 900 ms que alterna la opacidad de las dos fotos. No depende de
+  ninguna preferencia del sistema, así que **se mueve en todos los dispositivos**
+  y desde la grilla, no sólo en la ficha. Para no gastar batería: se detiene
+  cuando la tarjeta sale de pantalla (IntersectionObserver) y cuando la pestaña
+  queda en segundo plano. El botón de la ficha pasó a ser **«Pausar
+  movimiento»**: antes servía para encender lo que el sistema apagaba; ahora
+  sirve para lo contrario, apagarlo si a alguien le molesta.
+  Los ayudantes sin estado (`exerciseFrames`, `exerciseImage`, `figureUrl`)
+  pasaron a `src/lib/exercises/figure.ts` para que las pantallas del servidor
+  los usen sin arrastrar código de cliente.
+  Evidencia: 9 pruebas de la imagen (una comprueba que no vuelva la animación de
+  CSS ni `prefers-reduced-motion`), 53 de la biblioteca y 53 comprobaciones SQL,
+  `typecheck` y `lint` limpios.
+- [ ] **EX-04 · Media · Decisión del dueño — Fotos del segundo catálogo en todo el catálogo.**
+  El dueño preguntó si la biblioteca nueva tiene todos los ejercicios de la
+  anterior para quedarse sólo con esas fotos. **No los tiene**: el segundo
+  origen (876 ejercicios) coincide **por nombre** con unos 76 de los 701 del
+  catálogo anterior, y de los 394 ejercicios visibles anteriores muchos menos
+  tienen foto allí; el resto son máquinas y variantes que ese origen no publica. Hoy la biblioteca
+  mezcla dibujos (RepDB) y fotos (segundo origen), y así queda hasta que el
+  dueño decida. Las dos salidas posibles: (a) dejar la mezcla, o (b) cambiar la
+  imagen de los ejercicios que sí tienen foto en el segundo origen, uno por uno
+  y sin duplicar fichas. Requiere su palabra; ninguna de las dos rompe la
+  biblioteca.
 - [ ] **CLI-03 · Media · Revisión profesional — Calculadora, dieta y rutinas.**
   La herramienta, el consentimiento, la aprobación del personal y el bloqueo de
   menores ya existen. Falta que un profesional revise fórmulas, mínimos de
