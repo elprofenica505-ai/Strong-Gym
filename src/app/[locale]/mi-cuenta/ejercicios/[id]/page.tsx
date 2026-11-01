@@ -18,7 +18,7 @@ import {
 } from "@/lib/exercises/terms";
 import { doseLabel, restLabel, suggestDose } from "@/lib/exercises/prescription";
 import { ExerciseAttribution } from "@/components/exercises/attribution";
-import { exerciseFrames } from "@/components/exercises/exercise-figure";
+import { exerciseFrames } from "@/lib/exercises/figure";
 import { ExerciseMotion } from "@/components/exercises/exercise-motion";
 import { ExerciseTimer } from "@/components/exercises/exercise-timer";
 import { SaveExercise } from "@/components/exercises/save-exercise";
