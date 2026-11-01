@@ -323,36 +323,44 @@ export function CashSessionPanel({ accounts }: { accounts: AccountOption[] }) {
                 hint="Con lo que empezó el turno"
               />
               <Figure
-                label="Ingresos de efectivo"
-                value={formatMoney(
-                  openSession.movements.incomeNio + openSession.movements.incomeUsd,
-                )}
-                hint={`${formatMoney(openSession.movements.incomeNio)} · ${formatMoney(
-                  openSession.movements.incomeUsd,
-                  "USD",
-                )}`}
+                label="Ingresos de efectivo · NIO"
+                value={formatMoney(openSession.movements.incomeNio)}
+                hint={`Dólares: ${formatMoney(openSession.movements.incomeUsd, "USD")}`}
               />
               <Figure
-                label="Egresos de efectivo"
-                value={formatMoney(
-                  openSession.movements.expenseNio + openSession.movements.expenseUsd,
-                )}
-                hint={`${formatMoney(openSession.movements.expenseNio)} · ${formatMoney(
-                  openSession.movements.expenseUsd,
-                  "USD",
-                )}`}
+                label="Ingresos de efectivo · USD"
+                value={formatMoney(openSession.movements.incomeUsd, "USD")}
+                hint="Cada moneda se cuenta aparte"
               />
               <Figure
-                label="Transferencias"
+                label="Egresos de efectivo · NIO"
+                value={formatMoney(openSession.movements.expenseNio)}
+                hint={`Dólares: ${formatMoney(openSession.movements.expenseUsd, "USD")}`}
+              />
+              <Figure
+                label="Egresos de efectivo · USD"
+                value={formatMoney(openSession.movements.expenseUsd, "USD")}
+                hint="Cada moneda se cuenta aparte"
+              />
+              <Figure
+                label="Transferencias · NIO"
                 value={formatMoney(
-                  openSession.movements.transferInNio +
-                    openSession.movements.transferInUsd -
-                    (openSession.movements.transferOutNio +
-                      openSession.movements.transferOutUsd),
+                  openSession.movements.transferInNio - openSession.movements.transferOutNio,
                 )}
                 hint={`Entró ${formatMoney(openSession.movements.transferInNio)} · salió ${formatMoney(
                   openSession.movements.transferOutNio,
                 )}`}
+              />
+              <Figure
+                label="Transferencias · USD"
+                value={formatMoney(
+                  openSession.movements.transferInUsd - openSession.movements.transferOutUsd,
+                  "USD",
+                )}
+                hint={`Entró ${formatMoney(
+                  openSession.movements.transferInUsd,
+                  "USD",
+                )} · salió ${formatMoney(openSession.movements.transferOutUsd, "USD")}`}
               />
               <Figure
                 label="Debería haber NIO"
