@@ -94,7 +94,7 @@ futuro** (FUT-01 a FUT-08). Quedan **23 de producto o negocio** por resolver,
 | **Etapa 2 — Navegación** | Hecha: Inicio, Clientes, Finanzas, Operación, Administración y Mis clientes | Solo la decisión de OP-09 |
 | **Etapa 3 — Operación diaria** | OP-01 a OP-05 cerradas y desplegadas | OP-06 (cierre de reservas pasadas), OP-07 (cambio de día sin recargar), OP-08 (vincular ficha con cuenta web) y la aceptación QA-09 |
 | **Clientes, vigencias y planes** | CLI-01, CLI-02 y CLI-06 cerradas y desplegadas | Aceptación en celular (QA-09); decisiones CLI-03, CLI-04 y CLI-05 |
-| **Biblioteca de ejercicios (EX-01 y EX-02)** | Cerrada: **520 ejercicios de sala** de 827 cargados, movimiento con botón «Ver movimiento», color por familia de equipo, ficha, cronómetro y «Mi rutina» | Aceptación en celular; decisiones del dueño sobre favoritos y acceso sin sesión |
+| **Biblioteca de ejercicios (EX-01 y EX-02)** | Cerrada: **510 ejercicios de sala** de 817 cargados, movimiento con botón «Ver movimiento», color por familia de equipo, ficha, cronómetro y «Mi rutina» | Aceptación en celular; decisiones del dueño sobre favoritos y acceso sin sesión |
 | **Etapa 4 — Finanzas y productos** | En uso real: cobros, gastos, deudas y abonos NIO/USD, vuelto, productos con stock, Caja por módulos con historial paginado, **apertura y cierre con arqueo**, reportes y descargas | FIN-03, FIN-06 y FIN-07 |
 | **Calendario y disciplinas (OP-05)** | Cerrado y desplegado, con grillas, sesiones sueltas, bloqueos, generador con vista previa y entrenadores | Solo la aceptación en celular (QA-09) |
 | **Etapa 5 — Aceptación integral** | Parcial: QA-01 y QA-02 cerradas | QA-03 a QA-08, CAL-03, LEG-01 y NEG-01 |
@@ -604,12 +604,12 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   `admin_set_exercise_visible`); el catálogo y las facetas cuentan **sólo lo
   visible**, así los chips dicen la verdad. **No borra nada**: los 307
   ejercicios de casa siguen en la tabla y se pueden volver a mostrar uno por uno.
-  Quedan **520 visibles** (337 de peso libre, 84 de máquina, 62 de polea, 29 de
+  Quedan **510 visibles** (327 de peso libre, 84 de máquina, 62 de polea, 29 de
   apoyo, 8 de cardio) y **307 ocultos** (peso corporal, bandas, balones,
   estiramientos y «otros»). Entran barra, banco plano, Smith, discos y pesas
   rusas, como pidió el dueño.
   **Segundo catálogo**: `yuhonas/free-exercise-db` (**dominio público,
-  Unlicense**), del que se cargaron **126 ejercicios** nuevos con traducción
+  Unlicense**), del que se cargaron **116 ejercicios** nuevos con traducción
   escrita a mano (`src/lib/exercises/catalog-barbell.ts`,
   `catalog-equipment.ts`, `second-catalog-data.ts`), cada uno con nombre, tres
   pasos y un consejo en español. Filtro de duplicados en tres pasos: nombre en

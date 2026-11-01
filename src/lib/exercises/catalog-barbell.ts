@@ -56,15 +56,6 @@ export const BARBELL_ES: Record<string, SecondTranslation> = {
     ],
     tip: "La barra va detrás de los talones, no delante: si golpea los talones, estás muy adelante.",
   },
-  "Zercher_Squats": {
-    name: "Sentadilla Zercher",
-    steps: [
-      "Apoyá la barra en el pliegue de los codos, con los brazos entrelazados y el torso firme.",
-      "Bajá con el pecho alto manteniendo la barra pegada al cuerpo.",
-      "Subí sin dejar que la espalda se redondee.",
-    ],
-    tip: "Poné una toalla en la barra si te molesta el antebrazo; igual no hace falta cargar mucho para que trabaje.",
-  },
   "Barbell_Walking_Lunge": {
     name: "Zancadas caminando con barra",
     steps: [
@@ -125,15 +116,6 @@ export const BARBELL_ES: Record<string, SecondTranslation> = {
     ],
     tip: "Sentís el estiramiento atrás de los muslos: si sentís la espalda baja, estás bajando demasiado.",
   },
-  "Rack_Pulls": {
-    name: "Peso muerto desde soportes",
-    steps: [
-      "Poné la barra en los soportes a la altura de la rodilla y colocá los pies como en un peso muerto.",
-      "Tomá la barra con la espalda recta y el pecho arriba.",
-      "Subí extendiendo la cadera y bajá controlando.",
-    ],
-    tip: "Sirve para trabajar la parte final del peso muerto sin cargar tanto la espalda baja.",
-  },
   "T-Bar_Row_with_Handle": {
     name: "Remo en T",
     steps: [
@@ -150,14 +132,6 @@ export const BARBELL_ES: Record<string, SecondTranslation> = {
       "Bajá controlando sin redondear la espalda.",
     ],
     tip: "Si el torso sube y baja con cada repetición, estás usando impulso: bajá el peso.",
-  },
-  "Barbell_Shrug_Behind_The_Back": {
-    name: "Encogimientos detrás de la espalda",
-    steps: [
-      "Con la barra detrás de los muslos, tomala con las palmas hacia atrás y los brazos estirados.",
-      "Subí los hombros hacia las orejas sin doblar los codos.",
-      "Bajá controlando.",
-    ],
   },
   "Standing_Barbell_Calf_Raise": {
     name: "Gemelo de pie con barra",
