@@ -1,7 +1,7 @@
 "use client";
 
 import { useLinkStatus } from "next/link";
-import { Spinner } from "@/components/ui/spinner";
+import { Flame } from "lucide-react";
 
 /**
  * Giro que se dibuja **sólo mientras ese enlace está navegando**.
@@ -14,5 +14,10 @@ import { Spinner } from "@/components/ui/spinner";
 export function LinkPending({ label = "Cargando…" }: { label?: string }) {
   const { pending } = useLinkStatus();
   if (!pending) return null;
-  return <Spinner size="sm" label={label} className="text-current" />;
+  return (
+    <span className="inline-flex items-center" role="status">
+      <Flame className="fire-flame size-3.5 text-amber-400" aria-hidden="true" />
+      <span className="sr-only">{label}</span>
+    </span>
+  );
 }

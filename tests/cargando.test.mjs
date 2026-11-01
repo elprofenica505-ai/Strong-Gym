@@ -9,28 +9,36 @@ import { existsSync, readFileSync } from "node:fs";
  * del segundo factor, la pantalla se quedaba quieta y no había ninguna figura
  * que confirmara que estaba trabajando; la gente tocaba dos veces.
  *
- * La respuesta tiene tres capas:
- *   1. Una barra arriba con «Cargando…» en cuanto se toca cualquier enlace
- *      interno (NavigationProgress).
- *   2. Un giro dentro de la misma tarjeta o módulo tocado (LinkPending).
- *   3. Un esqueleto con «Cargando…» mientras el servidor prepara la pantalla
- *      (panel/loading.tsx).
+ * La respuesta tiene dos capas, y **ninguna** vacía la pantalla:
+ *   1. Una cinta de brasas arriba con «Cargando…» en cuanto se toca cualquier
+ *      enlace interno (NavigationProgress). Lo que había sigue a la vista.
+ *   2. Un ícono de fuego dentro de la misma tarjeta o módulo tocado
+ *      (LinkPending).
+ *
+ * Se probó también una pantalla de esqueleto gris (loading.tsx) y el gimnasio la
+ * rechazó: las letras e imágenes desaparecían y daba sensación de pausa. Queda
+ * prohibido volver a ponerla: la prueba de abajo lo impide.
  */
 const source = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("la barra de avance está montada y trae su animación", () => {
+test("el aviso de carga está montado y es una cascada de fuego", () => {
   const layout = source("src/app/[locale]/layout.tsx");
   assert.match(layout, /<NavigationProgress \/>/);
   assert.match(layout, /@\/components\/layout\/navigation-progress/);
 
+  // Fuego de marca: barrido rojo→naranja→ámbar, chispas y llama que titila.
   const css = source("src/app/globals.css");
-  assert.match(css, /@keyframes nav-progress/);
-  assert.match(css, /--animate-nav-progress:/);
+  assert.match(css, /@keyframes fire-sweep/);
+  assert.match(css, /@keyframes fire-spark/);
+  assert.match(css, /@keyframes fire-flicker/);
+  assert.match(css, /\.fire-bar-slow/);
+  assert.match(css, /rgb\(251 191 36/);
 
   const bar = source("src/components/layout/navigation-progress.tsx");
   assert.match(bar, /Cargando…/);
   assert.match(bar, /role="status"/);
   assert.match(bar, /aria-live="polite"/);
+  assert.match(bar, /fire-bar/);
 });
 
 test("la barra no rompe la navegación ni se queda pegada mintiendo", () => {
@@ -47,7 +55,7 @@ test("la barra no rompe la navegación ni se queda pegada mintiendo", () => {
   assert.match(bar, /setTimeout\(stop, GIVE_UP_MS\)/);
 });
 
-test("la tarjeta tocada muestra su propio giro", () => {
+test("la tarjeta tocada muestra su propio ícono de carga", () => {
   const link = source("src/components/ui/link-pending.tsx");
   assert.match(link, /useLinkStatus/);
   assert.match(link, /if \(!pending\) return null/);
@@ -57,13 +65,22 @@ test("la tarjeta tocada muestra su propio giro", () => {
   assert.match(source("src/app/[locale]/panel/page.tsx"), /<LinkPending/);
 });
 
-test("cambiar de pantalla del panel muestra esqueleto con «Cargando…»", () => {
-  const path = new URL("../src/app/[locale]/panel/loading.tsx", import.meta.url);
-  assert.ok(existsSync(path), "falta panel/loading.tsx");
-  const loading = readFileSync(path, "utf8");
-  assert.match(loading, /Cargando…/);
-  assert.match(loading, /aria-busy="true"/);
-  assert.match(loading, /animate-pulse/);
+test("cambiar de pantalla NO vacía la vista ni la deja en gris", () => {
+  // El esqueleto gris se quitó a pedido del gimnasio: parecía una pausa.
+  for (const path of [
+    "../src/app/[locale]/loading.tsx",
+    "../src/app/[locale]/panel/loading.tsx",
+  ]) {
+    assert.equal(
+      existsSync(new URL(path, import.meta.url)),
+      false,
+      `volvió a aparecer ${path}: no debe vaciar la pantalla al navegar`,
+    );
+  }
+  // Y no queda ningún bloque gris de relleno en el código de avisos.
+  const spinner = source("src/components/ui/spinner.tsx");
+  assert.doesNotMatch(spinner, /animate-pulse/);
+  assert.doesNotMatch(spinner, /LoadingSkeleton/);
 });
 
 test("los botones que esperan respuesta avisan y no se pueden tocar dos veces", () => {
@@ -79,10 +96,13 @@ test("los botones que esperan respuesta avisan y no se pueden tocar dos veces", 
   assert.match(source("src/components/auth/recovery-form.tsx"), /<Button type="submit" loading=\{busy\}/);
 });
 
-test("los paneles que leen datos muestran el giro, no un texto solo", () => {
+test("los paneles que leen datos muestran la llama, no un texto solo", () => {
   assert.match(source("src/components/admin/cash-session-panel.tsx"), /title="Leyendo la caja…"/);
   assert.match(source("src/components/products/product-manager.tsx"), /title="Cargando productos…"/);
   assert.match(source("src/components/nutrition/nutrition-calculator.tsx"), /LoadingBlock/);
+  // El aviso lleva la llama y la cinta de brasas, sin tapar la tarjeta.
+  assert.match(source("src/components/ui/spinner.tsx"), /fire-flame/);
+  assert.match(source("src/components/ui/link-pending.tsx"), /fire-flame/);
   // El arqueo avisa mientras abre y mientras cierra.
   const cash = source("src/components/admin/cash-session-panel.tsx");
   assert.match(cash, /Abriendo la caja…/);
