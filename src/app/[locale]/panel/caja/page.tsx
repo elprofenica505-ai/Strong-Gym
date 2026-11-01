@@ -4,6 +4,7 @@ import { readFinance } from "@/lib/finance/read-result";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { CashPanel } from "@/components/admin/cash-panel";
+import { canPrefillExpected } from "@/lib/finance/cash-session";
 import { getDictionary } from "@/i18n/dictionaries";
 import { isLocale, type Locale } from "@/i18n/config";
 import {
@@ -103,6 +104,10 @@ export default async function CajaPage({
         kind: account.kind,
       }));
 
+  // «Usar lo esperado» sólo para administración con segundo factor: rellenar
+  // el arqueo esconde un faltante. El cajero escribe lo que contó.
+  const fillExpected = !isDemo && canPrefillExpected(user?.role) && user?.mfa === "ok";
+
   const paymentMethodNames = Object.fromEntries(
     paymentMethods.map((m) => [m.id, m.nameEs]),
   );
@@ -123,6 +128,7 @@ export default async function CajaPage({
       isDemo={isDemo}
       permissions={permissions}
       voids={voids}
+      canPrefillExpected={fillExpected}
     />
   );
 }

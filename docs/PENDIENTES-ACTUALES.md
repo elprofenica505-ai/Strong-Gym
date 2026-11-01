@@ -1353,6 +1353,14 @@ Esta sección es un resumen, no otra lista de tareas.
   previa de saldos y tasa, se anulan con contra-asiento y motivo, y el arqueo
   las muestra aparte para que el efectivo esperado siga cuadrando. Sólo
   administrador con segundo factor, con bitácora. 57 comprobaciones en PGlite.
+- **El arqueo no se rellena solo (control de faltantes, PR #128):** «Usar lo
+  esperado» —rellenar lo contado con lo que la base calcula— quedó **sólo para
+  administración con segundo factor**. El cajero escribe lo que contó y, si
+  falta o sobra, el motivo es obligatorio; el faltante queda con su diferencia a
+  la vista en «Últimos cierres». Cuando un administrador usa el relleno, la
+  nota del cierre deja la constancia de que el efectivo no se contó billete por
+  billete. La decisión es por rol (`canPrefillExpected`), no por interruptor de
+  caja: ningún permiso de cajero abre esa puerta.
 - **La fecha cambia sola (OP-07, PR #126):** al pasar la medianoche de Managua
   —o al volver la pestaña a primer plano— los datos del servidor se refrescan
   sin recargar la página, así que Horarios, Panel y Mi cuenta no amanecen con

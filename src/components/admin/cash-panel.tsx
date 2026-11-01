@@ -315,6 +315,11 @@ interface Props {
   permissions?: CashierPermissions;
   /** Anulaciones ya guardadas: la lista marca lo anulado (FIN-01). */
   voids?: VoidMark[];
+  /**
+   * Sólo administración puede rellenar el arqueo con lo esperado; el cajero
+   * justifica la diferencia. Ver `canPrefillExpected` en cash-session.ts.
+   */
+  canPrefillExpected?: boolean;
 }
 
 export function CashPanel({
@@ -329,6 +334,7 @@ export function CashPanel({
   isDemo,
   permissions = CASHIER_PERMISSIONS_ALL,
   voids = [],
+  canPrefillExpected = false,
 }: Props) {
   const [filter, setFilter] = useState<"all" | "income" | "expense">("all");
   const [openModule, setOpenModule] = useState<CashModule | null>(null);
@@ -834,7 +840,12 @@ export function CashPanel({
           </p>
         </div>
 
-        {openModule === "cierre" && <CashSessionPanel accounts={accounts} />}
+        {openModule === "cierre" && (
+          <CashSessionPanel
+            accounts={accounts}
+            canPrefillExpected={canPrefillExpected}
+          />
+        )}
 
         {openModule === "movimientos" && (
           <div className="space-y-4">
