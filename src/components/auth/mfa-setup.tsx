@@ -19,6 +19,7 @@ import {
   type TotpEnrollment,
 } from "@/lib/auth/mfa-actions";
 import { Button } from "@/components/ui/button";
+import { LoadingBlock } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/field";
 
 type Phase =
@@ -167,7 +168,11 @@ export function MfaSetup({
   }
 
   if (phase.kind === "loading") {
-    return <Card title={t.title}><p role="status" className="text-fog">{t.loading}</p></Card>;
+    return (
+      <Card title={t.title}>
+        <LoadingBlock title={t.loading} hint="Estamos comprobando tu verificación." />
+      </Card>
+    );
   }
 
   if (phase.kind === "unavailable") {
@@ -287,7 +292,7 @@ function TotpCodeForm({
         disabled={busy}
         className="w-40 tracking-[0.3em]"
       />
-      <Button type="submit" disabled={busy || !codeReady}>
+      <Button type="submit" loading={busy} disabled={!codeReady}>
         {busy ? confirming : confirm}
       </Button>
     </form>

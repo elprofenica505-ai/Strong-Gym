@@ -14,6 +14,7 @@ import {
   type MealSlot,
   type RoutineDay,
 } from "@/lib/nutrition/plan";
+import { LoadingBlock } from "@/components/ui/spinner";
 
 type Results = {
   imc: number;
@@ -174,7 +175,8 @@ export function NutritionCalculator({
   };
 
   if (error) return <p className="rounded-xl border border-line p-4 text-fog">{error}</p>;
-  if (!data) return <p className="text-fog">Cargando calculadora…</p>;
+  if (!data)
+    return <LoadingBlock title="Cargando calculadora…" hint="Trayendo tus últimos datos y tu plan." />;
 
   // Cliente menor de 18: no ve calculadora ni datos de salud (00047).
   if (mode === "client" && data.age_status === "minor") {

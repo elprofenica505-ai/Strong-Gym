@@ -79,7 +79,11 @@ test("caja recibe el permiso desde el rol real, no desde el navegador", () => {
 
 test("al cajero se le explica que la diferencia se justifica, no se rellena", () => {
   const panel = source("src/components/admin/cash-session-panel.tsx");
-  assert.match(panel, /el faltante no se puede tapar rellenando con/);
-  // El motivo obligatorio cuando no cuadra sigue en su lugar.
-  assert.match(panel, /needsReason \? "Motivo del faltante o sobrante \(obligatorio\)"/);
+  assert.match(panel, /el faltante no\s+se puede tapar rellenando con/);
+  // El motivo obligatorio sigue apareciendo cuando el arqueo no cuadra
+  // (desde el cambio de mensajes, sale junto al panel rojo al intentar guardar).
+  assert.match(
+    panel,
+    /Motivo del faltante o sobrante \(obligatorio\)/,
+  );
 });

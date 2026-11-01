@@ -367,6 +367,80 @@ export function markExpectedFill(notes: string): string {
   return merged.length > CASH_NOTES_MAX ? text : merged;
 }
 
+/**
+ * Lo que la pantalla muestra cuando el cierre sale bien y el arqueo cuadró.
+ * Texto pedido tal cual por el dueño del gimnasio.
+ */
+export const CLOSE_SUCCESS_BALANCED =
+  "Operación exitosa, gracias por tus servicios, Bendiciones!";
+
+/** Lo que se muestra cuando se guardó el cierre pero el arqueo no cuadró. */
+export function closeSavedWithDifference(input: {
+  nio: number;
+  usd: number;
+}): string {
+  const partes: string[] = [];
+  if (input.nio !== 0) {
+    partes.push(
+      input.nio < 0
+        ? `faltaron ${formatAmount(Math.abs(input.nio))} en córdobas`
+        : `sobraron ${formatAmount(input.nio)} en córdobas`,
+    );
+  }
+  if (input.usd !== 0) {
+    partes.push(
+      input.usd < 0
+        ? `faltaron ${formatAmount(Math.abs(input.usd), "USD")} en dólares`
+        : `sobraron ${formatAmount(input.usd, "USD")} en dólares`,
+    );
+  }
+  return `Arqueo guardado con diferencia: ${partes.join(" y ")}. El motivo quedó escrito y la diferencia se ve en «Últimos cierres».`;
+}
+
+/** Formato corto para los avisos del arqueo (sin depender del formateador de la pantalla). */
+function formatAmount(value: number, currency: "NIO" | "USD" = "NIO"): string {
+  return new Intl.NumberFormat("es-NI", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+/**
+ * Qué pasa cuando el cajero toca «Cerrar caja», **antes** de mandar nada.
+ *
+ * Regla del dueño: la pantalla no adelanta si falta o sobra plata mientras se
+ * escribe. Al guardar, o cuadra (y se avisa en verde) o no cuadra (y recién ahí
+ * se abre el panel rojo que pide el motivo). Este cálculo es el que decide cuál
+ * de las dos cosas pasa, y está en un solo lugar para que la prueba y la
+ * pantalla no puedan discrepar.
+ */
+export type CloseCheck =
+  | { status: "invalid"; message: string }
+  | { status: "needs_reason"; differenceNio: number; differenceUsd: number }
+  | {
+      status: "ready";
+      differenceNio: number;
+      differenceUsd: number;
+      balanced: boolean;
+    };
+
+export function checkClose(input: {
+  expected: { nio: number; usd: number };
+  counted: { nio: number; usd: number };
+  notes: string;
+}): CloseCheck {
+  const differenceNio = cashDifference(input.expected.nio, input.counted.nio);
+  const differenceUsd = cashDifference(input.expected.usd, input.counted.usd);
+  const balanced = differenceNio === 0 && differenceUsd === 0;
+  if (!balanced && input.notes.trim() === "") {
+    return { status: "needs_reason", differenceNio, differenceUsd };
+  }
+  const problem = cashNotesProblem(input.notes, !balanced);
+  if (problem) return { status: "invalid", message: problem };
+  return { status: "ready", differenceNio, differenceUsd, balanced };
+}
+
 /** Motivo de cierre: obligatorio cuando el arqueo no cuadra. */
 export function cashNotesProblem(notes: string, needsReason: boolean): string | null {
   const text = notes.trim();

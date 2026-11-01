@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeftRight, CheckCircle2, LockKeyhole, RefreshCw, ShieldAlert } from "lucide-react";
 import { formatMoney } from "@/lib/finance/format-money";
 import {
   CASH_HISTORY_LIMIT,
   CASH_NOTES_MAX,
-  cashDifference,
+  CLOSE_SUCCESS_BALANCED,
   cashError,
-  cashNeedsReason,
-  cashNotesProblem,
+  checkClose,
+  closeSavedWithDifference,
   markExpectedFill,
   parseCashAmount,
   parseCashState,
@@ -17,6 +17,7 @@ import {
   type CashState,
 } from "@/lib/finance/cash-session";
 import { cn } from "@/lib/utils";
+import { LoadingBlock, Spinner } from "@/components/ui/spinner";
 
 /**
  * Cierre y arqueo de caja (FIN-04), dentro de la pantalla de Caja.
@@ -58,15 +59,16 @@ const dateOnly = (value: string) =>
   });
 
 /** Diferencia con su lectura en palabras: falta, sobra o cuadra. */
+/** «Falta C$50,00» → «falta C$50,00», sin tocar el símbolo de la moneda. */
+function lowerFirst(text: string): string {
+  return text.charAt(0).toLowerCase() + text.slice(1);
+}
+
 function differenceLabel(difference: number, currency: "NIO" | "USD"): string {
   if (difference === 0) return "Cuadra exacto";
   return difference < 0
     ? `Falta ${formatMoney(Math.abs(difference), currency)}`
     : `Sobra ${formatMoney(difference, currency)}`;
-}
-
-function differenceTone(difference: number): string {
-  return difference === 0 ? "text-brand-300" : "text-alert";
 }
 
 function Figure({
@@ -109,6 +111,18 @@ export function CashSessionPanel({
   const [busy, setBusy] = useState<"open" | "close" | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  /** Verde cuando todo salió bien; ámbar cuando se guardó con diferencia. */
+  const [noticeTone, setNoticeTone] = useState<"ok" | "warn">("ok");
+  /**
+   * La diferencia del arqueo sólo se muestra **después** de tocar «Cerrar
+   * caja». Mientras el cajero escribe no se le adelanta si falta o sobra plata:
+   * primero guarda, y recién ahí se le pide el motivo si no cuadró.
+   */
+  const [closeBlocked, setCloseBlocked] = useState<{
+    nio: number;
+    usd: number;
+  } | null>(null);
+  const reasonRef = useRef<HTMLTextAreaElement | null>(null);
 
   const [openNio, setOpenNio] = useState("");
   const [openUsd, setOpenUsd] = useState("");
@@ -205,6 +219,8 @@ export function CashSessionPanel({
     setOpenNio("");
     setOpenUsd("");
     setOpenNotes("");
+    setCloseBlocked(null);
+    setNoticeTone("ok");
     setNotice("Caja abierta. Ahora todo cobro y gasto de efectivo se suma o se resta solo.");
     refresh();
   }
@@ -215,15 +231,6 @@ export function CashSessionPanel({
   const expectedUsd = openSession?.expectedUsd ?? 0;
   const countedNioValue = parseCashAmount(countedNio, { required: true });
   const countedUsdValue = parseCashAmount(countedUsd, { required: true });
-  const bothCounted = countedNioValue.ok && countedUsdValue.ok;
-  const liveDifferenceNio = bothCounted ? cashDifference(expectedNio, countedNioValue.value) : null;
-  const liveDifferenceUsd = bothCounted ? cashDifference(expectedUsd, countedUsdValue.value) : null;
-  const needsReason =
-    bothCounted &&
-    cashNeedsReason(
-      { nio: expectedNio, usd: expectedUsd },
-      { nio: countedNioValue.value, usd: countedUsdValue.value },
-    );
 
   async function handleClose(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -232,11 +239,22 @@ export function CashSessionPanel({
     if (!openSession) return;
     if (!countedNioValue.ok) return setFormError(countedNioValue.message);
     if (!countedUsdValue.ok) return setFormError(countedUsdValue.message);
-    const needed =
-      cashDifference(expectedNio, countedNioValue.value) !== 0 ||
-      cashDifference(expectedUsd, countedUsdValue.value) !== 0;
-    const notesProblem = cashNotesProblem(closeNotes, needed);
-    if (notesProblem) return setFormError(notesProblem);
+
+    // Primer paso: ¿cuadra o no? Sólo acá —al tocar «Cerrar caja»— se decide.
+    const check = checkClose({
+      expected: { nio: expectedNio, usd: expectedUsd },
+      counted: { nio: countedNioValue.value, usd: countedUsdValue.value },
+      notes: closeNotes,
+    });
+    if (check.status === "invalid") return setFormError(check.message);
+    if (check.status === "needs_reason") {
+      // No cuadró: se abre el panel rojo y el motivo. Todavía no se guardó nada.
+      setCloseBlocked({ nio: check.differenceNio, usd: check.differenceUsd });
+      requestAnimationFrame(() => reasonRef.current?.focus());
+      return;
+    }
+
+    setCloseBlocked(null);
     setBusy("close");
     const ok = await send({
       action: "close",
@@ -251,7 +269,13 @@ export function CashSessionPanel({
     setCountedNio("");
     setCountedUsd("");
     setCloseNotes("");
-    setNotice("Caja cerrada. El arqueo quedó guardado y ya no se puede cambiar.");
+    if (check.balanced) {
+      setNoticeTone("ok");
+      setNotice(CLOSE_SUCCESS_BALANCED);
+    } else {
+      setNoticeTone("warn");
+      setNotice(closeSavedWithDifference({ nio: check.differenceNio, usd: check.differenceUsd }));
+    }
     refresh();
   }
 
@@ -263,9 +287,10 @@ export function CashSessionPanel({
 
   if (load === "loading" && !state) {
     return (
-      <p className="rounded-2xl border border-line bg-card p-5 text-sm text-fog" role="status">
-        Leyendo la caja…
-      </p>
+      <LoadingBlock
+        title="Leyendo la caja…"
+        hint="Estamos mirando si hay una caja abierta y cuánto debería haber."
+      />
     );
   }
 
@@ -296,7 +321,16 @@ export function CashSessionPanel({
   return (
     <div className="space-y-5">
       {notice ? (
-        <p className="rounded-xl border border-brand/40 bg-brand-soft p-3 text-sm text-brand-300" role="status">
+        <p
+          role="status"
+          aria-live="polite"
+          className={cn(
+            "rounded-xl border p-3 text-sm font-semibold",
+            noticeTone === "ok"
+              ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-300"
+              : "border-amber-400/50 bg-amber-400/10 text-amber-200",
+          )}
+        >
           {notice}
         </p>
       ) : null}
@@ -447,7 +481,12 @@ export function CashSessionPanel({
                   autoComplete="off"
                   placeholder="0.00"
                   value={countedNio}
-                  onChange={(event) => setCountedNio(event.target.value)}
+                  onChange={(event) => {
+                    setCountedNio(event.target.value);
+                    // Cambió lo contado: el veredicto anterior ya no sirve.
+                    setCloseBlocked(null);
+                    setFormError(null);
+                  }}
                 />
               </label>
               <label className={labelClass}>
@@ -458,7 +497,11 @@ export function CashSessionPanel({
                   autoComplete="off"
                   placeholder="0.00"
                   value={countedUsd}
-                  onChange={(event) => setCountedUsd(event.target.value)}
+                  onChange={(event) => {
+                    setCountedUsd(event.target.value);
+                    setCloseBlocked(null);
+                    setFormError(null);
+                  }}
                 />
               </label>
             </div>
@@ -479,62 +522,71 @@ export function CashSessionPanel({
                   Usar lo esperado
                 </button>
               ) : null}
-              {bothCounted ? (
-                <p className="text-sm">
-                  <span className={differenceTone(liveDifferenceNio ?? 0)}>
-                    Córdobas: {differenceLabel(liveDifferenceNio ?? 0, "NIO")}
-                  </span>
-                  {" · "}
-                  <span className={differenceTone(liveDifferenceUsd ?? 0)}>
-                    Dólares: {differenceLabel(liveDifferenceUsd ?? 0, "USD")}
-                  </span>
-                </p>
-              ) : (
-                <p className="text-sm text-fog">
-                  Escribí las dos monedas (podés poner 0) para ver si cuadra.
-                </p>
-              )}
             </div>
 
-            {canPrefillExpected ? (
+            {closeBlocked ? (
+              <div
+                role="alert"
+                className="space-y-1.5 rounded-xl border border-alert/60 bg-alert/[0.08] p-4"
+              >
+                <p className="flex items-center gap-2 font-bold text-alert">
+                  <ShieldAlert className="size-5" aria-hidden="true" />
+                  El cuadre de caja no cuadró correctamente
+                </p>
+                <p className="text-sm text-ink">
+                  {closeBlocked.nio !== 0 ? (
+                    <>En córdobas {lowerFirst(differenceLabel(closeBlocked.nio, "NIO"))}. </>
+                  ) : null}
+                  {closeBlocked.usd !== 0 ? (
+                    <>En dólares {lowerFirst(differenceLabel(closeBlocked.usd, "USD"))}. </>
+                  ) : null}
+                  Escribí el motivo en el campo de abajo y volvé a tocar «Cerrar
+                  caja y guardar arqueo». Todavía no se guardó nada.
+                </p>
+              </div>
+            ) : null}
+
+            {closeBlocked ? (
+              <label className={labelClass}>
+                Motivo del faltante o sobrante (obligatorio)
+                <textarea
+                  ref={reasonRef}
+                  className={cn(fieldClass, "mt-1 min-h-20 resize-y")}
+                  maxLength={CASH_NOTES_MAX}
+                  required
+                  placeholder="Ejemplo: faltaron C$40, no se pudo dar vuelto en un cobro."
+                  value={closeNotes}
+                  onChange={(event) => setCloseNotes(event.target.value)}
+                />
+              </label>
+            ) : canPrefillExpected ? (
               <p className="rounded-xl border border-line bg-paper/60 px-4 py-3 text-[0.8125rem] text-fog">
                 «Usar lo esperado» rellena lo contado con lo que debería haber
                 —para cuando ya contaste y coincide— y deja la constancia en la
-                nota del cierre. Si la diferencia es real, no lo uses: escribí
-                lo que contaste y el motivo.
+                nota del cierre. Si la diferencia es real, no lo uses: escribí lo
+                que contaste y el motivo te lo va a pedir al guardar.
               </p>
             ) : (
               <p className="rounded-xl border border-line bg-paper/60 px-4 py-3 text-[0.8125rem] text-fog">
-                Escribí lo que contaste. Si falta o sobra, el motivo es
-                obligatorio y el arqueo queda con la diferencia a la vista en
-                «Últimos cierres»; el faltante no se puede tapar rellenando con
-                lo esperado.
+                Escribí lo que contaste y tocá «Cerrar caja». Si cuadra, listo. Si
+                no cuadra, la pantalla te pide el motivo ahí mismo: el faltante no
+                se puede tapar rellenando con lo esperado.
               </p>
             )}
-
-            <label className={labelClass}>
-              {needsReason ? "Motivo del faltante o sobrante (obligatorio)" : "Nota del cierre (opcional)"}
-              <textarea
-                className={cn(fieldClass, "mt-1 min-h-20 resize-y")}
-                maxLength={CASH_NOTES_MAX}
-                placeholder={
-                  needsReason
-                    ? "Ejemplo: faltaron C$40, no se pudo dar vuelto en un cobro."
-                    : "Ejemplo: turno sin novedades."
-                }
-                value={closeNotes}
-                onChange={(event) => setCloseNotes(event.target.value)}
-              />
-            </label>
 
             <div className="flex flex-wrap items-center gap-3">
               <button
                 type="submit"
                 disabled={busy !== null}
+                aria-busy={busy === "close" || undefined}
                 className="inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-onbrand transition-opacity hover:opacity-90 disabled:opacity-60"
               >
-                <LockKeyhole className="size-4" aria-hidden="true" />
-                {busy === "close" ? "Cerrando…" : "Cerrar caja y guardar arqueo"}
+                {busy === "close" ? (
+                  <Spinner size="sm" />
+                ) : (
+                  <LockKeyhole className="size-4" aria-hidden="true" />
+                )}
+                {busy === "close" ? "Cerrando la caja…" : "Cerrar caja y guardar arqueo"}
               </button>
               <p className="text-xs text-fog">
                 El arqueo se guarda una sola vez: después no se puede modificar.
@@ -597,8 +649,12 @@ export function CashSessionPanel({
               disabled={busy !== null}
               className="inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-onbrand transition-opacity hover:opacity-90 disabled:opacity-60"
             >
-              <CheckCircle2 className="size-4" aria-hidden="true" />
-              {busy === "open" ? "Abriendo…" : "Abrir caja"}
+              {busy === "open" ? (
+                <Spinner size="sm" />
+              ) : (
+                <CheckCircle2 className="size-4" aria-hidden="true" />
+              )}
+              {busy === "open" ? "Abriendo la caja…" : "Abrir caja"}
             </button>
             <p className="text-xs text-fog">
               Solo puede haber una caja abierta a la vez.
