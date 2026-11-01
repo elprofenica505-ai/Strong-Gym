@@ -1363,14 +1363,16 @@ Esta sección es un resumen, no otra lista de tareas.
   de caja no cuadró correctamente»— con el campo de motivo obligatorio, y no se
   guarda nada hasta que se escriba. Si se guarda con diferencia justificada, el
   aviso es ámbar y dice cuánto faltó o sobró, en su moneda.
-- **Nunca se ve «congelado» (PR #130):** tres capas de «Cargando» — una barra
-  arriba en cuanto se toca cualquier enlace interno (`NavigationProgress`), un
-  giro dentro de la misma tarjeta o módulo tocado (`LinkPending` con
-  `useLinkStatus`) y un esqueleto con «Cargando…» mientras el servidor prepara
-  la pantalla (`panel/loading.tsx` y `[locale]/loading.tsx`). Los botones que
-  esperan respuesta usan `<Button loading>`: giran y se bloquean, así nadie
-  toca dos veces. Cubre también la entrada con correo, contraseña y segundo
-  factor.
+- **Nunca se ve «congelado» y nunca se vacía la pantalla (PR #130 y #131):**
+  dos capas de aviso, **sin** esqueletos grises: una cinta de brasas arriba con
+  «Cargando…» en cuanto se toca cualquier enlace interno (`NavigationProgress`)
+  y un ícono de fuego dentro de la misma tarjeta o módulo tocado
+  (`LinkPending`). Lo que había sigue a la vista mientras llega lo nuevo. Los
+  botones que esperan respuesta usan `<Button loading>`: giran y se bloquean,
+  así nadie toca dos veces; cubre también la entrada con correo, contraseña y
+  segundo factor. **Se quitó la pantalla de esqueleto** (`loading.tsx`): el
+  gimnasio la rechazó porque las letras e imágenes desaparecían y daba
+  sensación de pausa; una prueba impide que vuelva.
 - **Venta particular (PR #129 + migración 00097):** caja puede cobrarle un
   producto a quien entró a comprar sin tener ficha. En «Productos → Vender» hay
   dos botones excluyentes —«Cliente registrado» y «Venta particular»—, y la

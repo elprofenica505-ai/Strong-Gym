@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Spinner } from "@/components/ui/spinner";
+import { Flame } from "lucide-react";
 
 /**
  * Barra de avance al cambiar de pantalla.
@@ -12,10 +12,14 @@ import { Spinner } from "@/components/ui/spinner";
  * pantallas a la vez.
  *
  * Cómo funciona: escucha el toque en cualquier enlace interno y, **sin cancelar
- * nada**, muestra una barra arriba con «Cargando…» hasta que la dirección del
- * navegador cambia (momento en que la pantalla nueva toma el control con su
- * propio esqueleto). Si algo falla y la dirección no cambia, la barra se apaga
- * sola a los 12 segundos para no quedarse pegada mintiendo.
+ * nada**, muestra arriba una cinta de brasas y un cartelito con «Cargando…»
+ * hasta que la dirección del navegador cambia. Si algo falla y la dirección no
+ * cambia, se apaga sola a los 12 segundos para no quedarse pegada mintiendo.
+ *
+ * Lo que **no** hace: no tapa la pantalla ni la vacía. Lo que había sigue a la
+ * vista, legible, mientras se trae lo nuevo. Nada de bloques grises: el
+ * reemplazo por esqueletos se probó y daba sensación de pausa y de lentitud;
+ * el gimnasio pidió volver a ver el contenido con un aviso mínimo encima.
  *
  * Lo que no hace: no bloquea el enlace, no cambia la navegación y no toca el
  * teclado ni los formularios.
@@ -103,18 +107,28 @@ export function NavigationProgress() {
   if (!pending) return null;
 
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="pointer-events-none fixed inset-x-0 top-0 z-[60] flex justify-center"
-    >
-      <div className="h-0.5 w-full overflow-hidden bg-brand/20">
-        <div className="h-full w-1/3 animate-nav-progress rounded-full bg-brand" />
+    <div role="status" aria-live="polite" className="pointer-events-none">
+      {/*
+        Cascada de brasas: dos capas de gradiente a distinta velocidad sobre el
+        borde de arriba. Es fuego de marca —rojo, naranja y ámbar—, ocupa 3 px y
+        no tapa nada de lo que se está leyendo.
+      */}
+      <div className="fire-bar fixed inset-x-0 top-0 z-[60] h-[3px] overflow-hidden">
+        <span className="fire-bar-slow absolute inset-0" aria-hidden="true" />
+        <span className="fire-bar-fast absolute inset-0" aria-hidden="true" />
+        <span className="fire-spark fire-spark-1" aria-hidden="true" />
+        <span className="fire-spark fire-spark-2" aria-hidden="true" />
+        <span className="fire-spark fire-spark-3" aria-hidden="true" />
       </div>
-      <span className="absolute top-1.5 inline-flex items-center gap-1.5 rounded-full border border-line bg-card px-2.5 py-1 text-[0.6875rem] font-semibold text-ink shadow-sm">
-        <Spinner size="sm" className="text-brand-300" />
-        Cargando…
-      </span>
+
+      {/* El cartelito va abajo y no arriba: arriba está el logo y el menú, y
+          taparlos con un aviso se siente peor que no tener aviso. */}
+      <div className="fixed inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] z-[60] flex justify-center">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-card/95 px-3 py-1.5 text-[0.75rem] font-semibold text-ink shadow-[0_8px_22px_-10px_rgba(249,115,22,0.8)] backdrop-blur-sm">
+          <Flame className="fire-flame size-3.5 text-amber-400" aria-hidden="true" />
+          Cargando…
+        </span>
+      </div>
     </div>
   );
 }

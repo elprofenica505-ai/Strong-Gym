@@ -1,4 +1,4 @@
-import { Loader2 } from "lucide-react";
+import { Flame, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -55,33 +55,20 @@ export function LoadingBlock({
       role="status"
       aria-live="polite"
       className={cn(
-        "flex items-center gap-3 rounded-2xl border border-line bg-card p-5 text-ink",
+        "relative overflow-hidden rounded-2xl border border-line bg-card p-4 text-ink sm:p-5",
         className,
       )}
     >
-      <Spinner size="md" className="text-brand-300" />
-      <div className="min-w-0">
-        <p className="text-sm font-semibold">{title}</p>
-        {hint ? <p className="text-[0.8125rem] text-fog">{hint}</p> : null}
+      {/* La misma cascada de brasas del aviso de navegación: un hilo fino sobre
+          el borde, sin tapar el contenido ni dejar la tarjeta en gris. */}
+      <span className="fire-bar absolute inset-x-0 top-0 block h-[3px]" aria-hidden="true" />
+      <div className="flex items-center gap-2.5">
+        <Flame className="fire-flame size-4 shrink-0 text-amber-400" aria-hidden="true" />
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">{title}</p>
+          {hint ? <p className="text-[0.8125rem] text-fog">{hint}</p> : null}
+        </div>
       </div>
-    </div>
-  );
-}
-
-/**
- * Esqueleto del contenido: barras grises con la forma de lo que va a llegar.
- * Es lo que se pinta al cambiar de pantalla, antes de que el servidor responda.
- */
-export function LoadingSkeleton({ lines = 3 }: { lines?: number }) {
-  return (
-    <div className="space-y-2" aria-hidden="true">
-      {Array.from({ length: lines }, (_, index) => (
-        <div
-          key={index}
-          className="h-3 animate-pulse rounded-full bg-line/70"
-          style={{ width: `${[92, 78, 86, 64, 88][index % 5]}%` }}
-        />
-      ))}
     </div>
   );
 }
