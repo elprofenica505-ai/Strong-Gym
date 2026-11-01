@@ -17,24 +17,24 @@ import { SECOND_CATALOG_ES, SECOND_CATALOG_SIZE, translationFor } from "../src/l
 
 const fixture = [
   {
-    id: "Barbell_Squat",
-    name: "Barbell Squat",
+    id: "Leverage_Chest_Press",
+    name: "Leverage Chest Press",
     force: "push",
-    level: "intermediate",
+    level: "beginner",
     mechanic: "compound",
-    equipment: "barbell",
-    primaryMuscles: ["quadriceps"],
-    secondaryMuscles: ["glutes", "hamstrings"],
-    instructions: ["Stand with the bar on your upper back.", "Squat down.", "Stand back up."],
+    equipment: "machine",
+    primaryMuscles: ["chest"],
+    secondaryMuscles: ["shoulders", "triceps"],
+    instructions: ["Sit at the machine.", "Press the handles forward.", "Come back under control."],
     category: "strength",
-    images: ["Barbell_Squat/0.jpg", "Barbell_Squat/1.jpg"],
+    images: ["Leverage_Chest_Press/0.jpg", "Leverage_Chest_Press/1.jpg"],
   },
 ];
 
 test("la curaduría tiene nombre, tres pasos y nada vacío", () => {
   const entries = Object.entries(SECOND_CATALOG_ES);
   assert.equal(entries.length, SECOND_CATALOG_SIZE);
-  assert.ok(entries.length > 100, `la curaduría quedó corta: ${entries.length}`);
+  assert.ok(entries.length > 60, `la curaduría quedó corta: ${entries.length}`);
   for (const [id, entry] of entries) {
     assert.ok(entry.name.trim().length > 3, `${id} no tiene nombre`);
     assert.equal(entry.steps.length, 3, `${id} no tiene tres pasos`);
@@ -50,8 +50,8 @@ test("ningún ejercicio se carga dos veces", () => {
 });
 
 test("la traducción se encuentra aunque la clave venga escrita distinto", () => {
-  assert.ok(translationFor("Barbell_Squat"));
-  assert.ok(translationFor("barbellsquat"));
+  assert.ok(translationFor("Leverage_Chest_Press"));
+  assert.ok(translationFor("leveragechestpress"));
   assert.equal(translationFor("no-existe"), undefined);
 });
 
@@ -60,7 +60,7 @@ test("sólo entra lo que está traducido; el resto se cuenta como afuera", () =>
   const { rows, skipped } = toSecondCatalogRows(dataset);
   assert.equal(rows.length, 1);
   assert.equal(skipped, 1);
-  assert.equal(rows[0].id, "fd-Barbell_Squat");
+  assert.equal(rows[0].id, "fd-Leverage_Chest_Press");
   assert.equal(rows[0].source, "free-exercise-db");
 });
 
@@ -73,20 +73,20 @@ test("el resultado tiene la misma forma que el catálogo actual", () => {
     "image_start", "image_peak", "image_main", "search_extra", "source",
   ];
   for (const key of obligatorias) assert.ok(key in row, `falta ${key}`);
-  assert.equal(row.name_en, "Barbell Squat");
-  assert.match(row.name_es, /sentadilla/i);
+  assert.equal(row.name_en, "Leverage Chest Press");
+  assert.match(row.name_es, /pecho/i);
   assert.deepEqual(row.instructions_es.length, 3);
-  assert.equal(row.equipment, "barbell");
-  assert.equal(row.body_part, "upper_legs");
+  assert.equal(row.equipment, "machine");
+  assert.equal(row.body_part, "chest");
   assert.equal(row.category, "strength");
-  assert.equal(row.difficulty, "intermediate");
-  assert.equal(row.image_start, "Barbell_Squat/0.jpg");
-  assert.equal(row.image_peak, "Barbell_Squat/1.jpg");
-  assert.ok(row.search_extra.includes("Barra"), "la búsqueda no incluye el equipo en español");
+  assert.equal(row.difficulty, "beginner");
+  assert.equal(row.image_start, "Leverage_Chest_Press/0.jpg");
+  assert.equal(row.image_peak, "Leverage_Chest_Press/1.jpg");
+  assert.ok(row.search_extra.includes("Máquina"), "la búsqueda no incluye el equipo en español");
 });
 
 test("las fotos que no son del origen se descartan, nunca se enlazan", () => {
-  const raras = ["https://ejemplo.com/x.jpg", "../../etc/passwd/0.jpg", "Barbell_Squat/2.jpg", ""];
+  const raras = ["https://ejemplo.com/x.jpg", "../../etc/passwd/0.jpg", "Leverage_Chest_Press/2.jpg", ""];
   const [row] = toSecondCatalogRows([{ ...fixture[0], images: raras }]).rows;
   assert.equal(row.image_start, null);
   assert.equal(row.image_peak, null);
