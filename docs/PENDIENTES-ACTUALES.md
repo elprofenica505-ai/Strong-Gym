@@ -84,7 +84,7 @@ Según el caso, debe cumplir:
 
 ## Resumen de avance al 1 de noviembre de 2026
 
-**67 tareas listadas: 24 cerradas y 43 abiertas.** De las 43 abiertas, **7 son
+**68 tareas listadas: 25 cerradas y 43 abiertas.** De las 43 abiertas, **7 son
 aceptaciones** en celular o con cuenta real (QA-03 a QA-09), **5 son de
 entrega** (ENT-01 a ENT-05, aplazadas a propósito) y **8 son opcionales del
 futuro** (FUT-01 a FUT-08). Quedan **23 de producto o negocio** por resolver,
@@ -697,6 +697,23 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   «la ficha mapeada muestra la foto», «recargar el catálogo no borra las fotos»,
   «apagar el mapa devuelve el dibujo» y «lo que no tiene equivalente se queda
   como estaba»); `typecheck` y `lint` limpios.
+- [x] **EX-05 · Baja · Código — El botón de volver se tiene que ver.**
+  Cerrada el 1 de noviembre. El dueño notó que dentro de la ficha del ejercicio
+  «si quiero retroceder si se puede en la parte superior izquierda pero es una
+  flecha demasiado pequeña», y pidió «una flecha más grande y que diga atrás».
+  Era un texto de 12 px (`← Biblioteca`) que en el teléfono se lee como una
+  etiqueta, no como algo que se toca.
+  **Arreglo**: un solo componente, `src/components/ui/back-link.tsx`
+  (`BackLink`), con flecha dibujada en un círculo del color de la marca, la
+  palabra **Atrás** a 15 px, alto mínimo de 44 px y borde y fondo de botón.
+  Se usa en las tres pantallas de la biblioteca —la ficha del ejercicio, la
+  lista y «Mi rutina»— y además en dos pantallas de personal que tenían el
+  mismo problema (progreso del cliente y reportes, donde era un icono sin
+  texto). Cada una dice a dónde vuelve en chiquito («Biblioteca», «Mi cuenta»,
+  «Panel») y el lector de pantalla escucha «Atrás: Biblioteca».
+  Evidencia: 8 pruebas nuevas (`tests/back-link.test.mjs`) que exigen que diga
+  Atrás, que la flecha sea un dibujo y no el carácter viejo, y que el área de
+  toque llegue a 44 px; `typecheck`, `lint` y `build` limpios.
 - [ ] **CLI-03 · Media · Revisión profesional — Calculadora, dieta y rutinas.**
   La herramienta, el consentimiento, la aprobación del personal y el bloqueo de
   menores ya existen. Falta que un profesional revise fórmulas, mínimos de

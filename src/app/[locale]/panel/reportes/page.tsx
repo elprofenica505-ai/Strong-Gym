@@ -7,9 +7,7 @@ import { loadFinanceReport } from "@/lib/reports/load";
 import { managuaDay } from "@/lib/reports/finance-report";
 import { FinanceReadError, readFinance } from "@/lib/finance/read-result";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import {
   getCashierPermissions,
   getCurrentUser,
@@ -18,6 +16,7 @@ import {
 } from "@/lib/data/queries";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { DEMO_MODE } from "@/lib/supabase/env";
+import { BackLink } from "@/components/ui/back-link";
 
 export const dynamic = "force-dynamic";
 
@@ -67,14 +66,8 @@ export default async function ReportesPage({
 
   return (
     <div className="container-x min-w-0 space-y-10 py-6">
-      <div className="flex items-center gap-3">
-        <Link
-          href={`/${locale}/panel`}
-          className="grid size-10 place-items-center rounded-full border border-line text-mist transition-colors hover:border-brand hover:text-ink"
-          aria-label="Volver al inicio del panel"
-        >
-          <ArrowLeft className="size-4" />
-        </Link>
+      <div className="flex flex-wrap items-center gap-3">
+        <BackLink href={`/${locale}/panel`} hint="Panel" />
         <div>
           <span className="eyebrow">
             <span className="h-px w-6 bg-brand" aria-hidden="true" />
@@ -192,14 +185,8 @@ async function cashierView({
 
 function Heading({ locale }: { locale: string }) {
   return (
-    <div className="flex items-center gap-3">
-      <Link
-        href={`/${locale}/panel`}
-        className="grid size-10 place-items-center rounded-full border border-line text-mist transition-colors hover:border-brand hover:text-ink"
-        aria-label="Volver al inicio del panel"
-      >
-        <ArrowLeft className="size-4" />
-      </Link>
+    <div className="flex flex-wrap items-center gap-3">
+      <BackLink href={`/${locale}/panel`} hint="Panel" />
       <div>
         <span className="eyebrow">
           <span className="h-px w-6 bg-brand" aria-hidden="true" />
@@ -214,8 +201,8 @@ function Heading({ locale }: { locale: string }) {
 function Placeholder({ title, message, locale }: { title: string; message: string; locale: string }) {
   return (
     <div className="container-x py-10">
-      <Link href={`/${locale}/panel`} className="text-sm text-brand">← Volver al panel</Link>
-      <h1 className="display-xl mt-4 text-2xl">{title}</h1>
+      <BackLink href={`/${locale}/panel`} hint="Panel" />
+      <h1 className="display-xl mt-3 text-2xl">{title}</h1>
       <p className="mt-3 text-fog">{message}</p>
     </div>
   );

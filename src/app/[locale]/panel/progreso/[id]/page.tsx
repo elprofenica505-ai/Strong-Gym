@@ -16,6 +16,7 @@ import type { AttendanceData } from "@/lib/attendance/summary";
 import { isLocale, type Locale } from "@/i18n/config";
 import { DEMO_MODE } from "@/lib/supabase/env";
 import { isStaffRole } from "@/lib/auth/current-user";
+import { BackLink } from "@/components/ui/back-link";
 import { groupRoutineByDay, formatRest, formatSeries } from "@/lib/progress/routine-view";
 import {
   addMonths, BMI_LABEL, bmi, bmiCategory, goalProgress, goalStartWeight, healthyWeightRange, managuaToday, GOAL_TYPES,
@@ -102,7 +103,7 @@ export default async function ProgresoClientePage({
       <section className="py-8 sm:py-10">
         <div className="container-x grid gap-6">
           <div className="flex flex-wrap gap-x-5 gap-y-2">
-            <a href={`/${locale}/panel/clientes`} className="text-sm text-brand-300 underline">← Volver a clientes</a>
+            <BackLink href={`/${locale}/panel/clientes`} hint="Clientes" />
             {attendanceOnly && data && (
               <a href={`/${locale}/panel/progreso/${id}`} className="text-sm text-brand-300 underline">
                 Ver progreso y medidas
