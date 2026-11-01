@@ -47,14 +47,16 @@ Según el caso, debe cumplir:
   todos. La 00085 ya
   está aplicada en producción y los datos de vigencias quedaron alineados.
 - Supabase: proyecto ACTIVE_HEALTHY. Las migraciones aplicadas y registradas
-  llegan a la **00092** (`biblioteca_solo_de_gimnasio`, registrada como
-  `20261101010752`), que deja a la vista sólo lo que es de sala. Antes: **00091**
+  llegan a la **00093** (`fotos_reales_del_segundo_catalogo`), que pone fotos
+  reales en las 185 fichas con equivalente y guarda las rutas anteriores para
+  revertir. Antes: **00092** (`biblioteca_solo_de_gimnasio`, registrada como
+  `20261101010752`), que deja a la vista sólo lo que es de sala; **00091**
   (`orden_de_gimnasio`, registrada como
   `20261031234712`): la 00087 (`cierre_y_arqueo_de_caja`, `20261031213955`)
   agrega abrir, arqueo y cierre, la 00088 impide anular el efectivo de una caja
   ya cerrada, la 00089 (`biblioteca_de_ejercicios`, `20261031225118`) crea el
   catálogo y «Mi rutina», la 00090 arregla el filtro «Peso corporal» y la 00091
-  ordena el catálogo como un gimnasio. El siguiente número libre es **00093**.
+  ordena el catálogo como un gimnasio. El siguiente número libre es **00094**.
 - Datos productivos al 31 de octubre, comprobados con consulta directa:
   **9 disciplinas** (activas: Pesas y máquinas, Boxeo y Zumba), **6 planes**
   activos, **89 sesiones** (88 programadas y 1 anulada), **2 reservas**,
@@ -80,9 +82,9 @@ Según el caso, debe cumplir:
 | 3 | **QA-09 y QA-06** (celular) | Aceptar lo que ya está desplegado: vigencias, categorías, calendario, el uso y el historial de precios de los planes (CLI-07) y **abrir, contar y cerrar la caja** (FIN-04). |
 | 4 | **OP-06, FIN-03 a FIN-07, CAL-01/03, LEG-01 y NEG-01** | Reglas de negocio y entrega; no bloquean la operación diaria de hoy. |
 
-## Resumen de avance al 31 de octubre de 2026
+## Resumen de avance al 1 de noviembre de 2026
 
-**64 tareas listadas: 21 cerradas y 43 abiertas.** De las 43 abiertas, **7 son
+**67 tareas listadas: 24 cerradas y 43 abiertas.** De las 43 abiertas, **7 son
 aceptaciones** en celular o con cuenta real (QA-03 a QA-09), **5 son de
 entrega** (ENT-01 a ENT-05, aplazadas a propósito) y **8 son opcionales del
 futuro** (FUT-01 a FUT-08). Quedan **23 de producto o negocio** por resolver,
@@ -94,7 +96,7 @@ futuro** (FUT-01 a FUT-08). Quedan **23 de producto o negocio** por resolver,
 | **Etapa 2 — Navegación** | Hecha: Inicio, Clientes, Finanzas, Operación, Administración y Mis clientes | Solo la decisión de OP-09 |
 | **Etapa 3 — Operación diaria** | OP-01 a OP-05 cerradas y desplegadas | OP-06 (cierre de reservas pasadas), OP-07 (cambio de día sin recargar), OP-08 (vincular ficha con cuenta web) y la aceptación QA-09 |
 | **Clientes, vigencias y planes** | CLI-01, CLI-02 y CLI-06 cerradas y desplegadas | Aceptación en celular (QA-09); decisiones CLI-03, CLI-04 y CLI-05 |
-| **Biblioteca de ejercicios (EX-01 y EX-02)** | Cerrada: **467 ejercicios de sala** de 774 cargados, movimiento con botón «Ver movimiento», color por familia de equipo, ficha, cronómetro y «Mi rutina» | Aceptación en celular; decisiones del dueño sobre favoritos y acceso sin sesión |
+| **Biblioteca de ejercicios (EX-01 a EX-04)** | Cerrada: **467 ejercicios de sala** de 774 cargados, **151 con fotos reales** (inicio y final) y el resto con dibujo, movimiento con «Pausar movimiento», color por familia de equipo, ficha, cronómetro y «Mi rutina» | Aceptación en celular; decisiones del dueño sobre favoritos y acceso sin sesión |
 | **Etapa 4 — Finanzas y productos** | En uso real: cobros, gastos, deudas y abonos NIO/USD, vuelto, productos con stock, Caja por módulos con historial paginado, **apertura y cierre con arqueo**, reportes y descargas | FIN-03, FIN-06 y FIN-07 |
 | **Calendario y disciplinas (OP-05)** | Cerrado y desplegado, con grillas, sesiones sueltas, bloqueos, generador con vista previa y entrenadores | Solo la aceptación en celular (QA-09) |
 | **Etapa 5 — Aceptación integral** | Parcial: QA-01 y QA-02 cerradas | QA-03 a QA-08, CAL-03, LEG-01 y NEG-01 |
@@ -659,17 +661,41 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   Evidencia: 9 pruebas de la imagen (una comprueba que no vuelva la animación de
   CSS ni `prefers-reduced-motion`), 53 de la biblioteca y 53 comprobaciones SQL,
   `typecheck` y `lint` limpios.
-- [ ] **EX-04 · Media · Decisión del dueño — Fotos del segundo catálogo en todo el catálogo.**
-  El dueño preguntó si la biblioteca nueva tiene todos los ejercicios de la
-  anterior para quedarse sólo con esas fotos. **No los tiene**: el segundo
-  origen (876 ejercicios) coincide **por nombre** con unos 76 de los 701 del
-  catálogo anterior, y de los 394 ejercicios visibles anteriores muchos menos
-  tienen foto allí; el resto son máquinas y variantes que ese origen no publica. Hoy la biblioteca
-  mezcla dibujos (RepDB) y fotos (segundo origen), y así queda hasta que el
-  dueño decida. Las dos salidas posibles: (a) dejar la mezcla, o (b) cambiar la
-  imagen de los ejercicios que sí tienen foto en el segundo origen, uno por uno
-  y sin duplicar fichas. Requiere su palabra; ninguna de las dos rompe la
-  biblioteca.
+- [x] **EX-04 · Media · Código — Fotos del segundo catálogo en las fichas equivalentes.**
+  Cerrada el 1 de noviembre con la autorización del dueño («ok tienes mi
+  autorización, continúa») sobre la opción (b): cambiar la imagen sólo donde
+  hay equivalente, uno por uno y **sin duplicar fichas**.
+  **Alcance real**: de las 701 fichas del catálogo anterior, **185 tienen
+  equivalente** en el segundo origen y pasan a mostrar sus dos fotos reales
+  (posición inicial y final, que la animación de EX-03 alterna cada 900 ms).
+  Cada ficha conserva su `id`, su nombre en español, sus pasos y sus consejos;
+  **sólo cambian `image_start` y `image_peak`**. No se crea ni se borra ninguna
+  ficha. De los **467 visibles**, 151 pasan a foto real y 316 siguen con dibujo
+  (el segundo origen no publica esas máquinas ni esas variantes).
+  **Cómo se eligió cada par** (nada de parecido automático: un parecido mal
+  resuelto pone la foto de otro ejercicio, que es peor que el dibujo):
+  132 salen de nombre normalizado idéntico —sin mayúsculas, acentos, plurales
+  ni palabras de relleno— y equipo compatible (barra con barra Z, Smith con
+  máquina, etc.), y 53 son sinónimos revisados a mano
+  («Barbell Bench Press» → «Barbell Bench Press - Medium Grip», «Front Squat» →
+  «Front Barbell Squat», «T-Bar Row» → «T-Bar Row with Handle»…). Se dejaron
+  fuera **`Air_Bike`** (en el origen es un abdominal en el piso, no la bicicleta
+  de sala) y dos fichas que allá no tienen dos fotos (halo y extensión de
+  tríceps con pesa rusa). Se comprobó en el origen que **las 370 fotos
+  elegidas existen**.
+  **Migración `00093`** (`fotos_reales_del_segundo_catalogo`): crea
+  `exercise_photo_map` —el mapa curado, con las rutas anteriores guardadas en la
+  misma fila— y el disparador `exercise_photo_keep()`, que vuelve a poner las
+  fotos si alguien recarga el catálogo viejo con `admin_import_exercises` (sin
+  él, una recarga las borraría en silencio). No borra nada.
+  **Reversión en dos pasos**, documentada en la cabecera de la migración:
+  `update exercise_photo_map set applied = false;` y después devolver
+  `image_start`/`image_peak`/`image_main` desde las columnas `old_*`.
+  Evidencia: 9 pruebas nuevas del mapa (`tests/exercises-photo-map.test.mjs`,
+  sin base) y 11 comprobaciones SQL nuevas en PGlite (**64 en total**, incluidas
+  «la ficha mapeada muestra la foto», «recargar el catálogo no borra las fotos»,
+  «apagar el mapa devuelve el dibujo» y «lo que no tiene equivalente se queda
+  como estaba»); `typecheck` y `lint` limpios.
 - [ ] **CLI-03 · Media · Revisión profesional — Calculadora, dieta y rutinas.**
   La herramienta, el consentimiento, la aprobación del personal y el bloqueo de
   menores ya existen. Falta que un profesional revise fórmulas, mínimos de

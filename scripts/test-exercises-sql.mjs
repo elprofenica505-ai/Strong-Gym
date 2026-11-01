@@ -49,6 +49,7 @@ const migration = sql("supabase/migrations/00089_biblioteca_de_ejercicios.sql");
 const extra = sql("supabase/migrations/00090_catalogo_peso_corporal.sql");
 const orden = sql("supabase/migrations/00091_orden_de_gimnasio.sql");
 const soloSala = sql("supabase/migrations/00092_biblioteca_solo_de_gimnasio.sql");
+const fotos = sql("supabase/migrations/00093_fotos_reales_del_segundo_catalogo.sql");
 await db.exec(migration);
 await db.exec(migration);
 await db.exec(extra);
@@ -57,6 +58,8 @@ await db.exec(orden);
 await db.exec(orden);
 await db.exec(soloSala);
 await db.exec(soloSala);
+await db.exec(fotos);
+await db.exec(fotos);
 ok("las migraciones se pueden aplicar dos veces", true);
 
 const newUser = async (email, role) => {
@@ -342,5 +345,51 @@ await assert.rejects(
   /AUTH|permission denied/i,
 );
 ok("un cliente no puede cambiar la visibilidad", true);
+
+// --- 9. Fotos reales del segundo catálogo (EX-04, 00093) ---
+// Arriba se aplicó con la tabla vacía (no había ejercicios todavía). Se vuelve
+// a aplicar ahora, que es el caso real: la base ya tiene el catálogo.
+await db.exec(fotos);
+await db.exec(fotos);
+
+const foto = async (id) =>
+  (await db.query("select image_start, image_peak, image_main from public.exercises where id = $1", [id])).rows[0];
+
+const prensaFoto = await foto("leg-press");
+ok("la ficha con equivalente muestra la foto inicial", prensaFoto.image_start === "Leg_Press/0.jpg");
+ok("y la foto final del movimiento", prensaFoto.image_peak === "Leg_Press/1.jpg");
+
+const mapa = (await db.query("select folder, old_image_start, old_image_peak from public.exercise_photo_map where exercise_id = 'leg-press'")).rows[0];
+ok("el mapa guarda la carpeta elegida", mapa.folder === "Leg_Press");
+ok("y la ruta anterior, para poder volver", mapa.old_image_start === "images/flat/leg-press-start.webp");
+
+const jalón = await foto("lat-pulldown");
+ok("una ficha que no tenía dibujo gana las fotos", jalón.image_start === "Wide-Grip_Lat_Pulldown/0.jpg");
+
+const lagartijas = await foto("push-up");
+ok("lo que no tiene equivalente se queda como estaba", lagartijas.image_start === null && lagartijas.image_peak === null);
+
+// Recargar el catálogo viejo no puede borrar las fotos.
+await as(admin, "aal2", "select public.admin_import_exercises($1::jsonb)", [JSON.stringify(payload)]);
+const trasRecarga = await foto("leg-press");
+ok("recargar el catálogo no borra las fotos", trasRecarga.image_start === "Leg_Press/0.jpg");
+
+const detalleFoto = (await as(ana, "aal2", "select public.exercise_detail($1) as d", ["leg-press"])).at(0).d;
+ok("el detalle que ve el socio trae la foto", detalleFoto.imageStart === "Leg_Press/0.jpg");
+
+// Revertir: se apaga el mapa y se restauran las rutas guardadas.
+await db.exec(`update public.exercise_photo_map set applied = false;
+  update public.exercises e set image_start = m.old_image_start,
+         image_peak = m.old_image_peak, image_main = m.old_image_main
+    from public.exercise_photo_map m where m.exercise_id = e.id;`);
+const revertido = await foto("leg-press");
+ok("apagar el mapa devuelve el dibujo anterior", revertido.image_start === "images/flat/leg-press-start.webp");
+
+await db.exec(`update public.exercise_photo_map set applied = true;
+  update public.exercises e set image_start = m.folder || '/0.jpg', image_peak = m.folder || '/1.jpg'
+    from public.exercise_photo_map m where m.exercise_id = e.id;`);
+ok("volver a encenderlo repone las fotos", (await foto("leg-press")).image_start === "Leg_Press/0.jpg");
+
+ok("el mapa no duplica fichas", (await db.query("select count(*)::int as n from public.exercise_photo_map")).rows[0].n === 2);
 
 console.log(`\n${checks} comprobaciones de la biblioteca de ejercicios (EX-01) pasaron.`);
