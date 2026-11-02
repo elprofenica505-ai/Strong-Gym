@@ -414,6 +414,8 @@ const en = {
     sending: "Sending...",
     success: "Thanks! We got your message and will write back soon.",
     error: "We could not send the message. Check the details and try again.",
+    tooFast:
+      "You sent several messages in a row. Wait {seconds} seconds and try again; nothing was sent.",
     required: "This field is required",
     invalidEmail: "Enter a valid email",
     tooShort: "Tell us a bit more (at least 10 characters)",

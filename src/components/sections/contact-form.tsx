@@ -6,7 +6,7 @@ import { useDictionary } from "@/components/providers/dictionary-provider";
 import { Button } from "@/components/ui/button";
 import { Input, Select, Textarea } from "@/components/ui/field";
 
-type FormState = "idle" | "sending" | "sent" | "error";
+type FormState = "idle" | "sending" | "sent" | "error" | "tooFast";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -18,6 +18,7 @@ export function ContactForm({
   const { dict, locale } = useDictionary();
   const [state, setState] = useState<FormState>("idle");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [retryAfter, setRetryAfter] = useState(60);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -56,6 +57,14 @@ export function ContactForm({
       if (response.ok) {
         setState("sent");
         form.reset();
+      } else if (response.status === 429) {
+        // El servidor dice cuántos segundos faltan: se los mostramos, en vez
+        // de un «error» que no explica nada.
+        const body = (await response.json().catch(() => null)) as
+          | { retryAfterSeconds?: number }
+          | null;
+        setRetryAfter(Math.max(1, Math.round(body?.retryAfterSeconds ?? 60)));
+        setState("tooFast");
       } else {
         setState("error");
       }
@@ -147,6 +156,12 @@ export function ContactForm({
           <input id="website" name="website" type="text" tabIndex={-1} autoComplete="off" />
         </div>
       </div>
+
+      {state === "tooFast" ? (
+        <p role="alert" className="text-[0.8125rem] leading-relaxed text-alert">
+          {dict.contact.tooFast.replace("{seconds}", String(retryAfter))}
+        </p>
+      ) : null}
 
       {state === "error" ? (
         <p className="mt-4 rounded-xl border border-alert/40 bg-alert/10 px-4 py-3 text-[0.8125rem] text-alert">

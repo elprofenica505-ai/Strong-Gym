@@ -13,6 +13,8 @@ import {
   type ProductAction,
 } from "@/lib/products/rules";
 import { sameOrigin } from "@/lib/security/same-origin";
+import { clientIp } from "@/lib/antispam";
+import { checkRateLimit, rateLimited, WRITE_RULES } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -155,6 +157,13 @@ async function run(db: NonNullable<Awaited<ReturnType<typeof getSupabaseServerCl
 export async function POST(request: Request) {
   if (!sameOrigin(request)) return reply({ error: "Origen no permitido." }, 403);
   try {
+    // Vender mueve dinero y stock: se limita por IP antes de tocar la base.
+    const limit = await checkRateLimit({
+      scope: "products-sale",
+      raw: clientIp(request),
+      rule: WRITE_RULES.finance,
+    });
+    if (!limit.allowed) return rateLimited(limit.retryAfterSeconds);
     const ctx = await context();
     if (!ctx.db) return ctx.response;
     const parsed = actionSchema.safeParse(await request.json().catch(() => null));

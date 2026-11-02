@@ -3,8 +3,11 @@ import assert from "node:assert/strict";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createLoader } from "./helpers/react-loader.mjs";
+import { rateLimitStub } from "./helpers/rate-limit-stub.mjs";
 const connected = createLoader({
+   "@/lib/security/rate-limit": rateLimitStub,
   "server-only": "export {};",
+  "@/lib/security/rate-limit": rateLimitStub,
   "@/lib/supabase/env": "export const isSupabaseConfigured=true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;",
   "@/lib/data/queries": `
  export const getCurrentUser=async()=>globalThis.__dataUser;
@@ -47,6 +50,7 @@ for (const name of ["contact", "newsletter", "account"]) {
   const method = name === "account" ? "PATCH" : "POST";
   test(`${name}: no configurado devuelve 503, no éxito demo`, async () => {
     const api = await createLoader({
+   "@/lib/security/rate-limit": rateLimitStub,
       "@/lib/supabase/env": "export const isSupabaseConfigured=false;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=true;",
       "@/lib/supabase/server":
         "export const getSupabaseServerClient=async()=>null;",

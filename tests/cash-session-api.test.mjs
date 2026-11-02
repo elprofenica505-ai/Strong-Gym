@@ -39,8 +39,14 @@ const sameOriginModule = `
   export const sameOrigin = () => globalThis.__cash.sameOrigin;
 `;
 
+const rateLimitModule = `
+  export const WRITE_RULES = { finance: { limit: 120, windowMs: 600000 } };
+  export const checkRateLimit = async () => ({ allowed: true, retryAfterSeconds: 0, source: "shared" });
+`;
+
 const modules = {
   "next/server": import.meta.resolve("next/server.js"),
+  "@/lib/security/rate-limit": dataUrl(rateLimitModule),
   "@/lib/auth/current-user": new URL("../src/lib/auth/current-user.ts", import.meta.url).href,
   "@/lib/data/queries": dataUrl(queries),
   "@/lib/supabase/server": dataUrl(supabase),

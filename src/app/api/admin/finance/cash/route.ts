@@ -9,6 +9,7 @@ import {
   parseCashState,
 } from "@/lib/finance/cash-session";
 import { sameOrigin } from "@/lib/security/same-origin";
+import { checkRateLimit, WRITE_RULES } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -65,6 +66,11 @@ export async function POST(request: Request) {
 
   const user = await getCurrentUser();
   if (!user || !canManageFinance(user)) return reply(cashError("AUTH"), 403);
+
+  // La caja mueve efectivo: un freno por usuario para el doble toque nervioso.
+  const limit = await checkRateLimit({ scope: "cash", raw: user.id, rule: WRITE_RULES.finance });
+  if (!limit.allowed)
+    return reply({ code: "RATE_LIMIT", retryAfterSeconds: limit.retryAfterSeconds }, 429);
 
   const body: unknown = await request.json().catch(() => null);
   const parsed = cashRequestSchema.safeParse(body);

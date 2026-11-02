@@ -14,6 +14,8 @@ import {
   type PlanInputs,
 } from "@/lib/nutrition/plan";
 import { sameOrigin } from "@/lib/security/same-origin";
+import { clientIp } from "@/lib/antispam";
+import { checkRateLimit, rateLimited, WRITE_RULES } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -176,6 +178,12 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   if (!sameOrigin(request)) return reply({ error: "Origen no permitido." }, 403);
   try {
+    const limit = await checkRateLimit({
+      scope: "nutrition",
+      raw: clientIp(request),
+      rule: WRITE_RULES.progress,
+    });
+    if (!limit.allowed) return rateLimited(limit.retryAfterSeconds);
     const ctx = await context();
     if (!ctx.db) return ctx.response;
     const parsed = postSchema.safeParse(await request.json().catch(() => null));
