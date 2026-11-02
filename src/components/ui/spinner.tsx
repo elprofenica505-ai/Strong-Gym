@@ -61,7 +61,7 @@ export function LoadingBlock({
     >
       {/* La misma cascada de brasas del aviso de navegación: un hilo fino sobre
           el borde, sin tapar el contenido ni dejar la tarjeta en gris. */}
-      <span className="fire-bar absolute inset-x-0 top-0 block h-[3px]" aria-hidden="true" />
+      <span className="fire-line absolute inset-x-5 top-0 block h-[2px] w-auto" aria-hidden="true" />
       <div className="flex items-center gap-2.5">
         <Flame className="fire-flame size-4 shrink-0 text-amber-400" aria-hidden="true" />
         <div className="min-w-0">
