@@ -417,6 +417,8 @@ const es = {
     sending: "Enviando...",
     success: "¡Gracias! Recibimos tu mensaje y te escribimos pronto.",
     error: "No pudimos enviar el mensaje. Revisá los datos e intentá de nuevo.",
+    tooFast:
+      "Mandaste varios mensajes seguidos. Esperá {seconds} segundos y volvé a intentar; no se envió nada.",
     required: "Este campo es obligatorio",
     invalidEmail: "Ingresá un email válido",
     tooShort: "Contanos un poco más (mínimo 10 caracteres)",

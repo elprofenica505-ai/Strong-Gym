@@ -5,6 +5,7 @@ import { getCurrentUser, getMyBookings } from "@/lib/data/queries";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { sameOrigin } from "@/lib/security/same-origin";
+import { checkRateLimit, rateLimited, WRITE_RULES } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,10 @@ export async function POST(request: Request) {
 
   const user = await getCurrentUser();
   if (!user) return fail("AUTH", 401);
+
+  // Freno por cuenta: martillar «Reservar» ya no llega a la base.
+  const limit = await checkRateLimit({ scope: "booking", raw: user.id, rule: WRITE_RULES.booking });
+  if (!limit.allowed) return rateLimited(limit.retryAfterSeconds);
 
   let sessionId: string | undefined;
   try {

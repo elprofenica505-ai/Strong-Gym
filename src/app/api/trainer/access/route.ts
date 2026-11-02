@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/data/queries";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { sameOrigin } from "@/lib/security/same-origin";
+import { checkRateLimit, rateLimited, WRITE_RULES } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +43,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "AUTH", message: messages.AUTH[0] }, { status: 403, headers });
   }
 
+  const limit = await checkRateLimit({ scope: "access", raw: user.id, rule: WRITE_RULES.access });
+  if (!limit.allowed) return rateLimited(limit.retryAfterSeconds);
+
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+
   if (!parsed.success) {
     return NextResponse.json(
       { error: "QUERY_TOO_SHORT", message: messages.QUERY_TOO_SHORT[0] },

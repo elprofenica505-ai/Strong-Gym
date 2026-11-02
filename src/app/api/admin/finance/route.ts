@@ -11,6 +11,8 @@ import {
   receiptSchema,
 } from "@/lib/finance/movements";
 import { sameOrigin } from "@/lib/security/same-origin";
+import { clientIp } from "@/lib/antispam";
+import { checkRateLimit, rateLimited, WRITE_RULES } from "@/lib/security/rate-limit";
 export const dynamic = "force-dynamic";
 const reply = (body: unknown, status = 200) =>
   NextResponse.json(body, {
@@ -180,6 +182,13 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     if (!sameOrigin(request)) return reply({ error: "Origen no permitido." }, 403);
+    // Dinero: freno por IP antes de leer el cuerpo (el rol se valida después).
+    const limit = await checkRateLimit({
+      scope: "finance-movement",
+      raw: clientIp(request),
+      rule: WRITE_RULES.finance,
+    });
+    if (!limit.allowed) return rateLimited(limit.retryAfterSeconds);
     const ctx = await context();
     if (!ctx.db) return ctx.response;
     const parsed = movementSchema.safeParse(

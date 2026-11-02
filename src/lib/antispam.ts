@@ -3,9 +3,12 @@
  * - Límite de envíos por IP dentro de una ventana de tiempo.
  * - Campo trampa (honeypot): si un robot lo llena, se responde OK sin guardar.
  *
- * Límite: el contador vive en memoria de cada instancia del servidor.
- * Es protección parcial: no reemplaza un verificador externo (p. ej. Turnstile)
- * si el formulario recibe ataques reales.
+ * Límite: `allowRequest` es el contador de respaldo, **en memoria de cada
+ * instancia**. Las rutas que escriben ya usan
+ * `src/lib/security/rate-limit.ts`, que cuenta en la base y así vale para todas
+ * las instancias; esta función queda como red cuando la base no responde.
+ * Ninguno de los dos reemplaza un verificador externo (p. ej. Turnstile) si el
+ * formulario recibe ataques reales.
  */
 
 type Bucket = { count: number; resetAt: number };

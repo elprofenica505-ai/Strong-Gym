@@ -9,6 +9,8 @@ export function NewsletterForm({ className }: { className?: string }) {
   const { dict, locale } = useDictionary();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  /** Segundos que pide el servidor cuando frena por ir muy rápido. */
+  const [retryAfter, setRetryAfter] = useState(0);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -21,7 +23,17 @@ export function NewsletterForm({ className }: { className?: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, locale }),
       });
-      setStatus(response.ok ? "done" : "error");
+      if (response.ok) {
+        setStatus("done");
+      } else if (response.status === 429) {
+        const body = (await response.json().catch(() => null)) as
+          | { retryAfterSeconds?: number }
+          | null;
+        setRetryAfter(Math.max(1, Math.round(body?.retryAfterSeconds ?? 60)));
+        setStatus("error");
+      } else {
+        setStatus("error");
+      }
       if (response.ok) setEmail("");
     } catch {
       setStatus("error");
@@ -60,7 +72,11 @@ export function NewsletterForm({ className }: { className?: string }) {
       </div>
 
       {status === "error" ? (
-        <p className="text-[0.75rem] text-alert">{dict.contact.error}</p>
+        <p role="alert" className="text-[0.75rem] text-alert">
+          {retryAfter > 0
+            ? dict.contact.tooFast.replace("{seconds}", String(retryAfter))
+            : dict.contact.error}
+        </p>
       ) : null}
     </form>
   );

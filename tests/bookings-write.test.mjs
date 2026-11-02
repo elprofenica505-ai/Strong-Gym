@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createLoader } from "./helpers/react-loader.mjs";
+import { rateLimitStub } from "./helpers/rate-limit-stub.mjs";
 const { POST } = await createLoader({
+  "@/lib/security/rate-limit": rateLimitStub,
   "@/lib/data/queries": "export const getCurrentUser=async()=>({id:'test'});export const getMyBookings=async()=>[];",
   "@/lib/supabase/env": "export const isSupabaseConfigured=true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;",
   "@/lib/supabase/server": "export const getSupabaseServerClient=async()=>globalThis.__bookingWriteDb;",

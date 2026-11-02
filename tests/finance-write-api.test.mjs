@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createLoader } from "./helpers/react-loader.mjs";
+import { rateLimitStub } from "./helpers/rate-limit-stub.mjs";
 const id = "11111111-1111-4111-8111-111111111111";
 const productId = "22222222-2222-4222-8222-222222222222";
 const productReceiptId = "33333333-3333-4333-8333-333333333333";
@@ -16,6 +17,7 @@ const intent = {
   fx: 36.7244,
 };
 const load = createLoader({
+  "@/lib/security/rate-limit": rateLimitStub,
   "@/lib/data/queries":
     "export const getCurrentUser=async()=>globalThis.__financeUser;",
   "@/lib/supabase/env": "export const isSupabaseConfigured=true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;",
@@ -294,6 +296,7 @@ test("historial valida filtro y requiere filas completas", async () => {
 });
 test("sin Supabase responde 503 y jamás simula guardado", async () => {
   const { POST } = await createLoader({
+    "@/lib/security/rate-limit": rateLimitStub,
     "@/lib/supabase/env": "export const isSupabaseConfigured=false;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=true;",
     "@/lib/data/queries":
       'export const getCurrentUser=async()=>{throw Error("unexpected")};',

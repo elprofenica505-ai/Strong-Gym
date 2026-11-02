@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { allowRequest, clientIp, FORM_RULE, isHoneypotFilled } from "@/lib/antispam";
+import { clientIp, isHoneypotFilled } from "@/lib/antispam";
+import { checkRateLimit, rateLimitHeaders, WRITE_RULES } from "@/lib/security/rate-limit";
 import { sameOrigin } from "@/lib/security/same-origin";
 
 export const dynamic = "force-dynamic";
@@ -30,8 +31,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "INVALID" }, { status: 422 });
 
   if (isHoneypotFilled(parsed.data.website)) return NextResponse.json({ ok: true });
-  if (!allowRequest("newsletter", clientIp(request), FORM_RULE))
-    return NextResponse.json({ error: "RATE_LIMIT" }, { status: 429 });
+  const limit = await checkRateLimit({
+    scope: "newsletter",
+    raw: clientIp(request),
+    rule: WRITE_RULES.publicForm,
+  });
+  if (!limit.allowed)
+    return NextResponse.json(
+      { error: "RATE_LIMIT", retryAfterSeconds: limit.retryAfterSeconds },
+      { status: 429, headers: rateLimitHeaders(limit.retryAfterSeconds) },
+    );
 
   if (!isSupabaseConfigured)
     return NextResponse.json(

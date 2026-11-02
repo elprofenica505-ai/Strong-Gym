@@ -92,17 +92,17 @@ Según el caso, debe cumplir:
 | 3 | **QA-09 y QA-06** (celular) | Aceptar lo que ya está desplegado: vigencias, categorías, calendario, el uso y el historial de precios de los planes (CLI-07) y **abrir, contar y cerrar la caja** (FIN-04). |
 | 4 | **OP-06, FIN-05 a FIN-07, CAL-01/03, LEG-01 y NEG-01** | Reglas de negocio y entrega; no bloquean la operación diaria de hoy. |
 
-## Resumen de avance al 1 de noviembre de 2026
+## Resumen de avance al 2 de noviembre de 2026
 
-**73 tareas listadas: 32 cerradas y 41 abiertas.** De las 41 abiertas, **7 son
+**73 tareas listadas: 33 cerradas y 40 abiertas.** De las 40 abiertas, **7 son
 aceptaciones** en celular o con cuenta real (QA-03 a QA-09), **5 son de
 entrega** (ENT-01 a ENT-05, aplazadas a propósito) y **8 son opcionales del
-futuro** (FUT-01 a FUT-08). Quedan **21 de producto o negocio** por resolver,
+futuro** (FUT-01 a FUT-08). Quedan **20 de producto o negocio** por resolver,
 **ninguna** en Administración → Planes ni en Administración → Dinero.
 
 | Fase o bloque | Estado | Qué falta |
 |---|---|---|
-| **Etapa 1 — Proteger lo construido** | Código cerrado y desplegado | SEG-02 (correo propio y recuperación real), SEG-03 (segundo administrador y respaldo MFA), SEG-05 y SEG-06 (monitoreo y grants) y SEG-07 (límites de abuso) |
+| **Etapa 1 — Proteger lo construido** | Código cerrado y desplegado | SEG-02 (correo propio y recuperación real), SEG-03 (segundo administrador y respaldo MFA), SEG-05 (monitoreo) y SEG-06 (grants). SEG-07 (límites de abuso) quedó cerrada el 2 nov |
 | **Etapa 2 — Navegación** | Hecha: Inicio, Clientes, Finanzas, Operación, Administración y Mis clientes | Solo la decisión de OP-09 |
 | **Etapa 3 — Operación diaria** | OP-01 a OP-05 y OP-07 cerradas y desplegadas | OP-06 (cierre de reservas pasadas), OP-08 (vincular ficha con cuenta web) y la aceptación QA-09 |
 | **Clientes, vigencias y planes** | CLI-01, CLI-02 y CLI-06 cerradas y desplegadas | Aceptación en celular (QA-09); decisiones CLI-03, CLI-04 y CLI-05 |
@@ -1158,12 +1158,32 @@ La evidencia principal está en `src/components/admin/admin-panel.tsx`,
   desarrollo: pedido cruzado `403` en contacto, boletín, socios, finanzas,
   deudas, reservas, progreso y cuenta; mismo sitio entra al camino normal
   (401/503/422 según el caso) y las páginas siguen respondiendo 200.
-  **Queda abierto con ID propio:** SEG-07.
-- [ ] **SEG-07 · Media · Código/operación — Límites de abuso y Storage.** El
-  antispam de los formularios públicos es por IP y en memoria: no se comparte
-  entre instancias ni sobrevive a un despliegue. Cierre: un límite común para
-  las rutas que escriben, con respuesta clara al usuario legítimo, y políticas
-  revisadas si algún día se usa Supabase Storage.
+  **Queda abierto con ID propio:** SEG-07 (cerrada el 2 nov).
+- [x] **SEG-07 · Media · Código/operación — Límites de abuso y Storage.**
+  **Cerrada el 2 de noviembre de 2026 (PR #139, migración `00098`).** Antes el
+  contador vivía **en la memoria de cada instancia**: con dos servidores —o
+  después de un despliegue, que arranca procesos nuevos— volvía a cero, y
+  bastaba repartir el ataque para que el límite nunca se alcanzara.
+  **Ahora:** la tabla `public.rate_limits` guarda un contador por
+  `(scope, key)` y la función `public.rate_limit_hit` cuenta y responde en
+  **una sola sentencia atómica** (dos pedidos a la vez no se pisan). La `key`
+  es un **hash SHA-256**: la base nunca ve una IP ni un correo. RLS activo y
+  **sin políticas**: nadie lee ni escribe la tabla directo, sólo se llega por la
+  función. La limpieza de filas viejas es oportunista (1 de cada 100 llamadas) y
+  no bloquea el pedido. **Aplicado a** contacto y suscripción (5 en 10 min por
+  IP), reservas (30 en 10 min por cuenta), medidas y progreso (60), venta de
+  productos y movimientos de dinero (120) y consultas de permiso de entrenador
+  (60). Si la base no responde, la app **cae al contador en memoria**: un límite
+  caído nunca deja a alguien sin poder trabajar. **Respuesta clara:** 429 con
+  `Retry-After` y `retryAfterSeconds`, y el formulario dice «Esperá N segundos»
+  en vez de un error genérico (claves `contact.tooFast` en ES y EN).
+  **Storage:** la app **no usa Supabase Storage** (cero `storage.from`, cero
+  buckets en las migraciones), así que no hay políticas que revisar; queda
+  anotado que, si algún día se suben archivos, hay que crear el bucket con
+  políticas por carpeta y rol antes de la primera subida. Pruebas:
+  `tests/rate-limit.test.mjs` (7), `tests/rate-limit-route.test.mjs` (4) y
+  `scripts/test-rate-limit-sql.mjs` (**19 comprobaciones** en PGlite, incluidas
+  concurrencia, reinicio de ventana y privilegios).
 - [ ] **SEG-05 · Media · Código/operación — Registro de errores y alertas.**
   Hoy hay mensajes seguros en consola/logs de plataforma, sin un servicio de
   monitoreo con alertas. Cierre: errores de servidor/cliente agrupados, sin
