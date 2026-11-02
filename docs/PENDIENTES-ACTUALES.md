@@ -1394,9 +1394,16 @@ Esta sección es un resumen, no otra lista de tareas.
   (`public/sounds/trueno.mp3`, 12 KB, sintetizado para la app). Suena cuando la
   capa ya está en pantalla, nunca antes. El permiso de audio se pide **dentro
   del mismo toque** (sin eso iPhone lo bloquea en silencio), **no se repite**
-  antes de 18 s, **no suena con «reducir movimiento»** ni con la app en segundo
-  plano, y va guardado en el caché del service worker. Si el teléfono está en
-  silencio, la animación se ve igual.
+  antes de 18 s, **no suena con la app en segundo plano**, y va guardado en el
+  caché del service worker. Si el teléfono está en silencio, la animación se ve
+  igual. El sonido **no depende de «reducir movimiento»**: esa opción apaga el
+  movimiento, no el audio, y colgarlo de ahí dejaba la pantalla muda.
+  **Por qué al principio no sonó:** el archivo vivía en `/sounds/trueno.mp3` y
+  el proxy de idioma no reconocía `.mp3` como archivo: mandaba el pedido a
+  `/es/sounds/trueno.mp3`, que no existe, y el teléfono se quedaba mudo sin
+  ningún error a la vista. Ahora el proxy deja pasar **cualquier ruta con
+  extensión** (mp3, m4a, ogg, wav, mp4, webm, pdf, además de imágenes y
+  fuentes), y el trueno se dispara **dentro del toque**, no 120 ms después.
   **Sin `filter`, `backdrop-filter` ni `drop-shadow`**: en Android dejaban
   manchas y borrones de GPU. El fondo es opaco, así la pantalla anterior no se
   transparenta. Con «reducir movimiento» la tormenta no se congela: el cielo

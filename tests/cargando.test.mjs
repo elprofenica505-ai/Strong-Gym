@@ -254,17 +254,19 @@ test("el trueno suena con el rayo y no se desboca", () => {
   assert.ok(size > 4_000, "el trueno suena a nada");
   assert.ok(size < 40_000, `el trueno pesa demasiado: ${size} bytes`);
 
-  // Suena cuando la capa ya se ve, no antes.
-  assert.match(storm, /const THUNDER_SRC = "\/sounds\/trueno\.mp3"/);
-  const reveal = storm.slice(storm.indexOf("const reveal = () =>"), storm.indexOf("const start = ("));
-  assert.match(reveal, /playThunder\(\)/);
-
-  // El permiso se pide dentro del toque: sin eso, iPhone no deja sonar nada.
+  // El sonido tiene que dispararse DENTRO del toque: fuera de él, iPhone y
+  // Android lo bloquean sin avisar (es lo que dejó la pantalla muda).
   const start = storm.slice(storm.indexOf("const start = ("), storm.indexOf("const onClick ="));
-  assert.match(start, /primeThunder\(\)/);
+  assert.match(start, /playThunder\(\)/);
+  assert.match(storm, /const THUNDER_SRC = "\/sounds\/trueno\.mp3"/);
 
-  // Sin repeticiones y con respeto a «reducir movimiento».
+  // El sonido no depende de «reducir movimiento»: esa opción apaga el
+  // movimiento, no el audio, y con ella activa la pantalla quedaba muda.
+  const thunder = storm.slice(storm.indexOf("function playThunder"), storm.indexOf("type Phase"));
+  assert.doesNotMatch(thunder, /prefers-reduced-motion/);
+  assert.doesNotMatch(thunder, /\.muted\b/);
+
+  // Sin repeticiones y sin sonar con la app en segundo plano.
   assert.match(storm, /const THUNDER_GAP_MS = 18_000/);
-  assert.match(storm, /prefers-reduced-motion: reduce/);
-  assert.match(storm, /document\.hidden/);
+  assert.match(thunder, /document\.hidden/);
 });

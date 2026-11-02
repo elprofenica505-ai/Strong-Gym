@@ -179,26 +179,25 @@ function navigationTarget(event: MouseEvent): string | null {
 /**
  * Sonido del trueno.
  *
- * Un estruendo corto (12 KB) que acompaña al rayo. Tres cuidados:
- *  - **Sólo suena si la persona ya tocó la pantalla.** iPhone y Android
- *    bloquean el audio que sale solo; el toque que abre la capa es el permiso.
+ * Un estruendo corto (12 KB) que acompaña al rayo. Lo importante:
+ *  - **Se dispara dentro del toque**, no después. iPhone y Android sólo dejan
+ *    sonar el audio que nace de un toque; si se pide un instante más tarde, el
+ *    navegador lo bloquea sin avisar y la pantalla queda muda.
  *  - **No se repite**: si alguien navega rápido por cuatro pantallas, suena
  *    una vez y no cuatro.
- *  - **Con «reducir movimiento» no suena**, igual que la animación no se mueve.
+ *  - **No depende de «reducir movimiento»**: esa opción apaga el movimiento,
+ *    no el sonido; con ella activa la tormenta se ve quieta pero el trueno
+ *    igual entra (si no, media app quedaría muda sin que nadie lo sepa).
  * Si el teléfono está en silencio o el archivo no baja, la animación sigue
  * igual: el sonido es un adorno, nunca un requisito.
  */
 const THUNDER_SRC = "/sounds/trueno.mp3";
 /** Entre trueno y trueno. */
 const THUNDER_GAP_MS = 18_000;
-const THUNDER_VOLUME = 0.45;
+const THUNDER_VOLUME = 0.55;
 
 let thunder: HTMLAudioElement | null = null;
 let lastThunderAt = 0;
-/** Ya se pidió permiso de audio en un toque. */
-let thunderPrimed = false;
-/** El trueno está sonando: el silencioso de prueba no debe cortarlo. */
-let thunderRinging = false;
 
 function thunderAudio(): HTMLAudioElement | null {
   if (typeof window === "undefined") return null;
@@ -206,58 +205,31 @@ function thunderAudio(): HTMLAudioElement | null {
     thunder = new Audio(THUNDER_SRC);
     thunder.preload = "auto";
     thunder.volume = THUNDER_VOLUME;
+    // Colgado del documento, oculto: iPhone viejo se niega a reproducir un
+    // audio que no está en la página.
+    thunder.style.display = "none";
+    document.body.appendChild(thunder);
   }
   return thunder;
 }
 
-/**
- * Se llama dentro del toque: reproduce un instante en silencio para que el
- * sistema dé permiso. Después de eso, el trueno ya puede sonar solo.
- */
-function primeThunder() {
-  if (thunderPrimed) return;
-  const audio = thunderAudio();
-  if (!audio) return;
-  thunderPrimed = true;
-  audio.muted = true;
-  void audio
-    .play()
-    .then(() => {
-      if (thunderRinging) return;
-      audio.pause();
-      audio.currentTime = 0;
-      audio.muted = false;
-    })
-    .catch(() => {
-      audio.muted = false;
-      thunderPrimed = false;
-    });
-}
-
-/** Suena el trueno, si corresponde. */
+/** Suena el trueno. Se llama SIEMPRE desde dentro del toque. */
 function playThunder() {
   if (typeof document === "undefined" || document.hidden) return;
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const audio = thunderAudio();
   if (!audio) return;
   const now = Date.now();
   if (now - lastThunderAt < THUNDER_GAP_MS) return;
   lastThunderAt = now;
-  thunderRinging = true;
-  audio.muted = false;
   try {
     audio.currentTime = 0;
   } catch {
     // Algunos navegadores no dejan mover el cursor antes de cargar: da igual.
   }
-  void audio
-    .play()
-    .catch(() => {
-      // Sin permiso o sin archivo: la tormenta se ve igual, sólo no suena.
-    })
-    .finally(() => {
-      thunderRinging = false;
-    });
+  void audio.play().catch(() => {
+    // No sonó: se suelta el freno para que el próximo toque lo intente otra vez.
+    lastThunderAt = 0;
+  });
 }
 
 type Phase = "idle" | "shown" | "leaving";
@@ -352,8 +324,6 @@ export function StormTransition() {
       phaseRef.current = "shown";
       shownAt = Date.now();
       setPhase("shown");
-      // El trueno entra con el rayo, no antes: la capa ya está en pantalla.
-      playThunder();
     };
 
     /**
@@ -362,8 +332,8 @@ export function StormTransition() {
      * `null` y el apagado lo resuelve el cambio de ruta de React.
      */
     const start = (destination: string | null, giveUpAfter = GIVE_UP_MS) => {
-      // Dentro del mismo toque: iOS sólo deja sonar el audio así.
-      primeThunder();
+      // Dentro del mismo toque: así el navegador deja sonar el trueno.
+      playThunder();
       // Si venía saliendo, se reinicia limpio para la pantalla nueva.
       if (phaseRef.current === "leaving") goIdle();
       if (phaseRef.current === "shown") return;

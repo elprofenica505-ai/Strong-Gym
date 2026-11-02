@@ -66,6 +66,9 @@ export default async function proxy(request: NextRequest) {
 
   // 2) Si no empieza con un idioma válido (y no es un asset o API),
   //    lo mandamos al idioma preferido con la misma ruta.
+  //    Ojo con los archivos: cualquier ruta que termine en extensión
+  //    (logo.png, trueno.mp3, sw.js…) es un archivo, no una pantalla. Si se
+  //    le antepone el idioma, el archivo no existe y el pedido se pierde.
   const isSystemPath =
     pathname.startsWith("/api") ||
     pathname.startsWith("/_next") ||
@@ -74,6 +77,7 @@ export default async function proxy(request: NextRequest) {
     pathname === "/sitemap.xml" ||
     pathname === "/manifest.webmanifest" ||
     pathname === "/favicon.ico" ||
+    /\.[a-zA-Z0-9]+$/.test(pathname) ||
     /\.[a-zA-Z0-9]+$/.test(firstSegment ?? "");
 
   if (!hasLocale && !isSystemPath) {
@@ -106,6 +110,6 @@ export const config = {
      *  - archivos de Next (_next/static, _next/image)
      *  - archivos estáticos de /public
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|woff|woff2|ttf|otf|txt|xml|webmanifest)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|woff|woff2|ttf|otf|txt|xml|webmanifest|mp3|m4a|ogg|wav|mp4|webm|pdf)$).*)",
   ],
 };

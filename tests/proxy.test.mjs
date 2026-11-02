@@ -61,3 +61,42 @@ test("refresh: cookies nuevas llegan al render actual y al navegador; conserva i
     globalThis.fetch = originalFetch;
   }
 });
+
+// El trueno de la pantalla de carga: el navegador lo pide como archivo y el
+// proxy no puede mandarlo al idioma (quedaría en /es/sounds/… y no existe).
+test("los archivos de /public se sirven tal cual: el trueno no se redirige al idioma", async () => {
+  const envOk = `export const SUPABASE_URL = "https://test-project.supabase.co";
+export const SUPABASE_ANON_KEY = "public-test-key-not-a-real-secret";
+export const isSupabaseConfigured = true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;`;
+  const i18n = await import(import.meta.resolve("../src/i18n/config.ts"));
+  const proxySource = readFileSync(new URL("../src/proxy.ts", import.meta.url), "utf8");
+  const compiledProxy = ts.transpileModule(proxySource, {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
+  }).outputText
+    .replace('"@/i18n/config"', JSON.stringify(dataUrl(
+      `export const LOCALE_COOKIE = ${JSON.stringify(i18n.LOCALE_COOKIE)};
+       export const defaultLocale = "es";
+       export const isLocale = (v) => v === "es" || v === "en";
+       export const detectLocale = () => "es";`)))
+    .replace('"@/lib/supabase/env"', JSON.stringify(dataUrl(
+      `export const CONFIGURATION_UNAVAILABLE = false;`)))
+    .replace('"@/lib/supabase/proxy-client"', JSON.stringify(dataUrl(
+      `export const updateSession = async (request, response) => response;`)))
+    .replace('"next/server"', JSON.stringify(import.meta.resolve("next/server.js")));
+  const { default: proxy } = await import(dataUrl(compiledProxy));
+
+  for (const path of ["/sounds/trueno.mp3", "/brand/emblema-strong.webp", "/sw.js", "/icon.svg"]) {
+    const response = await proxy(new NextRequest(`https://strong-gym.example${path}`));
+    assert.notStrictEqual(response.status, 307, `${path} terminó redirigido`);
+    assert.notStrictEqual(response.status, 308, `${path} terminó redirigido`);
+    assert.ok(!response.headers.get("location"), `${path} terminó redirigido`);
+  }
+
+  // Y una pantalla normal sí sigue yendo al idioma.
+  const page = await proxy(new NextRequest("https://strong-gym.example/panel"));
+  assert.match(page.headers.get("location") ?? "", /\/es\/panel$/);
+
+  // El matcher del proxy tampoco se mete con el audio.
+  const matcher = proxySource.match(/"\/\(\(\?!_next\/static[^"]+"/)?.[0] ?? "";
+  assert.ok(matcher.includes("mp3"), "el matcher no excluye el audio");
+});
