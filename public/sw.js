@@ -16,7 +16,7 @@
  * Versión del caché: cambiarla fuerza al SW a descartar todo el
  * caché viejo en la próxima activación.
  */
-const CACHE_VERSION = "strong-gym-v6";
+const CACHE_VERSION = "strong-gym-v7";
 const ASSET_CACHE = `${CACHE_VERSION}-assets`;
 const PAGE_CACHE = `${CACHE_VERSION}-pages`;
 
@@ -34,8 +34,10 @@ const PRECACHE_ASSETS = [
   "/splash/splash-640x1136.png",
   // Emblema de la pantalla de carga (tiene que estar antes del primer toque).
   "/brand/emblema-strong.webp",
-  // Trueno de la pantalla de carga (12 KB).
+  // Sonidos de la pantalla de carga: trueno (12 KB) y los dos toques de app.
   "/sounds/trueno.mp3",
+  "/sounds/toque.mp3",
+  "/sounds/toque2.mp3",
   // Imágenes reales del gimnasio (las que usa la página).
   "/images/fachada.jpg",
   "/images/grupo.jpg",
