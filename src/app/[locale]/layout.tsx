@@ -8,7 +8,7 @@ import { DemoBanner } from "@/components/layout/demo-banner";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteShell } from "@/components/layout/site-shell";
 import { DayBoundary } from "@/components/layout/day-boundary";
-import { FireTransition } from "@/components/layout/fire-transition";
+import { StormTransition } from "@/components/layout/storm-transition";
 import { SwRegister } from "@/components/sw-register";
 import { AppProvider } from "@/components/providers/app-provider";
 import { DictionaryProvider } from "@/components/providers/dictionary-provider";
@@ -190,7 +190,7 @@ export default async function LocaleLayout({
             <Toaster />
             {/* Mientras se abre otra pantalla, una capa de fuego a pantalla
                 completa cubre la espera y se retira sola al terminar. */}
-            <FireTransition />
+            <StormTransition />
             {/* OP-07: cuando cambia el día en Managua, las pantallas abiertas
                 se refrescan solas, sin recargar ni perder lo escrito. */}
             <DayBoundary />

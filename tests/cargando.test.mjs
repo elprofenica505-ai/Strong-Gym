@@ -21,75 +21,66 @@ import { existsSync, readFileSync } from "node:fs";
  */
 const source = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("la capa de fuego está montada en el layout", () => {
+test("la capa de tormenta está montada en el layout", () => {
   const layout = source("src/app/[locale]/layout.tsx");
-  assert.match(layout, /<FireTransition \/>/);
-  assert.match(layout, /@\/components\/layout\/fire-transition/);
+  assert.match(layout, /<StormTransition \/>/);
+  assert.match(layout, /@\/components\/layout\/storm-transition/);
+  // El fuego se retiró a pedido del gimnasio: ahora son rayos de tormenta.
+  assert.equal(existsSync(new URL("../src/components/layout/fire-transition.tsx", import.meta.url)), false);
+  assert.equal(existsSync(new URL("../public/fire", import.meta.url)), false);
 
-  // Fuego de marca: lecho de brasas, lenguas, chispas y hilo encendido.
   const css = source("src/app/globals.css");
-  assert.match(css, /@keyframes fire-breathe/);
-  assert.match(css, /@keyframes fire-sway/);
-  assert.match(css, /@keyframes ember-rise/);
-  assert.match(css, /@keyframes fire-sweep/);
-  assert.match(css, /rgb\(251 191 36/);
+  assert.match(css, /@keyframes storm-strike/);
+  assert.match(css, /@keyframes storm-sky-flash/);
+  assert.match(css, /@keyframes storm-progress/);
+  assert.match(css, /rgb\(125 211 252/);
 
-  const fire = source("src/components/layout/fire-transition.tsx");
-  assert.match(fire, /Cargando…/);
-  assert.match(fire, /role="status"/);
-  assert.match(fire, /aria-live="polite"/);
-  assert.match(fire, /fire-layer/);
-  assert.match(fire, /fire-ember/);
-  assert.match(fire, /fire-glow/);
-  assert.match(fire, /fire-halo/);
-  // Fuego de verdad: tres texturas de llamas reales, no formas dibujadas.
-  assert.match(fire, /\/fire\/fuego-lejos\.webp/);
-  assert.match(fire, /\/fire\/fuego-medio\.webp/);
-  assert.match(fire, /\/fire\/fuego-cerca\.webp/);
-  for (const file of ["fuego-lejos", "fuego-medio", "fuego-cerca"]) {
-    assert.equal(existsSync(new URL(`../public/fire/${file}.webp`, import.meta.url)), true,
-      `falta la textura public/fire/${file}.webp`);
-  }
+  const storm = source("src/components/layout/storm-transition.tsx");
+  assert.match(storm, /Cargando…/);
+  assert.match(storm, /role="status"/);
+  assert.match(storm, /aria-live="polite"/);
+  assert.match(storm, /storm-bolt/);
+  assert.match(storm, /storm-progress/);
+  assert.match(storm, /storm-flash/);
 });
 
 test("la capa cubre toda la interfaz y no se queda pegada", () => {
   const css = source("src/app/globals.css");
-  assert.match(css, /\.fire-overlay \{[^}]*position: fixed/);
-  assert.match(css, /\.fire-overlay \{[^}]*inset: 0/);
-  assert.match(css, /\.fire-overlay \{[^}]*z-index: 80/);
+  assert.match(css, /\.storm-overlay \{[^}]*position: fixed/);
+  assert.match(css, /\.storm-overlay \{[^}]*inset: 0/);
+  assert.match(css, /\.storm-overlay \{[^}]*z-index: 80/);
   // Cubre de verdad: sin transparencia que deje ver la pantalla a medio pintar.
-  assert.match(css, /\.fire-overlay \{[^}]*opacity: 0/);
-  assert.match(css, /\.fire-overlay\[data-state="shown"\] \{\s*opacity: 1;/);
+  assert.match(css, /\.storm-overlay \{[^}]*opacity: 0/);
+  assert.match(css, /\.storm-overlay\[data-state="shown"\] \{\s*opacity: 1;/);
 
-  const fire = source("src/components/layout/fire-transition.tsx");
+  const storm = source("src/components/layout/storm-transition.tsx");
   // Se apaga sola si la pantalla nueva no llega.
-  assert.match(fire, /GIVE_UP_MS = 8_000/);
+  assert.match(storm, /GIVE_UP_MS = 8_000/);
   // Dura un mínimo y se desvanece: ni parpadeo ni corte seco.
-  assert.match(fire, /MIN_VISIBLE_MS = 1_100/);
-  assert.match(fire, /FADE_OUT_MS = 320/);
+  assert.match(storm, /MIN_VISIBLE_MS = 1_100/);
+  assert.match(storm, /FADE_OUT_MS = 320/);
   // Y no aparece si la pantalla abre al instante: primero espera 120 ms.
-  assert.match(fire, /SHOW_DELAY_MS = 120/);
-  assert.match(fire, /revealTimer = setTimeout\(reveal, SHOW_DELAY_MS\)/);
+  assert.match(storm, /SHOW_DELAY_MS = 120/);
+  assert.match(storm, /setTimeout\(reveal, SHOW_DELAY_MS\)/);
   // Mientras cubre no deja tocar dos veces.
-  assert.match(css, /\.fire-overlay \{[^}]*pointer-events: auto/);
+  assert.match(css, /\.storm-overlay \{[^}]*pointer-events: auto/);
   // Nada de filtros de desenfoque: en Android dejan manchas de GPU.
-  assert.doesNotMatch(css, /\.fire-(overlay|stage|bed|tongue)[^}]*backdrop-filter/);
-  assert.doesNotMatch(fire, /backdrop-blur/);
+  assert.doesNotMatch(css, /\.storm-(overlay|stage|s)ky[^}]*backdrop-filter/);
+  assert.doesNotMatch(storm, /backdrop-blur/);
 });
 
 test("la animación respeta «reducir movimiento» sin congelarse", () => {
   const css = source("src/app/globals.css");
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
-  // Con la opción activada no hay desplazamientos…
-  assert.match(css, /\.fire-stage,\s*\n\s*\.fire-ember,\s*\n\s*\.fire-line \{\s*\n\s*animation: none/);
-  // …pero el fuego late: una imagen fija parecía que la app se colgó.
-  assert.match(css, /\.fire-glow,\s*\n\s*\.fire-layer,\s*\n\s*\.fire-layer-img \{\s*\n\s*animation: fire-calm/);
-  assert.match(css, /@keyframes fire-calm/);
-  assert.match(css, /@keyframes fire-calm \{[\s\S]{0,120}opacity/);
+  // Con la opción activada no hay barridos…
+  assert.match(css, /\.storm-stage,\s*\n\s*\.storm-clouds,\s*\n\s*\.storm-progress-fill \{\s*\n\s*animation: none/);
+  // …pero la tormenta late: una imagen fija parecía que la app se colgó.
+  assert.match(css, /\.storm-bolt,\s*\n\s*\.storm-flash \{\s*\n\s*animation: storm-calm/);
+  assert.match(css, /@keyframes storm-calm/);
 });
 
 test("la capa no rompe la navegación ni cambia de pantalla por su cuenta", () => {
-  const bar = source("src/components/layout/fire-transition.tsx");
+  const bar = source("src/components/layout/storm-transition.tsx");
   // Observa el toque: nunca cancela el enlace ni cambia la navegación.
   assert.doesNotMatch(bar, /preventDefault\(\)/);
   assert.doesNotMatch(bar, /router\.push/);
@@ -101,7 +92,8 @@ test("la capa no rompe la navegación ni cambia de pantalla por su cuenta", () =
   assert.match(bar, /GIVE_UP_MS/);
   assert.match(bar, /setTimeout\(\(\) => \{[\s\S]{0,120}fadeOut\(\);[\s\S]{0,20}\}, giveUpAfter\)/);
   // «Atrás» con la misma ruta no se queda colgado los 8 s completos.
-  assert.match(bar, /start\(null, 3_000\)/);
+  assert.match(bar, /start\(null, POPSTATE_GIVE_UP_MS\)/);
+  assert.match(bar, /POPSTATE_GIVE_UP_MS = 3_000/);
 });
 
 test("la tarjeta tocada muestra su propio ícono de carga", () => {
@@ -159,53 +151,65 @@ test("los paneles que leen datos muestran la llama, no un texto solo", () => {
   assert.match(cash, /aria-busy=/);
 });
 
-test("el fuego se mueve de verdad: tres capas reales, cada una a su ritmo", () => {
+test("los rayos se mueven de verdad: caen, ramifican y destellan", () => {
   const css = source("src/app/globals.css");
-  const fire = source("src/components/layout/fire-transition.tsx");
+  const storm = source("src/components/layout/storm-transition.tsx");
 
-  // Tres capas de fotografía real con ritmos distintos: si coincidieran, el
-  // fuego se movería como un bloque y volvería a parecer una foto.
-  assert.match(fire, /const LAYERS = \[/);
-  const layers = fire.slice(fire.indexOf("const LAYERS"), fire.indexOf("];", fire.indexOf("const LAYERS")));
-  const ritmos = [...layers.matchAll(/sway: ([\d.]+)/g)].map((m) => m[1]);
-  assert.equal(ritmos.length, 3);
-  assert.equal(new Set(ritmos).size, 3);
+  // Tres rayos con geometría propia, generada con semilla: el servidor y el
+  // celular dibujan exactamente el mismo rayo (si no, React se queja al hidratar).
+  assert.match(storm, /const BOLTS: readonly Bolt\[\]/);
+  assert.match(storm, /function seeded\(seed: number\)/);
+  assert.match(storm, /makeBolt\(7, 64, 58, 76, 11, 9, 3\.2, 0\)/);
+  // El rayo principal cae apenas aparece: el aviso dura poco más de un segundo.
+  assert.match(storm, /3\.2, 0\)/);
+  assert.match(storm, /makeBolt\(23,/);
+  assert.match(storm, /makeBolt\(41,/);
+  // Cada rayo tiene sus ramificaciones.
+  assert.match(storm, /branches\.push\(boltPath\(/);
+  assert.match(storm, /\{\[bolt\.main, \.\.\.bolt\.branches\]\.map/);
 
-  // Cada capa entra dos veces, la segunda corrida a un lado y desfasada.
-  assert.match(fire, /fire-layer-img--offset/);
-  assert.match(css, /\.fire-layer-img--offset \{[^}]*left: -28%/);
-  assert.match(css, /\.fire-layer-img--offset \{[^}]*animation-name: fire-boil-b/);
-  // Nada de reflejos: el espejo dejaba una simetría fea en el centro.
-  assert.doesNotMatch(css, /scale: -1 1/);
+  // El rayo cae en golpes rápidos y el resto del tiempo está a oscuras.
+  const strike = css.slice(css.indexOf("@keyframes storm-strike"), css.indexOf("@keyframes storm-sky-flash"));
+  assert.match(strike, /7% \{\s*\n\s*opacity: 1;/);
+  assert.match(strike, /9% \{\s*\n\s*opacity: 0\.25;/);
+  // Y después queda un resplandor que se apaga, como un relámpago real.
+  assert.match(strike, /30% \{\s*\n\s*opacity: 0\.7;/);
+  assert.match(strike, /55% \{\s*\n\s*opacity: 0;/);
 
-  // El mecido mueve en los dos ejes y estira: no es un cambio de brillo.
-  const sway = css.slice(css.indexOf("@keyframes fire-sway"), css.indexOf("@keyframes fire-boil "));
-  assert.match(sway, /translate3d\(1\.4%, -1\.8%, 0\) scaleY\(1\.06\) rotate\(0\.3deg\)/);
-  assert.match(sway, /translate3d\(-1\.2%, 0\.6%, 0\)/);
+  // El cielo destella aparte, así el efecto se siente como tormenta.
+  const flash = css.slice(css.indexOf("@keyframes storm-sky-flash"), css.indexOf("@keyframes storm-drift"));
+  assert.match(flash, /6% \{\s*\n\s*opacity: 0\.9;/);
+  // Y las nubes se desplazan despacio.
+  assert.match(css, /@keyframes storm-drift/);
 
-  // Las texturas se precargan al montar: si no, el primer fuego llega tarde.
-  assert.match(fire, /new Image\(\)/);
+  // La barra de carga se mueve mientras se espera.
+  assert.match(css, /@keyframes storm-progress/);
+  assert.match(css, /\.storm-progress-fill \{[^}]*animation: storm-progress/);
 
-  assert.match(fire, /MIN_VISIBLE_MS = 1_100/);
+  // Dura lo suficiente para que el ojo vea caer un rayo.
+  assert.match(storm, /MIN_VISIBLE_MS = 1_100/);
 });
 
-test("el fuego no usa filtros de desenfoque en ninguna pieza", () => {
+test("la tormenta no usa filtros de desenfoque en ninguna pieza", () => {
   const css = source("src/app/globals.css");
-  const fire = source("src/components/layout/fire-transition.tsx");
+  const storm = source("src/components/layout/storm-transition.tsx");
   // Sin comentarios: ahí sí se nombran los filtros, para explicar que no van.
   const code = css.replace(/\/\*[\s\S]*?\*\//g, "");
-  const block = code.slice(code.indexOf(".fire-overlay {"), code.indexOf("@keyframes fire-flicker"));
+  const block = code.slice(code.indexOf(".storm-overlay {"), code.indexOf(".fire-line {"));
   assert.doesNotMatch(block, /blur\(/);
   assert.doesNotMatch(block, /backdrop-filter/);
   assert.doesNotMatch(block, /[{;]\s*filter:/);
-  // El emblema tampoco lleva sombra difusa: un filtro en Android deja manchas.
-  assert.doesNotMatch(fire.replace(/\/\*[\s\S]*?\*\//g, ""), /drop-shadow/);
+  // El brillo del rayo sale de trazos superpuestos, no de un filtro.
+  assert.match(css, /\.storm-stroke--halo \{[^}]*stroke-width: 17/);
+  assert.match(css, /\.storm-stroke--core \{[^}]*stroke: #ffffff/);
+  // El emblema tampoco lleva sombra difusa.
+  assert.doesNotMatch(storm.replace(/\/\*[\s\S]*?\*\//g, ""), /drop-shadow/);
 });
 
 test("la capa es opaca: la pantalla vieja no se transparenta", () => {
   const css = source("src/app/globals.css");
-  const overlay = css.slice(css.indexOf(".fire-overlay {"), css.indexOf(".fire-overlay[data-state"));
+  const overlay = css.slice(css.indexOf(".storm-overlay {"), css.indexOf(".storm-overlay[data-state"));
   // Degradado con colores sólidos, sin alfa: tapa de verdad.
-  assert.match(overlay, /background: radial-gradient\(120% 85% at 50% 108%, #1c0a06 0%/);
+  assert.match(overlay, /background: radial-gradient\(120% 90% at 50% 115%, #101a2e 0%/);
   assert.doesNotMatch(overlay, /rgb\([^)]*\/ 0\.\d+\)/);
 });
