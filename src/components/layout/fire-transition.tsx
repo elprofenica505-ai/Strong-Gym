@@ -14,11 +14,12 @@ import { BrandMark } from "@/components/layout/brand-mark";
  * Lo que hace: cubre **toda** la interfaz con una fogata, el emblema y
  * «Cargando…», y la retira sola cuando la pantalla nueva está lista.
  *
- * El fuego no es una mancha grande: es una **fogata de quince lenguas**, cada
- * una de distinto tamaño, tono e inclinación, y cada una meciéndose a su propio
- * ritmo. Debajo laten las brasas y encima suben doce chispas. El movimiento
- * viene de muchas piezas desfasadas; una sola mancha enorme se veía como una
- * foto quieta, que es justo lo que no quería el gimnasio.
+ * El fuego son **lenguas dibujadas**, no manchas: cada llama es una silueta
+ * ondulada con punta afilada —la forma de la referencia que aprobó el
+ * gimnasio—, siete principales y cuatro mechones sueltos arriba. Cada una se
+ * mece a su propio ritmo (1.4–1.9 s), cambia de ancho y de alto, y lleva encima
+ * un núcleo amarillo y un halo naranja. Nada de esferas grandes abajo: en la
+ * versión anterior eso se veía como una «pelota de fuego» y no le gustó.
  *
  * Se enciende **sólo si de verdad hay espera**: espera 120 ms antes de
  * aparecer. Una vez encendida dura al menos 1.1 s —tiempo suficiente para ver
@@ -48,43 +49,42 @@ const GIVE_UP_MS = 8_000;
 /** Cada cuánto se mira si la dirección ya cambió. */
 const POLL_MS = 160;
 
-type Tone = "hot" | "warm" | "deep";
-
 /**
- * Las lenguas del fuego. Cada fila es una llama distinta:
- * `[izquierda %, ancho vw, alto vh, duración s, retraso s, inclinación, tono]`.
+ * Una lengua del fuego.
  *
- * Los retrasos son negativos a propósito: así, en el primer instante, cada
- * lengua ya está en una parte distinta de su ciclo y no se mueven todas a la
- * vez como un bloque.
+ *   left    centro de la llama, % del ancho de la pantalla
+ *   height  alto, % del alto de la pantalla
+ *   width   ancho, % del ancho de la pantalla
+ *   sway    cuánto se mece la punta (fracción del alto)
+ *   waves   cantidad de ondas de la silueta: más ondas, llama más retorcida
+ *   phase   desfase de la ondulación, para que no sean todas iguales
+ *   lean    inclinación general de la punta (fracción del ancho)
+ *   dur/de  ritmo del mecido y retraso (en negativo: arrancan desfasadas)
+ *   motion  cuál de los tres mecidos usa (a/b/c), para que no vayan al unísono
  */
-const FLAMES: ReadonlyArray<readonly [number, number, number, number, number, number, Tone]> = [
-  [-12, 40, 30, 1.9, -0.2, -9, "deep"],
-  [-6, 34, 46, 1.5, -0.5, -7, "warm"],
-  [0, 28, 38, 1.7, -1.2, -5, "deep"],
-  [6, 34, 60, 1.3, -0.3, -3, "warm"],
-  [14, 26, 46, 1.6, -1.6, 3, "hot"],
-  [20, 38, 72, 1.2, -0.9, -2, "hot"],
-  [28, 30, 56, 1.4, -1.4, 4, "warm"],
-  [34, 34, 78, 1.1, -0.2, -3, "hot"],
-  [42, 28, 62, 1.3, -1.1, 5, "hot"],
-  [50, 32, 74, 1.2, -0.6, -4, "warm"],
-  [58, 30, 58, 1.5, -1.5, 6, "hot"],
-  [64, 34, 68, 1.3, -0.8, -2, "warm"],
-  [72, 28, 48, 1.6, -1.3, 5, "deep"],
-  [78, 32, 40, 1.8, -0.4, 8, "warm"],
-  [86, 26, 30, 1.9, -1.7, 10, "deep"],
-];
+type Flame = {
+  left: number;
+  height: number;
+  width: number;
+  sway: number;
+  waves: number;
+  phase: number;
+  lean: number;
+  dur: number;
+  delay: number;
+  motion: "a" | "b" | "c";
+};
 
-/** Brasas del piso: `[izquierda %, tamaño vw, duración s, retraso s]`. */
-const COALS: ReadonlyArray<readonly [number, number, number, number]> = [
-  [9, 11, 1.1, 0],
-  [22, 14, 0.9, -0.4],
-  [35, 16, 1.3, -0.2],
-  [50, 17, 1, -0.7],
-  [64, 15, 1.2, -0.3],
-  [77, 13, 0.95, -0.6],
-  [91, 10, 1.25, -0.15],
+/** Las siete lenguas principales, repartidas de borde a borde y traslapadas
+ *  para que el pie del fuego se lea como una masa continua, sin huecos. */
+const FLAMES: readonly Flame[] = [
+  { left: 3, height: 26, width: 34, sway: 0.16, waves: 1.1, phase: 0.4, lean: -0.03, dur: 1.9, delay: -0.3, motion: "a" },
+  { left: 19, height: 40, width: 38, sway: 0.2, waves: 1.3, phase: 1.6, lean: 0.02, dur: 1.5, delay: -1.1, motion: "b" },
+  { left: 34, height: 33, width: 36, sway: 0.15, waves: 1.05, phase: 2.6, lean: -0.02, dur: 1.7, delay: -0.6, motion: "c" },
+  { left: 50, height: 46, width: 42, sway: 0.22, waves: 1.25, phase: 0.9, lean: 0.01, dur: 1.45, delay: -1.6, motion: "a" },
+  { left: 66, height: 36, width: 38, sway: 0.18, waves: 1.15, phase: 2.1, lean: -0.02, dur: 1.65, delay: -0.9, motion: "b" },
+  { left: 81, height: 42, width: 38, sway: 0.2, waves: 1.35, phase: 1.2, lean: 0.03, dur: 1.55, delay: -1.4, motion: "c" },
+  { left: 97, height: 28, width: 34, sway: 0.17, waves: 1.05, phase: 3, lean: -0.02, dur: 1.85, delay: -0.2, motion: "a" },
 ];
 
 /** Chispas: `[izquierda %, deriva px, duración s, retraso s]`. */
@@ -102,6 +102,73 @@ const EMBERS: ReadonlyArray<readonly [number, number, number, number]> = [
   [81, -22, 3.2, -1.8],
   [92, 12, 2.7, -0.7],
 ];
+
+/**
+ * Silueta de una llama, en una caja de 0 a 100 (se estira a la caja real).
+ *
+ * Se dibuja una columna de puntos: en cada altura `t` se calcula cuánto se
+ * desvía el centro (la espina ondulada) y cuánto mide el ancho. El ancho nace
+ * grande en la base, hace cintura y termina en punta, así la forma se lee como
+ * una llama y no como un óvalo.
+ */
+function flamePath({ sway, waves, phase, lean }: Pick<Flame, "sway" | "waves" | "phase" | "lean">): string {
+  const STEPS = 40;
+  const left: Array<[number, number]> = [];
+  const right: Array<[number, number]> = [];
+  for (let i = 0; i <= STEPS; i += 1) {
+    const t = i / STEPS; // 0 = base, 1 = punta
+    const y = 100 - 100 * t;
+    // La ondulación crece hacia arriba: en la base el fuego es ancho y quieto.
+    const wobble = Math.sin(t * Math.PI * 2 * waves + phase);
+    const drift = lean * 100 * Math.pow(t, 1.7) + sway * 100 * wobble * Math.pow(t, 1.3);
+    const x = 50 + drift;
+    // Perfil: base llena —las llamas se tocan entre sí, sin huecos oscuros al
+    // pie—, un ensanche redondeado a un tercio de altura y una punta larga que
+    // se afina hasta desaparecer. Con una punta corta la forma se leía como un
+    // huevo, no como una llama.
+    const body = Math.min(1, Math.pow(1 - t, 1.3) * (0.85 + 0.35 * Math.sin(Math.PI * t * 1.2 + 0.4)));
+    const half = 50 * Math.max(body, 0.002);
+    left.push([x - half, y]);
+    right.push([x + half, y]);
+  }
+  const pt = ([x, y]: [number, number]) => `${x.toFixed(2)} ${y.toFixed(2)}`;
+  return [
+    `M ${pt(left[0])}`,
+    ...left.slice(1).map((p) => `L ${pt(p)}`),
+    ...right.slice(0, -1).reverse().map((p) => `L ${pt(p)}`),
+    "Z",
+  ].join(" ");
+}
+
+/** Una llama completa: halo, cuerpo y núcleo, en su caja. */
+function FlameShape({ flame }: { flame: Flame }) {
+  const d = flamePath(flame);
+  return (
+    <span
+      className="fire-flame-tongue"
+      style={
+        {
+          left: `${flame.left}%`,
+          width: `${flame.width}vw`,
+          height: `${flame.height}vh`,
+          "--dur": `${flame.dur}s`,
+          "--delay": `${flame.delay}s`,
+          "--motion": `flame-${flame.motion}`,
+        } as CSSProperties
+      }
+      aria-hidden="true"
+    >
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+        {/* Halo ancho y tenue: da volumen sin ningún desenfoque. */}
+        <path d={d} transform="translate(50 100) scale(1.9 1.05) translate(-50 -100)" fill="url(#fire-halo)" opacity="0.16" />
+        {/* Cuerpo de la llama. */}
+        <path d={d} fill="url(#fire-flame)" />
+        {/* Núcleo caliente: más angosto y más bajo. */}
+        <path d={d} transform="translate(50 100) scale(0.5 0.8) translate(-50 -100)" fill="url(#fire-core)" opacity="0.9" />
+      </svg>
+    </span>
+  );
+}
 
 /** Un enlace que lleva a otra pantalla de esta misma app. */
 function navigationTarget(event: MouseEvent): string | null {
@@ -275,42 +342,39 @@ export function FireTransition() {
           laten y chispas que suben. Todo son degradados y movimientos; ningún
           filtro de desenfoque. */}
       <div className="fire-stage" aria-hidden="true">
-        <div className="fire-bed" />
+        {/* Los degradados del fuego. Van una sola vez: las siete lenguas los
+            comparten por id. */}
+        <svg className="fire-defs" width="0" height="0" aria-hidden="true" focusable="false">
+          <defs>
+            <linearGradient id="fire-flame" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0" stopColor="#fde68a" stopOpacity="0.98" />
+              <stop offset="0.16" stopColor="#fbbf24" stopOpacity="0.97" />
+              <stop offset="0.34" stopColor="#f97316" stopOpacity="0.94" />
+              <stop offset="0.52" stopColor="#ea580c" stopOpacity="0.86" />
+              <stop offset="0.7" stopColor="#dc2626" stopOpacity="0.62" />
+              <stop offset="0.86" stopColor="#b91c1c" stopOpacity="0.3" />
+              <stop offset="1" stopColor="#7f1d1d" stopOpacity="0" />
+            </linearGradient>
+            <linearGradient id="fire-core" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0" stopColor="#fffbeb" stopOpacity="1" />
+              <stop offset="0.35" stopColor="#fef08a" stopOpacity="0.9" />
+              <stop offset="0.7" stopColor="#fdba74" stopOpacity="0.45" />
+              <stop offset="1" stopColor="#f97316" stopOpacity="0" />
+            </linearGradient>
+            <radialGradient id="fire-halo" cx="0.5" cy="1" r="0.75">
+              <stop offset="0" stopColor="#f97316" stopOpacity="0.6" />
+              <stop offset="0.45" stopColor="#ea580c" stopOpacity="0.28" />
+              <stop offset="1" stopColor="#b91c1c" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+        </svg>
 
-        <div className="fire-flames">
-          {FLAMES.map(([left, width, height, duration, delay, tilt, tone], index) => (
-            <span
-              key={`flame-${index}`}
-              className={`fire-tongue fire-tongue--${tone}`}
-              style={
-                {
-                  left: `${left}%`,
-                  width: `${width}vw`,
-                  height: `${height}vh`,
-                  "--dur": `${duration}s`,
-                  "--delay": `${delay}s`,
-                  "--tilt": `${tilt}deg`,
-                } as CSSProperties
-              }
-            />
-          ))}
-        </div>
+        {/* Calor del piso: un resplandor suave detrás de las llamas, sin esferas. */}
+        <div className="fire-glow" />
 
-        <div className="fire-coals">
-          <div className="fire-core" />
-          {COALS.map(([left, size, duration, delay], index) => (
-            <span
-              key={`coal-${index}`}
-              className="fire-coal"
-              style={
-                {
-                  left: `${left}%`,
-                  "--size": `${size}vw`,
-                  "--dur": `${duration}s`,
-                  "--delay": `${delay}s`,
-                } as CSSProperties
-              }
-            />
+        <div className="fire-fires">
+          {FLAMES.map((flame, index) => (
+            <FlameShape key={`flame-${index}`} flame={flame} />
           ))}
         </div>
 

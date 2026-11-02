@@ -1363,26 +1363,29 @@ Esta sección es un resumen, no otra lista de tareas.
   de caja no cuadró correctamente»— con el campo de motivo obligatorio, y no se
   guarda nada hasta que se escriba. Si se guarda con diferencia justificada, el
   aviso es ámbar y dice cuánto faltó o sobró, en su moneda.
-- **Transición de fuego a pantalla completa (PR #132, rehecha en PR #134):** al
-  tocar un módulo o una tarjeta, una fogata con el emblema y «Cargando…» cubre
-  toda la interfaz, y se retira sola cuando la pantalla nueva toma el control.
-  La primera versión eran cinco manchas grandes y el fuego se veía como una foto
-  quieta; la versión actual arma la fogata con **quince lenguas** de distinto
-  tamaño, tono e inclinación —cada una meciéndose a su ritmo entre 1.1 y 1.9 s,
-  moviéndose en los dos ejes y de hasta 15 % de alto—, **siete brasas** que laten
-  en el piso y **doce chispas** que suben meciéndose. El movimiento viene de
-  piezas desfasadas, no de una mancha.
-  `src/components/layout/fire-transition.tsx` + estilos en `globals.css`.
+- **Transición de fuego a pantalla completa (PR #132, rehecha en #134 y #135):** al
+  tocar un módulo o una tarjeta, una capa de fuego con el emblema y «Cargando…»
+  cubre toda la interfaz, y se retira sola cuando la pantalla nueva toma el
+  control. Las dos primeras versiones no sirvieron: primero cinco manchas
+  grandes y después quince lenguas tipo óvalo con brasas redondas, que el dueño
+  describió como «una pelota de fuego abajo». La versión actual usa **lenguas
+  dibujadas**: siete siluetas con base llena, ensanche a un tercio de altura y
+  punta larga afilada, más un halo y un núcleo amarillo en cada una. Cada lengua
+  se mece con uno de tres movimientos (a/b/c), con ritmos de 1.45 a 1.9 s y
+  retrasos negativos para que nunca vayan al unísono; doce chispas suben entre
+  ellas. `src/components/layout/fire-transition.tsx` + estilos en `globals.css`.
   Tiempos: espera 120 ms antes de aparecer (si la pantalla abre al instante por
   caché, no se ve nada) y, una vez visible, dura **un mínimo de 1.1 s** —con
   480 ms el ojo no alcanzaba a ver el mecido y parecía una imagen fija— y se
   desvanece en 320 ms; si la navegación no se concreta, se apaga a los 8 s. Se
   enciende con enlaces internos, con «atrás» y al volver de otra app.
   **Sin `filter`, `backdrop-filter` ni `drop-shadow`**: en Android dejaban
-  manchas y borrones de GPU, que es lo que se vio como «cuadros raros» de
-  colores. El fondo es opaco, así que la pantalla anterior no se transparenta.
-  Con «reducir movimiento» el fuego no se congela: se enciende y se apaga
-  despacio, sin desplazamientos.
+  manchas y borrones de GPU. El fondo es opaco, así que la pantalla anterior no
+  se transparenta. Con «reducir movimiento» el fuego no se congela: se enciende
+  y se apaga despacio, sin desplazamientos.
+  **Ojo con «Quitar animaciones» de Android:** con la escala de animación en
+  cero el sistema congela todo y la capa se ve como una foto; no es un fallo de
+  la app.
 - **Caché del service worker (PR #134):** `CACHE_VERSION` subió a
   `strong-gym-v3`. Los estilos y el código se sirven *cache-first*, así que un
   teléfono con la app instalada puede seguir pintando la versión vieja después

@@ -118,11 +118,12 @@
 /* Transición de fuego a pantalla completa (fire-transition.tsx).
    Cubre la interfaz mientras se abre otra pantalla y se retira sola.
 
+   El fuego son lenguas dibujadas: cada llama es una silueta ondulada con punta
+   afilada —la forma que aprobó el gimnasio—, no una esfera ni una mancha. Siete
+   principales y cuatro mechones sueltos, cada una meciéndose a su ritmo.
+
    Sin `filter` ni `backdrop-filter`: en Android eso deja manchas y borrones de
-   GPU. El fuego aquí es una fogata armada con piezas: quince lenguas de distinto
-   tamaño y tono, siete brasas que laten en el piso y doce chispas que suben.
-   El movimiento viene de muchas piezas desfasadas; una sola mancha grande se
-   veía como una foto quieta. */
+   GPU. Todo aquí son degradados y movimientos. */
 
 .fire-overlay {
   position: fixed;
@@ -132,7 +133,7 @@
   place-items: center;
   overflow: hidden;
   /* Opaco: nada de la pantalla anterior se transparenta por debajo. */
-  background: radial-gradient(130% 90% at 50% 112%, #2b0d06 0%, #170a0c 40%, #08070c 74%, #06050a 100%);
+  background: radial-gradient(120% 85% at 50% 108%, #1c0a06 0%, #120709 38%, #08070c 72%, #050409 100%);
   opacity: 0;
   transition: opacity 320ms ease-out;
   /* Mientras cubre, no deja tocar lo de abajo: no se abre dos veces. */
@@ -157,107 +158,50 @@
   animation: fire-ignite 520ms cubic-bezier(0.22, 0.9, 0.28, 1) both;
 }
 
-/* Resplandor ancho del piso: el calor que se ve detrás de las llamas. */
-.fire-bed {
+/* Los degradados del fuego viven en un SVG oculto. */
+.fire-defs {
   position: absolute;
-  left: -20%;
-  right: -20%;
-  bottom: -34%;
-  height: 96%;
-  background:
-    radial-gradient(46% 42% at 50% 80%, rgb(249 115 22 / 0.5) 0%, rgb(249 115 22 / 0) 72%),
-    radial-gradient(68% 58% at 50% 94%, rgb(190 24 30 / 0.55) 0%, rgb(190 24 30 / 0) 80%);
-  transform-origin: 50% 100%;
-  animation: fire-breathe 3.4s ease-in-out infinite;
+  width: 0;
+  height: 0;
+  overflow: hidden;
 }
 
-.fire-flames {
+/* Calor del piso: resplandor suave detrás de las llamas. */
+.fire-glow {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  bottom: -12%;
+  height: 46%;
+  background:
+    radial-gradient(45% 60% at 50% 100%, rgb(249 115 22 / 0.42) 0%, rgb(249 115 22 / 0) 74%),
+    radial-gradient(70% 80% at 50% 100%, rgb(185 28 28 / 0.34) 0%, rgb(185 28 28 / 0) 82%);
+  animation: fire-breathe 3.2s ease-in-out infinite;
+}
+
+.fire-fires {
   position: absolute;
   inset: 0;
 }
 
-/* Cada lengua es una figura alta con punta redondeada, rellena con un degradado
-   que va del blanco caliente en la base al rojo apagado en los bordes: así se
-   funde con la de al lado sin necesidad de desenfocar nada. */
-.fire-tongue {
+/* Cada lengua: una caja al pie de la pantalla, con su silueta dentro. */
+.fire-flame-tongue {
   position: absolute;
-  bottom: -4%;
-  border-radius: 50% 50% 46% 46% / 66% 66% 34% 34%;
+  bottom: 0;
+  translate: -50% 0;
   transform-origin: 50% 100%;
-  animation: fire-lick var(--dur, 1.8s) ease-in-out var(--delay, 0s) infinite;
+  animation: var(--motion, flame-a) var(--dur, 1.6s) ease-in-out var(--delay, 0s) infinite;
+  will-change: transform;
 }
 
-.fire-tongue--hot {
-  /* El degradado se mide en proporción a la caja (68 % de ancho, 100 % de alto)
-     y nace en la base: así el color llena la lengua entera. Con `closest-side`
-     el relleno medía lo que el ancho y la llama quedaba hueca arriba. */
-  background: radial-gradient(
-    68% 100% at 50% 100%,
-    rgb(255 247 214 / 0.98) 0%,
-    rgb(253 224 71 / 0.95) 16%,
-    rgb(251 146 60 / 0.78) 38%,
-    rgb(239 68 68 / 0.42) 62%,
-    rgb(153 27 27 / 0) 88%
-  );
+.fire-flame-tongue svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* El halo sobresale de la caja a propósito. */
+  overflow: visible;
 }
 
-.fire-tongue--warm {
-  background: radial-gradient(
-    72% 100% at 50% 100%,
-    rgb(254 215 170 / 0.95) 0%,
-    rgb(251 146 60 / 0.88) 20%,
-    rgb(234 88 12 / 0.58) 46%,
-    rgb(153 27 27 / 0.24) 68%,
-    rgb(127 29 29 / 0) 88%
-  );
-}
-
-.fire-tongue--deep {
-  background: radial-gradient(
-    78% 100% at 50% 100%,
-    rgb(251 146 60 / 0.82) 0%,
-    rgb(220 38 38 / 0.6) 28%,
-    rgb(153 27 27 / 0.34) 56%,
-    rgb(120 20 24 / 0) 84%
-  );
-}
-
-/* Brasas del piso: laten rápido, es lo que más se nota de reojo. */
-.fire-coals {
-  position: absolute;
-  inset: auto 0 0 0;
-  height: 18%;
-}
-
-.fire-core {
-  position: absolute;
-  left: 50%;
-  bottom: -4%;
-  width: 70%;
-  height: 70%;
-  translate: -50% 0;
-  background: radial-gradient(50% 60% at 50% 70%, rgb(253 230 138 / 0.7) 0%, rgb(251 191 36 / 0.32) 45%, rgb(251 191 36 / 0) 80%);
-  animation: fire-breathe 2.6s ease-in-out infinite;
-}
-
-.fire-coal {
-  position: absolute;
-  bottom: 1%;
-  width: var(--size, 12vw);
-  height: var(--size, 12vw);
-  translate: -50% 0;
-  border-radius: 50%;
-  background: radial-gradient(
-    closest-side,
-    rgb(255 251 235 / 0.95) 0%,
-    rgb(253 224 71 / 0.9) 32%,
-    rgb(249 115 22 / 0.5) 60%,
-    rgb(239 68 68 / 0) 86%
-  );
-  animation: coal-glow var(--dur, 1.2s) ease-in-out var(--delay, 0s) infinite alternate;
-}
-
-/* Chispas que suben meciéndose. */
 .fire-embers {
   position: absolute;
   inset: 0;
@@ -265,7 +209,7 @@
 
 .fire-ember {
   position: absolute;
-  bottom: 8%;
+  bottom: 22%;
   width: 4px;
   height: 4px;
   border-radius: 999px;
@@ -283,7 +227,7 @@
   text-align: center;
   padding: 0 1.5rem;
   /* Se sube un poco: deja respirar el fuego debajo del texto. */
-  margin-bottom: 12vh;
+  margin-bottom: 16vh;
 }
 
 /* Halo detrás del texto: sólo oscurece lo que hay justo detrás, no el fuego. */
@@ -339,37 +283,51 @@
   }
 }
 
-/* El mecido de cada lengua. Amplitudes grandes y tres tiempos distintos
-   (25 %, 50 %, 75 %): el movimiento tiene que notarse a simple vista, no sólo
-   en la teoría, y no debe parecer un resorte que se repite. */
-@keyframes fire-lick {
+/* Los tres mecidos. Cada uno combina desplazamiento, estiramiento e
+   inclinación, y en los tres los tiempos están repartidos distinto para que
+   las siete lenguas nunca se muevan al unísono. */
+@keyframes flame-a {
   0%,
   100% {
-    transform: rotate(var(--tilt, 0deg)) translate3d(0, 4%, 0) scaleY(0.88) scaleX(0.94) skewX(0deg);
-    opacity: 0.84;
+    transform: translate3d(0, 2%, 0) scaleY(0.97) skewX(0deg);
   }
-  25% {
-    transform: rotate(var(--tilt, 0deg)) translate3d(2%, -11%, 0) scaleY(1.14) scaleX(1.03) skewX(3deg);
-    opacity: 1;
+  30% {
+    transform: translate3d(1.2%, -3%, 0) scaleY(1.06) skewX(1.6deg);
   }
-  50% {
-    transform: rotate(var(--tilt, 0deg)) translate3d(-1.5%, -2%, 0) scaleY(0.95) scaleX(0.98) skewX(-2.5deg);
-    opacity: 0.9;
+  62% {
+    transform: translate3d(-1%, -1%, 0) scaleY(1.01) skewX(-1.4deg);
   }
-  75% {
-    transform: rotate(var(--tilt, 0deg)) translate3d(1.5%, -15%, 0) scaleY(1.09) scaleX(1.01) skewX(1.5deg);
-    opacity: 1;
+  85% {
+    transform: translate3d(0.6%, -4%, 0) scaleY(1.04) skewX(0.8deg);
   }
 }
 
-@keyframes coal-glow {
-  from {
-    opacity: 0.3;
-    transform: scale(0.78);
+@keyframes flame-b {
+  0%,
+  100% {
+    transform: translate3d(-0.4%, 1%, 0) scaleY(1.02) skewX(-0.6deg);
   }
-  to {
-    opacity: 0.92;
-    transform: scale(1.12);
+  24% {
+    transform: translate3d(-1.4%, -5%, 0) scaleY(1.08) skewX(-2deg);
+  }
+  55% {
+    transform: translate3d(1%, -2%, 0) scaleY(0.98) skewX(1.2deg);
+  }
+  80% {
+    transform: translate3d(-0.6%, -3.5%, 0) scaleY(1.05) skewX(0.4deg);
+  }
+}
+
+@keyframes flame-c {
+  0%,
+  100% {
+    transform: translate3d(0.6%, -1%, 0) scaleY(1) skewX(1deg);
+  }
+  36% {
+    transform: translate3d(-1.2%, -4.5%, 0) scaleY(1.07) skewX(-0.8deg);
+  }
+  68% {
+    transform: translate3d(1.4%, 0.5%, 0) scaleY(0.96) skewX(1.8deg);
   }
 }
 
@@ -385,7 +343,7 @@
     opacity: 0.9;
   }
   100% {
-    transform: translate3d(var(--dx, 12px), -62vh, 0) scale(0.2);
+    transform: translate3d(var(--dx, 12px), -52vh, 0) scale(0.2);
     opacity: 0;
   }
 }
@@ -408,10 +366,8 @@
   .fire-line {
     animation: none;
   }
-  .fire-bed,
-  .fire-core,
-  .fire-tongue,
-  .fire-coal {
+  .fire-glow,
+  .fire-flame-tongue {
     animation: fire-calm 3.6s ease-in-out infinite;
   }
 }
