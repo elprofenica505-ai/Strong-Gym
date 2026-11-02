@@ -1374,8 +1374,14 @@ Esta sección es un resumen, no otra lista de tareas.
   geometría se genera con un **pseudoaleatorio con semilla**: el servidor y el
   celular dibujan exactamente el mismo rayo y React no se queja al hidratar.
   El brillo del relámpago sale de **tres trazos superpuestos** (halo, brillo y
-  núcleo blanco), no de filtros. El cielo es **negro profundo** (PR #139): el
-  azul quedó sólo como un resto de claridad al pie, sin verse azulado. El rayo principal golpea apenas aparece (a los
+  núcleo blanco), no de filtros. El cielo es **negro de verdad** (PR #139): el
+  fondo termina en negro puro y el azul quedó sólo como un resto de claridad al
+  pie, sin que se note. El bloque central sigue el cartel del local: el
+  **emblema del triángulo con el atleta** (`public/brand/emblema-strong.webp`,
+  19 KB, recortado del cartel y con el fondo recortado a transparente), el
+  nombre en **serif plateado** con letras separadas, «Cargando…» en **dorado** y
+  la **barra dorada** sobre un riel gris. El emblema va guardado en el caché del
+  service worker para que aparezca aunque no haya red. El rayo principal golpea apenas aparece (a los
   7 % de su ciclo) y deja un resplandor que se apaga, porque la capa sólo se ve
   poco más de un segundo. `src/components/layout/storm-transition.tsx` + estilos
   en `globals.css`. El componente y las texturas de fuego se retiraron.
@@ -1391,8 +1397,8 @@ Esta sección es un resumen, no otra lista de tareas.
   **Ojo con «Quitar animaciones» de Android:** con la escala de animación en
   cero el sistema congela todo y la capa se ve como una foto; no es un fallo de
   la app.
-- **Caché del service worker (PR #134, al día en #138):** `CACHE_VERSION` subió
-  a `strong-gym-v4`. Los estilos y el código se sirven *cache-first*, así que un
+- **Caché del service worker (PR #134, al día en #139 con el emblema nuevo):**
+  `CACHE_VERSION` subió a `strong-gym-v5`. Los estilos y el código se sirven *cache-first*, así que un
   teléfono con la app instalada puede seguir pintando la versión vieja después
   de publicar; al subir la versión, el service worker descarta todo el caché
   anterior en la siguiente apertura.

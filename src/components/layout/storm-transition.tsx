@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { usePathname } from "next/navigation";
-import { BrandMark } from "@/components/layout/brand-mark";
+import Image from "next/image";
 
 /**
  * Transición de tormenta a pantalla completa.
@@ -139,13 +139,13 @@ function makeBolt(
   return { main, branches, dur, delay };
 }
 
-/** Los tres rayos: uno central, largo, y dos laterales más cortos. */
+/** Los tres rayos: uno largo a la derecha del emblema y dos laterales cortos. */
 const BOLTS: readonly Bolt[] = [
   // El principal cae apenas aparece la capa: como el aviso dura poco más de un
   // segundo, el rayo tiene que golpear dentro de ese rato.
-  makeBolt(7, 64, 58, 76, 11, 9, 3.2, 0),
-  makeBolt(23, 22, 15, 52, 8, 6, 3.7, -1.3),
-  makeBolt(41, 78, 86, 46, 8, 6, 4.1, -2.4),
+  makeBolt(7, 72, 66, 76, 11, 9, 3.2, 0),
+  makeBolt(23, 18, 11, 52, 8, 6, 3.7, -1.3),
+  makeBolt(41, 84, 90, 46, 8, 6, 4.1, -2.4),
 ];
 
 /** Un enlace que lleva a otra pantalla de esta misma app. */
@@ -352,15 +352,23 @@ export function StormTransition() {
 
       <div className="storm-content">
         <span className="storm-halo" aria-hidden="true" />
-        {/* Sin `drop-shadow`: es un filtro, y en Android los filtros dejan
-            manchas. El halo oscuro de abajo ya separa el emblema del cielo. */}
-        <BrandMark className="size-14" />
-        <p className="mt-4 font-display text-[1.05rem] font-extrabold tracking-[0.18em] text-white/95 uppercase">
-          Strong Fitness Gym
-        </p>
-        <p className="mt-1 text-[0.75rem] tracking-[0.22em] text-sky-200/80 uppercase">Cargando…</p>
-        {/* Barra de carga: el tramo brillante recorre el riel mientras se espera. */}
-        <span className="storm-progress mt-5" aria-hidden="true">
+        {/* El emblema del cartel del gimnasio: triángulo rojo con el atleta.
+            Va como imagen fija (16 KB) para que no dependa de ningún dibujo
+            que haya que recalcular en cada visita. Sin `drop-shadow`: es un
+            filtro, y en Android los filtros dejan manchas. */}
+        <Image
+          src="/brand/emblema-strong.webp"
+          alt=""
+          width={408}
+          height={444}
+          priority
+          sizes="(max-width: 640px) 48vw, 12rem"
+          className="storm-emblem"
+        />
+        <p className="storm-title">Strong Fitness Gym</p>
+        <p className="storm-loading">Cargando…</p>
+        {/* Barra de carga: el tramo dorado recorre el riel mientras se espera. */}
+        <span className="storm-progress" aria-hidden="true">
           <span className="storm-progress-fill" />
         </span>
       </div>
