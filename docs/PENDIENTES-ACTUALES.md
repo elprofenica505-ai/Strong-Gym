@@ -1374,7 +1374,8 @@ Esta sección es un resumen, no otra lista de tareas.
   geometría se genera con un **pseudoaleatorio con semilla**: el servidor y el
   celular dibujan exactamente el mismo rayo y React no se queja al hidratar.
   El brillo del relámpago sale de **tres trazos superpuestos** (halo, brillo y
-  núcleo blanco), no de filtros. El rayo principal golpea apenas aparece (a los
+  núcleo blanco), no de filtros. El cielo es **negro profundo** (PR #139): el
+  azul quedó sólo como un resto de claridad al pie, sin verse azulado. El rayo principal golpea apenas aparece (a los
   7 % de su ciclo) y deja un resplandor que se apaga, porque la capa sólo se ve
   poco más de un segundo. `src/components/layout/storm-transition.tsx` + estilos
   en `globals.css`. El componente y las texturas de fuego se retiraron.

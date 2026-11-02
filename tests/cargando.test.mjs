@@ -210,6 +210,8 @@ test("la capa es opaca: la pantalla vieja no se transparenta", () => {
   const css = source("src/app/globals.css");
   const overlay = css.slice(css.indexOf(".storm-overlay {"), css.indexOf(".storm-overlay[data-state"));
   // Degradado con colores sólidos, sin alfa: tapa de verdad.
-  assert.match(overlay, /background: radial-gradient\(120% 90% at 50% 115%, #101a2e 0%/);
+  assert.match(overlay, /background: radial-gradient\(120% 90% at 50% 115%, #0d0d12 0%/);
+  // Negro de verdad: el cielo no puede verse azulado.
+  assert.doesNotMatch(overlay, /#101a2e|#0a1020/);
   assert.doesNotMatch(overlay, /rgb\([^)]*\/ 0\.\d+\)/);
 });
