@@ -1363,16 +1363,25 @@ Esta sección es un resumen, no otra lista de tareas.
   de caja no cuadró correctamente»— con el campo de motivo obligatorio, y no se
   guarda nada hasta que se escriba. Si se guarda con diferencia justificada, el
   aviso es ámbar y dice cuánto faltó o sobró, en su moneda.
+- **Transición de fuego a pantalla completa (PR #132):** al tocar un módulo o
+  una tarjeta, una capa de fuego —lecho de brasas, cinco lenguas que suben y se
+  mecen, núcleo caliente, chispas— con el emblema y «Cargando…» cubre toda la
+  interfaz, y se retira sola cuando la pantalla nueva toma el control. Espera
+  140 ms antes de aparecer (si la pantalla abre al instante por caché, no se ve
+  nada), una vez visible dura un mínimo de 480 ms y se desvanece en 260 ms; si
+  la navegación no se concreta, se apaga a los 8 segundos. Se enciende con
+  enlaces internos, con «atrás» y al volver de otra app.
+  `src/components/layout/fire-transition.tsx` + estilos en `globals.css`.
+  **Sin `filter` ni `backdrop-filter`**: en Android dejaban manchas y borrones
+  de GPU, que es lo que se vio como «cuadros raros» de colores.
 - **Nunca se ve «congelado» y nunca se vacía la pantalla (PR #130 y #131):**
-  dos capas de aviso, **sin** esqueletos grises: una cinta de brasas arriba con
-  «Cargando…» en cuanto se toca cualquier enlace interno (`NavigationProgress`)
-  y un ícono de fuego dentro de la misma tarjeta o módulo tocado
-  (`LinkPending`). Lo que había sigue a la vista mientras llega lo nuevo. Los
-  botones que esperan respuesta usan `<Button loading>`: giran y se bloquean,
-  así nadie toca dos veces; cubre también la entrada con correo, contraseña y
-  segundo factor. **Se quitó la pantalla de esqueleto** (`loading.tsx`): el
-  gimnasio la rechazó porque las letras e imágenes desaparecían y daba
-  sensación de pausa; una prueba impide que vuelva.
+  **sin** esqueletos grises —el gimnasio los rechazó porque las letras e
+  imágenes desaparecían—: lo que había sigue a la vista, la capa de fuego cubre
+  la espera y un ícono de llama marca la tarjeta o módulo tocado
+  (`LinkPending`). Los botones que esperan respuesta usan `<Button loading>`:
+  giran y se bloquean, así nadie toca dos veces; cubre también la entrada con
+  correo, contraseña y segundo factor. Una prueba impide que vuelvan los
+  esqueletos.
 - **Venta particular (PR #129 + migración 00097):** caja puede cobrarle un
   producto a quien entró a comprar sin tener ficha. En «Productos → Vender» hay
   dos botones excluyentes —«Cliente registrado» y «Venta particular»—, y la

@@ -9,40 +9,73 @@ import { existsSync, readFileSync } from "node:fs";
  * del segundo factor, la pantalla se quedaba quieta y no había ninguna figura
  * que confirmara que estaba trabajando; la gente tocaba dos veces.
  *
- * La respuesta tiene dos capas, y **ninguna** vacía la pantalla:
- *   1. Una cinta de brasas arriba con «Cargando…» en cuanto se toca cualquier
- *      enlace interno (NavigationProgress). Lo que había sigue a la vista.
- *   2. Un ícono de fuego dentro de la misma tarjeta o módulo tocado
- *      (LinkPending).
+ * Lo que el gimnasio pidió, después de dos intentos:
+ *   1. **Nada** de esqueletos grises que borren letras e imágenes (se probó y se
+ *      rechazó: daba sensación de pausa).
+ *   2. Una **capa de fuego a pantalla completa** que cubra la interfaz durante
+ *      la espera entre módulos y se retire sola al terminar (FireTransition).
+ *   3. Un ícono de llama dentro de la tarjeta o módulo tocado (LinkPending),
+ *      para saber cuál de todos está abriendo.
  *
- * Se probó también una pantalla de esqueleto gris (loading.tsx) y el gimnasio la
- * rechazó: las letras e imágenes desaparecían y daba sensación de pausa. Queda
- * prohibido volver a ponerla: la prueba de abajo lo impide.
+ * Las pruebas de abajo fijan las tres cosas.
  */
 const source = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("el aviso de carga está montado y es una cascada de fuego", () => {
+test("la capa de fuego está montada en el layout", () => {
   const layout = source("src/app/[locale]/layout.tsx");
-  assert.match(layout, /<NavigationProgress \/>/);
-  assert.match(layout, /@\/components\/layout\/navigation-progress/);
+  assert.match(layout, /<FireTransition \/>/);
+  assert.match(layout, /@\/components\/layout\/fire-transition/);
 
-  // Fuego de marca: barrido rojo→naranja→ámbar, chispas y llama que titila.
+  // Fuego de marca: lecho de brasas, lenguas, chispas y hilo encendido.
   const css = source("src/app/globals.css");
+  assert.match(css, /@keyframes fire-breathe/);
+  assert.match(css, /@keyframes fire-lick/);
+  assert.match(css, /@keyframes ember-rise/);
   assert.match(css, /@keyframes fire-sweep/);
-  assert.match(css, /@keyframes fire-spark/);
-  assert.match(css, /@keyframes fire-flicker/);
-  assert.match(css, /\.fire-bar-slow/);
   assert.match(css, /rgb\(251 191 36/);
 
-  const bar = source("src/components/layout/navigation-progress.tsx");
-  assert.match(bar, /Cargando…/);
-  assert.match(bar, /role="status"/);
-  assert.match(bar, /aria-live="polite"/);
-  assert.match(bar, /fire-bar/);
+  const fire = source("src/components/layout/fire-transition.tsx");
+  assert.match(fire, /Cargando…/);
+  assert.match(fire, /role="status"/);
+  assert.match(fire, /aria-live="polite"/);
+  assert.match(fire, /fire-bed/);
+  assert.match(fire, /fire-tongue/);
+  assert.match(fire, /fire-ember/);
 });
 
-test("la barra no rompe la navegación ni se queda pegada mintiendo", () => {
-  const bar = source("src/components/layout/navigation-progress.tsx");
+test("la capa cubre toda la interfaz y no se queda pegada", () => {
+  const css = source("src/app/globals.css");
+  assert.match(css, /\.fire-overlay \{[^}]*position: fixed/);
+  assert.match(css, /\.fire-overlay \{[^}]*inset: 0/);
+  assert.match(css, /\.fire-overlay \{[^}]*z-index: 80/);
+  // Cubre de verdad: sin transparencia que deje ver la pantalla a medio pintar.
+  assert.match(css, /\.fire-overlay \{[^}]*opacity: 0/);
+  assert.match(css, /\.fire-overlay\[data-state="shown"\] \{\s*opacity: 1;/);
+
+  const fire = source("src/components/layout/fire-transition.tsx");
+  // Se apaga sola si la pantalla nueva no llega.
+  assert.match(fire, /GIVE_UP_MS = 8_000/);
+  // Dura un mínimo y se desvanece: ni parpadeo ni corte seco.
+  assert.match(fire, /MIN_VISIBLE_MS = 480/);
+  assert.match(fire, /FADE_OUT_MS = 260/);
+  // Y no aparece si la pantalla abre al instante: primero espera 140 ms.
+  assert.match(fire, /SHOW_DELAY_MS = 140/);
+  assert.match(fire, /revealTimer = setTimeout\(reveal, SHOW_DELAY_MS\)/);
+  // Mientras cubre no deja tocar dos veces.
+  assert.match(css, /\.fire-overlay \{[^}]*pointer-events: auto/);
+  // Nada de filtros de desenfoque: en Android dejan manchas de GPU.
+  assert.doesNotMatch(css, /\.fire-(overlay|stage|bed|tongue)[^}]*backdrop-filter/);
+  assert.doesNotMatch(fire, /backdrop-blur/);
+});
+
+test("la animación respeta «reducir movimiento»", () => {
+  const css = source("src/app/globals.css");
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(css, /\.fire-bed,[\s\S]{0,200}animation: none/);
+});
+
+test("la capa no rompe la navegación ni cambia de pantalla por su cuenta", () => {
+  const bar = source("src/components/layout/fire-transition.tsx");
   // Observa el toque: nunca cancela el enlace ni cambia la navegación.
   assert.doesNotMatch(bar, /preventDefault\(\)/);
   assert.doesNotMatch(bar, /router\.push/);
@@ -52,7 +85,7 @@ test("la barra no rompe la navegación ni se queda pegada mintiendo", () => {
   assert.match(bar, /hasAttribute\("download"\)/);
   // Si la dirección no cambia, se apaga sola.
   assert.match(bar, /GIVE_UP_MS/);
-  assert.match(bar, /setTimeout\(stop, GIVE_UP_MS\)/);
+  assert.match(bar, /setTimeout\(\(\) => \{[\s\S]{0,120}fadeOut\(\);[\s\S]{0,20}\}, GIVE_UP_MS\)/);
 });
 
 test("la tarjeta tocada muestra su propio ícono de carga", () => {
