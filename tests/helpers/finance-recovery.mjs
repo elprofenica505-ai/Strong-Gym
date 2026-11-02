@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
 import React from "react";
 import { createLoader } from "./react-loader.mjs";
+import { rateLimitStub } from "./rate-limit-stub.mjs";
 
 /** Integración local: componente y API reales; el adaptador sustituye únicamente
  * el transporte Supabase por consultas a las funciones SQL instaladas en PostgreSQL.
@@ -71,6 +72,7 @@ export async function testFinanceRecovery({ control, connect, actor, client, che
     const { render, screen, fireEvent, waitFor, act } = testing;
     cleanup = testing.cleanup;
     const load = createLoader({
+      "@/lib/security/rate-limit": rateLimitStub,
       "@/lib/data/queries": "export const getCurrentUser=()=>globalThis.__financeRecovery.user();",
       "@/lib/supabase/env": "export const isSupabaseConfigured=true;export const DEMO_MODE=false;export const CONFIGURATION_UNAVAILABLE=false;",
       "@/lib/supabase/server": "export const getSupabaseServerClient=async()=>globalThis.__financeRecovery.db;",
