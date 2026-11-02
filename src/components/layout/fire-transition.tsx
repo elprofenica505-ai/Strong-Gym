@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { usePathname } from "next/navigation";
 import { BrandMark } from "@/components/layout/brand-mark";
 
 /**
@@ -10,37 +11,97 @@ import { BrandMark } from "@/components/layout/brand-mark";
  * servidor y en el celular se ve un instante de quietud. Esa pausa parece que la
  * app se colgó y la gente toca otra vez.
  *
- * Lo que hace: cubre **toda** la interfaz con una capa de fuego, el emblema y
- * «Cargando…», y la retira sola cuando la pantalla nueva está lista. Cubrir —en
- * vez de dejar ver la pantalla vieja a medio pintar— hace que el cambio se
- * sienta como una transición intencional y no como una espera.
+ * Lo que hace: cubre **toda** la interfaz con una fogata, el emblema y
+ * «Cargando…», y la retira sola cuando la pantalla nueva está lista.
  *
- * Se enciende **sólo si de verdad hay espera**: la capa espera 140 ms antes de
- * aparecer, así una pantalla que ya está en caché y abre al instante no muestra
- * ningún fuego. En el celular, donde el renderizado del servidor tarda, aparece
- * y se queda hasta que la pantalla nueva toma el control.
+ * El fuego no es una mancha grande: es una **fogata de quince lenguas**, cada
+ * una de distinto tamaño, tono e inclinación, y cada una meciéndose a su propio
+ * ritmo. Debajo laten las brasas y encima suben doce chispas. El movimiento
+ * viene de muchas piezas desfasadas; una sola mancha enorme se veía como una
+ * foto quieta, que es justo lo que no quería el gimnasio.
+ *
+ * Se enciende **sólo si de verdad hay espera**: espera 120 ms antes de
+ * aparecer. Una vez encendida dura al menos 1.1 s —tiempo suficiente para ver
+ * una lengua mecerse y varias chispas subir— y se apaga en 320 ms.
  *
  * Reglas que respeta:
  *   · Se activa con un toque en un enlace interno, con «atrás» del navegador o
  *     al volver desde otra app.
- *   · No se queda pegada: si la dirección no cambia en 8 segundos, se apaga.
- *   · Una vez visible dura al menos 480 ms y se desvanece en 260 ms, para que no
- *     parpadee.
+ *   · No se queda pegada: si la pantalla nueva no llega en 8 segundos, se apaga.
  *   · Mientras cubre no deja tocar lo de abajo: no se abre dos veces.
  *   · No usa `filter` ni `backdrop-filter`: en celulares Android eso deja
  *     manchas y borrones de GPU. Todo el fuego son degradados y movimientos.
  */
 
 /** Espera antes de mostrar el fuego: si la pantalla abre antes, ni se ve. */
-const SHOW_DELAY_MS = 140;
-/** Mínimo en pantalla una vez visible, para que no sea un parpadeo. */
-const MIN_VISIBLE_MS = 480;
+const SHOW_DELAY_MS = 120;
+/**
+ * Mínimo en pantalla una vez visible. No es capricho: con menos de un segundo
+ * el ojo no alcanza a ver las lenguas mecerse y el fuego parece una imagen
+ * fija. 1.1 s deja ver un mecido completo y varias chispas subiendo.
+ */
+const MIN_VISIBLE_MS = 1_100;
 /** Desvanecido de salida. */
-const FADE_OUT_MS = 260;
-/** Si la navegación no se concreta, se apaga sola. */
+const FADE_OUT_MS = 320;
+/** Si la pantalla nueva no llega, se apaga sola. */
 const GIVE_UP_MS = 8_000;
 /** Cada cuánto se mira si la dirección ya cambió. */
 const POLL_MS = 160;
+
+type Tone = "hot" | "warm" | "deep";
+
+/**
+ * Las lenguas del fuego. Cada fila es una llama distinta:
+ * `[izquierda %, ancho vw, alto vh, duración s, retraso s, inclinación, tono]`.
+ *
+ * Los retrasos son negativos a propósito: así, en el primer instante, cada
+ * lengua ya está en una parte distinta de su ciclo y no se mueven todas a la
+ * vez como un bloque.
+ */
+const FLAMES: ReadonlyArray<readonly [number, number, number, number, number, number, Tone]> = [
+  [-12, 40, 30, 1.9, -0.2, -9, "deep"],
+  [-6, 34, 46, 1.5, -0.5, -7, "warm"],
+  [0, 28, 38, 1.7, -1.2, -5, "deep"],
+  [6, 34, 60, 1.3, -0.3, -3, "warm"],
+  [14, 26, 46, 1.6, -1.6, 3, "hot"],
+  [20, 38, 72, 1.2, -0.9, -2, "hot"],
+  [28, 30, 56, 1.4, -1.4, 4, "warm"],
+  [34, 34, 78, 1.1, -0.2, -3, "hot"],
+  [42, 28, 62, 1.3, -1.1, 5, "hot"],
+  [50, 32, 74, 1.2, -0.6, -4, "warm"],
+  [58, 30, 58, 1.5, -1.5, 6, "hot"],
+  [64, 34, 68, 1.3, -0.8, -2, "warm"],
+  [72, 28, 48, 1.6, -1.3, 5, "deep"],
+  [78, 32, 40, 1.8, -0.4, 8, "warm"],
+  [86, 26, 30, 1.9, -1.7, 10, "deep"],
+];
+
+/** Brasas del piso: `[izquierda %, tamaño vw, duración s, retraso s]`. */
+const COALS: ReadonlyArray<readonly [number, number, number, number]> = [
+  [9, 11, 1.1, 0],
+  [22, 14, 0.9, -0.4],
+  [35, 16, 1.3, -0.2],
+  [50, 17, 1, -0.7],
+  [64, 15, 1.2, -0.3],
+  [77, 13, 0.95, -0.6],
+  [91, 10, 1.25, -0.15],
+];
+
+/** Chispas: `[izquierda %, deriva px, duración s, retraso s]`. */
+const EMBERS: ReadonlyArray<readonly [number, number, number, number]> = [
+  [7, -26, 2.4, 0],
+  [14, 18, 2.9, -0.9],
+  [22, -12, 2.1, -1.6],
+  [29, 30, 3.1, -0.4],
+  [36, -20, 2.6, -1.2],
+  [43, 8, 2.2, -1.9],
+  [50, -32, 3, -0.6],
+  [57, 22, 2.5, -1.5],
+  [64, -14, 2.8, -0.2],
+  [72, 28, 2.3, -1.1],
+  [81, -22, 3.2, -1.8],
+  [92, 12, 2.7, -0.7],
+];
 
 /** Un enlace que lleva a otra pantalla de esta misma app. */
 function navigationTarget(event: MouseEvent): string | null {
@@ -74,9 +135,16 @@ type Phase = "idle" | "shown" | "leaving";
 
 export function FireTransition() {
   const [phase, setPhase] = useState<Phase>("idle");
+  const pathname = usePathname();
   // Los tiempos y el destino viven en refs: así el efecto no se vuelve a montar
   // en cada cambio de estado ni pierde un toque por culpa de un cierre viejo.
   const phaseRef = useRef<Phase>("idle");
+  /** Ruta que había cuando se encendió: cuando cambie, la pantalla ya llegó. */
+  const startedPath = useRef<string | null>(null);
+  /** Última ruta que vio React. Se lee al encender, sin volver a montar nada. */
+  const pathnameRef = useRef<string | null>(pathname ?? null);
+  /** El apagado del efecto principal, para poder llamarlo desde fuera. */
+  const hideRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     let target: string | null = null;
@@ -99,6 +167,7 @@ export function FireTransition() {
     const goIdle = () => {
       clearTimers();
       target = null;
+      startedPath.current = null;
       phaseRef.current = "idle";
       setPhase("idle");
     };
@@ -122,6 +191,7 @@ export function FireTransition() {
       const remaining = MIN_VISIBLE_MS - (Date.now() - shownAt);
       hideDelay = setTimeout(fadeOut, Math.max(0, remaining));
     };
+    hideRef.current = hide;
 
     const reveal = () => {
       revealTimer = null;
@@ -131,23 +201,31 @@ export function FireTransition() {
       setPhase("shown");
     };
 
-    const start = (destination: string) => {
+    /**
+     * `destination` es la dirección del enlace tocado. Con «atrás» no la
+     * sabemos (el navegador ya cambió la barra de direcciones), así que se pasa
+     * `null` y el apagado lo resuelve el cambio de ruta de React.
+     */
+    const start = (destination: string | null, giveUpAfter = GIVE_UP_MS) => {
       // Si venía saliendo, se reinicia limpio para la pantalla nueva.
       if (phaseRef.current === "leaving") goIdle();
       if (phaseRef.current === "shown") return;
       clearTimers();
       target = destination;
+      // La ruta del hook todavía es la vieja: cuando cambie, se apaga.
+      startedPath.current = pathnameRef.current;
 
       // Se vigila desde el primer instante: si la pantalla llega antes del
       // retardo, no se muestra nada.
       poll = setInterval(() => {
+        if (target === null) return;
         const here = `${window.location.pathname}${window.location.search}`;
-        if (target === null || here === target) hide();
+        if (here === target) hide();
       }, POLL_MS);
       giveUp = setTimeout(() => {
         hideDelay = null;
         fadeOut();
-      }, GIVE_UP_MS);
+      }, giveUpAfter);
       revealTimer = setTimeout(reveal, SHOW_DELAY_MS);
     };
 
@@ -155,8 +233,11 @@ export function FireTransition() {
       const destination = navigationTarget(event);
       if (destination) start(destination);
     };
-    // «Atrás» y «adelante» no disparan un toque.
-    const onPopState = () => start(`${window.location.pathname}${window.location.search}`);
+    // «Atrás» y «adelante» no disparan un toque, y el navegador ya cambió la
+    // dirección antes de avisar: la pantalla nueva se detecta por el cambio de
+    // ruta. Si esa ruta no cambia (sólo cambió la consulta), no se le deja
+    // colgada los 8 segundos completos.
+    const onPopState = () => start(null, 3_000);
     // Al volver de otra app, o si el navegador restaura la página, se apaga.
     const onShow = () => goIdle();
 
@@ -172,6 +253,14 @@ export function FireTransition() {
     };
   }, []);
 
+  // La pantalla nueva ya se dibujó: la ruta del hook cambió. Esto es lo que
+  // apaga el fuego cuando se vuelve con «atrás», donde no hay enlace que seguir.
+  useEffect(() => {
+    pathnameRef.current = pathname ?? null;
+    if (startedPath.current === null) return;
+    if (pathname && pathname !== startedPath.current) hideRef.current();
+  }, [pathname]);
+
   if (phase === "idle") return null;
 
   return (
@@ -182,31 +271,72 @@ export function FireTransition() {
       aria-live="polite"
       aria-label="Cargando la pantalla"
     >
-      {/* Capa de fuego: lecho de brasas, cinco lenguas que suben y se mecen, el
-          núcleo caliente, chispas y un velo suave para leer el texto. Todo son
-          degradados y movimiento; ningún filtro de desenfoque. */}
+      {/* La fogata: resplandor del piso, quince lenguas que se mecen, brasas que
+          laten y chispas que suben. Todo son degradados y movimientos; ningún
+          filtro de desenfoque. */}
       <div className="fire-stage" aria-hidden="true">
         <div className="fire-bed" />
-        <div className="fire-tongue fire-tongue-5" />
-        <div className="fire-tongue fire-tongue-1" />
-        <div className="fire-tongue fire-tongue-2" />
-        <div className="fire-tongue fire-tongue-3" />
-        <div className="fire-tongue fire-tongue-4" />
-        <div className="fire-core" />
-        <div className="fire-embers">
-          <span className="fire-ember" style={{ left: "12%", animationDelay: "0s" }} />
-          <span className="fire-ember" style={{ left: "26%", animationDelay: "0.7s" }} />
-          <span className="fire-ember" style={{ left: "41%", animationDelay: "1.4s" }} />
-          <span className="fire-ember" style={{ left: "57%", animationDelay: "0.35s" }} />
-          <span className="fire-ember" style={{ left: "68%", animationDelay: "1.9s" }} />
-          <span className="fire-ember" style={{ left: "83%", animationDelay: "1.05s" }} />
-          <span className="fire-ember" style={{ left: "92%", animationDelay: "2.3s" }} />
+
+        <div className="fire-flames">
+          {FLAMES.map(([left, width, height, duration, delay, tilt, tone], index) => (
+            <span
+              key={`flame-${index}`}
+              className={`fire-tongue fire-tongue--${tone}`}
+              style={
+                {
+                  left: `${left}%`,
+                  width: `${width}vw`,
+                  height: `${height}vh`,
+                  "--dur": `${duration}s`,
+                  "--delay": `${delay}s`,
+                  "--tilt": `${tilt}deg`,
+                } as CSSProperties
+              }
+            />
+          ))}
         </div>
-        <div className="fire-vignette" />
+
+        <div className="fire-coals">
+          <div className="fire-core" />
+          {COALS.map(([left, size, duration, delay], index) => (
+            <span
+              key={`coal-${index}`}
+              className="fire-coal"
+              style={
+                {
+                  left: `${left}%`,
+                  "--size": `${size}vw`,
+                  "--dur": `${duration}s`,
+                  "--delay": `${delay}s`,
+                } as CSSProperties
+              }
+            />
+          ))}
+        </div>
+
+        <div className="fire-embers">
+          {EMBERS.map(([left, drift, duration, delay], index) => (
+            <span
+              key={`ember-${index}`}
+              className="fire-ember"
+              style={
+                {
+                  left: `${left}%`,
+                  "--dx": `${drift}px`,
+                  "--dur": `${duration}s`,
+                  "--delay": `${delay}s`,
+                } as CSSProperties
+              }
+            />
+          ))}
+        </div>
       </div>
 
       <div className="fire-content">
-        <BrandMark className="size-14 drop-shadow-[0_10px_30px_rgba(216,26,34,0.55)]" />
+        <span className="fire-halo" aria-hidden="true" />
+        {/* Sin `drop-shadow`: es un filtro, y en Android los filtros dejan
+            manchas. El halo oscuro de abajo ya separa el emblema del fuego. */}
+        <BrandMark className="size-14" />
         <p className="mt-4 font-display text-[1.05rem] font-extrabold tracking-[0.18em] text-white/95 uppercase">
           Strong Fitness Gym
         </p>

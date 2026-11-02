@@ -41,6 +41,8 @@ test("la capa de fuego está montada en el layout", () => {
   assert.match(fire, /fire-bed/);
   assert.match(fire, /fire-tongue/);
   assert.match(fire, /fire-ember/);
+  assert.match(fire, /fire-coal/);
+  assert.match(fire, /fire-halo/);
 });
 
 test("la capa cubre toda la interfaz y no se queda pegada", () => {
@@ -56,10 +58,10 @@ test("la capa cubre toda la interfaz y no se queda pegada", () => {
   // Se apaga sola si la pantalla nueva no llega.
   assert.match(fire, /GIVE_UP_MS = 8_000/);
   // Dura un mínimo y se desvanece: ni parpadeo ni corte seco.
-  assert.match(fire, /MIN_VISIBLE_MS = 480/);
-  assert.match(fire, /FADE_OUT_MS = 260/);
-  // Y no aparece si la pantalla abre al instante: primero espera 140 ms.
-  assert.match(fire, /SHOW_DELAY_MS = 140/);
+  assert.match(fire, /MIN_VISIBLE_MS = 1_100/);
+  assert.match(fire, /FADE_OUT_MS = 320/);
+  // Y no aparece si la pantalla abre al instante: primero espera 120 ms.
+  assert.match(fire, /SHOW_DELAY_MS = 120/);
   assert.match(fire, /revealTimer = setTimeout\(reveal, SHOW_DELAY_MS\)/);
   // Mientras cubre no deja tocar dos veces.
   assert.match(css, /\.fire-overlay \{[^}]*pointer-events: auto/);
@@ -68,10 +70,15 @@ test("la capa cubre toda la interfaz y no se queda pegada", () => {
   assert.doesNotMatch(fire, /backdrop-blur/);
 });
 
-test("la animación respeta «reducir movimiento»", () => {
+test("la animación respeta «reducir movimiento» sin congelarse", () => {
   const css = source("src/app/globals.css");
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
-  assert.match(css, /\.fire-bed,[\s\S]{0,200}animation: none/);
+  // Con la opción activada no hay desplazamientos…
+  assert.match(css, /\.fire-stage,\s*\n\s*\.fire-ember,\s*\n\s*\.fire-line \{\s*\n\s*animation: none/);
+  // …pero el fuego late: una imagen fija parecía que la app se colgó.
+  assert.match(css, /\.fire-bed,[\s\S]{0,220}animation: fire-calm/);
+  assert.match(css, /@keyframes fire-calm/);
+  assert.match(css, /@keyframes fire-calm \{[\s\S]{0,120}opacity/);
 });
 
 test("la capa no rompe la navegación ni cambia de pantalla por su cuenta", () => {
@@ -85,7 +92,9 @@ test("la capa no rompe la navegación ni cambia de pantalla por su cuenta", () =
   assert.match(bar, /hasAttribute\("download"\)/);
   // Si la dirección no cambia, se apaga sola.
   assert.match(bar, /GIVE_UP_MS/);
-  assert.match(bar, /setTimeout\(\(\) => \{[\s\S]{0,120}fadeOut\(\);[\s\S]{0,20}\}, GIVE_UP_MS\)/);
+  assert.match(bar, /setTimeout\(\(\) => \{[\s\S]{0,120}fadeOut\(\);[\s\S]{0,20}\}, giveUpAfter\)/);
+  // «Atrás» con la misma ruta no se queda colgado los 8 s completos.
+  assert.match(bar, /start\(null, 3_000\)/);
 });
 
 test("la tarjeta tocada muestra su propio ícono de carga", () => {
@@ -141,4 +150,55 @@ test("los paneles que leen datos muestran la llama, no un texto solo", () => {
   assert.match(cash, /Abriendo la caja…/);
   assert.match(cash, /Cerrando la caja…/);
   assert.match(cash, /aria-busy=/);
+});
+
+test("el fuego se mueve de verdad: muchas piezas, cada una a su ritmo", () => {
+  const css = source("src/app/globals.css");
+  const fire = source("src/components/layout/fire-transition.tsx");
+
+  // Quince lenguas, siete brasas y doce chispas: el movimiento viene de piezas
+  // desfasadas, no de una mancha grande (una mancha grande se ve como foto).
+  assert.match(fire, /const FLAMES[\s\S]{0,2000}\]/);
+  assert.equal((fire.match(/^\s*\[-?\d+/gm) ?? []).length >= 25, true);
+  assert.match(fire, /--dur/);
+  assert.match(fire, /--delay/);
+  assert.match(fire, /--tilt/);
+
+  // Las lenguas se mecen, las brasas laten y las chispas suben.
+  assert.match(css, /\.fire-tongue \{[^}]*animation: fire-lick var\(--dur/);
+  assert.match(css, /\.fire-coal \{[^}]*animation: coal-glow var\(--dur/);
+  assert.match(css, /\.fire-ember \{[^}]*animation: ember-rise var\(--dur/);
+  assert.match(css, /@keyframes coal-glow/);
+  assert.match(css, /@keyframes fire-ignite/);
+
+  // El mecido cambia tamaño y posición: no es sólo un cambio de opacidad.
+  const lick = css.slice(css.indexOf("@keyframes fire-lick"), css.indexOf("@keyframes coal-glow"));
+  // Se mueve en los dos ejes y cambia de tamaño: no es un simple parpadeo.
+  assert.match(lick, /translate3d\(2%, -11%, 0\) scaleY\(1\.14\)/);
+  assert.match(lick, /translate3d\(1\.5%, -15%, 0\)/);
+  assert.match(lick, /skewX\(/);
+
+  // Y dura lo suficiente para que el ojo lo vea.
+  assert.match(fire, /MIN_VISIBLE_MS = 1_100/);
+});
+
+test("el fuego no usa filtros de desenfoque en ninguna pieza", () => {
+  const css = source("src/app/globals.css");
+  const fire = source("src/components/layout/fire-transition.tsx");
+  // Sin comentarios: ahí sí se nombran los filtros, para explicar que no van.
+  const code = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const block = code.slice(code.indexOf(".fire-overlay {"), code.indexOf("@keyframes fire-flicker"));
+  assert.doesNotMatch(block, /blur\(/);
+  assert.doesNotMatch(block, /backdrop-filter/);
+  assert.doesNotMatch(block, /[{;]\s*filter:/);
+  // El emblema tampoco lleva sombra difusa: un filtro en Android deja manchas.
+  assert.doesNotMatch(fire.replace(/\/\*[\s\S]*?\*\//g, ""), /drop-shadow/);
+});
+
+test("la capa es opaca: la pantalla vieja no se transparenta", () => {
+  const css = source("src/app/globals.css");
+  const overlay = css.slice(css.indexOf(".fire-overlay {"), css.indexOf(".fire-overlay[data-state"));
+  // Degradado con colores sólidos, sin alfa: tapa de verdad.
+  assert.match(overlay, /background: radial-gradient\(130% 90% at 50% 112%, #2b0d06 0%/);
+  assert.doesNotMatch(overlay, /rgb\([^)]*\/ 0\.\d+\)/);
 });

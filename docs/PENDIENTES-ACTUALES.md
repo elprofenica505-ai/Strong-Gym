@@ -1363,17 +1363,31 @@ Esta sección es un resumen, no otra lista de tareas.
   de caja no cuadró correctamente»— con el campo de motivo obligatorio, y no se
   guarda nada hasta que se escriba. Si se guarda con diferencia justificada, el
   aviso es ámbar y dice cuánto faltó o sobró, en su moneda.
-- **Transición de fuego a pantalla completa (PR #132):** al tocar un módulo o
-  una tarjeta, una capa de fuego —lecho de brasas, cinco lenguas que suben y se
-  mecen, núcleo caliente, chispas— con el emblema y «Cargando…» cubre toda la
-  interfaz, y se retira sola cuando la pantalla nueva toma el control. Espera
-  140 ms antes de aparecer (si la pantalla abre al instante por caché, no se ve
-  nada), una vez visible dura un mínimo de 480 ms y se desvanece en 260 ms; si
-  la navegación no se concreta, se apaga a los 8 segundos. Se enciende con
-  enlaces internos, con «atrás» y al volver de otra app.
+- **Transición de fuego a pantalla completa (PR #132, rehecha en PR #134):** al
+  tocar un módulo o una tarjeta, una fogata con el emblema y «Cargando…» cubre
+  toda la interfaz, y se retira sola cuando la pantalla nueva toma el control.
+  La primera versión eran cinco manchas grandes y el fuego se veía como una foto
+  quieta; la versión actual arma la fogata con **quince lenguas** de distinto
+  tamaño, tono e inclinación —cada una meciéndose a su ritmo entre 1.1 y 1.9 s,
+  moviéndose en los dos ejes y de hasta 15 % de alto—, **siete brasas** que laten
+  en el piso y **doce chispas** que suben meciéndose. El movimiento viene de
+  piezas desfasadas, no de una mancha.
   `src/components/layout/fire-transition.tsx` + estilos en `globals.css`.
-  **Sin `filter` ni `backdrop-filter`**: en Android dejaban manchas y borrones
-  de GPU, que es lo que se vio como «cuadros raros» de colores.
+  Tiempos: espera 120 ms antes de aparecer (si la pantalla abre al instante por
+  caché, no se ve nada) y, una vez visible, dura **un mínimo de 1.1 s** —con
+  480 ms el ojo no alcanzaba a ver el mecido y parecía una imagen fija— y se
+  desvanece en 320 ms; si la navegación no se concreta, se apaga a los 8 s. Se
+  enciende con enlaces internos, con «atrás» y al volver de otra app.
+  **Sin `filter`, `backdrop-filter` ni `drop-shadow`**: en Android dejaban
+  manchas y borrones de GPU, que es lo que se vio como «cuadros raros» de
+  colores. El fondo es opaco, así que la pantalla anterior no se transparenta.
+  Con «reducir movimiento» el fuego no se congela: se enciende y se apaga
+  despacio, sin desplazamientos.
+- **Caché del service worker (PR #134):** `CACHE_VERSION` subió a
+  `strong-gym-v3`. Los estilos y el código se sirven *cache-first*, así que un
+  teléfono con la app instalada puede seguir pintando la versión vieja después
+  de publicar; al subir la versión, el service worker descarta todo el caché
+  anterior en la siguiente apertura.
 - **Nunca se ve «congelado» y nunca se vacía la pantalla (PR #130 y #131):**
   **sin** esqueletos grises —el gimnasio los rechazó porque las letras e
   imágenes desaparecían—: lo que había sigue a la vista, la capa de fuego cubre

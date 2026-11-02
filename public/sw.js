@@ -16,7 +16,7 @@
  * Versión del caché: cambiarla fuerza al SW a descartar todo el
  * caché viejo en la próxima activación.
  */
-const CACHE_VERSION = "strong-gym-v2";
+const CACHE_VERSION = "strong-gym-v3";
 const ASSET_CACHE = `${CACHE_VERSION}-assets`;
 const PAGE_CACHE = `${CACHE_VERSION}-pages`;
 
