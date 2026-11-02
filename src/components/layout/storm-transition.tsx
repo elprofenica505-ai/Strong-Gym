@@ -177,108 +177,69 @@ function navigationTarget(event: MouseEvent): string | null {
 }
 
 /**
- * Sonido de la transición: trueno grande y toques suaves.
+ * Sonido de la transición: el trueno.
  *
- * El trueno es el protagonista, pero **no puede sonar en cada toque**: cinco
- * estruendos seguidos vuelven la app molesta. Así que el trueno entra cuando
- * toca y, entre trueno y trueno, cada navegación lleva un **toque corto de
- * app** (1.3 KB) — el mismo tipo de «tic» que usan las aplicaciones serias
- * para confirmar que el toque entró. Dos toques alternados, uno apenas más
- * grave que el otro, para que no suene a robot.
+ * Sólo suena el estruendo que acompaña al rayo; **los demás toques van en
+ * silencio**. Se probaron «tics» de app para confirmar cada toque y al gimnasio
+ * no le gustaron, así que se retiraron: menos es más, y el navegador queda
+ * limpio de ruido.
  *
- * Lo importante:
+ * Lo que **no** se puede perder:
  *  - **Se dispara dentro del toque**, no después. iPhone y Android sólo dejan
  *    sonar el audio que nace de un gesto; si se pide un instante más tarde, el
  *    navegador lo bloquea sin avisar y la pantalla queda muda.
  *  - **No depende de «reducir movimiento»**: esa opción apaga el movimiento,
  *    no el sonido; colgarlo de ahí dejaba muda a media app.
- *  - **Ni se pisa a sí mismo**: mientras el trueno retumba no se le encima un
- *    toque, y dos toques en el mismo instante (doble toque nervioso) no suenan
- *    dos veces.
+ *  - **No se amontona**: si alguien navega rápido, el trueno entra cada tanto
+ *    y no cinco veces seguidas.
  * Si el teléfono está en silencio o el archivo no baja, la animación sigue
  * igual: el sonido es un adorno, nunca un requisito.
  */
 const THUNDER_SRC = "/sounds/trueno.mp3";
-const TAP_SOURCES = ["/sounds/toque.mp3", "/sounds/toque2.mp3"] as const;
 /** Entre trueno y trueno. */
 const THUNDER_GAP_MS = 18_000;
-/** Cuánto retumba el trueno: mientras tanto no se le encima un toque. */
-const THUNDER_RING_MS = 1_500;
-/** Dos toques más seguidos que esto son el mismo toque contado dos veces. */
-const TAP_GAP_MS = 90;
 const THUNDER_VOLUME = 0.55;
-const TAP_VOLUME = 0.3;
 
-/** Un audio por sonido, creado una sola vez y colgado del documento. */
-const players = new Map<string, HTMLAudioElement>();
+let thunder: HTMLAudioElement | null = null;
 let lastThunderAt = 0;
-let lastTapAt = 0;
-/** Alterna los dos toques para que no suenen idénticos. */
-let nextTap = 0;
 
-function playerFor(src: string, volume: number): HTMLAudioElement | null {
+/** El audio del trueno, creado una sola vez y colgado del documento. */
+function thunderAudio(): HTMLAudioElement | null {
   if (typeof window === "undefined") return null;
-  let audio = players.get(src);
-  if (!audio) {
-    audio = new Audio(src);
-    audio.preload = "auto";
-    audio.volume = volume;
+  if (!thunder) {
+    thunder = new Audio(THUNDER_SRC);
+    thunder.preload = "auto";
+    thunder.volume = THUNDER_VOLUME;
     // Colgado del documento, oculto: iPhone viejo se niega a reproducir un
     // audio que no está en la página.
-    audio.style.display = "none";
-    document.body.appendChild(audio);
-    players.set(src, audio);
+    thunder.style.display = "none";
+    document.body.appendChild(thunder);
   }
-  return audio;
+  return thunder;
 }
 
-/** Deja los tres audios cargando desde el principio: pesan 15 KB en total. */
-function warmSounds() {
-  playerFor(THUNDER_SRC, THUNDER_VOLUME);
-  for (const src of TAP_SOURCES) playerFor(src, TAP_VOLUME);
+/** Deja el trueno cargando desde el principio: son 12 KB. */
+function warmSound() {
+  thunderAudio();
 }
 
-/** Reproduce un audio desde el principio. Se llama SIEMPRE dentro del toque. */
-function ring(audio: HTMLAudioElement) {
+/** Suena el trueno. Se llama SIEMPRE dentro del toque. */
+function playStormSound() {
+  if (typeof document === "undefined" || document.hidden) return;
+  const audio = thunderAudio();
+  if (!audio) return;
+  const now = Date.now();
+  if (now - lastThunderAt < THUNDER_GAP_MS) return;
+  lastThunderAt = now;
   try {
     audio.currentTime = 0;
   } catch {
     // Algunos navegadores no dejan mover el cursor antes de cargar: da igual.
   }
   void audio.play().catch(() => {
-    // No sonó: no se marca como usado, así el próximo toque lo reintenta.
+    // No sonó: se suelta el freno para que el próximo toque lo reintente.
+    lastThunderAt = 0;
   });
-}
-
-/**
- * El sonido que toca para esta navegación: trueno si ya pasó su tiempo, y si
- * no, el toque corto. Se llama SIEMPRE desde dentro del toque.
- */
-function playStormSound() {
-  if (typeof document === "undefined" || document.hidden) return;
-  const now = Date.now();
-
-  // 1) ¿Le toca al trueno?
-  if (now - lastThunderAt >= THUNDER_GAP_MS) {
-    const audio = playerFor(THUNDER_SRC, THUNDER_VOLUME);
-    if (audio) {
-      lastThunderAt = now;
-      ring(audio);
-      return;
-    }
-  }
-
-  // 2) El trueno todavía retumba: no se le encima nada.
-  if (now - lastThunderAt < THUNDER_RING_MS) return;
-
-  // 3) El mismo toque contado dos veces.
-  if (now - lastTapAt < TAP_GAP_MS) return;
-  lastTapAt = now;
-
-  const src = TAP_SOURCES[nextTap % TAP_SOURCES.length];
-  nextTap += 1;
-  const audio = playerFor(src, TAP_VOLUME);
-  if (audio) ring(audio);
 }
 
 type Phase = "idle" | "shown" | "leaving";
@@ -314,10 +275,10 @@ export function StormTransition() {
   /** El apagado del efecto principal, para poder llamarlo desde fuera. */
   const hideRef = useRef<() => void>(() => {});
 
-  // Los audios se dejan cargando desde el principio: son 15 KB en total, y así
-  // el primer sonido no llega tarde ni se queda mudo por no haber bajado.
+  // El trueno se deja cargando desde el principio: así el primer golpe no
+  // llega tarde ni se queda mudo por no haber terminado de bajar.
   useEffect(() => {
-    warmSounds();
+    warmSound();
   }, []);
 
   useEffect(() => {

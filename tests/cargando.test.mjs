@@ -241,46 +241,40 @@ test("el emblema, el nombre y la barra son los del cartel del gimnasio", () => {
   const sw = source("public/sw.js");
   assert.match(sw, /"\/brand\/emblema-strong\.webp"/);
   assert.match(sw, /"\/sounds\/trueno\.mp3"/);
-  assert.match(sw, /CACHE_VERSION = "strong-gym-v7"/);
+  assert.match(sw, /CACHE_VERSION = "strong-gym-v8"/);
 });
 
-test("el trueno y los toques suenan, con su freno cada uno", () => {
+test("el trueno suena con el rayo, y sólo el trueno", () => {
   const storm = source("src/components/layout/storm-transition.tsx");
 
-  // Los tres archivos existen y son livianos: sonidos, no canciones.
-  const files = [
-    ["public/sounds/trueno.mp3", 4_000, 40_000],
-    ["public/sounds/toque.mp3", 400, 8_000],
-    ["public/sounds/toque2.mp3", 400, 8_000],
-  ];
-  for (const [rel, min, max] of files) {
-    assert.ok(existsSync(rel), `falta ${rel}`);
-    const size = statSync(rel).size;
-    assert.ok(size > min, `${rel} suena a nada (${size} bytes)`);
-    assert.ok(size < max, `${rel} pesa demasiado (${size} bytes)`);
-  }
+  // El archivo existe y es liviano: un trueno, no una canción.
+  const sound = path.join("public", "sounds", "trueno.mp3");
+  assert.ok(existsSync(sound), "falta public/sounds/trueno.mp3");
+  const size = statSync(sound).size;
+  assert.ok(size > 4_000, `el trueno suena a nada (${size} bytes)`);
+  assert.ok(size < 40_000, `el trueno pesa demasiado (${size} bytes)`);
 
-  // El sonido sale DENTRO del toque: fuera de él, iPhone y Android lo bloquean.
+  // Los «tics» de app se retiraron a pedido del gimnasio: el silencio entre
+  // truenos es deliberado, no un olvido. Si alguien los devuelve, esta prueba
+  // avisa de que hay que preguntar primero.
+  assert.ok(!existsSync(path.join("public", "sounds", "toque.mp3")), "volvieron los tics de app");
+  assert.doesNotMatch(storm, /TAP_SOURCES|toque2?\.mp3/);
+
+  // Suena DENTRO del toque: fuera de él, iPhone y Android lo bloquean.
   const start = storm.slice(storm.indexOf("const start = ("), storm.indexOf("const onClick ="));
   assert.match(start, /playStormSound\(\)/);
   assert.match(storm, /const THUNDER_SRC = "\/sounds\/trueno\.mp3"/);
-  assert.match(storm, /const TAP_SOURCES = \["\/sounds\/toque\.mp3", "\/sounds\/toque2\.mp3"\]/);
 
-  // Los toques llenan el hueco entre trueno y trueno.
-  const sound = storm.slice(storm.indexOf("function playStormSound"), storm.indexOf("type Phase"));
-  assert.match(sound, /THUNDER_GAP_MS/);
-  assert.match(sound, /TAP_GAP_MS/);
-  assert.match(sound, /THUNDER_RING_MS/);
-  assert.match(sound, /nextTap % TAP_SOURCES\.length/);
+  // Sin amontonarse, sin sonar en segundo plano y sin depender de «reducir
+  // movimiento» (esa opción apaga el movimiento, no el audio).
+  const thunder = storm.slice(storm.indexOf("function playStormSound"), storm.indexOf("type Phase"));
+  assert.match(thunder, /THUNDER_GAP_MS/);
+  assert.match(thunder, /document\.hidden/);
+  assert.doesNotMatch(thunder, /prefers-reduced-motion/);
 
-  // El sonido no depende de «reducir movimiento» ni suena en segundo plano.
-  assert.doesNotMatch(sound, /prefers-reduced-motion/);
-  assert.match(sound, /document\.hidden/);
-
-  // Guardados en el caché para que suenen sin señal.
+  // Guardado en el caché para que suene sin señal.
   const sw = source("public/sw.js");
   assert.match(sw, /"\/sounds\/trueno\.mp3"/);
-  assert.match(sw, /"\/sounds\/toque\.mp3"/);
-  assert.match(sw, /"\/sounds\/toque2\.mp3"/);
-  assert.match(sw, /CACHE_VERSION = "strong-gym-v7"/);
+  assert.doesNotMatch(sw, /toque2?\.mp3/);
+  assert.match(sw, /CACHE_VERSION = "strong-gym-v8"/);
 });

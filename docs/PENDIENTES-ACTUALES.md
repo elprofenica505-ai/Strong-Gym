@@ -1404,12 +1404,10 @@ Esta sección es un resumen, no otra lista de tareas.
   ningún error a la vista. Ahora el proxy deja pasar **cualquier ruta con
   extensión** (mp3, m4a, ogg, wav, mp4, webm, pdf, además de imágenes y
   fuentes), y el trueno se dispara **dentro del toque**, no 120 ms después.
-  **Toques de app (PR #139):** el trueno no puede sonar en cada toque —cinco
-  estruendos seguidos cansan—, así que **entre trueno y trueno cada navegación
-  lleva un toque corto** de confirmación (`toque.mp3` y `toque2.mp3`, 1.3 KB
-  cada uno, alternados para que no suene a robot). Mientras el trueno retumba
-  (1.5 s) no se le encima nada, y dos toques en menos de 90 ms cuentan como uno
-  solo. 
+  **Los demás toques van en silencio (PR #139):** se probaron dos «tics» de
+  app para confirmar cada toque y al gimnasio no le gustaron; se retiraron. Hoy
+  sólo suena el trueno, cada 18 s como máximo. Los archivos de los tics se
+  borraron y hay una prueba que avisa si alguien los devuelve sin preguntar.
   **Sin `filter`, `backdrop-filter` ni `drop-shadow`**: en Android dejaban
   manchas y borrones de GPU. El fondo es opaco, así la pantalla anterior no se
   transparenta. Con «reducir movimiento» la tormenta no se congela: el cielo
@@ -1418,7 +1416,7 @@ Esta sección es un resumen, no otra lista de tareas.
   cero el sistema congela todo y la capa se ve como una foto; no es un fallo de
   la app.
 - **Caché del service worker (PR #134, al día en #139 con el emblema y el
-  trueno y los toques):** `CACHE_VERSION` subió a `strong-gym-v7`. Los estilos y el código se sirven *cache-first*, así que un
+  trueno):** `CACHE_VERSION` subió a `strong-gym-v8`. Los estilos y el código se sirven *cache-first*, así que un
   teléfono con la app instalada puede seguir pintando la versión vieja después
   de publicar; al subir la versión, el service worker descarta todo el caché
   anterior en la siguiente apertura.
