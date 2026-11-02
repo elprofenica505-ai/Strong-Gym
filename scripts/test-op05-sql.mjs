@@ -250,7 +250,35 @@ const board = await adminRpc("admin_schedule_board", []);
 ok("La pantalla trae disciplinas y entrenadores para elegir",
   board.classes.length >= 3 && board.coaches.length >= 1);
 ok("La pantalla muestra las próximas cuatro semanas", board.weeks.length === 4);
-ok("Las próximas semanas ya tienen sesiones programadas", board.weeks.every((w) => w.scheduled > 0));
+
+// El conteo de cada semana se compara contra la base, no contra la hora del
+// día. Antes esta comprobación pedía sesiones en las cuatro semanas y fallaba
+// sola entre las 23:00 y la medianoche de Managua: ahí el servidor ya está en
+// el día siguiente (UTC) y la semana que muestra la pantalla empieza antes que
+// la que genera la semilla.
+const weekStarts = board.weeks.map((w) => String(w.week_start).slice(0, 10));
+ok("Las semanas empiezan un lunes y van seguidas", weekStarts.every((day, i) => {
+  if (i === 0) return true;
+  const previous = new Date(`${weekStarts[i - 1]}T12:00:00Z`);
+  const current = new Date(`${day}T12:00:00Z`);
+  return current.getTime() - previous.getTime() === 7 * 86_400_000;
+}));
+const weekCounts = [];
+for (const start of weekStarts) {
+  weekCounts.push(
+    (await row(
+      `select count(*)::int as n from public.sessions s
+        where s.status = 'scheduled'
+          and s.starts_at >= ($1::date::timestamp at time zone 'America/Managua')
+          and s.starts_at < (($1::date + 7)::timestamp at time zone 'America/Managua')`,
+      [start],
+    )).n,
+  );
+}
+ok("Cada semana dice exactamente cuántas sesiones tiene",
+  board.weeks.every((w, i) => w.scheduled === weekCounts[i]));
+ok("Al menos una de las próximas semanas ya tiene sesiones programadas",
+  weekCounts.some((n) => n > 0));
 
 // 10. Generar con previsualización (00074): mirar antes de escribir.
 const totalSessions = async () =>
