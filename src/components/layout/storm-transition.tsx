@@ -5,28 +5,25 @@ import { usePathname } from "next/navigation";
 import { BrandMark } from "@/components/layout/brand-mark";
 
 /**
- * Transición de fuego a pantalla completa.
+ * Transición de tormenta a pantalla completa.
  *
  * El problema: al cambiar de módulo, Next tiene que renderizar la pantalla en el
  * servidor y en el celular se ve un instante de quietud. Esa pausa parece que la
  * app se colgó y la gente toca otra vez.
  *
- * Lo que hace: cubre **toda** la interfaz con una fogata, el emblema y
- * «Cargando…», y la retira sola cuando la pantalla nueva está lista.
+ * Lo que hace: cubre **toda** la interfaz con una noche de tormenta —cielo
+ * oscuro, nubes que se mueven, relámpagos que caen y el destello que ilumina
+ * todo— junto al emblema, «Cargando…» y la barra de carga. Se retira sola
+ * cuando la pantalla nueva está lista.
  *
- * El fuego es **fotografía real de llamas**, no formas dibujadas: tres capas
- * de textura (lejos, medio y cerca) recortadas en lenguas con punta suave y
- * montadas una sobre otra. Cada capa entra dos veces —la segunda corrida a un
- * lado y con la animación desfasada— y cada una se mece a su propio ritmo
- * (1.3–2.2 s): al cruzarse las dos copias, las llamas se estiran y se encogen
- * como fuego de verdad. Ese es el punto: en las versiones anteriores las llamas
- * eran manchas y siluetas dibujadas en CSS, y frente a la referencia del dueño
- * se veían planas.
- * Las texturas están en `public/fire/` y pesan ~300 KB en total (WebP).
+ * Los rayos son trazos en zigzag dibujados en SVG, con ramificaciones, cada uno
+ * con su propio ritmo: el rayo principal cae, el cielo destella, y a los pocos
+ * instantes otro rayo cae en otro lado. Es el efecto de una tormenta, no una
+ * imagen con destellos de brillo.
  *
  * Se enciende **sólo si de verdad hay espera**: espera 120 ms antes de
  * aparecer. Una vez encendida dura al menos 1.1 s —tiempo suficiente para ver
- * una lengua mecerse y varias chispas subir— y se apaga en 320 ms.
+ * caer uno o dos rayos— y se apaga en 320 ms.
  *
  * Reglas que respeta:
  *   · Se activa con un toque en un enlace interno, con «atrás» del navegador o
@@ -34,83 +31,121 @@ import { BrandMark } from "@/components/layout/brand-mark";
  *   · No se queda pegada: si la pantalla nueva no llega en 8 segundos, se apaga.
  *   · Mientras cubre no deja tocar lo de abajo: no se abre dos veces.
  *   · No usa `filter` ni `backdrop-filter`: en celulares Android eso deja
- *     manchas y borrones de GPU. Todo el fuego son degradados y movimientos.
+ *     manchas y borrones de GPU. Todo son degradados, trazos y movimientos.
  */
 
-/** Espera antes de mostrar el fuego: si la pantalla abre antes, ni se ve. */
+/** Espera antes de mostrar la capa: si la pantalla abre antes, ni se ve. */
 const SHOW_DELAY_MS = 120;
 /**
  * Mínimo en pantalla una vez visible. No es capricho: con menos de un segundo
- * el ojo no alcanza a ver las lenguas mecerse y el fuego parece una imagen
- * fija. 1.1 s deja ver un mecido completo y varias chispas subiendo.
+ * el ojo no alcanza a ver caer un rayo y la capa parece una imagen fija.
  */
 const MIN_VISIBLE_MS = 1_100;
 /** Desvanecido de salida. */
 const FADE_OUT_MS = 320;
 /** Si la pantalla nueva no llega, se apaga sola. */
 const GIVE_UP_MS = 8_000;
+/** «Atrás» con la misma ruta no debe quedarse colgada los 8 s completos. */
+const POPSTATE_GIVE_UP_MS = 3_000;
 /** Cada cuánto se mira si la dirección ya cambió. */
 const POLL_MS = 160;
 
 /**
- * Las tres capas del fuego, de la más lejana a la más cercana.
+ * Generador pseudoaleatorio con semilla.
  *
- * `sway` es el ritmo del mecido y `boil` el del cruce entre las dos copias.
- * Los ritmos son distintos en cada capa a propósito: si coincidieran, el fuego
- * se movería como un bloque y volvería a parecer una foto.
+ * Los rayos tienen que ser los mismos en el servidor y en el celular: si se
+ * sortearan al dibujar, React encontraría dos árboles distintos y se quejaría
+ * al hidratar. Con semilla, la geometría es idéntica siempre.
  */
-const LAYERS = [
-  { file: "/fire/fuego-lejos.webp", className: "fire-layer--far", sway: 2.2, boil: 2.4, opacity: 0.75 },
-  { file: "/fire/fuego-medio.webp", className: "fire-layer--mid", sway: 1.7, boil: 1.8, opacity: 0.92 },
-  { file: "/fire/fuego-cerca.webp", className: "fire-layer--near", sway: 1.3, boil: 1.35, opacity: 1 },
-] as const;
-
-/**
- * Una capa de fuego.
- *
- * La misma textura entra dos veces: la segunda corrida a un lado y con la
- * animación a media vuelta. Mientras una copia se apaga, la otra se enciende, y
- * como no coinciden, las puntas de las llamas cambian de forma: el fuego deja
- * de verse quieto sin necesidad de un video.
- */
-function FireLayer({ layer }: { layer: (typeof LAYERS)[number] }) {
-  return (
-    <div
-      className={`fire-layer ${layer.className}`}
-      style={
-        {
-          "--sway": `${layer.sway}s`,
-          "--boil": `${layer.boil}s`,
-          "--layer-opacity": `${layer.opacity}`,
-        } as CSSProperties
-      }
-      aria-hidden="true"
-    >
-      <span className="fire-layer-img" style={{ backgroundImage: `url(${layer.file})` }} />
-      {/* Segunda copia, corrida a un lado y desfasada: sus llamas no coinciden
-          con las de la otra, así el fuego hierve en vez de deslizarse. */}
-      <span
-        className="fire-layer-img fire-layer-img--offset"
-        style={{ backgroundImage: `url(${layer.file})` }}
-      />
-    </div>
-  );
+function seeded(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
-/** Chispas: `[izquierda %, deriva px, duración s, retraso s]`. */
-const EMBERS: ReadonlyArray<readonly [number, number, number, number]> = [
-  [7, -26, 2.4, 0],
-  [14, 18, 2.9, -0.9],
-  [22, -12, 2.1, -1.6],
-  [29, 30, 3.1, -0.4],
-  [36, -20, 2.6, -1.2],
-  [43, 8, 2.2, -1.9],
-  [50, -32, 3, -0.6],
-  [57, 22, 2.5, -1.5],
-  [64, -14, 2.8, -0.2],
-  [72, 28, 2.3, -1.1],
-  [81, -22, 3.2, -1.8],
-  [92, 12, 2.7, -0.7],
+/**
+ * Un rayo en zigzag, en coordenadas de 0 a 100 (por ciento de la pantalla).
+ *
+ * Se baja en tramos: en cada paso el trazo se corre a un lado y vuelve, que es
+ * lo que le da el quiebre del relámpago. Al final se afina hasta un punto.
+ */
+function boltPath(
+  rnd: () => number,
+  from: [number, number],
+  to: [number, number],
+  steps: number,
+  jitter: number,
+): string {
+  const points: Array<[number, number]> = [from];
+  for (let i = 1; i < steps; i += 1) {
+    const t = i / steps;
+    const x = from[0] + (to[0] - from[0]) * t + (rnd() - 0.5) * jitter;
+    const y = from[1] + (to[1] - from[1]) * t;
+    points.push([x, y]);
+  }
+  points.push(to);
+  return points
+    .map(([x, y], index) => `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`)
+    .join(" ");
+}
+
+type Bolt = {
+  /** Trazo principal. */
+  main: string;
+  /** Ramificaciones que salen del principal. */
+  branches: string[];
+  /** Espera entre descargas, en segundos. */
+  dur: number;
+  /** Desfase para que no caigan todos a la vez. */
+  delay: number;
+};
+
+/** Un rayo con sus ramificaciones. */
+function makeBolt(
+  seed: number,
+  x: number,
+  endX: number,
+  endY: number,
+  steps: number,
+  jitter: number,
+  dur: number,
+  delay: number,
+): Bolt {
+  const rnd = seeded(seed);
+  const from: [number, number] = [x, -6];
+  const to: [number, number] = [endX, endY];
+  const main = boltPath(rnd, from, to, steps, jitter);
+
+  const branches: string[] = [];
+  const count = 2 + Math.floor(rnd() * 2);
+  for (let b = 0; b < count; b += 1) {
+    const t = 0.25 + rnd() * 0.55;
+    const startX = from[0] + (to[0] - from[0]) * t + (rnd() - 0.5) * jitter * 0.6;
+    const startY = from[1] + (to[1] - from[1]) * t;
+    const dir = rnd() > 0.5 ? 1 : -1;
+    const length = 8 + rnd() * 16;
+    const end: [number, number] = [
+      startX + dir * length,
+      startY + 6 + rnd() * 14,
+    ];
+    branches.push(boltPath(rnd, [startX, startY], end, 4 + Math.floor(rnd() * 3), jitter * 0.8));
+  }
+
+  return { main, branches, dur, delay };
+}
+
+/** Los tres rayos: uno central, largo, y dos laterales más cortos. */
+const BOLTS: readonly Bolt[] = [
+  // El principal cae apenas aparece la capa: como el aviso dura poco más de un
+  // segundo, el rayo tiene que golpear dentro de ese rato.
+  makeBolt(7, 64, 58, 76, 11, 9, 3.2, 0),
+  makeBolt(23, 22, 15, 52, 8, 6, 3.7, -1.3),
+  makeBolt(41, 78, 86, 46, 8, 6, 4.1, -2.4),
 ];
 
 /** Un enlace que lleva a otra pantalla de esta misma app. */
@@ -143,7 +178,25 @@ function navigationTarget(event: MouseEvent): string | null {
 
 type Phase = "idle" | "shown" | "leaving";
 
-export function FireTransition() {
+/** Un rayo dibujado: tres trazos superpuestos dan el brillo sin ningún filtro. */
+function LightningBolt({ bolt }: { bolt: Bolt }) {
+  return (
+    <g
+      className="storm-bolt"
+      style={{ "--bolt-dur": `${bolt.dur}s`, "--bolt-delay": `${bolt.delay}s` } as CSSProperties}
+    >
+      {[bolt.main, ...bolt.branches].map((d, index) => (
+        <g key={`stroke-${index}`}>
+          <path d={d} className="storm-stroke storm-stroke--halo" />
+          <path d={d} className="storm-stroke storm-stroke--glow" />
+          <path d={d} className="storm-stroke storm-stroke--core" />
+        </g>
+      ))}
+    </g>
+  );
+}
+
+export function StormTransition() {
   const [phase, setPhase] = useState<Phase>("idle");
   const pathname = usePathname();
   // Los tiempos y el destino viven en refs: así el efecto no se vuelve a montar
@@ -153,15 +206,6 @@ export function FireTransition() {
   const startedPath = useRef<string | null>(null);
   /** Última ruta que vio React. Se lee al encender, sin volver a montar nada. */
   const pathnameRef = useRef<string | null>(pathname ?? null);
-
-  // Las texturas se piden apenas se monta la capa: pesan ~300 KB en total y así
-  // ya están listas para el primer cambio de pantalla.
-  useEffect(() => {
-    for (const layer of LAYERS) {
-      const img = new Image();
-      img.src = layer.file;
-    }
-  }, []);
   /** El apagado del efecto principal, para poder llamarlo desde fuera. */
   const hideRef = useRef<() => void>(() => {});
 
@@ -256,7 +300,7 @@ export function FireTransition() {
     // dirección antes de avisar: la pantalla nueva se detecta por el cambio de
     // ruta. Si esa ruta no cambia (sólo cambió la consulta), no se le deja
     // colgada los 8 segundos completos.
-    const onPopState = () => start(null, 3_000);
+    const onPopState = () => start(null, POPSTATE_GIVE_UP_MS);
     // Al volver de otra app, o si el navegador restaura la página, se apaga.
     const onShow = () => goIdle();
 
@@ -273,7 +317,7 @@ export function FireTransition() {
   }, []);
 
   // La pantalla nueva ya se dibujó: la ruta del hook cambió. Esto es lo que
-  // apaga el fuego cuando se vuelve con «atrás», donde no hay enlace que seguir.
+  // apaga la capa cuando se vuelve con «atrás», donde no hay enlace que seguir.
   useEffect(() => {
     pathnameRef.current = pathname ?? null;
     if (startedPath.current === null) return;
@@ -284,55 +328,41 @@ export function FireTransition() {
 
   return (
     <div
-      className="fire-overlay"
+      className="storm-overlay"
       data-state={phase}
       role="status"
       aria-live="polite"
       aria-label="Cargando la pantalla"
     >
-      {/* La fogata: tres capas de fuego real que se mecen, resplandor del piso y
-          chispas que suben. Sólo degradados, texturas y movimientos; ningún
-          filtro de desenfoque. */}
-      <div className="fire-stage" aria-hidden="true">
-        {/* Calor del piso: un resplandor suave detrás de las llamas. */}
-        <div className="fire-glow" />
+      {/* La tormenta: cielo con nubes, tres rayos que caen y el destello que
+          ilumina la pantalla. Todo son degradados, trazos y movimientos. */}
+      <div className="storm-stage" aria-hidden="true">
+        <div className="storm-sky" />
+        <div className="storm-clouds" />
 
-        <div className="fire-fires">
-          {LAYERS.map((layer) => (
-            <FireLayer key={layer.className} layer={layer} />
+        <svg className="storm-bolts" viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false">
+          {BOLTS.map((bolt, index) => (
+            <LightningBolt key={`bolt-${index}`} bolt={bolt} />
           ))}
-        </div>
+        </svg>
 
-        <div className="fire-embers">
-          {EMBERS.map(([left, drift, duration, delay], index) => (
-            <span
-              key={`ember-${index}`}
-              className="fire-ember"
-              style={
-                {
-                  left: `${left}%`,
-                  "--dx": `${drift}px`,
-                  "--dur": `${duration}s`,
-                  "--delay": `${delay}s`,
-                } as CSSProperties
-              }
-            />
-          ))}
-        </div>
+        <div className="storm-flash" />
+        <div className="storm-horizon" />
       </div>
 
-      <div className="fire-content">
-        <span className="fire-halo" aria-hidden="true" />
+      <div className="storm-content">
+        <span className="storm-halo" aria-hidden="true" />
         {/* Sin `drop-shadow`: es un filtro, y en Android los filtros dejan
-            manchas. El halo oscuro de abajo ya separa el emblema del fuego. */}
+            manchas. El halo oscuro de abajo ya separa el emblema del cielo. */}
         <BrandMark className="size-14" />
         <p className="mt-4 font-display text-[1.05rem] font-extrabold tracking-[0.18em] text-white/95 uppercase">
           Strong Fitness Gym
         </p>
-        <p className="mt-1 text-[0.75rem] tracking-[0.22em] text-amber-200/80 uppercase">
-          Cargando…
-        </p>
-        <span className="fire-line mt-5" aria-hidden="true" />
+        <p className="mt-1 text-[0.75rem] tracking-[0.22em] text-sky-200/80 uppercase">Cargando…</p>
+        {/* Barra de carga: el tramo brillante recorre el riel mientras se espera. */}
+        <span className="storm-progress mt-5" aria-hidden="true">
+          <span className="storm-progress-fill" />
+        </span>
       </div>
     </div>
   );

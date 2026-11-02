@@ -115,16 +115,18 @@
   }
 }
 
-/* Transición de fuego a pantalla completa (fire-transition.tsx).
+/* Transición de tormenta a pantalla completa (storm-transition.tsx).
    Cubre la interfaz mientras se abre otra pantalla y se retira sola.
 
-   El fuego es fotografía real de llamas recortada en lenguas (public/fire/*.webp),
-   en tres capas que se mecen a distinto ritmo. Cada capa entra dos veces, la
-   segunda en espejo y desfasada: al cruzarse, las puntas cambian de forma y el
-   fuego hierve. Sin `filter` ni `backdrop-filter`: en Android eso deja manchas
-   y borrones de GPU. */
+   Una noche de tormenta: cielo oscuro, nubes que se mueven, tres relámpagos en
+   zigzag con ramificaciones y el destello que ilumina todo. Cada rayo cae a su
+   propio ritmo, y el cielo destella aparte, así el efecto se siente como una
+   tormenta y no como una imagen con brillos.
 
-.fire-overlay {
+   Sin `filter` ni `backdrop-filter`: en Android eso deja manchas y borrones de
+   GPU. Todo son degradados, trazos y movimientos. */
+
+.storm-overlay {
   position: fixed;
   inset: 0;
   z-index: 80;
@@ -132,7 +134,7 @@
   place-items: center;
   overflow: hidden;
   /* Opaco: nada de la pantalla anterior se transparenta por debajo. */
-  background: radial-gradient(120% 85% at 50% 108%, #1c0a06 0%, #120709 38%, #08070c 72%, #050409 100%);
+  background: radial-gradient(120% 90% at 50% 115%, #101a2e 0%, #0a1020 42%, #05070f 78%, #03040a 100%);
   opacity: 0;
   transition: opacity 320ms ease-out;
   /* Mientras cubre, no deja tocar lo de abajo: no se abre dos veces. */
@@ -140,117 +142,237 @@
   touch-action: none;
 }
 
-.fire-overlay[data-state="shown"] {
+.storm-overlay[data-state="shown"] {
   opacity: 1;
 }
 
-.fire-overlay[data-state="leaving"] {
+.storm-overlay[data-state="leaving"] {
   opacity: 0;
 }
 
-.fire-stage {
+.storm-stage {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  transform-origin: 50% 100%;
-  /* Encendido: al aparecer, el fuego sube desde el piso. */
-  animation: fire-ignite 520ms cubic-bezier(0.22, 0.9, 0.28, 1) both;
+  /* Encendido: al aparecer, el cielo se abre con un destello. */
+  animation: storm-open 520ms cubic-bezier(0.22, 0.9, 0.28, 1) both;
 }
 
-/* Calor del piso: resplandor suave detrás de las llamas. */
-.fire-glow {
+/* Cielo: azul profundo que se aclara cerca del horizonte. */
+.storm-sky {
   position: absolute;
-  left: -10%;
-  right: -10%;
-  bottom: -12%;
-  height: 46%;
+  inset: 0;
   background:
-    radial-gradient(45% 60% at 50% 100%, rgb(249 115 22 / 0.42) 0%, rgb(249 115 22 / 0) 74%),
-    radial-gradient(70% 80% at 50% 100%, rgb(185 28 28 / 0.34) 0%, rgb(185 28 28 / 0) 82%);
-  animation: fire-breathe 3.2s ease-in-out infinite;
+    radial-gradient(70% 45% at 50% 108%, rgb(56 92 148 / 0.5) 0%, rgb(56 92 148 / 0) 78%),
+    radial-gradient(120% 70% at 22% 12%, rgb(24 38 66 / 0.85) 0%, rgb(24 38 66 / 0) 70%);
 }
 
-.fire-fires {
+/* Nubes: dos manchas enormes que se desplazan muy despacio. */
+.storm-clouds {
+  position: absolute;
+  inset: -10%;
+  background:
+    radial-gradient(38% 26% at 30% 18%, rgb(120 148 190 / 0.18) 0%, rgb(120 148 190 / 0) 72%),
+    radial-gradient(42% 28% at 72% 30%, rgb(96 124 168 / 0.16) 0%, rgb(96 124 168 / 0) 76%),
+    radial-gradient(30% 22% at 46% 44%, rgb(140 168 208 / 0.1) 0%, rgb(140 168 208 / 0) 78%);
+  animation: storm-drift 22s ease-in-out infinite alternate;
+}
+
+/* Los rayos. El SVG ocupa toda la pantalla y los trazos no engordan al
+   estirarse: `non-scaling-stroke` los deja finos en cualquier medida. */
+.storm-bolts {
   position: absolute;
   inset: 0;
-}
-
-/* Una capa de fuego: la textura ocupa el ancho completo, pegada al pie, y se
-   mece. Sólo `transform` y `opacity`: nada de filtros. */
-.fire-layer {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  width: 100%;
   height: 100%;
-  transform-origin: 50% 100%;
-  animation: fire-sway var(--sway, 1.6s) ease-in-out infinite;
-  will-change: transform;
 }
 
-/* Cada capa entra dos veces: la segunda corrida a un lado y con la animación a
-   media vuelta. Mientras una copia se apaga, la otra se enciende y, como sus
-   llamas no coinciden, las puntas cambian de forma. */
-.fire-layer-img {
-  position: absolute;
-  left: -6%;
-  right: -6%;
-  bottom: 0;
-  height: 100%;
-  background-repeat: no-repeat;
-  background-position: 50% 100%;
-  background-size: 112% auto;
-  opacity: var(--layer-opacity, 1);
-  animation: fire-boil var(--boil, 1.8s) ease-in-out infinite;
+.storm-bolt {
+  animation: storm-strike var(--bolt-dur, 3s) linear var(--bolt-delay, 0s) infinite;
 }
 
-.fire-layer-img--offset {
-  left: -28%;
-  right: -28%;
-  animation-name: fire-boil-b;
-  animation-duration: calc(var(--boil, 1.8s) * 1.35);
-  animation-delay: calc(var(--boil, 1.8s) / -2);
-  background-position: 35% 100%;
+.storm-stroke {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
 }
 
-.fire-embers {
+/* Tres trazos superpuestos: halo ancho y tenue, brillo medio y núcleo blanco.
+   Dan el resplandor del rayo sin usar ningún filtro de desenfoque. */
+.storm-stroke--halo {
+  stroke: rgb(56 130 246 / 0.3);
+  stroke-width: 17;
+}
+
+.storm-stroke--glow {
+  stroke: rgb(125 211 252 / 0.8);
+  stroke-width: 7;
+}
+
+.storm-stroke--core {
+  stroke: #ffffff;
+  stroke-width: 2.6;
+}
+
+/* Destello del cielo: ilumina toda la pantalla cuando cae un rayo. */
+.storm-flash {
   position: absolute;
   inset: 0;
+  background:
+    radial-gradient(90% 60% at 50% 0%, rgb(219 234 254 / 0.5) 0%, rgb(191 219 254 / 0.22) 45%, rgb(147 197 253 / 0) 80%),
+    linear-gradient(to bottom, rgb(226 240 255 / 0.16) 0%, rgb(226 240 255 / 0) 55%);
+  opacity: 0;
+  animation: storm-sky-flash 4.7s ease-out infinite;
 }
 
-.fire-ember {
+/* Horizonte: la claridad lejana contra la que se recortan los rayos. */
+.storm-horizon {
   position: absolute;
-  bottom: 22%;
-  width: 4px;
-  height: 4px;
-  border-radius: 999px;
-  background: #fde68a;
-  box-shadow: 0 0 10px 2px rgb(251 191 36 / 0.9);
-  translate: -50% 0;
-  animation: ember-rise var(--dur, 2.4s) linear var(--delay, 0s) infinite;
+  inset: auto 0 0 0;
+  height: 38%;
+  background: linear-gradient(to top, rgb(30 58 102 / 0.75) 0%, rgb(30 58 102 / 0) 100%);
 }
 
-.fire-content {
+.storm-content {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
   padding: 0 1.5rem;
-  /* Se sube un poco: deja respirar el fuego debajo del texto. */
-  margin-bottom: 16vh;
+  /* Se sube un poco: deja ver los rayos debajo del texto. */
+  margin-bottom: 12vh;
 }
 
-/* Halo detrás del texto: sólo oscurece lo que hay justo detrás, no el fuego. */
-.fire-halo {
+/* Halo detrás del texto: sólo oscurece lo que hay justo detrás. */
+.storm-halo {
   position: absolute;
   inset: -3.5rem -2.5rem;
   background: radial-gradient(
     closest-side,
-    rgb(5 5 9 / 0.94) 0%,
-    rgb(5 5 9 / 0.72) 52%,
-    rgb(5 5 9 / 0) 100%
+    rgb(4 7 14 / 0.94) 0%,
+    rgb(4 7 14 / 0.72) 52%,
+    rgb(4 7 14 / 0) 100%
   );
+}
+
+/* Barra de carga: riel oscuro con un tramo claro que lo recorre. */
+.storm-progress {
+  position: relative;
+  display: block;
+  width: 9.5rem;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(148 163 184 / 0.22);
+}
+
+.storm-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 42%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgb(96 165 250 / 0) 0%,
+    rgb(147 197 253 / 0.95) 35%,
+    #ffffff 60%,
+    rgb(147 197 253 / 0.95) 80%,
+    rgb(96 165 250 / 0) 100%
+  );
+  animation: storm-progress 1.25s ease-in-out infinite;
+}
+
+@keyframes storm-open {
+  from {
+    opacity: 0.2;
+    transform: scale(1.04);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes storm-strike {
+  /* El rayo golpea en seco y después queda un resplandor que se apaga: es lo que
+     hace un relámpago real. Como la capa se ve poco más de un segundo, el rayo
+     tiene que quedar encendido durante buena parte de ese rato. */
+  0%,
+  5% {
+    opacity: 0;
+  }
+  7% {
+    opacity: 1;
+  }
+  9% {
+    opacity: 0.25;
+  }
+  12% {
+    opacity: 1;
+  }
+  15% {
+    opacity: 0.5;
+  }
+  18% {
+    opacity: 0.95;
+  }
+  30% {
+    opacity: 0.7;
+  }
+  42% {
+    opacity: 0.28;
+  }
+  55% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes storm-sky-flash {
+  0%,
+  4% {
+    opacity: 0;
+  }
+  6% {
+    opacity: 0.9;
+  }
+  8% {
+    opacity: 0.15;
+  }
+  11% {
+    opacity: 0.7;
+  }
+  20% {
+    opacity: 0.22;
+  }
+  34% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes storm-drift {
+  from {
+    transform: translate3d(-2%, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(2%, -1.5%, 0) scale(1.04);
+  }
+}
+
+@keyframes storm-progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(240%);
+  }
 }
 
 /* Hilo de brasas bajo el texto: la única línea recta del efecto. */
@@ -271,88 +393,6 @@
   animation: fire-sweep 1.5s linear infinite;
 }
 
-@keyframes fire-ignite {
-  from {
-    opacity: 0.15;
-    transform: translateY(8%) scaleY(0.7);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scaleY(1);
-  }
-}
-
-@keyframes fire-breathe {
-  0%,
-  100% {
-    transform: scaleY(1) scaleX(1);
-    opacity: 0.9;
-  }
-  50% {
-    transform: scaleY(1.1) scaleX(1.03);
-    opacity: 1;
-  }
-}
-
-/* El mecido de cada capa: se desplaza a los lados, se estira y se inclina un
-   poco. Es lo que hace que el fuego parezca vivo aunque la textura sea fija. */
-@keyframes fire-sway {
-  0%,
-  100% {
-    transform: translate3d(-1.2%, 0.6%, 0) scaleY(1) rotate(-0.35deg);
-  }
-  33% {
-    transform: translate3d(1.4%, -1.8%, 0) scaleY(1.06) rotate(0.3deg);
-  }
-  66% {
-    transform: translate3d(-0.6%, -0.8%, 0) scaleY(1.02) rotate(0.15deg);
-  }
-}
-
-/* «Hervor»: una copia se apaga mientras la otra se enciende, con un pequeño
-   desplazamiento vertical. Las puntas cambian de forma entre las dos. */
-@keyframes fire-boil {
-  0%,
-  100% {
-    opacity: calc(var(--layer-opacity, 1) * 1);
-    translate: 0 0;
-  }
-  50% {
-    opacity: calc(var(--layer-opacity, 1) * 0.4);
-    translate: 0 -1.6%;
-  }
-}
-
-/* La copia corrida va a contratiempo: cuando una se enciende, la otra se apaga. */
-@keyframes fire-boil-b {
-  0%,
-  100% {
-    opacity: calc(var(--layer-opacity, 1) * 0.25);
-    translate: -1.2% -1.4%;
-  }
-  50% {
-    opacity: calc(var(--layer-opacity, 1) * 0.7);
-    translate: 1.2% 0;
-  }
-}
-
-@keyframes ember-rise {
-  0% {
-    transform: translate3d(0, 0, 0) scale(0.5);
-    opacity: 0;
-  }
-  12% {
-    opacity: 1;
-  }
-  70% {
-    opacity: 0.9;
-  }
-  100% {
-    transform: translate3d(var(--dx, 12px), -52vh, 0) scale(0.2);
-    opacity: 0;
-  }
-}
-
 @keyframes fire-sweep {
   from {
     background-position: -120% 50%;
@@ -362,26 +402,28 @@
   }
 }
 
-/* Con «reducir movimiento» el fuego NO se congela: se enciende y se apaga
-   despacio, sin desplazamientos. Una imagen fija parecía que la app se colgó,
-   que es justo lo que este aviso tiene que evitar. */
+/* Con «reducir movimiento» la tormenta NO se congela: el cielo respira y los
+   destellos son suaves, sin golpes bruscos. Una imagen fija parecía que la app
+   se colgó, que es justo lo que este aviso tiene que evitar. */
 @media (prefers-reduced-motion: reduce) {
-  .fire-stage,
-  .fire-ember,
-  .fire-line {
+  .storm-stage,
+  .storm-clouds,
+  .storm-progress-fill {
     animation: none;
   }
-  .fire-glow,
-  .fire-layer,
-  .fire-layer-img {
-    animation: fire-calm 3.6s ease-in-out infinite;
+  .storm-bolt,
+  .storm-flash {
+    animation: storm-calm 3.2s ease-in-out infinite;
+  }
+  .storm-bolt {
+    opacity: 0.55;
   }
 }
 
-@keyframes fire-calm {
+@keyframes storm-calm {
   0%,
   100% {
-    opacity: 0.55;
+    opacity: 0.4;
   }
   50% {
     opacity: 1;
@@ -400,13 +442,8 @@
   }
 }
 
-/* Con «reducir movimiento» el fuego queda quieto: misma imagen, sin animación. */
+/* Con «reducir movimiento» la llama de las tarjetas queda quieta. */
 @media (prefers-reduced-motion: reduce) {
-  .fire-bed,
-  .fire-core,
-  .fire-tongue,
-  .fire-ember,
-  .fire-line,
   .fire-flame {
     animation: none;
   }

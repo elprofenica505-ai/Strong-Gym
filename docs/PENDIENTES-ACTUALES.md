@@ -1363,33 +1363,35 @@ Esta sección es un resumen, no otra lista de tareas.
   de caja no cuadró correctamente»— con el campo de motivo obligatorio, y no se
   guarda nada hasta que se escriba. Si se guarda con diferencia justificada, el
   aviso es ámbar y dice cuánto faltó o sobró, en su moneda.
-- **Transición de fuego a pantalla completa (PR #132; rehecha en #134, #135 y #137):**
-  al tocar un módulo o una tarjeta, una capa de fuego con el emblema y
-  «Cargando…» cubre toda la interfaz, y se retira sola cuando la pantalla nueva
-  toma el control. Las tres primeras versiones se hicieron con formas dibujadas
-  en CSS (manchas y después lenguas vectoriales) y **ninguna le gustó al dueño**:
-  frente a su referencia se veían planas. La versión actual usa **fotografía real
-  de llamas**: tres capas (`public/fire/fuego-lejos|medio|cerca.webp`, ~385 KB en
-  total) recortadas en lenguas con punta suave y montadas una sobre otra. Cada
-  capa entra dos veces —la segunda corrida a un lado y con la animación
-  desfasada— y cada una se mece a su propio ritmo (1.3–2.2 s): al no coincidir
-  las dos copias, las puntas cambian de forma y el fuego hierve. Doce chispas
-  suben entre las llamas.
-  `src/components/layout/fire-transition.tsx` + estilos en `globals.css`.
+- **Transición de tormenta a pantalla completa (PR #138; antes fuego, #132/#134/#135/#137):**
+  al tocar un módulo o una tarjeta, una capa de tormenta con el emblema,
+  «Cargando…» y la barra de carga cubre toda la interfaz, y se retira sola
+  cuando la pantalla nueva toma el control. El gimnasio pidió cambiar el fuego
+  por **rayos de una noche de tormenta**: cielo oscuro, nubes que se desplazan,
+  **tres relámpagos en zigzag con ramificaciones** y el destello que ilumina la
+  pantalla. Cada rayo cae a su propio ritmo y el cielo destella aparte, así el
+  efecto se siente como una tormenta y no como una imagen con brillos. La
+  geometría se genera con un **pseudoaleatorio con semilla**: el servidor y el
+  celular dibujan exactamente el mismo rayo y React no se queja al hidratar.
+  El brillo del relámpago sale de **tres trazos superpuestos** (halo, brillo y
+  núcleo blanco), no de filtros. El rayo principal golpea apenas aparece (a los
+  7 % de su ciclo) y deja un resplandor que se apaga, porque la capa sólo se ve
+  poco más de un segundo. `src/components/layout/storm-transition.tsx` + estilos
+  en `globals.css`. El componente y las texturas de fuego se retiraron.
   Tiempos: espera 120 ms antes de aparecer (si la pantalla abre al instante por
-  caché, no se ve nada) y, una vez visible, dura **un mínimo de 1.1 s** —con
-  480 ms el ojo no alcanzaba a ver el mecido— y se desvanece en 320 ms; si la
-  navegación no se concreta, se apaga a los 8 s. Se enciende con enlaces
-  internos, con «atrás» y al volver de otra app.
+  caché, no se ve nada) y, una vez visible, dura **un mínimo de 1.1 s** y se
+  desvanece en 320 ms; si la navegación no se concreta, se apaga a los 8 s (3 s
+  cuando se vuelve con «atrás»). Se enciende con enlaces internos, con «atrás» y
+  al volver de otra app.
   **Sin `filter`, `backdrop-filter` ni `drop-shadow`**: en Android dejaban
   manchas y borrones de GPU. El fondo es opaco, así la pantalla anterior no se
-  transparenta. Con «reducir movimiento» el fuego no se congela: se enciende y
-  se apaga despacio, sin desplazamientos.
+  transparenta. Con «reducir movimiento» la tormenta no se congela: el cielo
+  respira y los destellos son suaves.
   **Ojo con «Quitar animaciones» de Android:** con la escala de animación en
   cero el sistema congela todo y la capa se ve como una foto; no es un fallo de
   la app.
-- **Caché del service worker (PR #134):** `CACHE_VERSION` subió a
-  `strong-gym-v3`. Los estilos y el código se sirven *cache-first*, así que un
+- **Caché del service worker (PR #134, al día en #138):** `CACHE_VERSION` subió
+  a `strong-gym-v4`. Los estilos y el código se sirven *cache-first*, así que un
   teléfono con la app instalada puede seguir pintando la versión vieja después
   de publicar; al subir la versión, el service worker descarta todo el caché
   anterior en la siguiente apertura.
