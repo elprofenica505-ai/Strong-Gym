@@ -1390,6 +1390,13 @@ Esta sección es un resumen, no otra lista de tareas.
   desvanece en 320 ms; si la navegación no se concreta, se apaga a los 8 s (3 s
   cuando se vuelve con «atrás»). Se enciende con enlaces internos, con «atrás» y
   al volver de otra app.
+  **Sonido (PR #139):** con el rayo entra un **trueno** de 1.75 s
+  (`public/sounds/trueno.mp3`, 12 KB, sintetizado para la app). Suena cuando la
+  capa ya está en pantalla, nunca antes. El permiso de audio se pide **dentro
+  del mismo toque** (sin eso iPhone lo bloquea en silencio), **no se repite**
+  antes de 18 s, **no suena con «reducir movimiento»** ni con la app en segundo
+  plano, y va guardado en el caché del service worker. Si el teléfono está en
+  silencio, la animación se ve igual.
   **Sin `filter`, `backdrop-filter` ni `drop-shadow`**: en Android dejaban
   manchas y borrones de GPU. El fondo es opaco, así la pantalla anterior no se
   transparenta. Con «reducir movimiento» la tormenta no se congela: el cielo
@@ -1397,8 +1404,8 @@ Esta sección es un resumen, no otra lista de tareas.
   **Ojo con «Quitar animaciones» de Android:** con la escala de animación en
   cero el sistema congela todo y la capa se ve como una foto; no es un fallo de
   la app.
-- **Caché del service worker (PR #134, al día en #139 con el emblema nuevo):**
-  `CACHE_VERSION` subió a `strong-gym-v5`. Los estilos y el código se sirven *cache-first*, así que un
+- **Caché del service worker (PR #134, al día en #139 con el emblema y el
+  trueno):** `CACHE_VERSION` subió a `strong-gym-v6`. Los estilos y el código se sirven *cache-first*, así que un
   teléfono con la app instalada puede seguir pintando la versión vieja después
   de publicar; al subir la versión, el service worker descarta todo el caché
   anterior en la siguiente apertura.

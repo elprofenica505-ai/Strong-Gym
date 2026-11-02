@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
 /**
@@ -240,5 +240,31 @@ test("el emblema, el nombre y la barra son los del cartel del gimnasio", () => {
   // El emblema queda guardado para que aparezca aunque no haya red.
   const sw = source("public/sw.js");
   assert.match(sw, /"\/brand\/emblema-strong\.webp"/);
-  assert.match(sw, /CACHE_VERSION = "strong-gym-v5"/);
+  assert.match(sw, /"\/sounds\/trueno\.mp3"/);
+  assert.match(sw, /CACHE_VERSION = "strong-gym-v6"/);
+});
+
+test("el trueno suena con el rayo y no se desboca", () => {
+  const storm = source("src/components/layout/storm-transition.tsx");
+
+  // El archivo existe y es liviano: un trueno, no una canción.
+  const sound = path.join("public", "sounds", "trueno.mp3");
+  assert.ok(existsSync(sound), "falta public/sounds/trueno.mp3");
+  const size = statSync(sound).size;
+  assert.ok(size > 4_000, "el trueno suena a nada");
+  assert.ok(size < 40_000, `el trueno pesa demasiado: ${size} bytes`);
+
+  // Suena cuando la capa ya se ve, no antes.
+  assert.match(storm, /const THUNDER_SRC = "\/sounds\/trueno\.mp3"/);
+  const reveal = storm.slice(storm.indexOf("const reveal = () =>"), storm.indexOf("const start = ("));
+  assert.match(reveal, /playThunder\(\)/);
+
+  // El permiso se pide dentro del toque: sin eso, iPhone no deja sonar nada.
+  const start = storm.slice(storm.indexOf("const start = ("), storm.indexOf("const onClick ="));
+  assert.match(start, /primeThunder\(\)/);
+
+  // Sin repeticiones y con respeto a «reducir movimiento».
+  assert.match(storm, /const THUNDER_GAP_MS = 18_000/);
+  assert.match(storm, /prefers-reduced-motion: reduce/);
+  assert.match(storm, /document\.hidden/);
 });
