@@ -29,7 +29,7 @@ test("la capa de fuego está montada en el layout", () => {
   // Fuego de marca: lecho de brasas, lenguas, chispas y hilo encendido.
   const css = source("src/app/globals.css");
   assert.match(css, /@keyframes fire-breathe/);
-  assert.match(css, /@keyframes fire-lick/);
+  assert.match(css, /@keyframes flame-a/);
   assert.match(css, /@keyframes ember-rise/);
   assert.match(css, /@keyframes fire-sweep/);
   assert.match(css, /rgb\(251 191 36/);
@@ -38,11 +38,13 @@ test("la capa de fuego está montada en el layout", () => {
   assert.match(fire, /Cargando…/);
   assert.match(fire, /role="status"/);
   assert.match(fire, /aria-live="polite"/);
-  assert.match(fire, /fire-bed/);
-  assert.match(fire, /fire-tongue/);
+  assert.match(fire, /fire-flame-tongue/);
   assert.match(fire, /fire-ember/);
-  assert.match(fire, /fire-coal/);
+  assert.match(fire, /fire-glow/);
   assert.match(fire, /fire-halo/);
+  // Lenguas dibujadas: una silueta por llama, no una esfera.
+  assert.match(fire, /function flamePath/);
+  assert.match(fire, /<path d=\{d\}/);
 });
 
 test("la capa cubre toda la interfaz y no se queda pegada", () => {
@@ -76,7 +78,7 @@ test("la animación respeta «reducir movimiento» sin congelarse", () => {
   // Con la opción activada no hay desplazamientos…
   assert.match(css, /\.fire-stage,\s*\n\s*\.fire-ember,\s*\n\s*\.fire-line \{\s*\n\s*animation: none/);
   // …pero el fuego late: una imagen fija parecía que la app se colgó.
-  assert.match(css, /\.fire-bed,[\s\S]{0,220}animation: fire-calm/);
+  assert.match(css, /\.fire-glow,\s*\n\s*\.fire-flame-tongue \{\s*\n\s*animation: fire-calm/);
   assert.match(css, /@keyframes fire-calm/);
   assert.match(css, /@keyframes fire-calm \{[\s\S]{0,120}opacity/);
 });
@@ -152,31 +154,31 @@ test("los paneles que leen datos muestran la llama, no un texto solo", () => {
   assert.match(cash, /aria-busy=/);
 });
 
-test("el fuego se mueve de verdad: muchas piezas, cada una a su ritmo", () => {
+test("el fuego se mueve de verdad: lenguas onduladas, cada una a su ritmo", () => {
   const css = source("src/app/globals.css");
   const fire = source("src/components/layout/fire-transition.tsx");
 
-  // Quince lenguas, siete brasas y doce chispas: el movimiento viene de piezas
-  // desfasadas, no de una mancha grande (una mancha grande se ve como foto).
-  assert.match(fire, /const FLAMES[\s\S]{0,2000}\]/);
-  assert.equal((fire.match(/^\s*\[-?\d+/gm) ?? []).length >= 25, true);
-  assert.match(fire, /--dur/);
-  assert.match(fire, /--delay/);
-  assert.match(fire, /--tilt/);
+  // Siete lenguas, cada una con su ritmo, su retraso y su mecido: el
+  // movimiento viene de piezas desfasadas.
+  assert.match(fire, /const FLAMES: readonly Flame\[\]/);
+  const flames = fire.slice(fire.indexOf("const FLAMES"), fire.indexOf("/** Chispas:"));
+  assert.equal((flames.match(/left: \d+/g) ?? []).length, 7);
+  for (const motion of ["flame-a", "flame-b", "flame-c"]) {
+    assert.match(css, new RegExp(`@keyframes ${motion}`));
+  }
+  assert.match(fire, /"--motion": `flame-\$\{flame\.motion\}`/);
 
-  // Las lenguas se mecen, las brasas laten y las chispas suben.
-  assert.match(css, /\.fire-tongue \{[^}]*animation: fire-lick var\(--dur/);
-  assert.match(css, /\.fire-coal \{[^}]*animation: coal-glow var\(--dur/);
-  assert.match(css, /\.fire-ember \{[^}]*animation: ember-rise var\(--dur/);
-  assert.match(css, /@keyframes coal-glow/);
-  assert.match(css, /@keyframes fire-ignite/);
+  // La silueta es una llama: base llena y punta larga que se afina.
+  assert.match(fire, /Math\.min\(1, Math\.pow\(1 - t, 1\.3\)/);
+  // Y ondula: el centro se desvía con una onda que crece hacia la punta.
+  assert.match(fire, /const wobble = Math\.sin\(t \* Math\.PI \* 2 \* waves \+ phase\)/);
+  assert.match(fire, /Math\.pow\(t, 1\.3\)/);
 
-  // El mecido cambia tamaño y posición: no es sólo un cambio de opacidad.
-  const lick = css.slice(css.indexOf("@keyframes fire-lick"), css.indexOf("@keyframes coal-glow"));
-  // Se mueve en los dos ejes y cambia de tamaño: no es un simple parpadeo.
-  assert.match(lick, /translate3d\(2%, -11%, 0\) scaleY\(1\.14\)/);
-  assert.match(lick, /translate3d\(1\.5%, -15%, 0\)/);
-  assert.match(lick, /skewX\(/);
+  // Cada mecido mueve en los dos ejes y estira la llama: no es un parpadeo.
+  const move = css.slice(css.indexOf("@keyframes flame-a"), css.indexOf("@keyframes ember-rise"));
+  assert.match(move, /translate3d\(1\.2%, -3%, 0\) scaleY\(1\.06\) skewX\(1\.6deg\)/);
+  assert.match(move, /translate3d\(-1\.4%, -5%, 0\) scaleY\(1\.08\)/);
+  assert.match(move, /translate3d\(-1\.2%, -4\.5%, 0\)/);
 
   // Y dura lo suficiente para que el ojo lo vea.
   assert.match(fire, /MIN_VISIBLE_MS = 1_100/);
@@ -199,6 +201,6 @@ test("la capa es opaca: la pantalla vieja no se transparenta", () => {
   const css = source("src/app/globals.css");
   const overlay = css.slice(css.indexOf(".fire-overlay {"), css.indexOf(".fire-overlay[data-state"));
   // Degradado con colores sólidos, sin alfa: tapa de verdad.
-  assert.match(overlay, /background: radial-gradient\(130% 90% at 50% 112%, #2b0d06 0%/);
+  assert.match(overlay, /background: radial-gradient\(120% 85% at 50% 108%, #1c0a06 0%/);
   assert.doesNotMatch(overlay, /rgb\([^)]*\/ 0\.\d+\)/);
 });
