@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import path from "node:path";
 
 /**
  * «Cargando»: que la app nunca se vea congelada.
@@ -159,7 +160,7 @@ test("los rayos se mueven de verdad: caen, ramifican y destellan", () => {
   // celular dibujan exactamente el mismo rayo (si no, React se queja al hidratar).
   assert.match(storm, /const BOLTS: readonly Bolt\[\]/);
   assert.match(storm, /function seeded\(seed: number\)/);
-  assert.match(storm, /makeBolt\(7, 64, 58, 76, 11, 9, 3\.2, 0\)/);
+  assert.match(storm, /makeBolt\(7, 72, 66, 76, 11, 9, 3\.2, 0\)/);
   // El rayo principal cae apenas aparece: el aviso dura poco más de un segundo.
   assert.match(storm, /3\.2, 0\)/);
   assert.match(storm, /makeBolt\(23,/);
@@ -210,6 +211,70 @@ test("la capa es opaca: la pantalla vieja no se transparenta", () => {
   const css = source("src/app/globals.css");
   const overlay = css.slice(css.indexOf(".storm-overlay {"), css.indexOf(".storm-overlay[data-state"));
   // Degradado con colores sólidos, sin alfa: tapa de verdad.
-  assert.match(overlay, /background: radial-gradient\(120% 90% at 50% 115%, #101a2e 0%/);
+  assert.match(overlay, /background: radial-gradient\(120% 90% at 50% 115%, #070708 0%/);
+  // Negro de verdad: el fondo termina en negro puro, sin azul.
+  assert.match(overlay, /#000000 80%, #000000 100%/);
+  assert.doesNotMatch(overlay, /#101a2e|#0a1020|#0d0d12/);
   assert.doesNotMatch(overlay, /rgb\([^)]*\/ 0\.\d+\)/);
+});
+
+test("el emblema, el nombre y la barra son los del cartel del gimnasio", () => {
+  const storm = source("src/components/layout/storm-transition.tsx");
+  const css = source("src/app/globals.css");
+
+  // El emblema es la imagen del cartel (triángulo rojo con el atleta).
+  assert.match(storm, /src="\/brand\/emblema-strong\.webp"/);
+  assert.match(storm, /className="storm-emblem"/);
+  assert.ok(existsSync(path.join("public", "brand", "emblema-strong.webp")), "falta la imagen del emblema");
+
+  // Nombre en serif plateado y «Cargando…» en dorado, con las letras separadas.
+  assert.match(css, /\.storm-title \{[^}]*font-family: ui-serif/);
+  assert.match(css, /\.storm-title \{[^}]*color: #c4c2be/);
+  assert.match(css, /\.storm-loading \{[^}]*color: #e3ab4c/);
+  assert.match(css, /\.storm-loading \{[^}]*letter-spacing: 0\.34em/);
+
+  // La barra: riel oscuro y tramo dorado, más gruesa que una línea.
+  assert.match(css, /\.storm-progress \{[^}]*height: 0\.5625rem/);
+  assert.match(css, /\.storm-progress-fill \{[^}]*#f7c95c/);
+
+  // El emblema queda guardado para que aparezca aunque no haya red.
+  const sw = source("public/sw.js");
+  assert.match(sw, /"\/brand\/emblema-strong\.webp"/);
+  assert.match(sw, /"\/sounds\/trueno\.mp3"/);
+  assert.match(sw, /CACHE_VERSION = "strong-gym-v8"/);
+});
+
+test("el trueno suena con el rayo, y sólo el trueno", () => {
+  const storm = source("src/components/layout/storm-transition.tsx");
+
+  // El archivo existe y es liviano: un trueno, no una canción.
+  const sound = path.join("public", "sounds", "trueno.mp3");
+  assert.ok(existsSync(sound), "falta public/sounds/trueno.mp3");
+  const size = statSync(sound).size;
+  assert.ok(size > 4_000, `el trueno suena a nada (${size} bytes)`);
+  assert.ok(size < 40_000, `el trueno pesa demasiado (${size} bytes)`);
+
+  // Los «tics» de app se retiraron a pedido del gimnasio: el silencio entre
+  // truenos es deliberado, no un olvido. Si alguien los devuelve, esta prueba
+  // avisa de que hay que preguntar primero.
+  assert.ok(!existsSync(path.join("public", "sounds", "toque.mp3")), "volvieron los tics de app");
+  assert.doesNotMatch(storm, /TAP_SOURCES|toque2?\.mp3/);
+
+  // Suena DENTRO del toque: fuera de él, iPhone y Android lo bloquean.
+  const start = storm.slice(storm.indexOf("const start = ("), storm.indexOf("const onClick ="));
+  assert.match(start, /playStormSound\(\)/);
+  assert.match(storm, /const THUNDER_SRC = "\/sounds\/trueno\.mp3"/);
+
+  // Sin amontonarse, sin sonar en segundo plano y sin depender de «reducir
+  // movimiento» (esa opción apaga el movimiento, no el audio).
+  const thunder = storm.slice(storm.indexOf("function playStormSound"), storm.indexOf("type Phase"));
+  assert.match(thunder, /THUNDER_GAP_MS/);
+  assert.match(thunder, /document\.hidden/);
+  assert.doesNotMatch(thunder, /prefers-reduced-motion/);
+
+  // Guardado en el caché para que suene sin señal.
+  const sw = source("public/sw.js");
+  assert.match(sw, /"\/sounds\/trueno\.mp3"/);
+  assert.doesNotMatch(sw, /toque2?\.mp3/);
+  assert.match(sw, /CACHE_VERSION = "strong-gym-v8"/);
 });

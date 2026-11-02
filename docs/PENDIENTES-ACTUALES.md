@@ -1374,7 +1374,14 @@ Esta sección es un resumen, no otra lista de tareas.
   geometría se genera con un **pseudoaleatorio con semilla**: el servidor y el
   celular dibujan exactamente el mismo rayo y React no se queja al hidratar.
   El brillo del relámpago sale de **tres trazos superpuestos** (halo, brillo y
-  núcleo blanco), no de filtros. El rayo principal golpea apenas aparece (a los
+  núcleo blanco), no de filtros. El cielo es **negro de verdad** (PR #139): el
+  fondo termina en negro puro y el azul quedó sólo como un resto de claridad al
+  pie, sin que se note. El bloque central sigue el cartel del local: el
+  **emblema del triángulo con el atleta** (`public/brand/emblema-strong.webp`,
+  19 KB, recortado del cartel y con el fondo recortado a transparente), el
+  nombre en **serif plateado** con letras separadas, «Cargando…» en **dorado** y
+  la **barra dorada** sobre un riel gris. El emblema va guardado en el caché del
+  service worker para que aparezca aunque no haya red. El rayo principal golpea apenas aparece (a los
   7 % de su ciclo) y deja un resplandor que se apaga, porque la capa sólo se ve
   poco más de un segundo. `src/components/layout/storm-transition.tsx` + estilos
   en `globals.css`. El componente y las texturas de fuego se retiraron.
@@ -1383,6 +1390,24 @@ Esta sección es un resumen, no otra lista de tareas.
   desvanece en 320 ms; si la navegación no se concreta, se apaga a los 8 s (3 s
   cuando se vuelve con «atrás»). Se enciende con enlaces internos, con «atrás» y
   al volver de otra app.
+  **Sonido (PR #139):** con el rayo entra un **trueno** de 1.75 s
+  (`public/sounds/trueno.mp3`, 12 KB, sintetizado para la app). Suena cuando la
+  capa ya está en pantalla, nunca antes. El permiso de audio se pide **dentro
+  del mismo toque** (sin eso iPhone lo bloquea en silencio), **no se repite**
+  antes de 18 s, **no suena con la app en segundo plano**, y va guardado en el
+  caché del service worker. Si el teléfono está en silencio, la animación se ve
+  igual. El sonido **no depende de «reducir movimiento»**: esa opción apaga el
+  movimiento, no el audio, y colgarlo de ahí dejaba la pantalla muda.
+  **Por qué al principio no sonó:** el archivo vivía en `/sounds/trueno.mp3` y
+  el proxy de idioma no reconocía `.mp3` como archivo: mandaba el pedido a
+  `/es/sounds/trueno.mp3`, que no existe, y el teléfono se quedaba mudo sin
+  ningún error a la vista. Ahora el proxy deja pasar **cualquier ruta con
+  extensión** (mp3, m4a, ogg, wav, mp4, webm, pdf, además de imágenes y
+  fuentes), y el trueno se dispara **dentro del toque**, no 120 ms después.
+  **Los demás toques van en silencio (PR #139):** se probaron dos «tics» de
+  app para confirmar cada toque y al gimnasio no le gustaron; se retiraron. Hoy
+  sólo suena el trueno, cada 18 s como máximo. Los archivos de los tics se
+  borraron y hay una prueba que avisa si alguien los devuelve sin preguntar.
   **Sin `filter`, `backdrop-filter` ni `drop-shadow`**: en Android dejaban
   manchas y borrones de GPU. El fondo es opaco, así la pantalla anterior no se
   transparenta. Con «reducir movimiento» la tormenta no se congela: el cielo
@@ -1390,8 +1415,8 @@ Esta sección es un resumen, no otra lista de tareas.
   **Ojo con «Quitar animaciones» de Android:** con la escala de animación en
   cero el sistema congela todo y la capa se ve como una foto; no es un fallo de
   la app.
-- **Caché del service worker (PR #134, al día en #138):** `CACHE_VERSION` subió
-  a `strong-gym-v4`. Los estilos y el código se sirven *cache-first*, así que un
+- **Caché del service worker (PR #134, al día en #139 con el emblema y el
+  trueno):** `CACHE_VERSION` subió a `strong-gym-v8`. Los estilos y el código se sirven *cache-first*, así que un
   teléfono con la app instalada puede seguir pintando la versión vieja después
   de publicar; al subir la versión, el service worker descarta todo el caché
   anterior en la siguiente apertura.

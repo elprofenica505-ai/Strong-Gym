@@ -133,8 +133,10 @@
   display: grid;
   place-items: center;
   overflow: hidden;
-  /* Opaco: nada de la pantalla anterior se transparenta por debajo. */
-  background: radial-gradient(120% 90% at 50% 115%, #101a2e 0%, #0a1020 42%, #05070f 78%, #03040a 100%);
+  /* Negro de verdad, opaco: nada de la pantalla anterior se transparenta por
+     debajo. Sólo queda un resto de claridad al pie, casi imperceptible, para
+     que los rayos se recorten sin que el cielo se vea «azulado». */
+  background: radial-gradient(120% 90% at 50% 115%, #070708 0%, #030304 45%, #000000 80%, #000000 100%);
   opacity: 0;
   transition: opacity 320ms ease-out;
   /* Mientras cubre, no deja tocar lo de abajo: no se abre dos veces. */
@@ -158,13 +160,13 @@
   animation: storm-open 520ms cubic-bezier(0.22, 0.9, 0.28, 1) both;
 }
 
-/* Cielo: azul profundo que se aclara cerca del horizonte. */
+/* Cielo: negro con un resto de claridad fría al pie, apenas perceptible. */
 .storm-sky {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(70% 45% at 50% 108%, rgb(56 92 148 / 0.5) 0%, rgb(56 92 148 / 0) 78%),
-    radial-gradient(120% 70% at 22% 12%, rgb(24 38 66 / 0.85) 0%, rgb(24 38 66 / 0) 70%);
+    radial-gradient(70% 45% at 50% 108%, rgb(56 92 148 / 0.07) 0%, rgb(56 92 148 / 0) 76%),
+    radial-gradient(120% 70% at 22% 12%, rgb(20 30 50 / 0.22) 0%, rgb(20 30 50 / 0) 70%);
 }
 
 /* Nubes: dos manchas enormes que se desplazan muy despacio. */
@@ -172,9 +174,9 @@
   position: absolute;
   inset: -10%;
   background:
-    radial-gradient(38% 26% at 30% 18%, rgb(120 148 190 / 0.18) 0%, rgb(120 148 190 / 0) 72%),
-    radial-gradient(42% 28% at 72% 30%, rgb(96 124 168 / 0.16) 0%, rgb(96 124 168 / 0) 76%),
-    radial-gradient(30% 22% at 46% 44%, rgb(140 168 208 / 0.1) 0%, rgb(140 168 208 / 0) 78%);
+    radial-gradient(38% 26% at 30% 18%, rgb(120 148 190 / 0.06) 0%, rgb(120 148 190 / 0) 72%),
+    radial-gradient(42% 28% at 72% 30%, rgb(96 124 168 / 0.05) 0%, rgb(96 124 168 / 0) 76%),
+    radial-gradient(30% 22% at 46% 44%, rgb(140 168 208 / 0.035) 0%, rgb(140 168 208 / 0) 78%);
   animation: storm-drift 22s ease-in-out infinite alternate;
 }
 
@@ -220,8 +222,8 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(90% 60% at 50% 0%, rgb(219 234 254 / 0.5) 0%, rgb(191 219 254 / 0.22) 45%, rgb(147 197 253 / 0) 80%),
-    linear-gradient(to bottom, rgb(226 240 255 / 0.16) 0%, rgb(226 240 255 / 0) 55%);
+    radial-gradient(90% 60% at 50% 0%, rgb(226 236 255 / 0.42) 0%, rgb(203 213 225 / 0.18) 45%, rgb(148 163 184 / 0) 80%),
+    linear-gradient(to bottom, rgb(226 232 240 / 0.12) 0%, rgb(226 232 240 / 0) 55%);
   opacity: 0;
   animation: storm-sky-flash 4.7s ease-out infinite;
 }
@@ -231,7 +233,7 @@
   position: absolute;
   inset: auto 0 0 0;
   height: 38%;
-  background: linear-gradient(to top, rgb(30 58 102 / 0.75) 0%, rgb(30 58 102 / 0) 100%);
+  background: linear-gradient(to top, rgb(18 30 52 / 0.28) 0%, rgb(18 30 52 / 0) 100%);
 }
 
 .storm-content {
@@ -251,37 +253,72 @@
   inset: -3.5rem -2.5rem;
   background: radial-gradient(
     closest-side,
-    rgb(4 7 14 / 0.94) 0%,
-    rgb(4 7 14 / 0.72) 52%,
-    rgb(4 7 14 / 0) 100%
+    rgb(0 0 0 / 0.9) 0%,
+    rgb(0 0 0 / 0.66) 52%,
+    rgb(0 0 0 / 0) 100%
   );
+}
+
+/* Emblema del cartel: el triángulo rojo con el atleta. Se come casi la mitad
+   del ancho, como en el cartel del local. */
+.storm-emblem {
+  width: min(48vw, 12rem);
+  height: auto;
+}
+
+/* Nombre del gimnasio: serif de letras separadas, en gris plata. */
+.storm-title {
+  margin-top: 0.9rem;
+  font-family: ui-serif, Georgia, "Times New Roman", serif;
+  font-size: clamp(1.15rem, 6vw, 1.75rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+  color: #c4c2be;
+  text-shadow: 0 2px 16px rgb(0 0 0 / 0.95);
+}
+
+/* «Cargando…» en dorado, con las letras bien separadas como el cartel. */
+.storm-loading {
+  margin-top: 0.6rem;
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.34em;
+  /* La separación de letras agrega un hueco al final: se devuelve para que
+     el texto quede centrado de verdad. */
+  text-indent: 0.34em;
+  text-transform: uppercase;
+  color: #e3ab4c;
+  text-shadow: 0 1px 12px rgb(227 171 76 / 0.35);
 }
 
 /* Barra de carga: riel oscuro con un tramo claro que lo recorre. */
 .storm-progress {
   position: relative;
   display: block;
-  width: 9.5rem;
-  height: 3px;
+  width: min(56vw, 13.5rem);
+  height: 0.5625rem;
+  margin-top: 1.05rem;
   overflow: hidden;
   border-radius: 999px;
-  background: rgb(148 163 184 / 0.22);
+  background: #3b3936;
 }
 
 .storm-progress-fill {
   position: absolute;
   inset: 0 auto 0 0;
-  width: 42%;
+  width: 52%;
   border-radius: 999px;
   background: linear-gradient(
     90deg,
-    rgb(96 165 250 / 0) 0%,
-    rgb(147 197 253 / 0.95) 35%,
-    #ffffff 60%,
-    rgb(147 197 253 / 0.95) 80%,
-    rgb(96 165 250 / 0) 100%
+    #e89a24 0%,
+    #f7c95c 55%,
+    #ffe9a8 100%
   );
-  animation: storm-progress 1.25s ease-in-out infinite;
+  box-shadow: 0 0 12px rgb(255 200 90 / 0.35);
+  animation: storm-progress 1.35s ease-in-out infinite;
 }
 
 @keyframes storm-open {

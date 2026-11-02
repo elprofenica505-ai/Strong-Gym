@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { usePathname } from "next/navigation";
-import { BrandMark } from "@/components/layout/brand-mark";
+import Image from "next/image";
 
 /**
  * Transición de tormenta a pantalla completa.
@@ -139,13 +139,13 @@ function makeBolt(
   return { main, branches, dur, delay };
 }
 
-/** Los tres rayos: uno central, largo, y dos laterales más cortos. */
+/** Los tres rayos: uno largo a la derecha del emblema y dos laterales cortos. */
 const BOLTS: readonly Bolt[] = [
   // El principal cae apenas aparece la capa: como el aviso dura poco más de un
   // segundo, el rayo tiene que golpear dentro de ese rato.
-  makeBolt(7, 64, 58, 76, 11, 9, 3.2, 0),
-  makeBolt(23, 22, 15, 52, 8, 6, 3.7, -1.3),
-  makeBolt(41, 78, 86, 46, 8, 6, 4.1, -2.4),
+  makeBolt(7, 72, 66, 76, 11, 9, 3.2, 0),
+  makeBolt(23, 18, 11, 52, 8, 6, 3.7, -1.3),
+  makeBolt(41, 84, 90, 46, 8, 6, 4.1, -2.4),
 ];
 
 /** Un enlace que lleva a otra pantalla de esta misma app. */
@@ -174,6 +174,72 @@ function navigationTarget(event: MouseEvent): string | null {
   const here = `${window.location.pathname}${window.location.search}`;
   if (`${url.pathname}${url.search}` === here) return null;
   return `${url.pathname}${url.search}`;
+}
+
+/**
+ * Sonido de la transición: el trueno.
+ *
+ * Sólo suena el estruendo que acompaña al rayo; **los demás toques van en
+ * silencio**. Se probaron «tics» de app para confirmar cada toque y al gimnasio
+ * no le gustaron, así que se retiraron: menos es más, y el navegador queda
+ * limpio de ruido.
+ *
+ * Lo que **no** se puede perder:
+ *  - **Se dispara dentro del toque**, no después. iPhone y Android sólo dejan
+ *    sonar el audio que nace de un gesto; si se pide un instante más tarde, el
+ *    navegador lo bloquea sin avisar y la pantalla queda muda.
+ *  - **No depende de «reducir movimiento»**: esa opción apaga el movimiento,
+ *    no el sonido; colgarlo de ahí dejaba muda a media app.
+ *  - **No se amontona**: si alguien navega rápido, el trueno entra cada tanto
+ *    y no cinco veces seguidas.
+ * Si el teléfono está en silencio o el archivo no baja, la animación sigue
+ * igual: el sonido es un adorno, nunca un requisito.
+ */
+const THUNDER_SRC = "/sounds/trueno.mp3";
+/** Entre trueno y trueno. */
+const THUNDER_GAP_MS = 18_000;
+const THUNDER_VOLUME = 0.55;
+
+let thunder: HTMLAudioElement | null = null;
+let lastThunderAt = 0;
+
+/** El audio del trueno, creado una sola vez y colgado del documento. */
+function thunderAudio(): HTMLAudioElement | null {
+  if (typeof window === "undefined") return null;
+  if (!thunder) {
+    thunder = new Audio(THUNDER_SRC);
+    thunder.preload = "auto";
+    thunder.volume = THUNDER_VOLUME;
+    // Colgado del documento, oculto: iPhone viejo se niega a reproducir un
+    // audio que no está en la página.
+    thunder.style.display = "none";
+    document.body.appendChild(thunder);
+  }
+  return thunder;
+}
+
+/** Deja el trueno cargando desde el principio: son 12 KB. */
+function warmSound() {
+  thunderAudio();
+}
+
+/** Suena el trueno. Se llama SIEMPRE dentro del toque. */
+function playStormSound() {
+  if (typeof document === "undefined" || document.hidden) return;
+  const audio = thunderAudio();
+  if (!audio) return;
+  const now = Date.now();
+  if (now - lastThunderAt < THUNDER_GAP_MS) return;
+  lastThunderAt = now;
+  try {
+    audio.currentTime = 0;
+  } catch {
+    // Algunos navegadores no dejan mover el cursor antes de cargar: da igual.
+  }
+  void audio.play().catch(() => {
+    // No sonó: se suelta el freno para que el próximo toque lo reintente.
+    lastThunderAt = 0;
+  });
 }
 
 type Phase = "idle" | "shown" | "leaving";
@@ -208,6 +274,12 @@ export function StormTransition() {
   const pathnameRef = useRef<string | null>(pathname ?? null);
   /** El apagado del efecto principal, para poder llamarlo desde fuera. */
   const hideRef = useRef<() => void>(() => {});
+
+  // El trueno se deja cargando desde el principio: así el primer golpe no
+  // llega tarde ni se queda mudo por no haber terminado de bajar.
+  useEffect(() => {
+    warmSound();
+  }, []);
 
   useEffect(() => {
     let target: string | null = null;
@@ -270,6 +342,8 @@ export function StormTransition() {
      * `null` y el apagado lo resuelve el cambio de ruta de React.
      */
     const start = (destination: string | null, giveUpAfter = GIVE_UP_MS) => {
+      // Dentro del mismo toque: así el navegador deja sonar el sonido.
+      playStormSound();
       // Si venía saliendo, se reinicia limpio para la pantalla nueva.
       if (phaseRef.current === "leaving") goIdle();
       if (phaseRef.current === "shown") return;
@@ -352,15 +426,23 @@ export function StormTransition() {
 
       <div className="storm-content">
         <span className="storm-halo" aria-hidden="true" />
-        {/* Sin `drop-shadow`: es un filtro, y en Android los filtros dejan
-            manchas. El halo oscuro de abajo ya separa el emblema del cielo. */}
-        <BrandMark className="size-14" />
-        <p className="mt-4 font-display text-[1.05rem] font-extrabold tracking-[0.18em] text-white/95 uppercase">
-          Strong Fitness Gym
-        </p>
-        <p className="mt-1 text-[0.75rem] tracking-[0.22em] text-sky-200/80 uppercase">Cargando…</p>
-        {/* Barra de carga: el tramo brillante recorre el riel mientras se espera. */}
-        <span className="storm-progress mt-5" aria-hidden="true">
+        {/* El emblema del cartel del gimnasio: triángulo rojo con el atleta.
+            Va como imagen fija (16 KB) para que no dependa de ningún dibujo
+            que haya que recalcular en cada visita. Sin `drop-shadow`: es un
+            filtro, y en Android los filtros dejan manchas. */}
+        <Image
+          src="/brand/emblema-strong.webp"
+          alt=""
+          width={408}
+          height={444}
+          priority
+          sizes="(max-width: 640px) 48vw, 12rem"
+          className="storm-emblem"
+        />
+        <p className="storm-title">Strong Fitness Gym</p>
+        <p className="storm-loading">Cargando…</p>
+        {/* Barra de carga: el tramo dorado recorre el riel mientras se espera. */}
+        <span className="storm-progress" aria-hidden="true">
           <span className="storm-progress-fill" />
         </span>
       </div>
