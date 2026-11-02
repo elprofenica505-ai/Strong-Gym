@@ -1363,26 +1363,28 @@ Esta sección es un resumen, no otra lista de tareas.
   de caja no cuadró correctamente»— con el campo de motivo obligatorio, y no se
   guarda nada hasta que se escriba. Si se guarda con diferencia justificada, el
   aviso es ámbar y dice cuánto faltó o sobró, en su moneda.
-- **Transición de fuego a pantalla completa (PR #132, rehecha en #134 y #135):** al
-  tocar un módulo o una tarjeta, una capa de fuego con el emblema y «Cargando…»
-  cubre toda la interfaz, y se retira sola cuando la pantalla nueva toma el
-  control. Las dos primeras versiones no sirvieron: primero cinco manchas
-  grandes y después quince lenguas tipo óvalo con brasas redondas, que el dueño
-  describió como «una pelota de fuego abajo». La versión actual usa **lenguas
-  dibujadas**: siete siluetas con base llena, ensanche a un tercio de altura y
-  punta larga afilada, más un halo y un núcleo amarillo en cada una. Cada lengua
-  se mece con uno de tres movimientos (a/b/c), con ritmos de 1.45 a 1.9 s y
-  retrasos negativos para que nunca vayan al unísono; doce chispas suben entre
-  ellas. `src/components/layout/fire-transition.tsx` + estilos en `globals.css`.
+- **Transición de fuego a pantalla completa (PR #132; rehecha en #134, #135 y #137):**
+  al tocar un módulo o una tarjeta, una capa de fuego con el emblema y
+  «Cargando…» cubre toda la interfaz, y se retira sola cuando la pantalla nueva
+  toma el control. Las tres primeras versiones se hicieron con formas dibujadas
+  en CSS (manchas y después lenguas vectoriales) y **ninguna le gustó al dueño**:
+  frente a su referencia se veían planas. La versión actual usa **fotografía real
+  de llamas**: tres capas (`public/fire/fuego-lejos|medio|cerca.webp`, ~385 KB en
+  total) recortadas en lenguas con punta suave y montadas una sobre otra. Cada
+  capa entra dos veces —la segunda corrida a un lado y con la animación
+  desfasada— y cada una se mece a su propio ritmo (1.3–2.2 s): al no coincidir
+  las dos copias, las puntas cambian de forma y el fuego hierve. Doce chispas
+  suben entre las llamas.
+  `src/components/layout/fire-transition.tsx` + estilos en `globals.css`.
   Tiempos: espera 120 ms antes de aparecer (si la pantalla abre al instante por
   caché, no se ve nada) y, una vez visible, dura **un mínimo de 1.1 s** —con
-  480 ms el ojo no alcanzaba a ver el mecido y parecía una imagen fija— y se
-  desvanece en 320 ms; si la navegación no se concreta, se apaga a los 8 s. Se
-  enciende con enlaces internos, con «atrás» y al volver de otra app.
+  480 ms el ojo no alcanzaba a ver el mecido— y se desvanece en 320 ms; si la
+  navegación no se concreta, se apaga a los 8 s. Se enciende con enlaces
+  internos, con «atrás» y al volver de otra app.
   **Sin `filter`, `backdrop-filter` ni `drop-shadow`**: en Android dejaban
-  manchas y borrones de GPU. El fondo es opaco, así que la pantalla anterior no
-  se transparenta. Con «reducir movimiento» el fuego no se congela: se enciende
-  y se apaga despacio, sin desplazamientos.
+  manchas y borrones de GPU. El fondo es opaco, así la pantalla anterior no se
+  transparenta. Con «reducir movimiento» el fuego no se congela: se enciende y
+  se apaga despacio, sin desplazamientos.
   **Ojo con «Quitar animaciones» de Android:** con la escala de animación en
   cero el sistema congela todo y la capa se ve como una foto; no es un fallo de
   la app.

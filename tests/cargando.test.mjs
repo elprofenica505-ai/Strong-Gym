@@ -29,7 +29,7 @@ test("la capa de fuego está montada en el layout", () => {
   // Fuego de marca: lecho de brasas, lenguas, chispas y hilo encendido.
   const css = source("src/app/globals.css");
   assert.match(css, /@keyframes fire-breathe/);
-  assert.match(css, /@keyframes flame-a/);
+  assert.match(css, /@keyframes fire-sway/);
   assert.match(css, /@keyframes ember-rise/);
   assert.match(css, /@keyframes fire-sweep/);
   assert.match(css, /rgb\(251 191 36/);
@@ -38,13 +38,18 @@ test("la capa de fuego está montada en el layout", () => {
   assert.match(fire, /Cargando…/);
   assert.match(fire, /role="status"/);
   assert.match(fire, /aria-live="polite"/);
-  assert.match(fire, /fire-flame-tongue/);
+  assert.match(fire, /fire-layer/);
   assert.match(fire, /fire-ember/);
   assert.match(fire, /fire-glow/);
   assert.match(fire, /fire-halo/);
-  // Lenguas dibujadas: una silueta por llama, no una esfera.
-  assert.match(fire, /function flamePath/);
-  assert.match(fire, /<path d=\{d\}/);
+  // Fuego de verdad: tres texturas de llamas reales, no formas dibujadas.
+  assert.match(fire, /\/fire\/fuego-lejos\.webp/);
+  assert.match(fire, /\/fire\/fuego-medio\.webp/);
+  assert.match(fire, /\/fire\/fuego-cerca\.webp/);
+  for (const file of ["fuego-lejos", "fuego-medio", "fuego-cerca"]) {
+    assert.equal(existsSync(new URL(`../public/fire/${file}.webp`, import.meta.url)), true,
+      `falta la textura public/fire/${file}.webp`);
+  }
 });
 
 test("la capa cubre toda la interfaz y no se queda pegada", () => {
@@ -78,7 +83,7 @@ test("la animación respeta «reducir movimiento» sin congelarse", () => {
   // Con la opción activada no hay desplazamientos…
   assert.match(css, /\.fire-stage,\s*\n\s*\.fire-ember,\s*\n\s*\.fire-line \{\s*\n\s*animation: none/);
   // …pero el fuego late: una imagen fija parecía que la app se colgó.
-  assert.match(css, /\.fire-glow,\s*\n\s*\.fire-flame-tongue \{\s*\n\s*animation: fire-calm/);
+  assert.match(css, /\.fire-glow,\s*\n\s*\.fire-layer,\s*\n\s*\.fire-layer-img \{\s*\n\s*animation: fire-calm/);
   assert.match(css, /@keyframes fire-calm/);
   assert.match(css, /@keyframes fire-calm \{[\s\S]{0,120}opacity/);
 });
@@ -154,33 +159,33 @@ test("los paneles que leen datos muestran la llama, no un texto solo", () => {
   assert.match(cash, /aria-busy=/);
 });
 
-test("el fuego se mueve de verdad: lenguas onduladas, cada una a su ritmo", () => {
+test("el fuego se mueve de verdad: tres capas reales, cada una a su ritmo", () => {
   const css = source("src/app/globals.css");
   const fire = source("src/components/layout/fire-transition.tsx");
 
-  // Siete lenguas, cada una con su ritmo, su retraso y su mecido: el
-  // movimiento viene de piezas desfasadas.
-  assert.match(fire, /const FLAMES: readonly Flame\[\]/);
-  const flames = fire.slice(fire.indexOf("const FLAMES"), fire.indexOf("/** Chispas:"));
-  assert.equal((flames.match(/left: \d+/g) ?? []).length, 7);
-  for (const motion of ["flame-a", "flame-b", "flame-c"]) {
-    assert.match(css, new RegExp(`@keyframes ${motion}`));
-  }
-  assert.match(fire, /"--motion": `flame-\$\{flame\.motion\}`/);
+  // Tres capas de fotografía real con ritmos distintos: si coincidieran, el
+  // fuego se movería como un bloque y volvería a parecer una foto.
+  assert.match(fire, /const LAYERS = \[/);
+  const layers = fire.slice(fire.indexOf("const LAYERS"), fire.indexOf("];", fire.indexOf("const LAYERS")));
+  const ritmos = [...layers.matchAll(/sway: ([\d.]+)/g)].map((m) => m[1]);
+  assert.equal(ritmos.length, 3);
+  assert.equal(new Set(ritmos).size, 3);
 
-  // La silueta es una llama: base llena y punta larga que se afina.
-  assert.match(fire, /Math\.min\(1, Math\.pow\(1 - t, 1\.3\)/);
-  // Y ondula: el centro se desvía con una onda que crece hacia la punta.
-  assert.match(fire, /const wobble = Math\.sin\(t \* Math\.PI \* 2 \* waves \+ phase\)/);
-  assert.match(fire, /Math\.pow\(t, 1\.3\)/);
+  // Cada capa entra dos veces, la segunda corrida a un lado y desfasada.
+  assert.match(fire, /fire-layer-img--offset/);
+  assert.match(css, /\.fire-layer-img--offset \{[^}]*left: -28%/);
+  assert.match(css, /\.fire-layer-img--offset \{[^}]*animation-name: fire-boil-b/);
+  // Nada de reflejos: el espejo dejaba una simetría fea en el centro.
+  assert.doesNotMatch(css, /scale: -1 1/);
 
-  // Cada mecido mueve en los dos ejes y estira la llama: no es un parpadeo.
-  const move = css.slice(css.indexOf("@keyframes flame-a"), css.indexOf("@keyframes ember-rise"));
-  assert.match(move, /translate3d\(1\.2%, -3%, 0\) scaleY\(1\.06\) skewX\(1\.6deg\)/);
-  assert.match(move, /translate3d\(-1\.4%, -5%, 0\) scaleY\(1\.08\)/);
-  assert.match(move, /translate3d\(-1\.2%, -4\.5%, 0\)/);
+  // El mecido mueve en los dos ejes y estira: no es un cambio de brillo.
+  const sway = css.slice(css.indexOf("@keyframes fire-sway"), css.indexOf("@keyframes fire-boil "));
+  assert.match(sway, /translate3d\(1\.4%, -1\.8%, 0\) scaleY\(1\.06\) rotate\(0\.3deg\)/);
+  assert.match(sway, /translate3d\(-1\.2%, 0\.6%, 0\)/);
 
-  // Y dura lo suficiente para que el ojo lo vea.
+  // Las texturas se precargan al montar: si no, el primer fuego llega tarde.
+  assert.match(fire, /new Image\(\)/);
+
   assert.match(fire, /MIN_VISIBLE_MS = 1_100/);
 });
 
