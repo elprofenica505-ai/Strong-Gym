@@ -6,6 +6,7 @@
   "scripts": {
     "build": "next build",
     "build:sql": "node scripts/build-sql.mjs",
+    "build:install": "node scripts/build-install-sql.mjs",
     "dev": "next dev",
     "lint": "eslint .",
     "start": "next start",
@@ -26,7 +27,8 @@
     "test:nutricion": "node --experimental-strip-types --test tests/nutrition-plan.test.mjs",
     "postinstall": "patch-package",
     "test:ejercicios": "node --experimental-strip-types --test tests/exercises-terms.test.mjs tests/exercises-import.test.mjs tests/exercises-attribution.test.mjs tests/exercises-figure.test.mjs tests/exercises-second-catalog.test.mjs tests/exercises-api.test.mjs tests/exercises-photo-map.test.mjs tests/exercises-figure-retry.test.mjs tests/back-link.test.mjs && node scripts/test-exercises-sql.mjs",
-    "test:cuentas": "node --experimental-strip-types --test tests/finance-accounts.test.mjs tests/day-boundary.test.mjs && node scripts/test-cuentas-sql.mjs"
+    "test:cuentas": "node --experimental-strip-types --test tests/finance-accounts.test.mjs tests/day-boundary.test.mjs && node scripts/test-cuentas-sql.mjs",
+    "build:install:check": "node scripts/build-install-sql.mjs --check"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",
